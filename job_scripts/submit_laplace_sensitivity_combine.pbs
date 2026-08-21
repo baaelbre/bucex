@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#PBS -N bx_lap_join
+#PBS -l walltime=02:00:00
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=12gb
+#PBS -j oe
+
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR}"
+source config/laplace_sensitivity_grid.sh
+mkdir -p logs/laplace_sensitivity
+
+TASK_ID="${PBS_ARRAYID:?submit this file as a PBS array}"
+INDEX=$((TASK_ID - 1))
+PROFILE_INDEX=$((INDEX % SENS_N_PROFILES))
+SEED_INDEX=$((INDEX / SENS_N_PROFILES))
+
+if (( SEED_INDEX >= SENS_N_SEEDS )); then
+  echo "PBS_ARRAYID=${TASK_ID} exceeds the configured grid." >&2
+  exit 2
+fi
+
+SIM_SEED="${SENS_SEEDS[$SEED_INDEX]}"
+PROFILE="${SENS_PROFILE_NAMES[$PROFILE_INDEX]}"
+LEVEL_SLAB="${SENS_LEVEL_SLAB[$PROFILE_INDEX]}"
+TREND_SLAB="${SENS_TREND_SLAB[$PROFILE_INDEX]}"
+SEASON_SLAB="${SENS_SEASON_SLAB[$PROFILE_INDEX]}"
+INITIAL_SEASON_SD="${SENS_INITIAL_SEASON_SD[$PROFILE_INDEX]}"
+
+exec > "logs/laplace_sensitivity/combine_s${SIM_SEED}_${PROFILE}_${TASK_ID}.log" 2>&1
+
+bash bash_scripts/run_laplace_sensitivity_combine.sh \
+  "${SIM_SEED}" \
+  "${PROFILE}" \
+  "${LEVEL_SLAB}" \
+  "${TREND_SLAB}" \
+  "${SEASON_SLAB}" \
+  "${INITIAL_SEASON_SD}" \
+  "${SENS_CHAINS}" \
+  "${SENS_DRAWS}" \
+  "${SENS_WARMUP}" \
+  "${SENS_N_TIME}" \
+  "${SENS_PERIOD}" \
+  "${SENS_RESULTS_ROOT}"
