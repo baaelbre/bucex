@@ -38,8 +38,8 @@ XI = float(os.environ.get("BUCEX_XI", "-0.30"))
 INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
 LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
 RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.02"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00050"))
+LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.01"))
+LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00080"))
 LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.003"))
 DYNAMIC_SEASON_AMPLITUDE = float(
     os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
@@ -62,9 +62,9 @@ SIGMA2_PRIOR_B = float(os.environ.get("BUCEX_SIGMA2_PRIOR_B", "2.25"))
 XI_PRIOR_BOUNDS = (-0.50, 0.50)
 XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
 INNOVATION_SLAB_SD = {
-    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.10")),
-    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.0008")),
-    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.07")),
+    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.05")),
+    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.0010")),
+    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
 }
 LEVEL_DYNAMIC_PROBABILITY = float(
     os.environ.get("BUCEX_LEVEL_DYNAMIC_PROBABILITY", "0.50")
@@ -83,8 +83,8 @@ SEASON_PROBABILITIES = tuple(
 )  # zero, fixed, dynamic
 
 # MCMC. Environment variables make the same file convenient on an HPC node.
-DRAWS = int(os.environ.get("BUCEX_DRAWS", "400"))
-WARMUP = int(os.environ.get("BUCEX_WARMUP", "100"))
+DRAWS = int(os.environ.get("BUCEX_DRAWS", "600"))
+WARMUP = int(os.environ.get("BUCEX_WARMUP", "300"))
 CHAINS = int(os.environ.get("BUCEX_CHAINS", "1"))
 SEED = int(os.environ.get("BUCEX_SEED", "13081997"))
 PROGRESS = os.environ.get("BUCEX_PROGRESS", "1").lower() not in {"0", "false", "no"}

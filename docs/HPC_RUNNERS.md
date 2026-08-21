@@ -37,6 +37,7 @@ stop if it is absent; there is no fallback to an unrelated system Python.
 Create and verify the environment from the package root with:
 
 ```bash
+cd cd /kyukon/data/gent/vo/000/gvo00048/vsc42619/GitHub/bucex
 python -m venv "${HOME}/venvs/bucex_env"
 source "${HOME}/venvs/bucex_env/bin/activate"
 python -m pip install --upgrade pip setuptools wheel
