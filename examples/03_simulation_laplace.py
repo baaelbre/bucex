@@ -28,7 +28,7 @@ import bucex as bx
 RESULTS_ROOT = Path(os.environ.get("BUCEX_RESULTS_ROOT", "results"))
 SCRIPT_NAME = Path(__file__).stem
 RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
-OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {"1", "true", "yes"}
+OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "1").lower() in {"1", "true", "yes"}
 
 # Simulation design. Keep aligned with 02_structural_simulations.py.
 N_TIME = int(os.environ.get("BUCEX_N_TIME", "1000"))
@@ -37,9 +37,9 @@ SIGMA = float(os.environ.get("BUCEX_SIGMA", "1.50"))
 XI = float(os.environ.get("BUCEX_XI", "-0.30"))
 INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
 LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
-RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.02"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00050"))
+RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.02"))
+LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.01"))
+LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00010"))
 LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.003"))
 DYNAMIC_SEASON_AMPLITUDE = float(
     os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
@@ -62,9 +62,9 @@ SIGMA2_PRIOR_B = float(os.environ.get("BUCEX_SIGMA2_PRIOR_B", "2.25"))
 XI_PRIOR_BOUNDS = (-0.50, 0.50)
 XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
 INNOVATION_SLAB_SD = {
-    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.03")),
-    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.0008")),
-    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
+    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.02")),
+    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.00015")),
+    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.03")),
 }
 LEVEL_DYNAMIC_PROBABILITY = float(
     os.environ.get("BUCEX_LEVEL_DYNAMIC_PROBABILITY", "0.50")
@@ -105,7 +105,10 @@ FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_d{DRAWS}w{WARMUP}c{CHAINS}"
 OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
-
+OUTPUT_DIR = OUTPUT_DIR = (Path("results")
+/ "03_simulation_laplace"
+    / "all_great_except_for_RW"
+)  # --- IGNORE ---
 
 phase = np.arange(PERIOD, dtype=float)
 dynamic_cycle = -DYNAMIC_SEASON_AMPLITUDE * np.cos(2.0 * np.pi * phase / PERIOD)
@@ -177,6 +180,10 @@ SCENARIOS = (
         "structural_truth": {"level": 2, "slope": 2, "seasonal": 1},
     },
 )
+
+# only the random walk # --- IGNORE ---
+SCENARIOS = SCENARIOS[-3:-2]
+
 
 # Fit one encompassing model to every scenario. SSVS decides whether each
 # process is zero, fixed, or dynamic; no scenario-specific model is supplied.
