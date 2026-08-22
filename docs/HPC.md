@@ -1,4 +1,4 @@
-# Running the eight BUCEX examples with PBS
+# Running the ten BUCEX examples with PBS
 
 Run every command below from the clean `bucex` repository root. The five fitting
 jobs reserve four cores and start one independent one-chain Python process per
@@ -29,7 +29,7 @@ qsub -v BUCEX_VENV_DIR="$HOME/path/to/bucex_env",DRAWS=400,WARMUP=100,CHAINS=4 \
 Set `BUCEX_PROGRESS=1` in `qsub -v` to write periodic MCMC progress lines to
 the per-chain logs. The default is `0` for quieter batch logs.
 
-## Submit all eight pilot jobs
+## Submit all ten pilot jobs
 
 ```bash
 STAMP="$(date +%Y%m%d_%H%M%S)"
@@ -57,6 +57,12 @@ qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,
 
 qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig" \
   job_scripts/submit_07_centered_ig_random_walk_gev.pbs
+
+qsub -v N_TIME=240,DRAWS=400,WARMUP=400,CHAINS=2,MH_STEPS=1,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_laplace_mh" \
+  job_scripts/submit_08_simulation_laplace_mh.pbs
+
+qsub -v START=1892-01-01,END=latest,SERIES=TXx,DRAWS=400,WARMUP=400,CHAINS=2,MH_STEPS=1,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_laplace_mh" \
+  job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
 
 These jobs are independent and may be submitted together.  The scheduler will
@@ -85,6 +91,12 @@ qsub -v START=1892-01-01,END=latest,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=51
 
 qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig_final" \
   job_scripts/submit_07_centered_ig_random_walk_gev.pbs
+
+qsub -v N_TIME=1000,DRAWS=2000,WARMUP=2000,CHAINS=4,MH_STEPS=1,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_laplace_mh_final" \
+  job_scripts/submit_08_simulation_laplace_mh.pbs
+
+qsub -v START=1892-01-01,END=latest,DRAWS=2000,WARMUP=2000,CHAINS=4,MH_STEPS=1,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_laplace_mh_final" \
+  job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
 
 ## Monitoring and outputs
@@ -122,6 +134,12 @@ bash bash_scripts/run_06_uccle_pgas.sh \
 
 bash bash_scripts/run_07_centered_ig_random_walk_gev.sh \
   1000 13081997 400 100 4 128 13081997 results manual_centered_ig 0
+
+bash bash_scripts/run_08_simulation_laplace_mh.sh \
+  240 400 400 2 11001 results manual_sim_laplace_mh 1
+
+bash bash_scripts/run_09_uccle_laplace_mh.sh \
+  1892-01-01 latest TXx 400 400 2 11010 data results manual_uccle_laplace_mh 1
 ```
 
 For example 07, the process truth and inverse-gamma sensitivity settings may

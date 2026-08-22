@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.0.1."""
+"""Fixed-seed numerical release validation for bucex 1.1.0."""
 from __future__ import annotations
 
 import argparse
@@ -60,8 +60,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.0.1":
-        raise RuntimeError(f"Expected bucex 1.0.1, found {bx.__version__}.")
+    if bx.__version__ != "1.1.0":
+        raise RuntimeError(f"Expected bucex 1.1.0, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -214,6 +214,30 @@ def run() -> dict[str, object]:
         mcmc=bx.MCMC(draws=2, warmup=2, chains=1, seed=2422),
     )
     record["disturbance_guided_pgas"] = _finite_fit(disturbance_fit)
+
+    laplace_mh_fit = bx.fit(
+        rng.gumbel(size=18),
+        family="gev",
+        period=4,
+        priors="normal",
+        engine="laplace_mh",
+        parameterization="fs",
+        laplace=bx.Laplace(max_iterations=12, mh_steps=2),
+        mcmc=bx.MCMC(draws=2, warmup=2, chains=1, seed=2423),
+    )
+    laplace_mh_diagnostics = laplace_mh_fit.diagnostics()["engine"]
+    record["fs_laplace_mh"] = {
+        **_finite_fit(laplace_mh_fit),
+        "targets_exact_posterior": bool(
+            laplace_mh_fit.plan.targets_exact_posterior
+        ),
+        "state_acceptance": float(
+            laplace_mh_diagnostics["state_acceptance"]
+        ),
+        "support_rejections": float(
+            laplace_mh_diagnostics["mean_proposal_support_rejections"]
+        ),
+    }
     record["total_seconds"] = time.perf_counter() - started
     return record
 
@@ -223,7 +247,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.0.1.json"),
+        default=Path("validation/release_validation_1.1.0.json"),
     )
     args = parser.parse_args()
     result = run()

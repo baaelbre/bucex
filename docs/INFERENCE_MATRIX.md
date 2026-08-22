@@ -6,13 +6,39 @@
 |---|---|---|---|---|
 | `Model` | Gaussian | `ffbs` | Gaussian FFBS | exact |
 | `Model` | GEV | `laplace` | iterated pseudo-Gaussian FFBS | approximate |
+| `Model` | GEV | `laplace_mh` | full-path Laplace independence MH | exact-invariant |
 | `Model` | GEV | `pgas` | conditional SMC with ancestor sampling | exact-invariant |
 | `MultiSeriesModel` | all Gaussian | `ffbs` | channel FFBS in hierarchical Gibbs | exact |
 | `MultiSeriesModel` | mixed/GEV | `laplace` | hierarchical Laplace updates | approximate |
 | `MultiSeriesModel` | mixed/GEV | `pgas` | channel PGAS in hierarchical Gibbs | exact-invariant |
 
 `InferencePlan` stores this contract in every fit and exported result. A
-Laplace screen can initialize PGAS but cannot be relabelled exact.
+Laplace screen can initialize an exact engine but cannot be relabelled exact.
+`laplace_mh` is currently univariate; a `MultiSeriesModel` rejects it before
+sampling because its shared hierarchical update has not yet been given the
+same exact correction.
+
+## Laplace-MH correction
+
+For fixed static parameters, let
+
+\[
+\pi(dx)\propto p(dx)L(x),\qquad
+q(dx)\propto p(dx)\widetilde L(x),
+\]
+
+where `q` is the Gaussian smoother defined by the final iterated-Laplace
+pseudo-observations. The state measure `p(dx)` is identical in the target and
+proposal, so the independence-MH weight is simply
+
+\[
+\log w(x)=\log L(x)-\log\widetilde L(x).
+\]
+
+This remains valid when `p(dx)` is supported on a lower-dimensional affine
+subspace. Proposal construction is deterministic in data and static
+parameters; the current path is never used as the finite-iteration mode start.
+An invalid finite-endpoint proposal has `log w=-inf` and is rejected.
 
 ## Parameterizations
 
@@ -46,7 +72,7 @@ univariate SSVS prior also permits zero seasonality. The optional
 linear, RW1-with-drift, RW2, and local-linear classes. Constant draws have
 undefined R-hat and ESS; they are labelled as such.
 
-## Singular FS transitions and ancestor weights
+## Singular FS transitions and exact state updates
 
 Fixed or absent components make the state transition covariance singular. A
 full-dimensional Gaussian transition density is then not defined. PGAS instead
@@ -58,6 +84,12 @@ conditional SMC path without inventing variance in deterministic directions.
 
 This is why ancestor support, not only particle count, matters when combining
 FS noncentring, exact point masses, and PGAS.
+
+Laplace-MH avoids evaluating a singular transition density altogether because
+the state law cancels from its ratio. The Gaussian draw is projected onto the
+declared deterministic recursion to remove roundoff variance in integrated
+slope and seasonal-lag coordinates. This projection realizes the intended
+degenerate Gaussian law; it does not add process noise.
 
 Support-aware weights solve the singular-density calculation, not the broader
 mixing problem of a highly degenerate state-space model. The current kernel
@@ -100,3 +132,12 @@ retain their required order. Independent chains are the safest HPC unit.
 
 High particle ESS does not prove MCMC convergence, and healthy MCMC diagnostics
 do not prove predictive adequacy. Use leave-future-out scoring for the latter.
+
+## Laplace-MH checks
+
+- full-trajectory state acceptance (reported per draw and by chain);
+- proposal support-rejection rate;
+- iterated-Laplace convergence, iterations, and relative change;
+- parameter R-hat/ESS and state summaries across independent chains;
+- stability after changing `Laplace(mh_steps=...)`;
+- ESS per second relative to PGAS on the same model and record.

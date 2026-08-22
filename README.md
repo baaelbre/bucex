@@ -1,14 +1,12 @@
-# bucex 1.0.1
+# bucex 1.1.0
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized
 extreme-value observations. The package combines a declarative structural
-model API, componentwise SSVS, approximate Laplace state updates, and exact-
-density PGAS state updates.
+model API, componentwise SSVS, approximate Laplace state updates, exact
+Laplace independence-MH updates, and exact-density PGAS state updates.
 
-Version 1.0.1 refines the first stable release of the clean `bucex`
-repository. It continues the former 2.6.2 research code and focuses the
-interface around seven transparent analysis scripts and one diagnostic
-benchmark:
+Version 1.1.0 adds a full-trajectory `laplace_mh` engine to the stable 1.0.1
+codebase. The interface now includes ten transparent analysis scripts:
 
 1. the complete Uccle record from 1892 and the evolution of TXx;
 2. matched GEV shape and scale simulations;
@@ -19,6 +17,8 @@ benchmark:
 7. PGAS analysis of the same four series.
 8. an exact-PGAS random-walk GEV benchmark with centered states and explicit
    inverse-gamma priors on the process and observation variances.
+9. exact Laplace-MH fits for representative structural simulations;
+10. exact Laplace-MH fits of Uccle TXx, TXn, TNx, and TNn.
 
 There is no presentation workflow layer. Every script constructs its models
 with `bx.Model`, `bx.LocalLinearTrend`, `bx.DummySeasonal`, and `bx.GEV`, then
@@ -110,6 +110,18 @@ pgas = bx.fit(
     particles=bx.Particles(n=512, proposal="guided"),
 )
 
+laplace_mh = bx.fit(
+    y,
+    model=model,
+    priors=priors,
+    engine="laplace_mh",
+    parameterization="fruehwirth_schnatter",
+    mcmc=bx.MCMC(draws=2_000, warmup=2_000, chains=4, seed=26003),
+    laplace=bx.Laplace(mh_steps=1),
+)
+
+print(laplace_mh.diagnostics()["engine"])
+
 print(pgas.component_probabilities())
 print(pgas.diagnostics()["engine"])
 pgas.plot("level")
@@ -147,11 +159,31 @@ observation uncertainty beyond the data. Their common plotting API supports
 observed checks, recent history, predictive intervals, and optional latent-
 predictor medians.
 
-## Laplace and PGAS
+## Laplace, Laplace-MH, and PGAS
 
 For GEV observations, `engine="laplace"` samples states from an iterated local
 pseudo-Gaussian approximation. It is useful for screening, debugging, and
 initialization, but is not labelled exact posterior inference.
+
+`engine="laplace_mh"` builds the same mode-matched Gaussian smoother
+deterministically from the observations and current static parameters, draws a
+complete trajectory by FFBS, and corrects it with independence
+Metropolis--Hastings. If (L) is the exact observation likelihood and
+\(\widetilde L\) is the Gaussian pseudo-likelihood, the log acceptance ratio is
+
+\[
+\bigl[\log L(x')-\log\widetilde L(x')\bigr]
+-\bigl[\log L(x)-\log\widetilde L(x)\bigr].
+\]
+
+The exact and proposal state laws are the same, so their possibly singular
+transition densities cancel. Integrated-slope and dummy-seasonal lag
+coordinates are projected onto their exact affine recursion after Gaussian
+simulation. GEV endpoint violations are ordinary MH rejections; proposals are
+not truncated and never fall back to an atom at the mode. The returned plan is
+therefore labelled exact-invariant. Inspect state acceptance, support
+rejections, Laplace convergence, and ESS per second. `Laplace(mh_steps=...)`
+controls repeated full-path proposals at fixed parameters.
 
 `engine="pgas"` uses conditional sequential Monte Carlo with ancestor
 sampling and the exact GEV observation density. Fixed or excluded components
@@ -172,9 +204,9 @@ ESS/R-hat, process-variance summaries, and particle diagnostics. Its purpose is
 diagnostic comparison with the FS/non-centred specification, not to replace
 the latter as the default structural-selection model.
 
-## Eight standalone examples
+## Ten standalone examples
 
-Set one run ID to give all eight script-specific result directories the same
+Set one run ID to give all ten script-specific result directories the same
 timestamp prefix:
 
 ```bash
@@ -187,6 +219,8 @@ python examples/04_simulation_pgas.py
 python examples/05_uccle_laplace.py
 python examples/06_uccle_pgas.py
 python examples/07_centered_ig_random_walk_gev.py
+python examples/08_simulation_laplace_mh.py
+python examples/09_uccle_laplace_mh.py
 ```
 
 Outputs are written below
@@ -223,7 +257,7 @@ qsub -v DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512 \
   job_scripts/submit_06_uccle_pgas.pbs
 ```
 
-The eight numbered `run_*.sh` files under `bash_scripts/` also run directly with
+The ten numbered `run_*.sh` files under `bash_scripts/` also run directly with
 positional arguments. There is no hidden scientific settings layer; every
 pair is readable by itself. See `docs/HPC_RUNNERS.md` for the exact argument
 order and adapt the resource directives to the local cluster. `docs/HPC.md`

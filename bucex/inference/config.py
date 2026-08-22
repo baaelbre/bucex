@@ -70,15 +70,29 @@ class GibbsConfig:
 
 @dataclass(frozen=True)
 class Laplace:
+    """Controls for Laplace approximations and Laplace-MH proposals.
+
+    ``mh_steps`` is the number of full-trajectory independence-MH proposals per
+    outer MCMC iteration when ``engine="laplace_mh"``.  ``draw_attempts`` is
+    retained only for the explicitly approximate ``engine="laplace"`` path.
+    """
+
     max_iterations: int = 30
     tolerance: float = 1e-5
     curvature_floor: float = 1e-6
     maximum_variance: float = 1e8
     draw_attempts: int = 30
+    mh_steps: int = 1
 
     def __post_init__(self) -> None:
         if int(self.max_iterations) < 1 or float(self.tolerance) <= 0.0:
             raise ValueError("Laplace iterations and tolerance must be positive.")
+        if float(self.curvature_floor) <= 0.0 or float(self.maximum_variance) <= 0.0:
+            raise ValueError("Laplace curvature and variance controls must be positive.")
+        if int(self.draw_attempts) < 1:
+            raise ValueError("Laplace.draw_attempts must be positive.")
+        if int(self.mh_steps) < 1:
+            raise ValueError("Laplace.mh_steps must be positive.")
 
 
 @dataclass(frozen=True)

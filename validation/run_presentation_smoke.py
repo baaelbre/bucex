@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Direct-API smoke validation for the eight bucex 1.0.1 examples."""
+"""Direct-API smoke validation for the ten bucex 1.1.0 examples."""
 from __future__ import annotations
 
 import argparse
@@ -22,8 +22,8 @@ import bucex as bx
 def run(work_dir: Path) -> dict[str, object]:
     started = time.perf_counter()
     scripts = sorted((SOURCE_ROOT / "examples").glob("[0-9][0-9]_*.py"))
-    if len(scripts) != 8:
-        raise RuntimeError(f"Expected eight examples, found {len(scripts)}.")
+    if len(scripts) != 10:
+        raise RuntimeError(f"Expected ten examples, found {len(scripts)}.")
     for script in scripts:
         compile(script.read_text(encoding="utf-8"), str(script), "exec")
 
@@ -61,10 +61,21 @@ def run(work_dir: Path) -> dict[str, object]:
         particles=bx.Particles(n=16, proposal="guided"),
         mcmc=bx.MCMC(draws=1, warmup=1, chains=1, seed=2622),
     )
+    laplace_mh = bx.fit(
+        simulation.y,
+        model=model,
+        priors=priors,
+        engine="laplace_mh",
+        parameterization="fruehwirth_schnatter",
+        laplace=bx.Laplace(max_iterations=12, mh_steps=2),
+        mcmc=bx.MCMC(draws=1, warmup=1, chains=1, seed=2627),
+    )
     if laplace.plan.targets_exact_posterior:
         raise RuntimeError("The Laplace fit was incorrectly marked exact.")
     if not pgas.plan.targets_exact_posterior:
         raise RuntimeError("The PGAS fit was not marked exact-invariant.")
+    if not laplace_mh.plan.targets_exact_posterior:
+        raise RuntimeError("The Laplace-MH fit was not marked exact-invariant.")
     if pgas.meta.get("warm_start_source_engine") != "laplace":
         raise RuntimeError("PGAS did not retain Laplace warm-start provenance.")
 
@@ -108,6 +119,7 @@ def run(work_dir: Path) -> dict[str, object]:
     work_dir.mkdir(parents=True, exist_ok=True)
     laplace.save(work_dir / "laplace.bucex")
     pgas.save(work_dir / "pgas.bucex")
+    laplace_mh.save(work_dir / "laplace_mh.bucex")
     centered_ig.save(work_dir / "centered_ig.bucex")
     figure, axis = pgas.plot("season", labels=("1", "2", "3", "4"))
     figure.savefig(work_dir / "season.png", dpi=72)
@@ -147,6 +159,7 @@ def run(work_dir: Path) -> dict[str, object]:
         "examples": [script.name for script in scripts],
         "warm_start_source": pgas.meta["warm_start_source_engine"],
         "pgas_engine_diagnostics": pgas.diagnostics()["engine"],
+        "laplace_mh_engine_diagnostics": laplace_mh.diagnostics()["engine"],
         "centered_ig_plan": centered_ig.plan.to_dict(),
         "centered_ig_engine_diagnostics": centered_ig.diagnostics()["engine"],
         "season_lines": len(axis.lines),
@@ -158,8 +171,8 @@ def run(work_dir: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.0.1"))
-    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.0.1.json"))
+    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.1.0"))
+    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.1.0.json"))
     args = parser.parse_args()
     result = run(args.work_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)

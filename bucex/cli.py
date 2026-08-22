@@ -50,7 +50,11 @@ def build_parser() -> argparse.ArgumentParser:
     fit_parser.add_argument("--output", type=Path)
     fit_parser.add_argument("--start")
     fit_parser.add_argument("--end")
-    fit_parser.add_argument("--engine", choices=("auto", "ffbs", "laplace", "pgas"), default="auto")
+    fit_parser.add_argument(
+        "--engine",
+        choices=("auto", "ffbs", "laplace", "laplace_mh", "pgas"),
+        default="auto",
+    )
     fit_parser.add_argument(
         "--parameterization",
         choices=("auto", "centered", "disturbance", "fruehwirth_schnatter"),
@@ -81,6 +85,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     fit_parser.add_argument("--laplace-iterations", type=int, default=30)
     fit_parser.add_argument("--laplace-tolerance", type=float, default=1e-5)
+    fit_parser.add_argument("--laplace-mh-steps", type=int, default=1)
     fit_parser.add_argument("--seed", type=int, default=40)
     fit_parser.add_argument("--progress", action=argparse.BooleanOptionalAction, default=True)
 
@@ -157,6 +162,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         laplace=Laplace(
             max_iterations=args.laplace_iterations,
             tolerance=args.laplace_tolerance,
+            mh_steps=args.laplace_mh_steps,
         ),
     )
     fit.save(output)

@@ -1,8 +1,9 @@
-# bucex 1.0.1 examples
+# bucex 1.1.0 examples
 
 The first seven standalone files reproduce the complete COMPSTAT analysis. An
 eighth diagnostic benchmark makes the classical centered/inverse-gamma
-alternative explicit. All eight use the public `bucex` API directly and are
+alternative explicit, and two new scripts demonstrate exact Laplace-MH
+inference. All ten use the public `bucex` API directly and are
 intended to be read as well as run:
 
 1. `00_uccle_record.py` — record from 1892, TXx evolution, and robust LOESS.
@@ -15,6 +16,9 @@ intended to be read as well as run:
 8. `07_centered_ig_random_walk_gev.py` — exact-PGAS random-walk GEV with
    centered states, inverse-gamma variance priors, and mandatory mixing
    diagnostics.
+9. `08_simulation_laplace_mh.py` — exact Laplace-MH structural simulations.
+10. `09_uccle_laplace_mh.py` — exact Laplace-MH analysis of TXx, TXn, TNx,
+    and TNn, including acceptance and endpoint-support diagnostics.
 
 The four component-selection fitting examples also save both forms of the level plot, a dedicated
 slope plot, posterior seasonality, a posterior predictive check, and an
@@ -26,7 +30,7 @@ diagnostics, a posterior predictive check, and a forecast.
 
 Run them from the package root. Each script writes to its own directory and
 automatically combines a timestamp with the settings that identify that run.
-Set one timestamp before a linked local or HPC run so the seven directories
+Set one timestamp before a linked local or HPC run so the directories
 share the same prefix:
 
 ```bash
@@ -39,6 +43,8 @@ python examples/04_simulation_pgas.py
 python examples/05_uccle_laplace.py
 python examples/06_uccle_pgas.py
 python examples/07_centered_ig_random_walk_gev.py
+python examples/08_simulation_laplace_mh.py
+python examples/09_uccle_laplace_mh.py
 ```
 
 The resulting layout is

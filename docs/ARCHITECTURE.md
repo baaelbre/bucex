@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.0.1 keeps one model compiler, one fitting entry point, and one result
+Release 1.1.0 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text
@@ -10,7 +10,7 @@ bucex/
   models/              Model, MultiSeriesModel, Channel, compilers
   observation/         Gaussian and GEV families
   priors/              univariate and hierarchical priors
-  inference/           plans, FFBS, Laplace, PGAS, samplers
+  inference/           plans, FFBS, Laplace, Laplace-MH, PGAS, samplers
   core/                FitResult and numerical primitives
   diagnostics/         MCMC, scores, PIT, LFO
   datasets/            Uccle loaders and direct fit helpers
@@ -56,13 +56,26 @@ ancestor moves on the affine support of active innovations. The conditioned
 predecessor is retained when optional candidates are off-support. This is an
 algorithmic requirement, not a numerical convenience.
 
+Laplace-MH factors its state update into three reusable operations:
+
+1. deterministically build the final pseudo-Gaussian smoother;
+2. draw a complete trajectory from that fixed smoother by FFBS;
+3. evaluate `exact log likelihood - pseudo log likelihood`.
+
+The common state prior cancels in the MH ratio, including singular directions.
+FS Gaussian filter arrays are cached so repeated `mh_steps` reuse one forward
+pass. Approximate `laplace` retains its historical support-draw loop, while
+exact `laplace_mh` makes one untruncated proposal per step and treats endpoint
+violations as rejections.
+
 ## Analysis-script lifecycle
 
-The eight files under `examples/` declare models, priors, simulation truths,
+The ten files under `examples/` declare models, priors, simulation truths,
 fit calls, summaries, and figures in one readable sequence. Seven form the
 COMPSTAT analysis; the eighth exposes the centered/inverse-gamma random-walk
-benchmark. Eight matching PBS jobs invoke those exact files and share a
-`BUCEX_RUN_ID`; scheduler code does not define the statistics. Reusable
+benchmark; the final two exercise exact Laplace-MH. Ten matching PBS jobs
+invoke those exact files and share a `BUCEX_RUN_ID`; scheduler code does not
+define the statistics. Reusable
 scientific behavior belongs in the core API, while analysis-specific choices
 remain visible in the scripts.
 

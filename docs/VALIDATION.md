@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.0.1 has five software layers:
+Release 1.1.0 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -22,7 +22,10 @@ evidence for a scientific conclusion.
 
 - `import bucex as bx` exposes the documented modelling, inference, result,
   simulation, data, and plotting APIs;
-- Laplace plans remain explicitly approximate and PGAS plans exact-invariant;
+- Laplace plans remain explicitly approximate; Laplace-MH and PGAS plans are
+  exact-invariant;
+- quadratic-observation Laplace-MH proposals accept with constant correction
+  weights, and singular FS recursions hold exactly after projection;
 - a univariate Laplace `FitResult` exports a compatible full-path warm start;
 - PGAS metadata records that Laplace supplied the initializer;
 - singular-support ancestor calculations remain finite and keep the
@@ -41,10 +44,10 @@ evidence for a scientific conclusion.
 - independently saved chains combine only when model, prior, plan, data, and
   dates agree;
 - schema-2.6.2 archives round-trip and older supported archives remain readable;
-- the eight Python examples are self-contained calls to the public API;
+- the ten Python examples are self-contained calls to the public API;
 - the centered/inverse-gamma benchmark records an exact-PGAS centered plan,
   disables ASIS, and exposes both MCMC and particle diagnostics;
-- the eight PBS jobs invoke those same examples, and the fitting runners
+- the ten PBS jobs invoke those same examples, and the fitting runners
   combine independent chains only after all chain processes succeed;
 - dedicated level and slope figures keep observations off the slope scale;
 - LOESS and seasonal-component plots satisfy their numerical contracts;

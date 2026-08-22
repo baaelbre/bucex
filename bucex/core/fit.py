@@ -136,6 +136,7 @@ class FitResult:
             "engine": self.plan.engine,
             "parameterization": self.plan.parameterization,
             "asis": bool(self.plan.asis),
+            "proposal": self.plan.proposal,
         }
 
     @property
@@ -148,6 +149,7 @@ class FitResult:
             "asis": self.plan.asis,
             "targets_exact_posterior": self.plan.targets_exact_posterior,
             "approximation": self.plan.approximation,
+            "proposal": self.plan.proposal,
             "n_chains": self.n_chains,
             "draws_per_chain": self.draws_per_chain,
             "series_name": self.series_name,

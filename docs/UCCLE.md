@@ -29,6 +29,8 @@ The workflow is ordered to separate questions that are otherwise easy to mix:
 4. Laplace fits give a fast, explicitly approximate SSVS analysis.
 5. PGAS fits use the Laplace path as an initializer and the exact GEV density.
 6. The same model/prior is fitted to TXx, TXn, TNx, and TNn.
+7. Laplace-MH uses the fast Gaussian smoother as a proposal and targets the
+   exact GEV posterior without particles.
 
 ```bash
 export BUCEX_RUN_ID=$(date +%Y%m%d_%H%M%S)
@@ -39,6 +41,8 @@ python examples/03_simulation_laplace.py
 python examples/04_simulation_pgas.py
 python examples/05_uccle_laplace.py
 python examples/06_uccle_pgas.py
+python examples/08_simulation_laplace_mh.py
+python examples/09_uccle_laplace_mh.py
 ```
 
 Each PGAS script creates or reuses its matching Laplace initializer. A fit on
@@ -76,6 +80,8 @@ model extension, not another label in the current three-component SSVS table.
 - observation scale, shape, and finite endpoint when `xi<0`;
 - particle ESS, ancestor diversity, path change, path-update fraction, and
   reference-ancestor change for PGAS;
+- whole-trajectory acceptance, proposal support rejections, and Laplace-mode
+  convergence for Laplace-MH;
 - R-hat and ESS from independent combined chains;
 - sensitivity to particles, slab widths, record start, and prior model odds.
 

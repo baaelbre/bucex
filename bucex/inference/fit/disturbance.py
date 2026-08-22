@@ -12,6 +12,7 @@ from ..state.kalman import ffbs
 from ..state.laplace import (
     iterated_laplace,
     joint_state_log_density,
+    laplace_mh,
     observation_log_likelihood,
 )
 from ..config import Laplace, MCMC, Particles
@@ -382,6 +383,10 @@ def sample_posterior(
         "laplace_converged",
         "laplace_relative_change",
         "laplace_support_rejections",
+        "laplace_mh_acceptance",
+        "laplace_mh_mean_log_acceptance_ratio",
+        "laplace_mh_log_weight",
+        "laplace_mh_support_rejections",
         "particle_min_ess",
         "particle_mean_unique_ancestors",
         "particle_path_changed",
@@ -392,6 +397,8 @@ def sample_posterior(
     acceptance_by_chain: dict[str, list[float]] = {
         name: [] for name in sampled_parameter_names
     }
+    if plan.engine == "laplace_mh":
+        acceptance_by_chain["state_laplace_mh"] = []
     if plan.asis:
         for name in compiled.noise_names:
             acceptance_by_chain[f"asis.sd.{name}"] = []
@@ -452,6 +459,39 @@ def sample_posterior(
                     laplace_converged=float(state.converged),
                     laplace_relative_change=state.relative_change,
                     laplace_support_rejections=state.support_rejections,
+                )
+            elif plan.engine == "laplace_mh":
+                state = laplace_mh(
+                    y,
+                    compiled,
+                    params,
+                    path,
+                    rng,
+                    mh_steps=laplace.mh_steps,
+                    max_iterations=laplace.max_iterations,
+                    tolerance=laplace.tolerance,
+                    curvature_floor=laplace.curvature_floor,
+                    maximum_variance=laplace.maximum_variance,
+                )
+                path = state.path
+                attempts["state_laplace_mh"] += state.attempts
+                accepts["state_laplace_mh"] += state.accepted_steps
+                finite_ratios = state.log_acceptance_ratio[
+                    np.isfinite(state.log_acceptance_ratio)
+                ]
+                last_metrics.update(
+                    laplace_iterations=state.approximation.iterations,
+                    laplace_converged=float(state.approximation.converged),
+                    laplace_relative_change=state.approximation.relative_change,
+                    laplace_support_rejections=state.proposal_support_failures,
+                    laplace_mh_acceptance=state.acceptance_rate,
+                    laplace_mh_mean_log_acceptance_ratio=(
+                        float(np.mean(finite_ratios))
+                        if finite_ratios.size
+                        else -np.inf
+                    ),
+                    laplace_mh_log_weight=state.log_weight,
+                    laplace_mh_support_rejections=state.proposal_support_failures,
                 )
             elif plan.engine == "pgas":
                 state = pgas(y, compiled, params, path, particles=particles, rng=rng)
@@ -664,5 +704,6 @@ def sample_posterior(
             "attempt_failure_counts": {},
             "restore_failure_counts": {},
             "pgas_exact_invariant": plan.engine == "pgas",
+            "laplace_mh_exact_invariant": plan.engine == "laplace_mh",
         },
     )

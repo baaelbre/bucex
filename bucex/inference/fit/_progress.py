@@ -188,13 +188,17 @@ def mcmc_progress_line(
         )
         if np.isfinite(path_update):
             pieces.append(f"path_update={path_update:.2f}")
-    elif str(engine).lower() == "laplace":
+    elif str(engine).lower() in {"laplace", "laplace_mh"}:
         iterations = float(values.get("laplace_iterations", np.nan))
         converged = float(values.get("laplace_converged", np.nan))
         if np.isfinite(iterations):
             pieces.append(f"laplace_it={iterations:.0f}")
         if np.isfinite(converged):
             pieces.append(f"converged={int(bool(converged))}")
+        if str(engine).lower() == "laplace_mh":
+            acceptance = float(values.get("laplace_mh_acceptance", np.nan))
+            if np.isfinite(acceptance):
+                pieces.append(f"state_accept={acceptance:.2f}")
 
     pieces.extend(str(value) for value in details if str(value))
     pieces.extend((f"elapsed {_duration(elapsed)}", f"ETA {_duration(eta)}"))

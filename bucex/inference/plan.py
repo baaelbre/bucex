@@ -19,6 +19,7 @@ class InferencePlan:
     state_update: str
     targets_exact_posterior: bool
     approximation: str | None
+    proposal: str | None = None
     interweaves_with: str | None = None
     backend: str = "state_space"
     warnings: tuple[str, ...] = ()
@@ -30,6 +31,7 @@ class InferencePlan:
     def from_dict(cls, value: dict[str, Any]) -> "InferencePlan":
         payload = dict(value)
         payload["warnings"] = tuple(payload.get("warnings", ()))
+        payload.setdefault("proposal", None)
         payload.setdefault("interweaves_with", None)
         payload.setdefault("backend", "state_space")
         return cls(**payload)
@@ -108,7 +110,11 @@ def inference_plan(
     allowed = (
         {"ffbs"}
         if all_gaussian
-        else ({"laplace", "pgas"} if is_multiseries else {"laplace", "pgas"})
+        else (
+            {"laplace", "pgas"}
+            if is_multiseries
+            else {"laplace", "laplace_mh", "pgas"}
+        )
     )
     if resolved_engine not in allowed:
         raise ValueError(
@@ -129,8 +135,9 @@ def inference_plan(
         raise ValueError(
             "ASIS is not combined with the joint hierarchical sampler; use asis=False."
         )
-    exact = resolved_engine in {"ffbs", "pgas"}
+    exact = resolved_engine in {"ffbs", "laplace_mh", "pgas"}
     approximation = None if exact else "iterated_laplace"
+    proposal = "iterated_laplace_smoother" if resolved_engine == "laplace_mh" else None
     if asis:
         interweaves_with = (
             "centered"
@@ -163,6 +170,7 @@ def inference_plan(
         "ffbs": "exact Gaussian FFBS",
         "pgas": "conditional SMC with ancestor sampling",
         "laplace": "iterated Laplace FFBS approximation",
+        "laplace_mh": "Laplace independence Metropolis-Hastings",
     }[resolved_engine]
     return InferencePlan(
         family=family,
@@ -182,5 +190,6 @@ def inference_plan(
         state_update=state_update,
         targets_exact_posterior=exact,
         approximation=approximation,
+        proposal=proposal,
         warnings=tuple(warnings),
     )

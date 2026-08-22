@@ -9,8 +9,8 @@ import numpy as np
 import bucex as bx
 
 
-def test_v101_version_and_workflow_removal():
-    assert bx.__version__ == "1.0.1"
+def test_v110_version_and_workflow_removal():
+    assert bx.__version__ == "1.1.0"
     assert not hasattr(bx, "make_structural_scenarios")
     assert not hasattr(bx, "PresentationWorkflow")
 
@@ -217,7 +217,7 @@ def test_laplace_fit_is_a_full_path_warm_start_for_pgas():
     assert pgas.plan.targets_exact_posterior
 
 
-def test_hpc_surface_matches_the_eight_examples():
+def test_hpc_surface_matches_the_ten_examples():
     root = Path(__file__).resolve().parents[1]
     runner_directory = root / "bash_scripts"
     submit_directory = root / "job_scripts"
@@ -232,6 +232,8 @@ def test_hpc_surface_matches_the_eight_examples():
         "05_uccle_laplace",
         "06_uccle_pgas",
         "07_centered_ig_random_walk_gev",
+        "08_simulation_laplace_mh",
+        "09_uccle_laplace_mh",
     }
     assert {f"run_{stem}.sh" for stem in expected_stems} <= runners
     assert {f"submit_{stem}.pbs" for stem in expected_stems} <= submissions

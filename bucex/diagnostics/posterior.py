@@ -182,7 +182,7 @@ def fit_diagnostics(fit):
         table = rows
     metrics = fit.sampler_diagnostics.get("draw_metrics", {})
     engine: dict[str, float] = {}
-    if fit.plan.engine == "laplace":
+    if fit.plan.engine in {"laplace", "laplace_mh"}:
         engine = {
             "convergence_rate": _finite_mean(metrics["laplace_converged"]),
             "median_iterations": _finite_median(metrics["laplace_iterations"]),
@@ -193,6 +193,22 @@ def fit_diagnostics(fit):
                 metrics["laplace_support_rejections"]
             ),
         }
+        if fit.plan.engine == "laplace_mh":
+            engine.update(
+                state_acceptance=_finite_mean(
+                    metrics.get("laplace_mh_acceptance", np.asarray([]))
+                ),
+                mean_log_acceptance_ratio=_finite_mean(
+                    metrics.get(
+                        "laplace_mh_mean_log_acceptance_ratio", np.asarray([])
+                    )
+                ),
+                mean_proposal_support_rejections=_finite_mean(
+                    metrics.get(
+                        "laplace_mh_support_rejections", np.asarray([])
+                    )
+                ),
+            )
     elif fit.plan.engine == "pgas":
         engine = {
             "median_min_particle_ess": _finite_median(

@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.1.0
+
+- Added `engine="laplace_mh"` for exact-invariant whole-trajectory state
+  updates in univariate GEV models using FS, centered, or disturbance
+  parameterizations.
+- Refactored Laplace inference into deterministic proposal construction,
+  Gaussian smoother draws, and reusable exact-over-Gaussian correction weights.
+- Kept the exact and proposal state laws identical so singular transition
+  measures cancel from the MH ratio; projected numerical draws onto integrated
+  slope and dummy-seasonal affine recursions without adding process jitter.
+- Added `Laplace.mh_steps`, per-draw state acceptance/support diagnostics,
+  per-chain acceptance summaries, exactness metadata, and proposal metadata in
+  `InferencePlan`.
+- Routed `laplace_mh` through exact GEV structural-parameter and SSVS model
+  updates rather than the approximate pseudo-observation regression update.
+- Added structural-simulation and Uccle Laplace-MH examples with matching Bash
+  and PBS launchers.
+- Added identity, singular-support, public API, SSVS, persistence, and
+  negative-shape GEV regression coverage.
+- Kept archive schema 2.6.2 for backward compatibility.
+
 ## 1.0.1
 
 - Added posterior predictive replication and out-of-sample forecasting to the

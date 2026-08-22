@@ -28,7 +28,7 @@ import bucex as bx
 RESULTS_ROOT = Path(os.environ.get("BUCEX_RESULTS_ROOT", "results"))
 SCRIPT_NAME = Path(__file__).stem
 RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
-OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "1").lower() in {"1", "true", "yes"}
+OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {"1", "true", "yes"}
 
 # Simulation design. Keep aligned with 02_structural_simulations.py.
 N_TIME = int(os.environ.get("BUCEX_N_TIME", "1000"))
@@ -105,10 +105,7 @@ FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_d{DRAWS}w{WARMUP}c{CHAINS}"
 OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
-OUTPUT_DIR = OUTPUT_DIR = (Path("results")
-/ "03_simulation_laplace"
-    / "all_great_except_for_RW"
-)  # --- IGNORE ---
+OUTPUT_DIR = "results//03_simulation_laplace//all_great_except_for_RW"  # --- IGNORE ---
 
 phase = np.arange(PERIOD, dtype=float)
 dynamic_cycle = -DYNAMIC_SEASON_AMPLITUDE * np.cos(2.0 * np.pi * phase / PERIOD)
@@ -181,9 +178,16 @@ SCENARIOS = (
     },
 )
 
-# only the random walk # --- IGNORE ---
-SCENARIOS = SCENARIOS[-3:-2]
-
+# only the random walk
+SCENARIOS = (    {
+        "name": "random_walk",
+        "key": "random_walk",
+        "model": bx.Model(bx.GEV(), (bx.LocalLinearTrend(level_mode="dynamic", trend_mode="off"),), name="random walk"),
+        "params": {"sigma": SIGMA, "xi": XI, "sd.level": RANDOM_WALK_SD},
+        "initial_state": np.array([INITIAL_LEVEL]),
+        "seed": SIMULATION_SEED + 2,
+        "structural_truth": {"level": 2, "slope": 0, "seasonal": 0},
+    })
 
 # Fit one encompassing model to every scenario. SSVS decides whether each
 # process is zero, fixed, or dynamic; no scenario-specific model is supplied.

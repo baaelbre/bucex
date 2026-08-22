@@ -136,6 +136,8 @@ messages to the per-chain log files. It is `0` by default.
 | `05_uccle_laplace` | `START END DRAWS WARMUP CHAINS MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
 | `06_uccle_pgas` | `START END DRAWS WARMUP CHAINS PARTICLES MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
 | `07_centered_ig_random_walk_gev` | `N_TIME SIMULATION_SEED DRAWS WARMUP CHAINS PARTICLES MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE` |
+| `08_simulation_laplace_mh` | `N_TIME DRAWS WARMUP CHAINS SEED RESULTS_ROOT RUN_ID MH_STEPS` |
+| `09_uccle_laplace_mh` | `START END SERIES DRAWS WARMUP CHAINS SEED DATA_DIR RESULTS_ROOT RUN_ID MH_STEPS` |
 
 The main scientific settings—GEV scale and shape, process-noise truths, SSVS
 probabilities, and prior scales—remain visible at the top of the Python files.
@@ -148,7 +150,7 @@ The `LEVEL_IG_*` pair parameterizes the inverse-gamma prior on
 
 ## Submit the complete workflow
 
-All eight examples are self-contained, so they may be submitted together; no
+All ten examples are self-contained, so they may be submitted together; no
 PBS dependency is required. Use one timestamp prefix and descriptive suffixes:
 
 ```bash
@@ -161,10 +163,14 @@ qsub -v RUN_ID="${STAMP}_sim_pgas",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHA
   job_scripts/submit_04_simulation_pgas.pbs
 qsub -v RUN_ID="${STAMP}_centered_ig",N_TIME=1000,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025 \
   job_scripts/submit_07_centered_ig_random_walk_gev.pbs
+qsub -v RUN_ID="${STAMP}_sim_laplace_mh",N_TIME=240,DRAWS=400,WARMUP=400,CHAINS=2,MH_STEPS=1 \
+  job_scripts/submit_08_simulation_laplace_mh.pbs
+qsub -v RUN_ID="${STAMP}_uccle_laplace_mh",START=1892-01-01,SERIES=TXx,DRAWS=400,WARMUP=400,CHAINS=2,MH_STEPS=1 \
+  job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
 
 See [`HPC.md`](HPC.md) for copy-and-paste pilot and final commands for all
-eight jobs, plus monitoring commands.
+ten jobs, plus monitoring commands.
 
 For a four-chain job, use the result directory containing
 `RUN_ID_combined__...c4...`. The `RUN_ID_chain01__...c1...` through

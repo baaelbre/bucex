@@ -495,6 +495,8 @@ def map_centered_to_ncp(
         else:
             z[:, layout.season_ncp_slice] = seasonal_deviation / s_season
 
+    transition, covariance = build_ncp_system(layout)
+    z = _project_ncp_path_to_support(z, transition, covariance)
     reconstruction = map_ncp_to_centered(z, params_state, layout)
     error = np.max(np.abs(reconstruction - x))
     if error > tolerance * (1.0 + np.max(np.abs(x))):
@@ -709,76 +711,19 @@ def ffbs_gaussian_1d(
     return z
 
 
-def ffbs_gaussian_1d_tvR(
-    y: Array,
-    G: Array,
-    Q: Array,
-    H: Array,
-    R_t: Array,
-    *,
-    m0: Optional[Array] = None,
-    C0: Optional[Array] = None,
-    rng: Optional[np.random.Generator] = None,
-    jitter: float = 1e-12,
-    R_floor: float = 1e-12,
-) -> Array:
-    y = np.asarray(y, dtype=float).reshape(-1)
-    R_t = np.asarray(R_t, dtype=float).reshape(-1)
-    Tn = int(y.size)
-    d = int(G.shape[0])
-    H = np.asarray(H, dtype=float).reshape(1, d)
+@dataclass(frozen=True)
+class GaussianFilter1D:
+    """Cached scalar-observation Kalman filter for repeated FFBS draws."""
 
-    if R_t.size != Tn:
-        raise ValueError("R_t must have length T")
-    if rng is None:
-        rng = np.random.default_rng()
-    if m0 is None:
-        m0 = np.zeros(d, dtype=float)
-    if C0 is None:
-        C0 = 1e-6 * np.eye(d)
-
-    m = np.zeros((Tn + 1, d), dtype=float)
-    C = np.zeros((Tn + 1, d, d), dtype=float)
-    a = np.zeros((Tn + 1, d), dtype=float)
-    Rm = np.zeros((Tn + 1, d, d), dtype=float)
-
-    m[0] = m0
-    C[0] = _symmetrize(C0)
-
-    for t in range(1, Tn + 1):
-        Robs = float(max(R_floor, R_t[t - 1]))
-        a[t] = G @ m[t - 1]
-        Rm[t] = _symmetrize(G @ C[t - 1] @ G.T + Q)
-        F = float((H @ Rm[t] @ H.T).item() + Robs)
-        if not np.isfinite(F) or F <= 0.0:
-            F = float((H @ (Rm[t] + 1e-10 * np.eye(d)) @ H.T).item() + Robs)
-        K = (Rm[t] @ H.T) / F
-        v = float(y[t - 1] - (H @ a[t]).item())
-        m[t] = a[t] + K[:, 0] * v
-        I_KH = np.eye(d) - K @ H
-        C[t] = _symmetrize(
-            I_KH @ Rm[t] @ I_KH.T + Robs * (K @ K.T)
-        )
-
-    z = np.zeros((Tn + 1, d), dtype=float)
-    z[Tn] = _sample_gaussian(m[Tn], C[Tn], rng, jitter=jitter)
-
-    for t in range(Tn - 1, -1, -1):
-        mean, cov = _backward_smoothing_moments(
-            m[t],
-            C[t],
-            z[t + 1],
-            G,
-            Q,
-            Rm[t + 1],
-            jitter=jitter,
-        )
-        z[t] = _sample_gaussian(mean, cov, rng, jitter=jitter)
-
-    return z
+    filtered_mean: Array
+    filtered_covariance: Array
+    predicted_mean: Array
+    predicted_covariance: Array
+    transition: Array
+    process_covariance: Array
 
 
-def gaussian_smoother_mean_1d_tvR(
+def _filter_gaussian_1d_tvR(
     y: Array,
     G: Array,
     Q: Array,
@@ -789,8 +734,7 @@ def gaussian_smoother_mean_1d_tvR(
     C0: Optional[Array] = None,
     jitter: float = 1e-12,
     R_floor: float = 1e-12,
-) -> Array:
-    """Kalman/RTS posterior mean for a scalar, time-varying Gaussian layer."""
+) -> GaussianFilter1D:
     y = np.asarray(y, dtype=float).reshape(-1)
     R_t = np.asarray(R_t, dtype=float).reshape(-1)
     Tn = int(y.size)
@@ -809,7 +753,6 @@ def gaussian_smoother_mean_1d_tvR(
     Rm = np.zeros((Tn + 1, d, d), dtype=float)
     m[0] = np.asarray(m0, dtype=float)
     C[0] = _symmetrize(np.asarray(C0, dtype=float))
-
     for t in range(1, Tn + 1):
         observation_variance = float(max(R_floor, R_t[t - 1]))
         a[t] = G @ m[t - 1]
@@ -830,16 +773,119 @@ def gaussian_smoother_mean_1d_tvR(
             identity_minus @ Rm[t] @ identity_minus.T
             + observation_variance * (gain @ gain.T)
         )
+    return GaussianFilter1D(
+        filtered_mean=m,
+        filtered_covariance=C,
+        predicted_mean=a,
+        predicted_covariance=Rm,
+        transition=np.asarray(G, dtype=float),
+        process_covariance=np.asarray(Q, dtype=float),
+    )
 
-    smooth = m.copy()
+
+def _draw_gaussian_smoother_1d(
+    result: GaussianFilter1D,
+    rng: np.random.Generator,
+    *,
+    jitter: float = 1e-12,
+) -> Array:
+    Tn, d = result.filtered_mean.shape[0] - 1, result.filtered_mean.shape[1]
+    path = np.zeros((Tn + 1, d), dtype=float)
+    path[Tn] = _sample_gaussian(
+        result.filtered_mean[Tn], result.filtered_covariance[Tn], rng, jitter=jitter
+    )
     for t in range(Tn - 1, -1, -1):
-        if np.linalg.norm(Rm[t + 1]) <= np.finfo(float).tiny:
+        mean, covariance = _backward_smoothing_moments(
+            result.filtered_mean[t],
+            result.filtered_covariance[t],
+            path[t + 1],
+            result.transition,
+            result.process_covariance,
+            result.predicted_covariance[t + 1],
+            jitter=jitter,
+        )
+        path[t] = _sample_gaussian(mean, covariance, rng, jitter=jitter)
+    return path
+
+
+def _mean_gaussian_smoother_1d(
+    result: GaussianFilter1D,
+    *,
+    jitter: float = 1e-12,
+) -> Array:
+    smooth = result.filtered_mean.copy()
+    for t in range(smooth.shape[0] - 2, -1, -1):
+        predicted = result.predicted_covariance[t + 1]
+        if np.linalg.norm(predicted) <= np.finfo(float).tiny:
             continue
         gain = spd_solve(
-            Rm[t + 1], G @ C[t], jitter=jitter
+            predicted,
+            result.transition @ result.filtered_covariance[t],
+            jitter=jitter,
         ).T
-        smooth[t] = m[t] + gain @ (smooth[t + 1] - a[t + 1])
+        smooth[t] = result.filtered_mean[t] + gain @ (
+            smooth[t + 1] - result.predicted_mean[t + 1]
+        )
     return smooth
+
+
+def ffbs_gaussian_1d_tvR(
+    y: Array,
+    G: Array,
+    Q: Array,
+    H: Array,
+    R_t: Array,
+    *,
+    m0: Optional[Array] = None,
+    C0: Optional[Array] = None,
+    rng: Optional[np.random.Generator] = None,
+    jitter: float = 1e-12,
+    R_floor: float = 1e-12,
+    filter_result: Optional[GaussianFilter1D] = None,
+) -> Array:
+    if rng is None:
+        rng = np.random.default_rng()
+    if filter_result is None and C0 is None:
+        C0 = 1e-6 * np.eye(np.asarray(G).shape[0])
+    result = filter_result or _filter_gaussian_1d_tvR(
+        y,
+        G,
+        Q,
+        H,
+        R_t,
+        m0=m0,
+        C0=C0,
+        jitter=jitter,
+        R_floor=R_floor,
+    )
+    return _draw_gaussian_smoother_1d(result, rng, jitter=jitter)
+
+
+def gaussian_smoother_mean_1d_tvR(
+    y: Array,
+    G: Array,
+    Q: Array,
+    H: Array,
+    R_t: Array,
+    *,
+    m0: Optional[Array] = None,
+    C0: Optional[Array] = None,
+    jitter: float = 1e-12,
+    R_floor: float = 1e-12,
+) -> Array:
+    """Kalman/RTS posterior mean for a scalar, time-varying Gaussian layer."""
+    result = _filter_gaussian_1d_tvR(
+        y,
+        G,
+        Q,
+        H,
+        R_t,
+        m0=m0,
+        C0=C0,
+        jitter=jitter,
+        R_floor=R_floor,
+    )
+    return _mean_gaussian_smoother_1d(result, jitter=jitter)
 
 
 def design_matrix_ncp(
@@ -1884,6 +1930,49 @@ class NCPLaplaceResult:
     support_rejections: int
 
 
+@dataclass(frozen=True)
+class NCPLaplaceApproximation:
+    """Deterministic Gaussian proposal for the FS non-centred state block."""
+
+    mode_path: Array
+    pseudo_y: Array
+    pseudo_variance: Array
+    transition: Array
+    process_covariance: Array
+    measurement: Array
+    offset: Array
+    filter: GaussianFilter1D
+    converged: bool
+    iterations: int
+    relative_change: float
+    objective: float
+
+
+@dataclass(frozen=True)
+class NCPLaplaceMHResult:
+    """One or more exact Laplace independence-MH updates of an FS path."""
+
+    z_path: Array
+    approximation: NCPLaplaceApproximation
+    accepted: Array
+    log_acceptance_ratio: Array
+    log_weight: float
+    proposal_support_failures: int
+    exact_invariant: bool = True
+
+    @property
+    def attempts(self) -> int:
+        return int(np.asarray(self.accepted).size)
+
+    @property
+    def accepted_steps(self) -> int:
+        return int(np.sum(np.asarray(self.accepted, dtype=bool)))
+
+    @property
+    def acceptance_rate(self) -> float:
+        return float(self.accepted_steps / max(self.attempts, 1))
+
+
 def _strict_normalize_logweights(log_weights: Array) -> tuple[Array, Array, float]:
     """Normalize without discarding finite log probabilities through underflow."""
     log_weights = np.asarray(log_weights, dtype=float)
@@ -1910,13 +1999,33 @@ def _ncp_transition_structure(Q: Array) -> tuple[Array, Array, Array]:
     return active, deterministic, loading
 
 
+def _project_ncp_path_to_support(path: Array, G: Array, Q: Array) -> Array:
+    """Remove floating-point drift in deterministic transition coordinates.
+
+    Singular Gaussian simulation can leave order-``sqrt(eps)`` noise in a
+    direction whose theoretical conditional variance is zero.  Replacing only
+    those coordinates by their affine recursion realizes the intended
+    degenerate Gaussian draw and makes support checks auditable.
+    """
+
+    projected = np.asarray(path, dtype=float).copy()
+    if projected.ndim != 2 or projected.shape[1] != G.shape[0]:
+        raise ValueError("path has the wrong state dimension.")
+    _, deterministic, _ = _ncp_transition_structure(Q)
+    projected[0] = 0.0
+    if deterministic.size:
+        for t in range(1, projected.shape[0]):
+            projected[t, deterministic] = (G @ projected[t - 1])[deterministic]
+    return projected
+
+
 def _ncp_transition_logpdf(
     value: Array,
     means: Array,
     active: Array,
     deterministic: Array,
     *,
-    tolerance: float = 1e-6,
+    tolerance: float = 1e-12,
 ) -> Array:
     means = np.asarray(means, dtype=float)
     value = np.asarray(value, dtype=float)
@@ -2209,6 +2318,7 @@ def ncp_pgas(
     for t in range(Tn, 0, -1):
         index_path[t - 1] = ancestors[t, index_path[t]]
         path[t - 1] = cloud[t - 1, index_path[t - 1]]
+    path = _project_ncp_path_to_support(path, G, Q)
     difference = np.linalg.norm(path - reference, axis=1)
     changed = difference > 1e-10 * (
         1.0 + np.linalg.norm(reference, axis=1)
@@ -2296,7 +2406,7 @@ def _ncp_laplace_pseudo_data(
     return pseudo_y, pseudo_variance
 
 
-def iterated_laplace_ncp(
+def build_ncp_laplace_approximation(
     y: Array,
     model: StateSpaceModel,
     params_state: ParamDict,
@@ -2304,16 +2414,19 @@ def iterated_laplace_ncp(
     layout: NCPLayout,
     *,
     initial_path: Optional[Array] = None,
-    rng: Optional[np.random.Generator] = None,
     max_iterations: int = 30,
     tolerance: float = 1e-5,
     curvature_floor: float = 1e-6,
     maximum_variance: float = 1e8,
     shift_limit: Optional[float] = None,
-    draw_attempts: int = 30,
-) -> NCPLaplaceResult:
-    """Convergence-checked iterated Laplace draw for the FS state block."""
-    rng = np.random.default_rng() if rng is None else rng
+) -> NCPLaplaceApproximation:
+    """Construct the Gaussian approximation for the FS state block.
+
+    With ``initial_path=None`` construction is deterministic conditional on the
+    data and static parameters.  That is the proposal used by
+    :func:`ncp_laplace_mh`; a current-chain path is never used to define its own
+    independence proposal.
+    """
     y = np.asarray(y, dtype=float).reshape(-1)
     if int(max_iterations) < 1 or float(tolerance) <= 0.0:
         raise ValueError("max_iterations and tolerance must be positive.")
@@ -2327,7 +2440,7 @@ def iterated_laplace_ncp(
         mode = np.asarray(initial_path, dtype=float).copy()
     if mode.shape != (Tn + 1, layout.ncp_state_dim):
         raise ValueError("initial_path has the wrong shape.")
-    mode[0] = 0.0
+    mode = _project_ncp_path_to_support(mode, G, Q)
     shift_limit = float(
         10.0 * float(params_obs["sigma"])
         if shift_limit is None
@@ -2370,14 +2483,14 @@ def iterated_laplace_ncp(
             m0=np.zeros(layout.ncp_state_dim),
             C0=np.zeros((layout.ncp_state_dim, layout.ncp_state_dim)),
         )
-        candidate[0] = 0.0
+        candidate = _project_ncp_path_to_support(candidate, G, Q)
         accepted = False
         step_size = 1.0
         proposal = mode
         candidate_objective = -np.inf
         while step_size >= 2.0**-12:
             proposal = mode + step_size * (candidate - mode)
-            proposal[0] = 0.0
+            proposal = _project_ncp_path_to_support(proposal, G, Q)
             candidate_objective = objective(proposal)
             if (
                 np.isfinite(candidate_objective)
@@ -2411,20 +2524,233 @@ def iterated_laplace_ncp(
         maximum_variance=maximum_variance,
         shift_limit=shift_limit,
     )
-    path = mode.copy()
+    filter_result = _filter_gaussian_1d_tvR(
+        pseudo_y - offset,
+        G,
+        Q,
+        H,
+        pseudo_variance,
+        m0=np.zeros(layout.ncp_state_dim),
+        C0=np.zeros((layout.ncp_state_dim, layout.ncp_state_dim)),
+    )
+    return NCPLaplaceApproximation(
+        mode_path=mode,
+        pseudo_y=pseudo_y,
+        pseudo_variance=pseudo_variance,
+        transition=G,
+        process_covariance=Q,
+        measurement=H,
+        offset=offset,
+        filter=filter_result,
+        converged=converged,
+        iterations=int(iteration),
+        relative_change=float(relative_change),
+        objective=float(current_objective),
+    )
+
+
+def draw_ncp_laplace_proposal(
+    approximation: NCPLaplaceApproximation,
+    rng: Optional[np.random.Generator] = None,
+) -> Array:
+    """Draw one full FS trajectory from a fixed Gaussian approximation."""
+
+    rng = np.random.default_rng() if rng is None else rng
+    dimension = int(approximation.transition.shape[0])
+    path = ffbs_gaussian_1d_tvR(
+        approximation.pseudo_y - approximation.offset,
+        approximation.transition,
+        approximation.process_covariance,
+        approximation.measurement,
+        approximation.pseudo_variance,
+        m0=np.zeros(dimension),
+        C0=np.zeros((dimension, dimension)),
+        rng=rng,
+        filter_result=approximation.filter,
+    )
+    return _project_ncp_path_to_support(
+        path,
+        approximation.transition,
+        approximation.process_covariance,
+    )
+
+
+def _ncp_gaussian_approximation_loglik(
+    z_path: Array,
+    approximation: NCPLaplaceApproximation,
+) -> float:
+    predictor = (
+        approximation.offset
+        + np.asarray(z_path, dtype=float)[1:] @ approximation.measurement
+    )
+    variance = np.asarray(approximation.pseudo_variance, dtype=float)
+    residual = np.asarray(approximation.pseudo_y, dtype=float) - predictor
+    if (
+        np.any(~np.isfinite(residual))
+        or np.any(~np.isfinite(variance))
+        or np.any(variance <= 0.0)
+    ):
+        return -np.inf
+    return float(
+        -0.5
+        * np.sum(np.log(2.0 * np.pi * variance) + residual * residual / variance)
+    )
+
+
+def ncp_laplace_log_correction(
+    y: Array,
+    z_path: Array,
+    approximation: NCPLaplaceApproximation,
+    model: StateSpaceModel,
+    params_state: ParamDict,
+    params_obs: ParamDict,
+    layout: NCPLayout,
+) -> float:
+    """Exact-over-Gaussian likelihood ratio for MH and importance weights."""
+
+    exact = _ncp_exact_observation_loglik(
+        y, z_path, params_state, params_obs, model, layout
+    )
+    if not np.isfinite(exact):
+        return -np.inf
+    approximate = _ncp_gaussian_approximation_loglik(z_path, approximation)
+    if not np.isfinite(approximate):
+        return -np.inf
+    return float(exact - approximate)
+
+
+def ncp_laplace_mh(
+    y: Array,
+    model: StateSpaceModel,
+    params_state: ParamDict,
+    params_obs: ParamDict,
+    layout: NCPLayout,
+    current_path: Array,
+    *,
+    rng: Optional[np.random.Generator] = None,
+    mh_steps: int = 1,
+    max_iterations: int = 30,
+    tolerance: float = 1e-5,
+    curvature_floor: float = 1e-6,
+    maximum_variance: float = 1e8,
+    shift_limit: Optional[float] = None,
+) -> NCPLaplaceMHResult:
+    """Exact-invariant independence MH for the FS non-centred trajectory.
+
+    The exact FS Gaussian state law and the state law inside the Laplace
+    proposal are identical.  They therefore cancel from the MH ratio even when
+    ``Q`` is singular (integrated slope and dummy-seasonal lag coordinates).
+    """
+
+    if int(mh_steps) < 1:
+        raise ValueError("mh_steps must be positive.")
+    rng = np.random.default_rng() if rng is None else rng
+    y = np.asarray(y, dtype=float).reshape(-1)
+    current = np.asarray(current_path, dtype=float).copy()
+    expected = (y.size + 1, layout.ncp_state_dim)
+    if current.shape != expected:
+        raise ValueError(f"current_path must have shape {expected}.")
+    G, Q = build_ncp_system(layout)
+    if not np.isfinite(_ncp_state_log_density(current, G, Q)):
+        raise ValueError("The current FS trajectory is outside transition support.")
+
+    approximation = build_ncp_laplace_approximation(
+        y,
+        model,
+        params_state,
+        params_obs,
+        layout,
+        initial_path=None,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        curvature_floor=curvature_floor,
+        maximum_variance=maximum_variance,
+        shift_limit=shift_limit,
+    )
+    current_weight = ncp_laplace_log_correction(
+        y,
+        current,
+        approximation,
+        model,
+        params_state,
+        params_obs,
+        layout,
+    )
+    if not np.isfinite(current_weight):
+        raise ValueError("The current FS trajectory is outside exact GEV support.")
+
+    accepted = np.zeros(int(mh_steps), dtype=bool)
+    log_ratios = np.full(int(mh_steps), -np.inf, dtype=float)
+    support_failures = 0
+    for step in range(int(mh_steps)):
+        proposal = draw_ncp_laplace_proposal(approximation, rng)
+        proposal_weight = ncp_laplace_log_correction(
+            y,
+            proposal,
+            approximation,
+            model,
+            params_state,
+            params_obs,
+            layout,
+        )
+        if not np.isfinite(proposal_weight):
+            support_failures += 1
+            continue
+        log_ratio = float(proposal_weight - current_weight)
+        log_ratios[step] = log_ratio
+        if np.log(rng.random()) < min(0.0, log_ratio):
+            current = proposal
+            current_weight = proposal_weight
+            accepted[step] = True
+
+    return NCPLaplaceMHResult(
+        z_path=current,
+        approximation=approximation,
+        accepted=accepted,
+        log_acceptance_ratio=log_ratios,
+        log_weight=float(current_weight),
+        proposal_support_failures=int(support_failures),
+    )
+
+
+def iterated_laplace_ncp(
+    y: Array,
+    model: StateSpaceModel,
+    params_state: ParamDict,
+    params_obs: ParamDict,
+    layout: NCPLayout,
+    *,
+    initial_path: Optional[Array] = None,
+    rng: Optional[np.random.Generator] = None,
+    max_iterations: int = 30,
+    tolerance: float = 1e-5,
+    curvature_floor: float = 1e-6,
+    maximum_variance: float = 1e8,
+    shift_limit: Optional[float] = None,
+    draw_attempts: int = 30,
+) -> NCPLaplaceResult:
+    """Convergence-checked approximate Laplace draw for the FS state block."""
+
+    if int(draw_attempts) < 1:
+        raise ValueError("draw_attempts must be positive.")
+    rng = np.random.default_rng() if rng is None else rng
+    approximation = build_ncp_laplace_approximation(
+        y,
+        model,
+        params_state,
+        params_obs,
+        layout,
+        initial_path=initial_path,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        curvature_floor=curvature_floor,
+        maximum_variance=maximum_variance,
+        shift_limit=shift_limit,
+    )
+    path = approximation.mode_path.copy()
     support_rejections = 0
     for _ in range(int(draw_attempts)):
-        candidate = ffbs_gaussian_1d_tvR(
-            pseudo_y - offset,
-            G,
-            Q,
-            H,
-            pseudo_variance,
-            m0=np.zeros(layout.ncp_state_dim),
-            C0=np.zeros((layout.ncp_state_dim, layout.ncp_state_dim)),
-            rng=rng,
-        )
-        candidate[0] = 0.0
+        candidate = draw_ncp_laplace_proposal(approximation, rng)
         if np.isfinite(
             _ncp_exact_observation_loglik(
                 y, candidate, params_state, params_obs, model, layout
@@ -2435,12 +2761,12 @@ def iterated_laplace_ncp(
         support_rejections += 1
     return NCPLaplaceResult(
         z_path=path,
-        mode_path=mode,
-        pseudo_y=pseudo_y,
-        pseudo_variance=pseudo_variance,
-        converged=converged,
-        iterations=int(iteration),
-        relative_change=float(relative_change),
-        objective=float(current_objective),
+        mode_path=approximation.mode_path,
+        pseudo_y=approximation.pseudo_y,
+        pseudo_variance=approximation.pseudo_variance,
+        converged=approximation.converged,
+        iterations=approximation.iterations,
+        relative_change=approximation.relative_change,
+        objective=approximation.objective,
         support_rejections=int(support_rejections),
     )

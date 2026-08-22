@@ -17,6 +17,51 @@ from ...core.numerics import (
 Array = np.ndarray
 
 
+@dataclass(frozen=True)
+class LaplaceApproximation:
+    """Deterministic Gaussian approximation to a conditional state posterior.
+
+    The object contains everything needed to draw repeatedly from the same
+    approximation.  Keeping construction and simulation separate is essential
+    for independence Metropolis--Hastings: the proposal must depend on the data
+    and parameters, not on the current state trajectory.
+    """
+
+    mode_path: Array
+    pseudo_y: Array
+    pseudo_variance: Array
+    converged: bool
+    iterations: int
+    relative_change: float
+    objective: float
+    filter: KalmanResult
+
+
+@dataclass(frozen=True)
+class LaplaceMHResult:
+    """Result of one or more exact Laplace independence-MH state updates."""
+
+    path: Array
+    approximation: LaplaceApproximation
+    accepted: Array
+    log_acceptance_ratio: Array
+    log_weight: float
+    proposal_support_failures: int
+    exact_invariant: bool = True
+
+    @property
+    def attempts(self) -> int:
+        return int(np.asarray(self.accepted).size)
+
+    @property
+    def accepted_steps(self) -> int:
+        return int(np.sum(np.asarray(self.accepted, dtype=bool)))
+
+    @property
+    def acceptance_rate(self) -> float:
+        return float(self.accepted_steps / max(self.attempts, 1))
+
+
 @dataclass
 class LaplaceDraw:
     path: Array
@@ -118,11 +163,10 @@ def _pseudo_data(
     return pseudo_y, pseudo_variance
 
 
-def iterated_laplace(
+def build_laplace_approximation(
     y: Array,
     compiled: CompiledModel,
     params: dict[str, float],
-    rng: np.random.Generator,
     *,
     initial_path: Array | None = None,
     max_iterations: int = 30,
@@ -130,8 +174,14 @@ def iterated_laplace(
     curvature_floor: float = 1e-6,
     maximum_variance: float = 1e8,
     shift_limit: float | None = None,
-    draw_attempts: int = 30,
-) -> LaplaceDraw:
+ ) -> LaplaceApproximation:
+    """Build the mode-matched Gaussian state proposal.
+
+    ``initial_path=None`` gives a deterministic proposal conditional on
+    ``(y, params)`` and is therefore the required setting for
+    :func:`laplace_mh`.  Supplying an initial path remains useful for the fast,
+    approximate :func:`iterated_laplace` update.
+    """
     if bool(getattr(compiled, "all_gaussian", compiled.family == "gaussian")):
         raise ValueError("The iterated Laplace backend requires at least one non-Gaussian channel.")
     y = np.asarray(y, dtype=float)
@@ -256,17 +306,202 @@ def iterated_laplace(
         params,
         observation_variance=pseudo_variance,
     )
-    support_rejections = 0
-    path = mode_path.copy()
-    for _ in range(int(draw_attempts)):
-        proposal, _ = ffbs(
-            pseudo_y,
-            compiled,
-            params,
-            rng,
-            observation_variance=pseudo_variance,
-            filter_result=filter_result,
+    return LaplaceApproximation(
+        mode_path=mode_path,
+        pseudo_y=pseudo_y,
+        pseudo_variance=pseudo_variance,
+        converged=converged,
+        iterations=iteration,
+        relative_change=relative_change,
+        objective=current_objective,
+        filter=filter_result,
+    )
+
+
+def draw_laplace_proposal(
+    approximation: LaplaceApproximation,
+    compiled: CompiledModel,
+    params: dict[str, float],
+    rng: np.random.Generator,
+) -> Array:
+    """Draw once from a previously constructed Gaussian state proposal."""
+
+    path, _ = ffbs(
+        approximation.pseudo_y,
+        compiled,
+        params,
+        rng,
+        observation_variance=approximation.pseudo_variance,
+        filter_result=approximation.filter,
+    )
+    return path
+
+
+def gaussian_approximation_log_likelihood(
+    path: Array,
+    approximation: LaplaceApproximation,
+    compiled: CompiledModel,
+    params: dict[str, float],
+) -> float:
+    """Log pseudo-observation density used by the Gaussian proposal."""
+
+    eta = np.asarray(compiled.eta(path, params=params), dtype=float)
+    pseudo_y = np.asarray(approximation.pseudo_y, dtype=float)
+    variance = np.asarray(approximation.pseudo_variance, dtype=float)
+    mask = np.isfinite(pseudo_y)
+    if not np.any(mask):
+        return 0.0
+    residual = pseudo_y[mask] - eta[mask]
+    selected_variance = variance[mask]
+    if (
+        np.any(~np.isfinite(residual))
+        or np.any(~np.isfinite(selected_variance))
+        or np.any(selected_variance <= 0.0)
+    ):
+        return -np.inf
+    return float(
+        -0.5
+        * np.sum(
+            np.log(2.0 * np.pi * selected_variance)
+            + residual * residual / selected_variance
         )
+    )
+
+
+def laplace_log_correction(
+    y: Array,
+    path: Array,
+    approximation: LaplaceApproximation,
+    compiled: CompiledModel,
+    params: dict[str, float],
+) -> float:
+    """Return ``log L(path) - log L_tilde(path)`` for MH or IS weights.
+
+    The exact and Gaussian state priors are identical, including any singular
+    transition directions, so they cancel from the density ratio.  This is why
+    no determinant or pseudo-density for the latent transition is needed.
+    """
+
+    exact = observation_log_likelihood(
+        y, compiled.eta(path, params=params), compiled, params
+    )
+    if not np.isfinite(exact):
+        return -np.inf
+    approximate = gaussian_approximation_log_likelihood(
+        path, approximation, compiled, params
+    )
+    if not np.isfinite(approximate):
+        return -np.inf
+    return float(exact - approximate)
+
+
+def laplace_mh(
+    y: Array,
+    compiled: CompiledModel,
+    params: dict[str, float],
+    current_path: Array,
+    rng: np.random.Generator,
+    *,
+    mh_steps: int = 1,
+    max_iterations: int = 30,
+    tolerance: float = 1e-5,
+    curvature_floor: float = 1e-6,
+    maximum_variance: float = 1e8,
+    shift_limit: float | None = None,
+) -> LaplaceMHResult:
+    """Exact-invariant independence MH using an iterated-Laplace proposal.
+
+    The Gaussian approximation is constructed once, deterministically from the
+    observations and the current static parameters.  Every proposal is a full
+    state trajectory drawn by FFBS.  Invalid GEV-support proposals are ordinary
+    MH rejections; the proposal is never truncated and never falls back to an
+    atom at the mode.
+    """
+
+    if int(mh_steps) < 1:
+        raise ValueError("mh_steps must be positive.")
+    current = np.asarray(current_path, dtype=float).copy()
+    expected = (compiled.n_time + 1, compiled.state_dim)
+    if current.shape != expected:
+        raise ValueError(f"current_path must have shape {expected}.")
+    approximation = build_laplace_approximation(
+        y,
+        compiled,
+        params,
+        initial_path=None,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        curvature_floor=curvature_floor,
+        maximum_variance=maximum_variance,
+        shift_limit=shift_limit,
+    )
+    current_weight = laplace_log_correction(
+        y, current, approximation, compiled, params
+    )
+    if not np.isfinite(current_weight):
+        raise ValueError("The current state trajectory is outside the exact target support.")
+
+    accepted = np.zeros(int(mh_steps), dtype=bool)
+    log_ratios = np.full(int(mh_steps), -np.inf, dtype=float)
+    support_failures = 0
+    for step in range(int(mh_steps)):
+        proposal = draw_laplace_proposal(approximation, compiled, params, rng)
+        proposal_weight = laplace_log_correction(
+            y, proposal, approximation, compiled, params
+        )
+        if not np.isfinite(proposal_weight):
+            support_failures += 1
+            continue
+        log_ratio = float(proposal_weight - current_weight)
+        log_ratios[step] = log_ratio
+        if np.log(rng.random()) < min(0.0, log_ratio):
+            current = proposal
+            current_weight = proposal_weight
+            accepted[step] = True
+
+    return LaplaceMHResult(
+        path=current,
+        approximation=approximation,
+        accepted=accepted,
+        log_acceptance_ratio=log_ratios,
+        log_weight=float(current_weight),
+        proposal_support_failures=int(support_failures),
+    )
+
+
+def iterated_laplace(
+    y: Array,
+    compiled: CompiledModel,
+    params: dict[str, float],
+    rng: np.random.Generator,
+    *,
+    initial_path: Array | None = None,
+    max_iterations: int = 30,
+    tolerance: float = 1e-5,
+    curvature_floor: float = 1e-6,
+    maximum_variance: float = 1e8,
+    shift_limit: float | None = None,
+    draw_attempts: int = 30,
+) -> LaplaceDraw:
+    """Fast approximate state draw retained for backward compatibility."""
+
+    if int(draw_attempts) < 1:
+        raise ValueError("draw_attempts must be positive.")
+    approximation = build_laplace_approximation(
+        y,
+        compiled,
+        params,
+        initial_path=initial_path,
+        max_iterations=max_iterations,
+        tolerance=tolerance,
+        curvature_floor=curvature_floor,
+        maximum_variance=maximum_variance,
+        shift_limit=shift_limit,
+    )
+    support_rejections = 0
+    path = approximation.mode_path.copy()
+    for _ in range(int(draw_attempts)):
+        proposal = draw_laplace_proposal(approximation, compiled, params, rng)
         if np.isfinite(
             observation_log_likelihood(
                 y, compiled.eta(proposal, params=params), compiled, params
@@ -278,13 +513,13 @@ def iterated_laplace(
 
     return LaplaceDraw(
         path=path,
-        mode_path=mode_path,
-        pseudo_y=pseudo_y,
-        pseudo_variance=pseudo_variance,
-        converged=converged,
-        iterations=iteration,
-        relative_change=relative_change,
-        objective=current_objective,
+        mode_path=approximation.mode_path,
+        pseudo_y=approximation.pseudo_y,
+        pseudo_variance=approximation.pseudo_variance,
+        converged=approximation.converged,
+        iterations=approximation.iterations,
+        relative_change=approximation.relative_change,
+        objective=approximation.objective,
         support_rejections=support_rejections,
-        filter=filter_result,
+        filter=approximation.filter,
     )

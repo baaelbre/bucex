@@ -56,7 +56,7 @@ def test_uccle_series_normalization_does_not_split_a_string():
         _normalize_series_names("T")
 
 
-def test_v101_example_surface_contains_eight_top_level_scripts():
+def test_v110_example_surface_contains_ten_top_level_scripts():
     directory = Path(__file__).resolve().parents[1] / "examples"
     scripts = {path.name for path in directory.glob("*.py")}
     assert scripts == {
@@ -68,6 +68,8 @@ def test_v101_example_surface_contains_eight_top_level_scripts():
         "05_uccle_laplace.py",
         "06_uccle_pgas.py",
         "07_centered_ig_random_walk_gev.py",
+        "08_simulation_laplace_mh.py",
+        "09_uccle_laplace_mh.py",
     }
     assert not (directory / "presentation").exists()
 
@@ -106,12 +108,16 @@ def test_v262_examples_are_standalone_public_api_scripts():
         "04_simulation_pgas.py",
         "05_uccle_laplace.py",
         "06_uccle_pgas.py",
+        "08_simulation_laplace_mh.py",
     ):
         assert "bx.Model(" in sources[name]
         assert "bx.fit(" in sources[name]
         assert '"level", credible_interval=0.90' in sources[name]
         assert '"slope", credible_interval=0.90' in sources[name]
         assert '.plot("season"' in sources[name]
+    assert 'engine="laplace_mh"' in sources["08_simulation_laplace_mh.py"]
+    assert 'engine="laplace_mh"' in sources["09_uccle_laplace_mh.py"]
+    assert "bx.fit_uccle_series(" in sources["09_uccle_laplace_mh.py"]
     assert "init=laplace_fit" in sources["04_simulation_pgas.py"]
     assert "init=laplace_fit" in sources["06_uccle_pgas.py"]
     centered_ig = sources["07_centered_ig_random_walk_gev.py"]

@@ -367,8 +367,7 @@ def main() -> None:
         trend_states = np.asarray(laplace_fit.parameter("state_trend"), dtype=int)
         slope_condition = "dynamic" if np.any(trend_states == 2) else None
         figure, axis = laplace_fit.plot(
-            "slope",
-            credible_interval=0.90,
+            "slope", credible_interval=0.90,
             scale="decade",
             unit="slope / °C per decade",
             condition_on=slope_condition,

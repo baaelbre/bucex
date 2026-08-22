@@ -1,4 +1,54 @@
-# bucex 1.0.1 release notes
+# bucex 1.1.0 release notes
+
+Version 1.1.0 adds exact-invariant, full-trajectory Laplace independence-MH
+inference for univariate non-Gaussian state-space models.
+
+## New `laplace_mh` engine
+
+- `bx.fit(..., engine="laplace_mh")` is available for univariate GEV models
+  under the FS, centered, and disturbance parameterizations.
+- The iterated-Laplace smoother is only a proposal. The exact GEV likelihood
+  corrects every full-path draw by independence Metropolis--Hastings, and the
+  returned `InferencePlan` is labelled exact-invariant.
+- Proposal construction is deterministic in observations and static
+  parameters. It cannot accidentally depend on the current state through a
+  finite-iteration mode warm start.
+- The exact and Gaussian proposal state measures are identical, so singular
+  transition densities cancel from the acceptance ratio.
+- Integrated-slope and dummy-seasonal lag coordinates are projected onto their
+  exact affine recursions after numerical Gaussian simulation. No artificial
+  process noise is introduced.
+- Endpoint-invalid GEV proposals are normal MH rejections. The exact kernel
+  does not rejection-sample a truncated proposal and never falls back to an
+  atom at the Laplace mode.
+- `bx.Laplace(mh_steps=...)` controls repeated whole-trajectory proposals while
+  reusing a cached Gaussian forward filter in the FS implementation.
+
+## Diagnostics and API
+
+- `fit.diagnostics()["engine"]` reports state acceptance, proposal support
+  rejections, Laplace convergence, iteration count, and relative mode change.
+- The raw per-draw diagnostics and per-chain `state_laplace_mh` acceptance are
+  retained in `FitResult` archives.
+- Low-level proposal construction, drawing, correction-weight evaluation, and
+  the general `laplace_mh` kernel are exported for research use.
+- Exact SSVS parameter/model updates are used with `laplace_mh`; the older
+  pseudo-observation SSVS update remains confined to approximate `laplace`.
+- Hierarchical `MultiSeriesModel` fitting rejects `laplace_mh` in this release
+  until the shared hierarchy receives a matching exact correction.
+
+## Examples and validation
+
+- Added `08_simulation_laplace_mh.py` and `09_uccle_laplace_mh.py`, plus Bash
+  runners and PBS submission files.
+- Added a quadratic-observation identity test: Laplace-MH acceptance is one and
+  correction weights are constant up to floating-point precision.
+- Added exact deterministic-support, negative-shape GEV, public API, SSVS, and
+  diagnostics regression tests.
+- Package version, distributions, source archive, documentation, and example
+  inventories are now consistently `1.1.0`.
+
+## 1.0.1 baseline
 
 Version 1.0.1 is the first refinement of the clean stable `bucex` release. It
 continues the former 2.6.2 research code, keeps its modelling and inference

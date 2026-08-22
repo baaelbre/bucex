@@ -274,6 +274,10 @@ def _stack_fs_chains(
         "laplace_converged",
         "laplace_relative_change",
         "laplace_support_rejections",
+        "laplace_mh_acceptance",
+        "laplace_mh_mean_log_acceptance_ratio",
+        "laplace_mh_log_weight",
+        "laplace_mh_support_rejections",
         "particle_min_ess",
         "particle_mean_unique_ancestors",
         "particle_path_changed",
@@ -377,6 +381,9 @@ def _stack_fs_chains(
             "model_selection_exact": outputs[0].meta.get("model_selection_exact"),
             "model_selection_basis": outputs[0].meta.get("model_selection_basis"),
             "pgas_exact_invariant": bool(outputs[0].meta.get("pgas_exact_invariant", False)),
+            "laplace_mh_exact_invariant": bool(
+                outputs[0].meta.get("laplace_mh_exact_invariant", False)
+            ),
             "warm_start_source_engine": outputs[0]
             .meta.get("state_kwargs", {})
             .get("warm_start_source_engine"),
@@ -429,6 +436,7 @@ def _fit_fruehwirth_schnatter(
         curvature_floor=float(laplace.curvature_floor),
         maximum_variance=float(laplace.maximum_variance),
         draw_attempts=int(laplace.draw_attempts),
+        laplace_mh_steps=int(laplace.mh_steps),
     )
     seeds = _chain_seeds(mcmc.seed, mcmc.chains)
     outputs: list[FSOutput] = []
@@ -614,7 +622,7 @@ def fit(
 ) -> FitResult:
     """Fit a Bayesian structural model through one integrated framework.
 
-    The independent choices are ``engine`` (FFBS/Laplace/PGAS),
+    The independent choices are ``engine`` (FFBS/Laplace/Laplace-MH/PGAS),
     ``parameterization`` (centred/FS/disturbance), the innovation prior, and
     optional ASIS interweaving.  Invalid mathematical combinations fail before
     sampling and are recorded in the returned :class:`FitResult` plan.

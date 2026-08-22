@@ -36,6 +36,7 @@ from .fs_utils import (
     map_centered_to_ncp,
     map_ncp_to_centered,
     mu_from_ncp,
+    ncp_laplace_mh,
     ncp_pgas,
     random_sign_switches,
     theta_vector_from_params,
@@ -133,8 +134,10 @@ def _laplace_pseudo_mu(
 class FSGEVKernel:
     """DGEV sampler in the Fruehwirth--Schnatter parameterisation.
 
-    ``state_method="pgas"`` combines exact-invariant PGAS state updates with
-    an exact GEV elliptical-slice update of the FS regression block.
+    ``state_method="pgas"`` and ``state_method="laplace_mh"`` combine an
+    exact-invariant state update with an exact GEV elliptical-slice update of
+    the FS regression block.  Laplace-MH uses the iterated-Laplace smoother only
+    as an independence proposal.
     ``state_method="laplace"`` retains the fast, explicitly approximate
     iterated-Laplace engine. Observation parameters always use the exact GEV
     likelihood.
@@ -233,8 +236,10 @@ class FSGEVKernel:
         initial_centered_path = state_kwargs.pop("initial_centered_path", None)
         if state_method == "particle":
             state_method = "pgas"
-        if state_method not in {"laplace", "pgas"}:
-            raise ValueError("state_method must be 'laplace' or 'pgas'.")
+        if state_method not in {"laplace", "laplace_mh", "pgas"}:
+            raise ValueError(
+                "state_method must be 'laplace', 'laplace_mh', or 'pgas'."
+            )
         use_asis = bool(state_kwargs.get("asis", False))
         if use_asis and self.priors.ssvs is not None:
             raise ValueError("ASIS is not combined with structural SSVS.")
@@ -348,6 +353,7 @@ class FSGEVKernel:
         logpost = np.full(n_keep, np.nan)
         G, Q = build_ncp_system(self.layout)
         accept_sigma = accept_xi = 0
+        accept_laplace_mh = attempt_laplace_mh = 0
         accept_ssvs_model = accept_ssvs_model_change = propose_ssvs_model_change = 0
         keep_idx = 0
         progress_every = progress_interval(n_iter, self.config.progress_every)
@@ -374,6 +380,10 @@ class FSGEVKernel:
             "laplace_converged": [],
             "laplace_relative_change": [],
             "laplace_support_rejections": [],
+            "laplace_mh_acceptance": [],
+            "laplace_mh_mean_log_acceptance_ratio": [],
+            "laplace_mh_log_weight": [],
+            "laplace_mh_support_rejections": [],
             "particle_min_ess": [],
             "particle_mean_unique_ancestors": [],
             "particle_path_changed": [],
@@ -399,6 +409,7 @@ class FSGEVKernel:
             iteration_failures: Counter[str] = Counter()
             last_failure_detail = ""
             successful_laplace_result = None
+            successful_laplace_mh_result = None
             successful_pgas_result = None
             successful_fs_slice_steps = np.nan
             successful_ssvs_move_accepted = np.nan
@@ -416,6 +427,7 @@ class FSGEVKernel:
                 stage = "state_update"
                 try:
                     laplace_result = None
+                    laplace_mh_result = None
                     pgas_result = None
                     if state_method == "laplace":
                         stage = "iterated_laplace_state_update"
@@ -437,6 +449,32 @@ class FSGEVKernel:
                         cand_z = laplace_result.z_path
                         z_star = laplace_result.pseudo_y
                         R_t = laplace_result.pseudo_variance
+                    elif state_method == "laplace_mh":
+                        stage = "laplace_mh_state_update"
+                        laplace_mh_result = ncp_laplace_mh(
+                            y1,
+                            self.model,
+                            work_state,
+                            work_obs,
+                            self.layout,
+                            z_path,
+                            rng=self.rng,
+                            mh_steps=int(state_kwargs.get("laplace_mh_steps", 1)),
+                            max_iterations=int(
+                                state_kwargs.get("laplace_max_iterations", 30)
+                            ),
+                            tolerance=float(
+                                state_kwargs.get("laplace_tolerance", 1e-5)
+                            ),
+                            curvature_floor=float(
+                                state_kwargs.get("curvature_floor", 1e-6)
+                            ),
+                            maximum_variance=float(
+                                state_kwargs.get("maximum_variance", 1e8)
+                            ),
+                            shift_limit=state_kwargs.get("shift_limit"),
+                        )
+                        cand_z = laplace_mh_result.z_path
                     else:
                         stage = "pgas_state_update"
                         pgas_result = ncp_pgas(
@@ -759,9 +797,16 @@ class FSGEVKernel:
                     accept_sigma += int(acc_s)
                     accept_xi += int(acc_x)
                     successful_laplace_result = laplace_result
+                    successful_laplace_mh_result = laplace_mh_result
                     successful_pgas_result = pgas_result
+                    if laplace_mh_result is not None:
+                        accept_laplace_mh += laplace_mh_result.accepted_steps
+                        attempt_laplace_mh += laplace_mh_result.attempts
                     successful_fs_slice_steps = float(fs_slice_steps)
-                    if self.priors.ssvs is not None and state_method == "pgas":
+                    if self.priors.ssvs is not None and state_method in {
+                        "laplace_mh",
+                        "pgas",
+                    }:
                         successful_ssvs_move_accepted = cand_ssvs_move_accepted
                         successful_ssvs_proposed_change = cand_ssvs_proposed_change
                         successful_ssvs_log_acceptance_ratio = (
@@ -812,18 +857,25 @@ class FSGEVKernel:
                 window_restored += 1
                 restore_failure_totals.update(iteration_failures)
 
-            if successful_laplace_result is not None:
+            laplace_diagnostic = successful_laplace_result
+            if successful_laplace_mh_result is not None:
+                laplace_diagnostic = successful_laplace_mh_result.approximation
+            if laplace_diagnostic is not None:
                 engine_diagnostics["laplace_iterations"].append(
-                    float(successful_laplace_result.iterations)
+                    float(laplace_diagnostic.iterations)
                 )
                 engine_diagnostics["laplace_converged"].append(
-                    float(successful_laplace_result.converged)
+                    float(laplace_diagnostic.converged)
                 )
                 engine_diagnostics["laplace_relative_change"].append(
-                    float(successful_laplace_result.relative_change)
+                    float(laplace_diagnostic.relative_change)
                 )
                 engine_diagnostics["laplace_support_rejections"].append(
-                    float(successful_laplace_result.support_rejections)
+                    float(
+                        successful_laplace_result.support_rejections
+                        if successful_laplace_result is not None
+                        else successful_laplace_mh_result.proposal_support_failures
+                    )
                 )
             else:
                 for name in (
@@ -831,6 +883,32 @@ class FSGEVKernel:
                     "laplace_converged",
                     "laplace_relative_change",
                     "laplace_support_rejections",
+                ):
+                    engine_diagnostics[name].append(np.nan)
+            if successful_laplace_mh_result is not None:
+                finite_ratios = successful_laplace_mh_result.log_acceptance_ratio[
+                    np.isfinite(successful_laplace_mh_result.log_acceptance_ratio)
+                ]
+                engine_diagnostics["laplace_mh_acceptance"].append(
+                    successful_laplace_mh_result.acceptance_rate
+                )
+                engine_diagnostics[
+                    "laplace_mh_mean_log_acceptance_ratio"
+                ].append(
+                    float(np.mean(finite_ratios)) if finite_ratios.size else -np.inf
+                )
+                engine_diagnostics["laplace_mh_log_weight"].append(
+                    float(successful_laplace_mh_result.log_weight)
+                )
+                engine_diagnostics["laplace_mh_support_rejections"].append(
+                    float(successful_laplace_mh_result.proposal_support_failures)
+                )
+            else:
+                for name in (
+                    "laplace_mh_acceptance",
+                    "laplace_mh_mean_log_acceptance_ratio",
+                    "laplace_mh_log_weight",
+                    "laplace_mh_support_rejections",
                 ):
                     engine_diagnostics[name].append(np.nan)
             if successful_pgas_result is not None:
@@ -1008,7 +1086,7 @@ class FSGEVKernel:
                         f"{model_state.level.label},{model_state.trend.label},"
                         f"{model_state.season.label})"
                     )
-                    if state_method == "pgas" and np.isfinite(
+                    if state_method in {"laplace_mh", "pgas"} and np.isfinite(
                         successful_ssvs_move_accepted
                     ):
                         details.append(
@@ -1088,11 +1166,20 @@ class FSGEVKernel:
                 "xi_mh": accept_xi / max(n_iter, 1),
                 **(
                     {
+                        "state_laplace_mh": accept_laplace_mh
+                        / max(attempt_laplace_mh, 1)
+                    }
+                    if state_method == "laplace_mh"
+                    else {}
+                ),
+                **(
+                    {
                         "ssvs_model_mh": accept_ssvs_model / max(n_iter, 1),
                         "ssvs_model_change_mh": accept_ssvs_model_change
                         / max(propose_ssvs_model_change, 1),
                     }
-                    if self.priors.ssvs is not None and state_method == "pgas"
+                    if self.priors.ssvs is not None
+                    and state_method in {"laplace_mh", "pgas"}
                     else {}
                 ),
                 **{
@@ -1111,8 +1198,8 @@ class FSGEVKernel:
             meta={
                 "sampler": (
                     (
-                        "fruehwirth_schnatter_gev_pgas_ssvs_exact_rjmh"
-                        if state_method == "pgas"
+                        f"fruehwirth_schnatter_gev_{state_method}_ssvs_exact_rjmh"
+                        if state_method in {"laplace_mh", "pgas"}
                         else "fruehwirth_schnatter_gev_laplace_ssvs_gibbs"
                     )
                     if self.priors.ssvs is not None
@@ -1165,24 +1252,30 @@ class FSGEVKernel:
                 ),
                 "structural_ssvs": self.priors.ssvs is not None,
                 "model_selection_exact": (
-                    state_method == "pgas"
+                    state_method in {"laplace_mh", "pgas"}
                     if self.priors.ssvs is not None
                     else None
                 ),
                 "model_selection_basis": (
                     (
                         "exact_gev_rjmh_with_laplace_independence_proposals"
-                        if state_method == "pgas"
+                        if state_method in {"laplace_mh", "pgas"}
                         else "laplace_pseudo_observations"
                     )
                     if self.priors.ssvs is not None
                     else None
                 ),
-                "targets_exact_posterior": state_method == "pgas",
+                "targets_exact_posterior": state_method in {"laplace_mh", "pgas"},
                 "approximation": (
                     "iterated_laplace" if state_method == "laplace" else None
                 ),
                 "pgas_exact_invariant": state_method == "pgas",
+                "laplace_mh_exact_invariant": state_method == "laplace_mh",
+                "laplace_proposal": (
+                    "iterated_laplace_smoother"
+                    if state_method == "laplace_mh"
+                    else None
+                ),
                 "engine_diagnostics": {
                     key: np.asarray(value, dtype=float)
                     for key, value in engine_diagnostics.items()
