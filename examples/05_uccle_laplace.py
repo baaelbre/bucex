@@ -41,11 +41,11 @@ PERIOD = 12
 # Prior hyperparameters. A zero-centred fixed-slope prior is appropriate for
 # both upper-tail series and sign-transformed lower-tail series: a common
 # +0.2/120 degree-per-month mean would have the wrong internal sign for the
-# lower-tail fits. BETA_PRIOR_SD=0.004 comfortably covers that climate-scale
-# rate while remaining weakly regularizing.
+# lower-tail fits. The 0.0015 SD corresponds to 0.18 degrees per decade and
+# regularizes implausibly steep fixed trends without forcing the slope to zero.
 ALPHA_PRIOR_SD = float(os.environ.get("BUCEX_ALPHA_PRIOR_SD", "3.2"))
 BETA_PRIOR_MEAN = float(os.environ.get("BUCEX_BETA_PRIOR_MEAN", "0.0"))
-BETA_PRIOR_SD = float(os.environ.get("BUCEX_BETA_PRIOR_SD", "0.004"))
+BETA_PRIOR_SD = float(os.environ.get("BUCEX_BETA_PRIOR_SD", "0.0015"))
 INITIAL_SEASON_PRIOR_SD = float(
     os.environ.get("BUCEX_INITIAL_SEASON_PRIOR_SD", "2.25")
 )
@@ -54,9 +54,9 @@ SIGMA2_PRIOR_B = float(os.environ.get("BUCEX_SIGMA2_PRIOR_B", "2.0"))
 XI_PRIOR_BOUNDS = (-0.50, 0.50)
 XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
 INNOVATION_SLAB_SD = {
-    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.05")),
+    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.03")),
     "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.00010")),
-    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.09")),
+    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
 }
 LEVEL_DYNAMIC_PROBABILITY = float(
     os.environ.get("BUCEX_LEVEL_DYNAMIC_PROBABILITY", "0.50")
@@ -74,9 +74,9 @@ SEASON_PROBABILITIES = tuple(
 )
 
 # MCMC. These values can also be supplied through the environment.
-DRAWS = int(os.environ.get("BUCEX_DRAWS", "250"))
-WARMUP = int(os.environ.get("BUCEX_WARMUP", "250"))
-CHAINS = int(os.environ.get("BUCEX_CHAINS", "2"))
+DRAWS = int(os.environ.get("BUCEX_DRAWS", "500"))
+WARMUP = int(os.environ.get("BUCEX_WARMUP", "500"))
+CHAINS = int(os.environ.get("BUCEX_CHAINS", "1"))
 SEED = int(os.environ.get("BUCEX_SEED", "56000"))
 PROGRESS = os.environ.get("BUCEX_PROGRESS", "1").lower() not in {"0", "false", "no"}
 CHAIN_ONLY = os.environ.get("BUCEX_CHAIN_ONLY", "0").lower() in {"1", "true", "yes"}
@@ -89,6 +89,9 @@ COMBINE_RUNS = tuple(
 FIGURE_FORMATS = ("pdf", "png")
 FIGURE_DPI = 180
 DIAGNOSTIC_FIGURES = False
+PREDICTIVE_DRAWS = int(os.environ.get("BUCEX_PREDICTIVE_DRAWS", "500"))
+FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", "120"))
+FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", "360"))
 
 RUN_SIGNATURE = (
     f"y{START.removesuffix('-01-01')}-{(END or 'latest').removesuffix('-12-31')}"
@@ -163,6 +166,9 @@ def main() -> None:
             "formats": list(FIGURE_FORMATS),
             "dpi": FIGURE_DPI,
             "diagnostics": DIAGNOSTIC_FIGURES,
+            "predictive_draws": PREDICTIVE_DRAWS,
+            "forecast_horizon": FORECAST_HORIZON,
+            "forecast_history": FORECAST_HISTORY,
         },
         "chain_only": CHAIN_ONLY,
         "combined_chain_runs": [str(path) for path in COMBINE_RUNS],
@@ -276,6 +282,20 @@ def main() -> None:
         selection_rows.append(selection)
         laplace_fit.structural_model_probabilities().to_csv(table_dir / "models.csv", index=False)
         laplace_fit.component_transition_summary().reset_index().to_csv(table_dir / "switching.csv", index=False)
+
+        predictive = laplace_fit.posterior_predictive(
+            draws=PREDICTIVE_DRAWS,
+            seed=SEED + 20_000 + number,
+        )
+        predictive.summary(level=0.90).to_csv(
+            table_dir / "posterior_predictive.csv", index=False
+        )
+        forecast = laplace_fit.forecast(
+            FORECAST_HORIZON,
+            draws=PREDICTIVE_DRAWS,
+            seed=SEED + 30_000 + number,
+        )
+        forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
         (table_dir / "summary.json").write_text(
             json.dumps(
                 {
@@ -304,6 +324,30 @@ def main() -> None:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
+        axis = predictive.plot(
+            level=0.90,
+            observed=laplace_fit.observed,
+            title=f"{name}: posterior predictive check (Laplace)",
+            ylabel="temperature / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(figure_dir / f"posterior_predictive.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
+        axis = forecast.plot(
+            level=0.90,
+            history=laplace_fit.observed,
+            history_dates=values.index,
+            history_points=FORECAST_HISTORY,
+            title=f"{name}: posterior predictive forecast (Laplace)",
+            ylabel="temperature / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(figure_dir / f"forecast.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
         figure, axis = laplace_fit.plot("level", credible_interval=0.90)
         axis.set_title(f"{name}: posterior latent level (Laplace)")
         axis.set_ylabel("GEV level / °C")
@@ -311,18 +355,32 @@ def main() -> None:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
-        figure, axis = laplace_fit.plot("slope", credible_interval=0.90)
-        axis.set_title(f"{name}: posterior latent slope (Laplace)")
-        axis.set_ylabel("slope / °C per month")
+        figure, axis = laplace_fit.plot(
+            "level", credible_interval=0.90, show_observed=False
+        )
+        axis.set_title(f"{name}: posterior latent level (Laplace)")
+        axis.set_ylabel("GEV level / °C")
+        for extension in FIGURE_FORMATS:
+            figure.savefig(figure_dir / f"level_no_observations.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
+        trend_states = np.asarray(laplace_fit.parameter("state_trend"), dtype=int)
+        slope_condition = "dynamic" if np.any(trend_states == 2) else None
+        figure, axis = laplace_fit.plot(
+            "slope",
+            credible_interval=0.90,
+            scale="decade",
+            unit="slope / °C per decade",
+            condition_on=slope_condition,
+            show_fixed=bool(np.any(trend_states == 1)),
+        )
+        axis.set_title("Posterior slope")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"slope.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("component_probabilities")
-        axis.set_title(
-            f"{name}: structural selection (Laplace)\n"
-            "Process innovation spike/slab allocation"
-        )
+        axis.set_title(f"{name}: structural selection (Laplace)")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"selection.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
@@ -338,7 +396,6 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("season", show_interval=False)
-        axis.set_title(f"{name}: monthly level + seasonal trajectories")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"season.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)

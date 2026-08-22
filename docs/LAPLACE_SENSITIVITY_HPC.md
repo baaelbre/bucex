@@ -60,11 +60,11 @@ The supplied grid contains five seeds and five profiles:
 
 | profile | level slab | trend slab | season slab | initial-season SD |
 |---|---:|---:|---:|---:|
-| `base` | 0.10 | 0.0008 | 0.07 | 0.50 |
-| `l05` | 0.05 | 0.0008 | 0.07 | 0.50 |
-| `t06` | 0.10 | 0.0006 | 0.07 | 0.50 |
-| `s05` | 0.10 | 0.0008 | 0.05 | 0.35 |
-| `match` | 0.05 | 0.0006 | 0.05 | 0.35 |
+| `base` | 0.03 | 0.0008 | 0.05 | 0.50 |
+| `l02` | 0.02 | 0.0008 | 0.05 | 0.50 |
+| `t05` | 0.03 | 0.0005 | 0.05 | 0.50 |
+| `t12` | 0.03 | 0.0012 | 0.05 | 0.35 |
+| `s035` | 0.03 | 0.0008 | 0.035 | 0.35 |
 
 This gives `5 seeds × 5 profiles × 4 chains = 100` fit tasks, followed by
 `25` combination tasks. Exact settings are also stored in each run's
@@ -148,7 +148,7 @@ For example:
 
 ```bash
 bash bash_scripts/run_laplace_sensitivity_chain.sh \
-  13081997 l05 0.05 0.0008 0.07 0.50 \
+  13081997 l02 0.02 0.0008 0.05 0.50 \
   1 1000 1000 1000 4 results/laplace_sensitivity
 ```
 

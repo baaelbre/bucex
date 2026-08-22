@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Direct-API smoke validation for the seven bucex 1.0.0 examples."""
+"""Direct-API smoke validation for the eight bucex 1.0.1 examples."""
 from __future__ import annotations
 
 import argparse
@@ -22,8 +22,8 @@ import bucex as bx
 def run(work_dir: Path) -> dict[str, object]:
     started = time.perf_counter()
     scripts = sorted((SOURCE_ROOT / "examples").glob("[0-9][0-9]_*.py"))
-    if len(scripts) != 7:
-        raise RuntimeError(f"Expected seven examples, found {len(scripts)}.")
+    if len(scripts) != 8:
+        raise RuntimeError(f"Expected eight examples, found {len(scripts)}.")
     for script in scripts:
         compile(script.read_text(encoding="utf-8"), str(script), "exec")
 
@@ -68,18 +68,71 @@ def run(work_dir: Path) -> dict[str, object]:
     if pgas.meta.get("warm_start_source_engine") != "laplace":
         raise RuntimeError("PGAS did not retain Laplace warm-start provenance.")
 
+    centered_model = bx.Model(
+        bx.GEV(),
+        (bx.LocalLevel(mode="dynamic", initial_mean=20.0, initial_sd=3.0),),
+        name="centered inverse-gamma smoke model",
+    )
+    centered_simulation = bx.simulate(
+        centered_model,
+        16,
+        {"sigma": 1.0, "xi": -0.2, "sd.level": 0.04},
+        initial_state=[20.0],
+        seed=2625,
+    )
+    centered_priors = bx.Priors(
+        process={"level": bx.InverseGammaVariance(shape=2.0, scale=0.0016)},
+        observation_sd=bx.InverseGammaVariance(shape=2.0, scale=1.0),
+        shape=bx.TruncatedNormalPrior(
+            mean=0.0,
+            sd=0.2,
+            lower=-0.5,
+            upper=0.5,
+        ),
+    )
+    centered_ig = bx.fit(
+        centered_simulation.y,
+        model=centered_model,
+        priors=centered_priors,
+        engine="pgas",
+        parameterization="centered",
+        asis=False,
+        particles=bx.Particles(n=16, proposal="guided"),
+        mcmc=bx.MCMC(draws=1, warmup=1, chains=1, seed=2626),
+    )
+    if centered_ig.plan.parameterization != "centered" or centered_ig.plan.asis:
+        raise RuntimeError("The centered/inverse-gamma benchmark plan changed.")
+    if not centered_ig.plan.targets_exact_posterior:
+        raise RuntimeError("The centered/inverse-gamma PGAS fit was not exact-invariant.")
+
     work_dir.mkdir(parents=True, exist_ok=True)
     laplace.save(work_dir / "laplace.bucex")
     pgas.save(work_dir / "pgas.bucex")
+    centered_ig.save(work_dir / "centered_ig.bucex")
     figure, axis = pgas.plot("season", labels=("1", "2", "3", "4"))
     figure.savefig(work_dir / "season.png", dpi=72)
     plt.close(figure)
     level_figure, _ = pgas.plot("level")
     level_figure.savefig(work_dir / "level.png", dpi=72)
     plt.close(level_figure)
+    clean_level_figure, _ = pgas.plot("level", show_observed=False)
+    clean_level_figure.savefig(work_dir / "level_no_observations.png", dpi=72)
+    plt.close(clean_level_figure)
     slope_figure, slope_axis = pgas.plot("slope")
     slope_figure.savefig(work_dir / "slope.png", dpi=72)
     plt.close(slope_figure)
+    predictive = pgas.posterior_predictive(draws=2, seed=2623)
+    predictive_axis = predictive.plot(observed=pgas.observed)
+    predictive_axis.figure.savefig(work_dir / "posterior_predictive.png", dpi=72)
+    plt.close(predictive_axis.figure)
+    forecast = pgas.forecast(8, draws=2, seed=2624)
+    forecast_axis = forecast.plot(
+        history=pgas.observed,
+        history_dates=np.arange(pgas.n_time),
+        history_points=12,
+    )
+    forecast_axis.figure.savefig(work_dir / "forecast.png", dpi=72)
+    plt.close(forecast_axis.figure)
 
     x = np.arange(41, dtype=float)
     y = 2.0 + 0.2 * x
@@ -94,6 +147,8 @@ def run(work_dir: Path) -> dict[str, object]:
         "examples": [script.name for script in scripts],
         "warm_start_source": pgas.meta["warm_start_source_engine"],
         "pgas_engine_diagnostics": pgas.diagnostics()["engine"],
+        "centered_ig_plan": centered_ig.plan.to_dict(),
+        "centered_ig_engine_diagnostics": centered_ig.diagnostics()["engine"],
         "season_lines": len(axis.lines),
         "slope_ylabel": slope_axis.get_ylabel(),
         "loess_max_error_without_outlier": float(np.max(np.abs(np.delete(loess - (2.0 + 0.2 * x), 20)))),
@@ -103,8 +158,8 @@ def run(work_dir: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.0.0"))
-    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.0.0.json"))
+    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.0.1"))
+    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.0.1.json"))
     args = parser.parse_args()
     result = run(args.work_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)

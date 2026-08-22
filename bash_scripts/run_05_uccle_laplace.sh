@@ -8,8 +8,8 @@ set -euo pipefail
 
 START="${1:-1892-01-01}"
 END="${2:-latest}"
-DRAWS="${3:-250}"
-WARMUP="${4:-250}"
+DRAWS="${3:-500}"
+WARMUP="${4:-500}"
 CHAINS="${5:-4}"
 MCMC_SEED="${6:-56000}"
 DATA_DIR="${7:-data}"

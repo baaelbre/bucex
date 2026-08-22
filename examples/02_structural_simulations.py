@@ -303,10 +303,15 @@ def main() -> None:
             figure, axis = plt.subplots(figsize=(9, 4.5))
             for current_phase in range(1, PERIOD + 1):
                 selected = table["phase"] == current_phase
-                axis.plot(table.loc[selected, "cycle"], table.loc[selected, "eta"], linewidth=1.35, label=f"phase {current_phase}")
-            axis.set_title(f"{scenario['title']}: phase-specific latent trajectories")
+                axis.plot(
+                    table.loc[selected, "cycle"],
+                    table.loc[selected, "seasonal"],
+                    linewidth=1.35,
+                    label=f"phase {current_phase}",
+                )
+            axis.set_title(f"{scenario['title']}: seasonality")
             axis.set_xlabel("cycle")
-            axis.set_ylabel("level + seasonal effect")
+            axis.set_ylabel("seasonal effect")
             axis.legend(ncol=PERIOD)
             axis.grid(axis="y", alpha=0.35)
             figure.tight_layout()

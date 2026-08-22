@@ -13,10 +13,10 @@ SENS_SEEDS=(
 
 # Short profile names keep result paths manageable. Exact values are also
 # recorded in every run_config.json.
-SENS_PROFILE_NAMES=(base l05 t06 s05 match)
-SENS_LEVEL_SLAB=(0.10 0.05 0.10 0.10 0.05)
-SENS_TREND_SLAB=(0.0008 0.0008 0.0006 0.0008 0.0006)
-SENS_SEASON_SLAB=(0.07 0.07 0.07 0.05 0.05)
+SENS_PROFILE_NAMES=(base l02 t05 t12 s035)
+SENS_LEVEL_SLAB=(0.03 0.02 0.03 0.03 0.03)
+SENS_TREND_SLAB=(0.0008 0.0008 0.0005 0.0012 0.0008)
+SENS_SEASON_SLAB=(0.05 0.05 0.05 0.05 0.035)
 SENS_INITIAL_SEASON_SD=(0.50 0.50 0.50 0.35 0.35)
 
 # Each inference task runs one chain. Chains are combined in the second array.

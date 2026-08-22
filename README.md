@@ -1,13 +1,14 @@
-# bucex 1.0.0
+# bucex 1.0.1
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized
 extreme-value observations. The package combines a declarative structural
 model API, componentwise SSVS, approximate Laplace state updates, and exact-
 density PGAS state updates.
 
-Version 1.0.0 is the first stable release of the clean `bucex` repository. It
-continues the former 2.6.2 research code and focuses the interface around seven
-transparent scripts:
+Version 1.0.1 refines the first stable release of the clean `bucex`
+repository. It continues the former 2.6.2 research code and focuses the
+interface around seven transparent analysis scripts and one diagnostic
+benchmark:
 
 1. the complete Uccle record from 1892 and the evolution of TXx;
 2. matched GEV shape and scale simulations;
@@ -16,6 +17,8 @@ transparent scripts:
 5. the same recovery experiment with Laplace-initialized PGAS;
 6. Laplace analysis of TXx, TXn, TNx, and TNn;
 7. PGAS analysis of the same four series.
+8. an exact-PGAS random-walk GEV benchmark with centered states and explicit
+   inverse-gamma priors on the process and observation variances.
 
 There is no presentation workflow layer. Every script constructs its models
 with `bx.Model`, `bx.LocalLinearTrend`, `bx.DummySeasonal`, and `bx.GEV`, then
@@ -79,8 +82,9 @@ priors = bx.ssvs_gev_priors(
     period=12,
     alpha_mean=float(np.median(y)),
     beta_mean=0.0,
-    beta_sd=0.004,
-    innovation_slab_sd={"level": 0.05, "trend": 0.00010, "season": 0.09},
+    beta_sd=0.0015,
+    seasonal_initial_sd=2.25,
+    innovation_slab_sd={"level": 0.03, "trend": 0.00010, "season": 0.05},
     level_dynamic_probability=0.5,
     trend_probabilities=(0.0, 0.5, 0.5),
     season_probabilities=(0.0, 0.5, 0.5),
@@ -109,16 +113,39 @@ pgas = bx.fit(
 print(pgas.component_probabilities())
 print(pgas.diagnostics()["engine"])
 pgas.plot("level")
-pgas.plot("slope")
+pgas.plot("level", show_observed=False)
+pgas.plot(
+    "slope",
+    scale="decade",
+    unit="slope / °C per decade",
+    condition_on="dynamic",
+    show_fixed=True,
+)
 pgas.plot("season")
+
+replicated = pgas.posterior_predictive(draws=1_000, seed=26003)
+replicated.plot(observed=pgas.observed)
+
+forecast = pgas.forecast(120, draws=1_000, seed=26004)
+forecast.plot(
+    history=pgas.observed,
+    history_dates=pgas.dates,
+    history_points=360,
+)
 ```
 
 The standalone `level` and `slope` plots show the two trend components on their
-proper scales; raw observations are never drawn on the slope axis. The
-`season` plot overlays one trajectory per phase. At cycle/year \(i\)
-and phase \(j\), it plots posterior summaries of \(\mu_{ij}+\gamma_{ij}\).
-This exposes changes in the seasonal pattern without a rapidly oscillating
-monthly line.
+proper scales. `show_observed=False` removes seasonally adjusted observations
+from the level figure. Raw observations are never drawn on the slope axis;
+the slope plot can report change per decade and overlay the conditional fixed-
+slope posterior as dashed lines. The `season` plot overlays the seasonal
+effect \(\gamma_{ij}\), without the level, for every phase of the cycle.
+
+`FitResult.posterior_predictive()` generates replicated observations at the
+fitted time points. `FitResult.forecast()` propagates both latent states and
+observation uncertainty beyond the data. Their common plotting API supports
+observed checks, recent history, predictive intervals, and optional latent-
+predictor medians.
 
 ## Laplace and PGAS
 
@@ -137,9 +164,17 @@ path. It changes initialization, not the PGAS invariant distribution. Inspect
 particle ESS, unique ancestors, path-update rates, reference-ancestor changes,
 structural switching, and GEV support diagnostics before trusting a run.
 
-## Seven standalone examples
+The explicit classical benchmark in
+`examples/07_centered_ig_random_walk_gev.py` instead uses a random-walk level,
+`parameterization="centered"`, `asis=False`, and `InverseGammaVariance`
+priors. It fits with exact-density PGAS and always exports traces, ACFs,
+ESS/R-hat, process-variance summaries, and particle diagnostics. Its purpose is
+diagnostic comparison with the FS/non-centred specification, not to replace
+the latter as the default structural-selection model.
 
-Set one run ID to give all seven script-specific result directories the same
+## Eight standalone examples
+
+Set one run ID to give all eight script-specific result directories the same
 timestamp prefix:
 
 ```bash
@@ -151,6 +186,7 @@ python examples/03_simulation_laplace.py
 python examples/04_simulation_pgas.py
 python examples/05_uccle_laplace.py
 python examples/06_uccle_pgas.py
+python examples/07_centered_ig_random_walk_gev.py
 ```
 
 Outputs are written below
@@ -169,9 +205,11 @@ scale comparisons use a common vertical range within each group.
 
 The Uccle descriptive figures begin in 1892 and use robust local-linear LOESS
 rather than a rolling median. The analysis figures include the complete
-posterior predictor, separate latent level and slope trajectories, structural
+posterior predictor, paired latent-level figures with and without adjusted
+observations, slope trajectories in degrees per decade, structural
 probabilities, prior-to-posterior process SDs, GEV parameters, finite endpoints
-where applicable, and phase-specific seasonal trajectories.
+where applicable, posterior seasonality, posterior predictive checks, and
+ten-year forecasts by default.
 
 ## HPC
 
@@ -185,7 +223,7 @@ qsub -v DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512 \
   job_scripts/submit_06_uccle_pgas.pbs
 ```
 
-The seven `run_*.sh` files under `bash_scripts/` also run directly with
+The eight numbered `run_*.sh` files under `bash_scripts/` also run directly with
 positional arguments. There is no hidden scientific settings layer; every
 pair is readable by itself. See `docs/HPC_RUNNERS.md` for the exact argument
 order and adapt the resource directives to the local cluster. `docs/HPC.md`

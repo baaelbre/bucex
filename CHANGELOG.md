@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.1
+
+- Added posterior predictive replication and out-of-sample forecasting to the
+  public `FitResult` API, with common plotting support for observations,
+  recent history, predictive intervals, and latent-predictor summaries.
+- Added observation-free level figures alongside the seasonally adjusted
+  versions saved by every fitting example.
+- Added conditional slope plotting in degrees per decade, including an
+  optional dashed fixed-slope posterior and its uncertainty beside the
+  stochastic-slope posterior.
+- Changed seasonal figures to show the seasonal component alone and simplified
+  the season, slope, structural-selection, and process-SD figure labels.
+- Recalibrated the structural and Uccle example priors to distinguish slowly
+  varying trends from level innovations more clearly.
+- Kept the seven core examples as direct, sequential uses of the public API
+  and added predictive tables and figures to all four component-selection
+  fitting scripts.
+- Added an eighth diagnostic example: an exact-PGAS random-walk GEV with
+  centered states, inverse-gamma priors on both variances, independent-chain
+  HPC execution, and trace/ACF/ESS/R-hat/particle diagnostics.
+- Kept archive schema 2.6.2 for backward compatibility.
+
 ## 1.0.0
 
 - Established the clean `bucex` repository as the stable continuation of

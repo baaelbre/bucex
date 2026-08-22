@@ -56,7 +56,7 @@ def test_uccle_series_normalization_does_not_split_a_string():
         _normalize_series_names("T")
 
 
-def test_v262_example_surface_contains_only_seven_top_level_scripts():
+def test_v101_example_surface_contains_eight_top_level_scripts():
     directory = Path(__file__).resolve().parents[1] / "examples"
     scripts = {path.name for path in directory.glob("*.py")}
     assert scripts == {
@@ -67,6 +67,7 @@ def test_v262_example_surface_contains_only_seven_top_level_scripts():
         "04_simulation_pgas.py",
         "05_uccle_laplace.py",
         "06_uccle_pgas.py",
+        "07_centered_ig_random_walk_gev.py",
     }
     assert not (directory / "presentation").exists()
 
@@ -113,6 +114,15 @@ def test_v262_examples_are_standalone_public_api_scripts():
         assert '.plot("season"' in sources[name]
     assert "init=laplace_fit" in sources["04_simulation_pgas.py"]
     assert "init=laplace_fit" in sources["06_uccle_pgas.py"]
+    centered_ig = sources["07_centered_ig_random_walk_gev.py"]
+    assert "bx.LocalLevel(" in centered_ig
+    assert "bx.InverseGammaVariance(" in centered_ig
+    assert 'engine="pgas"' in centered_ig
+    assert 'parameterization="centered"' in centered_ig
+    assert "asis=False" in centered_ig
+    assert "bx.Particles(" in centered_ig
+    assert 'fit.plot(\n        "traces"' in centered_ig
+    assert 'fit.plot(\n        "acf"' in centered_ig
 
 
 def test_direct_path_example_prefers_the_adjacent_source_checkout(tmp_path):

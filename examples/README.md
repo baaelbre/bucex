@@ -1,7 +1,9 @@
-# bucex 1.0.0 examples
+# bucex 1.0.1 examples
 
-These seven standalone files reproduce the complete COMPSTAT analysis. They
-use the public `bucex` API directly and are intended to be read as well as run:
+The first seven standalone files reproduce the complete COMPSTAT analysis. An
+eighth diagnostic benchmark makes the classical centered/inverse-gamma
+alternative explicit. All eight use the public `bucex` API directly and are
+intended to be read as well as run:
 
 1. `00_uccle_record.py` — record from 1892, TXx evolution, and robust LOESS.
 2. `01_tail_simulations.py` — matched shape and scale experiments.
@@ -10,6 +12,17 @@ use the public `bucex` API directly and are intended to be read as well as run:
 5. `04_simulation_pgas.py` — PGAS fits initialized from Laplace.
 6. `05_uccle_laplace.py` — Laplace analysis of TXx, TXn, TNx, and TNn.
 7. `06_uccle_pgas.py` — PGAS analysis and engine comparison.
+8. `07_centered_ig_random_walk_gev.py` — exact-PGAS random-walk GEV with
+   centered states, inverse-gamma variance priors, and mandatory mixing
+   diagnostics.
+
+The four component-selection fitting examples also save both forms of the level plot, a dedicated
+slope plot, posterior seasonality, a posterior predictive check, and an
+out-of-sample forecast. The Uccle slope figures use degrees per decade and can
+show the conditional fixed-slope posterior beside the stochastic one.
+The diagnostic example has no slope or seasonal component; it saves both level
+figures, parameter and process-variance traces, ACFs, ESS/R-hat tables, particle
+diagnostics, a posterior predictive check, and a forecast.
 
 Run them from the package root. Each script writes to its own directory and
 automatically combines a timestamp with the settings that identify that run.
@@ -25,6 +38,7 @@ python examples/03_simulation_laplace.py
 python examples/04_simulation_pgas.py
 python examples/05_uccle_laplace.py
 python examples/06_uccle_pgas.py
+python examples/07_centered_ig_random_walk_gev.py
 ```
 
 The resulting layout is

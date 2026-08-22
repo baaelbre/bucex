@@ -322,8 +322,23 @@ class Forecast:
         channel: str | None = None,
         ax=None,
         color: str = "C0",
+        observed=None,
+        history=None,
+        history_dates=None,
+        history_points: int | None = None,
+        show_eta: bool = False,
+        title: str | None = None,
+        ylabel: str | None = None,
         save=None,
     ):
+        """Plot a posterior predictive sample or an out-of-sample forecast.
+
+        Supply ``observed`` for an in-sample posterior predictive check.
+        Supply ``history`` (and, for dated fits, ``history_dates``) to place
+        recent observations immediately before a forecast.  The optional
+        ``history_points`` argument keeps only the most recent values.
+        """
+
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -331,17 +346,107 @@ class Forecast:
         if self.is_multiseries_forecast and channel is None:
             channel = self.channel_names[0]
         summary = self.summary(level=level, channel=channel)
-        x = np.arange(self.horizon) if not hasattr(summary, "columns") else summary["time"]
-        lower = np.asarray([row["lower"] for row in summary]) if not hasattr(summary, "columns") else summary["lower"].to_numpy()
-        median = np.asarray([row["median"] for row in summary]) if not hasattr(summary, "columns") else summary["median"].to_numpy()
-        upper = np.asarray([row["upper"] for row in summary]) if not hasattr(summary, "columns") else summary["upper"].to_numpy()
-        ax.fill_between(x, lower, upper, color=color, alpha=0.2, label=f"{level:.0%} predictive interval")
+        if hasattr(summary, "columns"):
+            x = summary["time"]
+            lower = summary["lower"].to_numpy()
+            median = summary["median"].to_numpy()
+            upper = summary["upper"].to_numpy()
+        else:
+            x = np.arange(self.horizon)
+            lower = np.asarray([row["lower"] for row in summary])
+            median = np.asarray([row["median"] for row in summary])
+            upper = np.asarray([row["upper"] for row in summary])
+
+        def selected_values(values, *, label: str):
+            array = np.asarray(values, dtype=float)
+            if self.is_multiseries_forecast:
+                index = self._channel_index(channel)
+                if array.ndim == 2:
+                    if array.shape[1] != len(self.channel_names):
+                        raise ValueError(
+                            f"{label} must have one column per forecast channel."
+                        )
+                    array = array[:, index]
+                elif array.ndim != 1:
+                    raise ValueError(f"{label} must be one- or two-dimensional.")
+            return array.reshape(-1)
+
+        if history is not None:
+            history_values = selected_values(history, label="history")
+            if history_dates is None:
+                if np.issubdtype(np.asarray(x).dtype, np.number):
+                    history_x = np.arange(-history_values.size, 0) + float(
+                        np.asarray(x)[0]
+                    )
+                else:
+                    raise ValueError(
+                        "history_dates are required when forecast dates are not numeric."
+                    )
+            else:
+                history_x = np.asarray(history_dates).reshape(-1)
+                if history_x.size != history_values.size:
+                    raise ValueError("history_dates and history must have the same length.")
+            if history_points is not None:
+                history_points = int(history_points)
+                if history_points < 1:
+                    raise ValueError("history_points must be positive.")
+                history_values = history_values[-history_points:]
+                history_x = history_x[-history_points:]
+            ax.scatter(
+                history_x,
+                history_values,
+                s=10,
+                color="0.55",
+                alpha=0.55,
+                label="observed history",
+            )
+            ax.axvline(np.asarray(x)[0], color="0.45", linestyle=":", linewidth=1.0)
+
+        ax.fill_between(
+            x,
+            lower,
+            upper,
+            color=color,
+            alpha=0.2,
+            label=f"{level:.0%} predictive interval",
+        )
         ax.plot(x, median, color=color, label="predictive median")
-        ax.set_title(
-            f"Posterior predictive forecast: {channel}"
-            if channel is not None
+        if show_eta:
+            eta_values = (
+                self.eta[:, :, self._channel_index(channel)]
+                if self.is_multiseries_forecast
+                else self.eta
+            )
+            ax.plot(
+                x,
+                np.median(eta_values, axis=0),
+                color=color,
+                linestyle="--",
+                linewidth=1.0,
+                label="latent predictor median",
+            )
+        if observed is not None:
+            observed_values = selected_values(observed, label="observed")
+            if observed_values.size != self.horizon:
+                raise ValueError("observed must have length equal to the predictive horizon.")
+            ax.scatter(
+                x,
+                observed_values,
+                s=10,
+                color="0.35",
+                alpha=0.6,
+                label="observed",
+            )
+        default_title = (
+            "Posterior predictive check"
+            if observed is not None
             else "Posterior predictive forecast"
         )
+        if channel is not None:
+            default_title = f"{default_title}: {channel}"
+        ax.set_title(default_title if title is None else str(title))
+        if ylabel is not None:
+            ax.set_ylabel(str(ylabel))
         ax.legend()
         if save is not None:
             options = {}
@@ -360,6 +465,107 @@ class Forecast:
             options.setdefault("bbox_inches", "tight")
             ax.figure.savefig(path, **options)
         return ax
+
+
+def posterior_predictive(
+    fit,
+    *,
+    draws: int | None = None,
+    seed: int | None = None,
+) -> Forecast:
+    """Simulate replicated observations at the fitted time points.
+
+    This is an in-sample posterior predictive check: latent states and static
+    observation parameters are taken jointly from retained posterior draws,
+    and a fresh observation is generated from each draw.  It is distinct from
+    :func:`posterior_predict`, which propagates the state equation forward.
+    """
+
+    rng = np.random.default_rng(seed)
+    total = fit.n_draws
+    n_draws = total if draws is None else int(draws)
+    if n_draws < 1:
+        raise ValueError("draws must be positive.")
+    indices = (
+        np.arange(total)
+        if n_draws == total
+        else rng.choice(total, size=n_draws, replace=n_draws > total)
+    )
+    flat_states = fit.state_draws.reshape((total,) + fit.state_draws.shape[2:])
+    state_paths = flat_states[indices, 1:].copy()
+    eta_model = np.asarray(
+        fit.eta_draws(combine_chains=True, original_scale=False), dtype=float
+    )[indices]
+    resolved_dates = (
+        np.arange(fit.n_time)
+        if fit.dates is None
+        else np.asarray(fit.dates).reshape(-1)
+    )
+
+    if getattr(fit, "is_multiseries_model", False):
+        required_parameters = tuple(fit.compiled.observation_parameter_names)
+        missing = [
+            name for name in required_parameters if name not in fit.parameter_draws
+        ]
+        if missing:
+            raise ValueError(f"Fit is missing predictive parameters: {missing}")
+        parameter_values = {
+            name: fit.parameter(name)[indices] for name in required_parameters
+        }
+        observations_model = np.zeros_like(eta_model)
+        for draw in range(n_draws):
+            params = {
+                name: float(values[draw]) for name, values in parameter_values.items()
+            }
+            for time in range(fit.n_time):
+                observations_model[draw, time] = fit.compiled.sample_observation(
+                    eta_model[draw, time], params, rng
+                )
+        signs = np.asarray(fit.transform_sign, dtype=float)
+        return Forecast(
+            observations=observations_model * signs[None, None, :],
+            eta=eta_model * signs[None, None, :],
+            states=state_paths,
+            parameters=parameter_values,
+            dates=resolved_dates,
+            family=fit.family,
+            tail=tuple("lower" if sign < 0.0 else "upper" for sign in signs),
+            observation_model=fit.model.observations,
+            transform_sign=signs,
+            channel_names=fit.channel_names,
+        )
+
+    required_parameters = ("sigma",) + (("xi",) if fit.family == "gev" else ())
+    missing = [name for name in required_parameters if name not in fit.parameter_draws]
+    if missing:
+        raise ValueError(f"Fit is missing predictive parameters: {missing}")
+    parameter_values = {
+        name: fit.parameter(name)[indices] for name in required_parameters
+    }
+    observations_model = np.zeros_like(eta_model)
+    for draw in range(n_draws):
+        observations_model[draw] = fit.model.observation.sample(
+            eta=eta_model[draw],
+            sigma=float(parameter_values["sigma"][draw]),
+            xi=(
+                float(parameter_values["xi"][draw])
+                if "xi" in parameter_values
+                else None
+            ),
+            rng=rng,
+        )
+    sign = float(fit.transform_sign)
+    return Forecast(
+        observations=sign * observations_model,
+        eta=sign * eta_model,
+        states=state_paths,
+        parameters=parameter_values,
+        dates=resolved_dates,
+        family=fit.family,
+        tail="lower" if sign < 0.0 else "upper",
+        observation_model=fit.model.observation,
+        transform_sign=sign,
+    )
 
 
 def posterior_predict(
@@ -412,7 +618,13 @@ def posterior_predict(
                     eta_model[draw, h], params, rng
                 )
         signs = np.asarray(fit.transform_sign, dtype=float)
-        resolved_dates = _future_dates(fit.dates, horizon) if dates is None else np.asarray(dates)
+        resolved_dates = (
+            np.arange(fit.n_time, fit.n_time + horizon)
+            if dates is None and fit.dates is None
+            else _future_dates(fit.dates, horizon)
+            if dates is None
+            else np.asarray(dates)
+        )
         if np.asarray(resolved_dates).reshape(-1).size != horizon:
             raise ValueError("dates must have length equal to horizon.")
         return Forecast(
@@ -466,7 +678,13 @@ def posterior_predict(
             )
 
     sign = float(fit.transform_sign)
-    resolved_dates = _future_dates(fit.dates, horizon) if dates is None else np.asarray(dates)
+    resolved_dates = (
+        np.arange(fit.n_time, fit.n_time + horizon)
+        if dates is None and fit.dates is None
+        else _future_dates(fit.dates, horizon)
+        if dates is None
+        else np.asarray(dates)
+    )
     if np.asarray(resolved_dates).reshape(-1).size != horizon:
         raise ValueError("dates must have length equal to horizon.")
     return Forecast(

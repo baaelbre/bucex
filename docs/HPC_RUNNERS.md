@@ -8,7 +8,7 @@ Every analysis now has two files, following the usual PBS pattern:
 - `job_scripts/submit_*.pbs` contains resource requests, logging, and
   named PBS settings. It calls the corresponding runner.
 
-For examples 03--06, `CHAINS=4` means four independent one-chain Python
+For examples 03--07, `CHAINS=4` means four independent one-chain Python
 processes run concurrently on the four requested PBS cores. The runner waits
 for every process, combines the fits with `bucex.combine_fits`, and produces
 tables and figures from the combined four-chain result. Examples 00--02 remain
@@ -37,7 +37,7 @@ stop if it is absent; there is no fallback to an unrelated system Python.
 Create and verify the environment from the package root with:
 
 ```bash
-cd cd /kyukon/data/gent/vo/000/gvo00048/vsc42619/GitHub/bucex
+cd /kyukon/data/gent/vo/000/gvo00048/vsc42619/GitHub/bucex
 python -m venv "${HOME}/venvs/bucex_env"
 source "${HOME}/venvs/bucex_env/bin/activate"
 python -m pip install --upgrade pip setuptools wheel
@@ -135,14 +135,20 @@ messages to the per-chain log files. It is `0` by default.
 | `04_simulation_pgas` | `N_TIME PERIOD SIMULATION_SEED DRAWS WARMUP CHAINS PARTICLES MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE` |
 | `05_uccle_laplace` | `START END DRAWS WARMUP CHAINS MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
 | `06_uccle_pgas` | `START END DRAWS WARMUP CHAINS PARTICLES MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
+| `07_centered_ig_random_walk_gev` | `N_TIME SIMULATION_SEED DRAWS WARMUP CHAINS PARTICLES MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE` |
 
 The main scientific settings—GEV scale and shape, process-noise truths, SSVS
 probabilities, and prior scales—remain visible at the top of the Python files.
 Edit those there for scientific sensitivity analyses.
 
+For example 07, the PBS file also accepts `RANDOM_WALK_SD`, `LEVEL_IG_A`,
+`LEVEL_IG_B`, `SIGMA_IG_A`, `SIGMA_IG_B`, `XI_PRIOR_MEAN`, and `XI_PRIOR_SD`.
+The `LEVEL_IG_*` pair parameterizes the inverse-gamma prior on
+`q_level = sd.level**2` in shape/scale form.
+
 ## Submit the complete workflow
 
-All seven examples are self-contained, so they may be submitted together; no
+All eight examples are self-contained, so they may be submitted together; no
 PBS dependency is required. Use one timestamp prefix and descriptive suffixes:
 
 ```bash
@@ -153,10 +159,12 @@ qsub -v RUN_ID="${STAMP}_sim_lap",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHAI
   job_scripts/submit_03_simulation_laplace.pbs
 qsub -v RUN_ID="${STAMP}_sim_pgas",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128 \
   job_scripts/submit_04_simulation_pgas.pbs
+qsub -v RUN_ID="${STAMP}_centered_ig",N_TIME=1000,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025 \
+  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
 ```
 
 See [`HPC.md`](HPC.md) for copy-and-paste pilot and final commands for all
-seven jobs, plus monitoring commands.
+eight jobs, plus monitoring commands.
 
 For a four-chain job, use the result directory containing
 `RUN_ID_combined__...c4...`. The `RUN_ID_chain01__...c1...` through

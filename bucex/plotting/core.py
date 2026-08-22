@@ -178,7 +178,7 @@ def _structural_prior_density(fit, name: str, grid):
         density = 2.0 * norm.pdf(np.asarray(grid), loc=0.0, scale=scale)
         return (
             density,
-            "prior slab (analytic half-normal)",
+            "prior slab",
             1.0 - dynamic_probability,
         )
     if getattr(priors, "pc", None) is not None:
@@ -212,7 +212,7 @@ def _structural_prior_density(fit, name: str, grid):
         }[component]
         scale = float(prior.innovation_slab_sd[component])
         density = 2.0 * norm.pdf(np.asarray(grid), loc=0.0, scale=scale)
-        return density, "prior slab (analytic half-normal)", 1.0 - probability
+        return density, "prior slab", 1.0 - probability
     key = {"level": "s_level", "trend": "s_trend", "season": "s_season"}.get(
         component
     )
@@ -583,6 +583,7 @@ def plot_state(
     color: str = "C0",
     observed=None,
     observed_label: str = "observed",
+    show_observed: bool = True,
 ):
     import matplotlib.pyplot as plt
 
@@ -593,21 +594,22 @@ def plot_state(
     values = fit.state_original(state)
     lower, median, upper = _interval(values, credible_interval)
     x = _time(fit)
-    observed_values = (
-        np.asarray(fit.observed, dtype=float)
-        if observed is None
-        else np.asarray(observed, dtype=float)
-    )
-    if observed_values.shape != (fit.n_time,):
-        raise ValueError("observed must have one value per fitted time point.")
-    ax.scatter(
-        x,
-        observed_values,
-        s=9,
-        color="0.55",
-        alpha=0.55,
-        label=str(observed_label),
-    )
+    if show_observed:
+        observed_values = (
+            np.asarray(fit.observed, dtype=float)
+            if observed is None
+            else np.asarray(observed, dtype=float)
+        )
+        if observed_values.shape != (fit.n_time,):
+            raise ValueError("observed must have one value per fitted time point.")
+        ax.scatter(
+            x,
+            observed_values,
+            s=9,
+            color="0.55",
+            alpha=0.55,
+            label=str(observed_label),
+        )
     ax.fill_between(
         x,
         lower,
@@ -629,6 +631,7 @@ def plot_level(
     ax=None,
     color: str = "C0",
     truth=None,
+    show_observed: bool = True,
 ):
     """Plot the posterior latent level as a standalone component figure.
 
@@ -636,7 +639,7 @@ def plot_level(
     adjusted by the posterior median seasonal contribution.  This keeps the
     observed points and latent level on the same scientific scale.  ``truth``
     is intended for simulation studies and must contain one value per fitted
-    observation.
+    observation. Set ``show_observed=False`` for a clean component-only plot.
     """
 
     if "level" not in fit.state_names:
@@ -663,6 +666,7 @@ def plot_level(
         color=color,
         observed=adjusted,
         observed_label=observed_label,
+        show_observed=show_observed,
     )
     if truth is not None:
         truth_values = np.asarray(truth, dtype=float)
@@ -693,12 +697,21 @@ def plot_slope(
     ax=None,
     color: str = "C1",
     truth=None,
+    scale: float | str = 1.0,
+    unit: str | None = None,
+    condition_on: str | None = None,
+    show_fixed: bool = False,
+    fixed_color: str = "0.25",
 ):
     """Plot the posterior latent slope without observation-scale scatter.
 
     A slope is a change per observation interval, so raw temperatures do not
     belong on this axis.  This dedicated plot fixes that ambiguity in the
-    former generic ``plot_state(..., state="slope")`` presentation.
+    former generic ``plot_state(..., state="slope")`` presentation. ``scale``
+    accepts a positive multiplier or the aliases ``interval``, ``year``, and
+    ``decade``. For SSVS fits, ``condition_on`` selects one structural class;
+    ``show_fixed=True`` overlays the fixed-slope median and interval as dashed
+    lines.
     """
 
     import matplotlib.pyplot as plt
@@ -712,7 +725,37 @@ def plot_slope(
     else:
         figure = ax.figure
 
-    slope = fit.state_original("slope")
+    if isinstance(scale, str):
+        aliases = {"interval": 1.0, "year": 12.0, "decade": 120.0}
+        try:
+            scale_factor = aliases[scale.lower()]
+        except KeyError as exc:
+            raise ValueError("scale must be numeric, interval, year, or decade.") from exc
+        if unit is None:
+            unit = f"slope per {scale.lower()}"
+    else:
+        scale_factor = float(scale)
+    if not np.isfinite(scale_factor) or scale_factor <= 0.0:
+        raise ValueError("scale must be a positive finite value.")
+
+    slope = np.asarray(fit.state_original("slope"), dtype=float)
+    structural_states = None
+    if "state_trend" in fit.parameter_draws:
+        structural_states = np.asarray(fit.parameter("state_trend"), dtype=int)
+
+    condition_codes = {None: None, "all": None, "fixed": 1, "dynamic": 2}
+    if condition_on not in condition_codes:
+        raise ValueError("condition_on must be None, 'all', 'fixed', or 'dynamic'.")
+    condition_code = condition_codes[condition_on]
+    if condition_code is not None:
+        if structural_states is None:
+            raise ValueError("This fit has no structural trend indicator to condition on.")
+        selected = structural_states == condition_code
+        if not np.any(selected):
+            raise ValueError(f"No retained draws have a {condition_on} slope.")
+        slope = slope[selected]
+
+    slope = scale_factor * slope
     lower, median, upper = _interval(slope, credible_interval)
     x = _time(fit)
     ax.fill_between(
@@ -721,9 +764,61 @@ def plot_slope(
         upper,
         color=color,
         alpha=0.2,
-        label=f"{credible_interval:.0%} credible interval",
+        label=(
+            f"{condition_on} {credible_interval:.0%} credible interval"
+            if condition_code is not None
+            else f"{credible_interval:.0%} credible interval"
+        ),
     )
-    ax.plot(x, median, color=color, label="slope median")
+    ax.plot(
+        x,
+        median,
+        color=color,
+        label=(
+            f"{condition_on} slope median"
+            if condition_code is not None
+            else "slope median"
+        ),
+    )
+
+    if show_fixed:
+        if structural_states is None:
+            raise ValueError(
+                "This fit has no structural trend indicator for a fixed-slope "
+                "overlay."
+            )
+        fixed = structural_states == 1
+        if np.any(fixed):
+            fixed_lower, fixed_median, fixed_upper = _interval(
+                scale_factor
+                * np.asarray(fit.state_original("slope"), dtype=float)[fixed],
+                credible_interval,
+            )
+            ax.plot(
+                x,
+                fixed_median,
+                color=fixed_color,
+                linestyle="--",
+                linewidth=1.35,
+                label="fixed slope median",
+            )
+            ax.plot(
+                x,
+                fixed_lower,
+                color=fixed_color,
+                linestyle="--",
+                linewidth=0.8,
+                alpha=0.75,
+                label=f"fixed {credible_interval:.0%} credible interval",
+            )
+            ax.plot(
+                x,
+                fixed_upper,
+                color=fixed_color,
+                linestyle="--",
+                linewidth=0.8,
+                alpha=0.75,
+            )
     ax.axhline(0.0, color="0.4", linestyle="--", linewidth=0.8)
     if truth is not None:
         truth_values = np.asarray(truth, dtype=float)
@@ -731,18 +826,14 @@ def plot_slope(
             raise ValueError("truth must have one value per fitted time point.")
         ax.plot(
             x,
-            truth_values,
+            scale_factor * truth_values,
             color="0.15",
             linestyle="--",
             linewidth=1.1,
             label="true slope",
         )
-    ax.set_title(
-        f"{fit.series_name}: posterior latent slope"
-        if fit.series_name
-        else "Posterior latent slope"
-    )
-    ax.set_ylabel("slope per observation interval")
+    ax.set_title("Posterior slope")
+    ax.set_ylabel(unit or "slope per observation interval")
     ax.legend()
     return figure, ax
 
@@ -1008,7 +1099,7 @@ def plot_season(
     ax=None,
     figsize=(10, 5),
 ):
-    """Plot one ``level + seasonal`` trajectory for every phase of the cycle.
+    """Plot the posterior seasonal effect for every phase of the cycle.
 
     Observations are grouped into consecutive cycles of ``fit.model.period``.
     At every cycle index the phase-specific lines therefore sit above one
@@ -1027,18 +1118,16 @@ def plot_season(
         (name for name in fit.state_names if name.startswith("seasonal[")),
         None,
     )
-    if seasonal_name is None or "level" not in fit.state_names:
-        raise ValueError("The fit must contain level and dummy-seasonal states.")
+    if seasonal_name is None:
+        raise ValueError("The fit must contain a dummy-seasonal state.")
 
     period = int(period)
     if labels is not None:
         labels = tuple(str(value) for value in labels)
         if len(labels) != period:
             raise ValueError("labels must contain exactly model.period entries.")
-    level = np.asarray(fit.state_original("level"), dtype=float)
     seasonal = np.asarray(fit.state_original(seasonal_name), dtype=float)
-    combined = level + seasonal
-    lower, median, upper = _interval(combined, credible_interval)
+    lower, median, upper = _interval(seasonal, credible_interval)
 
     dates = None if fit.dates is None else np.asarray(fit.dates)
     if labels is None:
@@ -1081,9 +1170,9 @@ def plot_season(
             )
         ax.plot(horizontal, median[selected], color=colour, linewidth=1.45, label=label)
 
-    ax.set_title("Phase-specific latent seasonal trajectories")
+    ax.set_title("Posterior seasonality")
     ax.set_xlabel("year" if dates is not None else "cycle")
-    ax.set_ylabel("level + seasonal effect")
+    ax.set_ylabel("seasonal effect")
     ax.grid(axis="y", alpha=0.35)
     columns = min(period, 6)
     ax.legend(ncol=columns, fontsize=8, loc="upper left")
@@ -1188,7 +1277,7 @@ def plot_component_probabilities(fit, *, channel: str | None = None, ax=None):
     ax.set_xticks(positions, names)
     ax.set_ylim(0.0, 1.0)
     ax.set_ylabel("posterior probability")
-    ax.set_title("Process innovation spike/slab allocation")
+    ax.set_title("Structural selection")
     ax.legend()
     return figure, ax
 

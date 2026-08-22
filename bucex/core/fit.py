@@ -1011,6 +1011,13 @@ class FitResult:
 
         return posterior_predict(self, horizon, **kwargs)
 
+    def posterior_predictive(self, **kwargs):
+        """Generate replicated observations at the fitted time points."""
+
+        from ..api.predict import posterior_predictive
+
+        return posterior_predictive(self, **kwargs)
+
     def diagnostics(self):
         from ..diagnostics.posterior import fit_diagnostics
 

@@ -2,21 +2,25 @@
 set -euo pipefail
 
 # Usage:
-# bash bash_scripts/run_06_uccle_pgas.sh \
-#   [START] [END|latest] [DRAWS] [WARMUP] [CHAINS] [PARTICLES] \
-#   [MCMC_SEED] [DATA_DIR] [RESULTS_ROOT] [RUN_ID] [OVERWRITE]
+# bash bash_scripts/run_07_centered_ig_random_walk_gev.sh \
+#   [N_TIME] [SIMULATION_SEED] [DRAWS] [WARMUP] [CHAINS] [PARTICLES] \
+#   [MCMC_SEED] [RESULTS_ROOT] [RUN_ID] [OVERWRITE]
+#
+# Scientific sensitivity settings remain environment variables so their names
+# match the Python file. For example:
+#   BUCEX_RANDOM_WALK_SD=0.03 BUCEX_LEVEL_IG_A=2 \
+#   BUCEX_LEVEL_IG_B=0.0009 bash bash_scripts/run_07_...sh
 
-START="${1:-1892-01-01}"
-END="${2:-latest}"
-DRAWS="${3:-500}"
-WARMUP="${4:-500}"
+N_TIME="${1:-1000}"
+SIMULATION_SEED="${2:-13081997}"
+DRAWS="${3:-1000}"
+WARMUP="${4:-1000}"
 CHAINS="${5:-4}"
-PARTICLES="${6:-128}"
-MCMC_SEED="${7:-56000}"
-DATA_DIR="${8:-data}"
-RESULTS_ROOT="${9:-results}"
-RUN_ID="${10:-$(date +%Y%m%d_%H%M%S)}"
-OVERWRITE="${11:-0}"
+PARTICLES="${6:-256}"
+MCMC_SEED="${7:-13081997}"
+RESULTS_ROOT="${8:-results}"
+RUN_ID="${9:-$(date +%Y%m%d_%H%M%S)}"
+OVERWRITE="${10:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -36,12 +40,11 @@ fi
 echo "python      = ${PYTHON_BIN}"
 "${PYTHON_BIN}" -c 'import sys, matplotlib, bucex; print("executable  =", sys.executable); print("matplotlib  =", matplotlib.__version__); print("bucex       =", bucex.__version__)'
 
-export BUCEX_START="${START}"
-export BUCEX_END="${END/latest/}"
+export BUCEX_N_TIME="${N_TIME}"
+export BUCEX_SIMULATION_SEED="${SIMULATION_SEED}"
 export BUCEX_DRAWS="${DRAWS}"
 export BUCEX_WARMUP="${WARMUP}"
 export BUCEX_PARTICLES="${PARTICLES}"
-export BUCEX_DATA_DIR="${DATA_DIR}"
 export BUCEX_RESULTS_ROOT="${RESULTS_ROOT}"
 export BUCEX_OVERWRITE="${OVERWRITE}"
 export BUCEX_PROGRESS="${BUCEX_PROGRESS:-0}"
@@ -64,15 +67,16 @@ if (( CHAINS > MAX_PARALLEL_CHAINS )); then
   exit 2
 fi
 
-echo "Running Uccle analysis with PGAS inference"
-echo "start       = ${START}"
-echo "end         = ${END}"
+echo "Running centered/IG random-walk GEV benchmark"
+echo "n time      = ${N_TIME}"
+echo "sim seed    = ${SIMULATION_SEED}"
 echo "draws       = ${DRAWS}"
 echo "warmup      = ${WARMUP}"
 echo "chains      = ${CHAINS} (parallel processes)"
-echo "particles   = ${PARTICLES}"
+echo "particles   = ${PARTICLES} per chain"
 echo "MCMC seed   = ${MCMC_SEED}"
-echo "data dir    = ${DATA_DIR}"
+echo "level IG    = a=${BUCEX_LEVEL_IG_A:-2.0}, b=${BUCEX_LEVEL_IG_B:-0.0025}"
+echo "RW truth SD = ${BUCEX_RANDOM_WALK_SD:-0.05}"
 echo "results     = ${RESULTS_ROOT}"
 echo "run id      = ${RUN_ID}"
 echo "workdir     = $(pwd)"
@@ -87,8 +91,8 @@ if (( CHAINS == 1 )); then
   unset BUCEX_COMBINE_RUNS || true
   export MPLCONFIGDIR="${TMPDIR:-/tmp}/bucex_mpl_${USER:-user}_${PBS_JOBID:-$$}_single"
   mkdir -p "${MPLCONFIGDIR}"
-  "${PYTHON_BIN}" -u examples/06_uccle_pgas.py
-  echo "Finished Uccle analysis with PGAS inference"
+  "${PYTHON_BIN}" -u examples/07_centered_ig_random_walk_gev.py
+  echo "Finished centered/IG random-walk GEV benchmark"
   date
   exit 0
 fi
@@ -100,7 +104,7 @@ for ((chain_index = 1; chain_index <= CHAINS; chain_index++)); do
   printf -v chain_label "%02d" "${chain_index}"
   chain_seed=$((MCMC_SEED + chain_index - 1))
   chain_run_id="${RUN_ID}_chain${chain_label}"
-  chain_log="logs/06_uccle_pgas_${RUN_ID}_chain${chain_label}.log"
+  chain_log="logs/07_centered_ig_random_walk_gev_${RUN_ID}_chain${chain_label}.log"
   chain_run_ids+=("${chain_run_id}")
   chain_logs+=("${chain_log}")
 
@@ -113,7 +117,7 @@ for ((chain_index = 1; chain_index <= CHAINS; chain_index++)); do
     unset BUCEX_COMBINE_RUNS || true
     export MPLCONFIGDIR="${TMPDIR:-/tmp}/bucex_mpl_${USER:-user}_${PBS_JOBID:-$$}_chain${chain_label}"
     mkdir -p "${MPLCONFIGDIR}"
-    "${PYTHON_BIN}" -u examples/06_uccle_pgas.py
+    "${PYTHON_BIN}" -u examples/07_centered_ig_random_walk_gev.py
   ) >"${chain_log}" 2>&1 &
   chain_pids+=("$!")
 done
@@ -128,14 +132,14 @@ for chain_offset in "${!chain_pids[@]}"; do
   fi
 done
 if (( failed != 0 )); then
-  echo "At least one Uccle PGAS chain failed; the combine step was not run." >&2
+  echo "At least one centered/IG chain failed; the combine step was not run." >&2
   exit 1
 fi
 
 shopt -s nullglob
 chain_dirs=()
 for chain_run_id in "${chain_run_ids[@]}"; do
-  matches=("${RESULTS_ROOT}/06_uccle_pgas/${chain_run_id}__"*)
+  matches=("${RESULTS_ROOT}/07_centered_ig_random_walk_gev/${chain_run_id}__"*)
   if (( ${#matches[@]} != 1 )); then
     echo "Expected one result directory for ${chain_run_id}; found ${#matches[@]}." >&2
     exit 1
@@ -144,7 +148,7 @@ for chain_run_id in "${chain_run_ids[@]}"; do
 done
 COMBINE_RUNS="$(IFS=:; echo "${chain_dirs[*]}")"
 
-echo "Combining ${CHAINS} independent chains and producing final figures"
+echo "Combining ${CHAINS} independent chains and producing final diagnostics"
 export BUCEX_CHAINS="${CHAINS}"
 export BUCEX_SEED="${MCMC_SEED}"
 export BUCEX_RUN_ID="${RUN_ID}_combined"
@@ -152,7 +156,7 @@ export BUCEX_CHAIN_ONLY=0
 export BUCEX_COMBINE_RUNS="${COMBINE_RUNS}"
 export MPLCONFIGDIR="${TMPDIR:-/tmp}/bucex_mpl_${USER:-user}_${PBS_JOBID:-$$}_combine"
 mkdir -p "${MPLCONFIGDIR}"
-"${PYTHON_BIN}" -u examples/06_uccle_pgas.py
+"${PYTHON_BIN}" -u examples/07_centered_ig_random_walk_gev.py
 
-echo "Finished Uccle analysis with PGAS inference"
+echo "Finished centered/IG random-walk GEV benchmark"
 date

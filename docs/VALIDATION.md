@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.0.0 has five software layers:
+Release 1.0.1 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -41,11 +41,17 @@ evidence for a scientific conclusion.
 - independently saved chains combine only when model, prior, plan, data, and
   dates agree;
 - schema-2.6.2 archives round-trip and older supported archives remain readable;
-- the seven Python examples are self-contained calls to the public API;
-- the seven PBS jobs invoke those same examples, and the fitting runners
+- the eight Python examples are self-contained calls to the public API;
+- the centered/inverse-gamma benchmark records an exact-PGAS centered plan,
+  disables ASIS, and exposes both MCMC and particle diagnostics;
+- the eight PBS jobs invoke those same examples, and the fitting runners
   combine independent chains only after all chain processes succeed;
 - dedicated level and slope figures keep observations off the slope scale;
-- LOESS and phase-specific seasonal plots satisfy their numerical contracts.
+- LOESS and seasonal-component plots satisfy their numerical contracts;
+- posterior predictive replication and forecast plots preserve dates, tail
+  orientation, and observation scale;
+- Uccle slope figures use the requested per-decade scale and conditional
+  fixed/dynamic overlays.
 
 ## Manuscript and presentation gates
 

@@ -1,6 +1,6 @@
-# Running the seven BUCEX examples with PBS
+# Running the eight BUCEX examples with PBS
 
-Run every command below from the clean `bucex` repository root. The four fitting
+Run every command below from the clean `bucex` repository root. The five fitting
 jobs reserve four cores and start one independent one-chain Python process per
 core.  After all chains finish, the runner combines them and writes the final
 tables and figures once.  BLAS threads are fixed at one, so four chains use four
@@ -29,7 +29,7 @@ qsub -v BUCEX_VENV_DIR="$HOME/path/to/bucex_env",DRAWS=400,WARMUP=100,CHAINS=4 \
 Set `BUCEX_PROGRESS=1` in `qsub -v` to write periodic MCMC progress lines to
 the per-chain logs. The default is `0` for quieter batch logs.
 
-## Submit all seven pilot jobs
+## Submit all eight pilot jobs
 
 ```bash
 STAMP="$(date +%Y%m%d_%H%M%S)"
@@ -49,11 +49,14 @@ qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=400,WARMUP=100,CHAIN
 qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_pgas" \
   job_scripts/submit_04_simulation_pgas.pbs
 
-qsub -v START=1892-01-01,END=latest,DRAWS=250,WARMUP=250,CHAINS=4,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_lap" \
+qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_lap" \
   job_scripts/submit_05_uccle_laplace.pbs
 
-qsub -v START=1892-01-01,END=latest,DRAWS=250,WARMUP=250,CHAINS=4,PARTICLES=128,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_pgas" \
+qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_pgas" \
   job_scripts/submit_06_uccle_pgas.pbs
+
+qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig" \
+  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
 ```
 
 These jobs are independent and may be submitted together.  The scheduler will
@@ -79,6 +82,9 @@ qsub -v START=1892-01-01,END=latest,DRAWS=2000,WARMUP=2000,CHAINS=4,MCMC_SEED=56
 
 qsub -v START=1892-01-01,END=latest,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_pgas_final" \
   job_scripts/submit_06_uccle_pgas.pbs
+
+qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig_final" \
+  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
 ```
 
 ## Monitoring and outputs
@@ -113,4 +119,18 @@ bash bash_scripts/run_05_uccle_laplace.sh \
 
 bash bash_scripts/run_06_uccle_pgas.sh \
   1892-01-01 latest 400 100 4 128 56000 data results manual_pgas 0
+
+bash bash_scripts/run_07_centered_ig_random_walk_gev.sh \
+  1000 13081997 400 100 4 128 13081997 results manual_centered_ig 0
 ```
+
+For example 07, the process truth and inverse-gamma sensitivity settings may
+be supplied by name without editing either HPC file:
+
+```bash
+qsub -v RANDOM_WALK_SD=0.03,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0009,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512 \
+  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
+```
+
+Here `LEVEL_IG_B` is the scale of the prior on the innovation variance, not on
+its standard deviation. The full settings are retained in `run_config.json`.

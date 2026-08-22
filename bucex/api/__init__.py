@@ -15,7 +15,7 @@ from .fit import (
     make_gev_model,
     plan,
 )
-from .predict import Forecast, posterior_predict
+from .predict import Forecast, posterior_predict, posterior_predictive
 
 __all__ = [
     "fit",
@@ -30,4 +30,5 @@ __all__ = [
     "plan",
     "Forecast",
     "posterior_predict",
+    "posterior_predictive",
 ]

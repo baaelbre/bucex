@@ -25,6 +25,18 @@ Laplace screen can initialize PGAS but cannot be relabelled exact.
 ASIS is available for valid univariate combinations and disabled in the
 hierarchical structural sampler.
 
+`examples/07_centered_ig_random_walk_gev.py` is an intentional benchmark, not
+the recommended SSVS default. It combines `parameterization="centered"`,
+`asis=False`, exact-density PGAS, and `InverseGammaVariance` priors on
+
+\[
+q_\mu=s_\mu^2 \quad\text{and}\quad \sigma^2.
+\]
+
+The run always saves parameter traces, the trace of \(q_\mu\), ACFs, ESS,
+R-hat, and particle diagnostics. This separates a visually plausible smoothed
+level from evidence that the posterior Markov chain actually mixed.
+
 ## Structural spaces
 
 The default hierarchical `model_space="componentwise"` uses fixed/dynamic

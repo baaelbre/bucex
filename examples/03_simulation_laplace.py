@@ -38,8 +38,8 @@ XI = float(os.environ.get("BUCEX_XI", "-0.30"))
 INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
 LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
 RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.01"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00080"))
+LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.02"))
+LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00050"))
 LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.003"))
 DYNAMIC_SEASON_AMPLITUDE = float(
     os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
@@ -62,8 +62,8 @@ SIGMA2_PRIOR_B = float(os.environ.get("BUCEX_SIGMA2_PRIOR_B", "2.25"))
 XI_PRIOR_BOUNDS = (-0.50, 0.50)
 XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
 INNOVATION_SLAB_SD = {
-    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.05")),
-    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.0010")),
+    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.03")),
+    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.0008")),
     "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
 }
 LEVEL_DYNAMIC_PROBABILITY = float(
@@ -99,6 +99,9 @@ FIGURE_FORMATS = ("pdf", "png")
 FIGURE_DPI = 180
 DIAGNOSTIC_FIGURES = False
 PHASE_LABELS = tuple(f"phase {index + 1}" for index in range(PERIOD))
+PREDICTIVE_DRAWS = int(os.environ.get("BUCEX_PREDICTIVE_DRAWS", "400"))
+FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", str(10 * PERIOD)))
+FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)))
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_d{DRAWS}w{WARMUP}c{CHAINS}"
 OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
@@ -256,6 +259,9 @@ def main() -> None:
             "formats": list(FIGURE_FORMATS),
             "dpi": FIGURE_DPI,
             "diagnostics": DIAGNOSTIC_FIGURES,
+            "predictive_draws": PREDICTIVE_DRAWS,
+            "forecast_horizon": FORECAST_HORIZON,
+            "forecast_history": FORECAST_HISTORY,
         },
         "chain_only": CHAIN_ONLY,
         "combined_chain_runs": [str(path) for path in COMBINE_RUNS],
@@ -423,6 +429,22 @@ def main() -> None:
         selection.to_csv(table_dir / "selection.csv", index=False)
         laplace_fit.structural_model_probabilities().to_csv(table_dir / "models.csv", index=False)
         laplace_fit.component_transition_summary().reset_index().to_csv(table_dir / "switching.csv", index=False)
+
+        # Replicate the fitted observations, then propagate the complete state
+        # equation into the future. Both operations use the FitResult API.
+        predictive = laplace_fit.posterior_predictive(
+            draws=PREDICTIVE_DRAWS,
+            seed=SEED + 20_000 + number,
+        )
+        predictive.summary(level=0.90).to_csv(
+            table_dir / "posterior_predictive.csv", index=False
+        )
+        forecast = laplace_fit.forecast(
+            FORECAST_HORIZON,
+            draws=PREDICTIVE_DRAWS,
+            seed=SEED + 30_000 + number,
+        )
+        forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
         (table_dir / "summary.json").write_text(
             json.dumps(
                 {
@@ -448,12 +470,47 @@ def main() -> None:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
+        axis = predictive.plot(
+            level=0.90,
+            observed=laplace_fit.observed,
+            title=f"{scenario['name']}: posterior predictive check (Laplace)",
+            ylabel="temperature / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(figure_dir / f"posterior_predictive.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
+        axis = forecast.plot(
+            level=0.90,
+            history=laplace_fit.observed,
+            history_dates=np.arange(N_TIME),
+            history_points=FORECAST_HISTORY,
+            title=f"{scenario['name']}: posterior predictive forecast (Laplace)",
+            ylabel="temperature / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(figure_dir / f"forecast.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
         figure, axis = laplace_fit.plot(
             "level", credible_interval=0.90, truth=table["level"].to_numpy()
         )
         axis.set_title(f"{scenario['name']}: posterior latent level (Laplace)")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
+        figure, axis = laplace_fit.plot(
+            "level",
+            credible_interval=0.90,
+            truth=table["level"].to_numpy(),
+            show_observed=False,
+        )
+        axis.set_title(f"{scenario['name']}: posterior latent level (Laplace)")
+        for extension in FIGURE_FORMATS:
+            figure.savefig(figure_dir / f"level_no_observations.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         figure, axis = laplace_fit.plot(
@@ -465,10 +522,7 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("component_probabilities")
-        axis.set_title(
-            f"{scenario['name']}: structural selection (Laplace)\n"
-            "Process innovation spike/slab allocation"
-        )
+        axis.set_title(f"{scenario['name']}: structural selection (Laplace)")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"selection.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
@@ -484,7 +538,6 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("season", labels=PHASE_LABELS, show_interval=False)
-        axis.set_title(f"{scenario['name']}: phase-specific posterior trajectories")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"season.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)

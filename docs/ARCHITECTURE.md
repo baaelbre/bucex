@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.0.0 keeps one model compiler, one fitting entry point, and one result
+Release 1.0.1 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text
@@ -58,11 +58,13 @@ algorithmic requirement, not a numerical convenience.
 
 ## Analysis-script lifecycle
 
-The seven files under `examples/` declare models, priors, simulation truths,
-fit calls, summaries, and figures in one readable sequence. The seven PBS jobs
-invoke those exact files and share a `BUCEX_RUN_ID`; scheduler code does not
-define the statistics. Reusable scientific behavior belongs in the core API,
-while analysis-specific choices remain visible in the scripts.
+The eight files under `examples/` declare models, priors, simulation truths,
+fit calls, summaries, and figures in one readable sequence. Seven form the
+COMPSTAT analysis; the eighth exposes the centered/inverse-gamma random-walk
+benchmark. Eight matching PBS jobs invoke those exact files and share a
+`BUCEX_RUN_ID`; scheduler code does not define the statistics. Reusable
+scientific behavior belongs in the core API, while analysis-specific choices
+remain visible in the scripts.
 
 ## Persistence
 
