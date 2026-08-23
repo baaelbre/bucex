@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Real two-task/one-finalizer smoke test for the 1.1.4 PBS workflow."""
+"""Real two-task/one-finalizer smoke test for the 1.2.0 PBS workflow."""
 from __future__ import annotations
 
 import argparse
@@ -19,8 +19,8 @@ import bucex as bx
 
 
 def run(work_dir: Path) -> dict[str, object]:
-    if bx.__version__ != "1.1.4":
-        raise RuntimeError(f"Expected bucex 1.1.4, found {bx.__version__}.")
+    if bx.__version__ != "1.2.0":
+        raise RuntimeError(f"Expected bucex 1.2.0, found {bx.__version__}.")
     started = time.perf_counter()
     work_dir = work_dir.resolve()
     run_id = f"fanout_smoke_{os.getpid()}"
@@ -132,12 +132,12 @@ def main() -> None:
     parser.add_argument(
         "--work-dir",
         type=Path,
-        default=Path("validation/hpc_fanout_smoke_artifacts_1.1.4"),
+        default=Path("validation/hpc_fanout_smoke_artifacts_1.2.0"),
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/hpc_fanout_smoke_1.1.4.json"),
+        default=Path("validation/hpc_fanout_smoke_1.2.0.json"),
     )
     args = parser.parse_args()
     result = run(args.work_dir)

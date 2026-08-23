@@ -240,6 +240,20 @@ def _time(fit):
     return np.arange(fit.n_time) if fit.dates is None else fit.dates
 
 
+def _phase_indices(fit, phase: int | None):
+    """Return fitted-time indices for one one-based seasonal phase."""
+
+    if phase is None:
+        return np.arange(fit.n_time)
+    period = fit.model.period
+    if period is None or int(period) < 2:
+        raise ValueError("phase= requires a fitted seasonal model.")
+    selected_phase = int(phase)
+    if selected_phase != phase or not 1 <= selected_phase <= int(period):
+        raise ValueError(f"phase must be an integer from 1 to {period}.")
+    return np.arange(selected_phase - 1, fit.n_time, int(period))
+
+
 def _structural_prior_samples(fit, name: str, size: int, rng) -> np.ndarray:
     """Draw the implied process SD under an FS signed-scale prior."""
 
@@ -584,6 +598,7 @@ def plot_state(
     observed=None,
     observed_label: str = "observed",
     show_observed: bool = True,
+    phase: int | None = None,
 ):
     import matplotlib.pyplot as plt
 
@@ -593,7 +608,11 @@ def plot_state(
         figure = ax.figure
     values = fit.state_original(state)
     lower, median, upper = _interval(values, credible_interval)
-    x = _time(fit)
+    selected = _phase_indices(fit, phase)
+    x = np.asarray(_time(fit))[selected]
+    lower = lower[selected]
+    median = median[selected]
+    upper = upper[selected]
     if show_observed:
         observed_values = (
             np.asarray(fit.observed, dtype=float)
@@ -602,6 +621,7 @@ def plot_state(
         )
         if observed_values.shape != (fit.n_time,):
             raise ValueError("observed must have one value per fitted time point.")
+        observed_values = observed_values[selected]
         ax.scatter(
             x,
             observed_values,
@@ -619,7 +639,10 @@ def plot_state(
         label=f"{credible_interval:.0%} credible interval",
     )
     ax.plot(x, median, color=color, label=f"{state} median")
-    ax.set_title(fit.series_name or f"Posterior {state}")
+    title = fit.series_name or f"Posterior {state}"
+    if phase is not None:
+        title = f"{title}: phase {phase}"
+    ax.set_title(title)
     ax.legend()
     return figure, ax
 
@@ -632,6 +655,7 @@ def plot_level(
     color: str = "C0",
     truth=None,
     show_observed: bool = True,
+    phase: int | None = None,
 ):
     """Plot the posterior latent level as a standalone component figure.
 
@@ -667,24 +691,29 @@ def plot_level(
         observed=adjusted,
         observed_label=observed_label,
         show_observed=show_observed,
+        phase=phase,
     )
     if truth is not None:
         truth_values = np.asarray(truth, dtype=float)
         if truth_values.shape != (fit.n_time,):
             raise ValueError("truth must have one value per fitted time point.")
+        selected = _phase_indices(fit, phase)
         ax.plot(
-            _time(fit),
-            truth_values,
+            np.asarray(_time(fit))[selected],
+            truth_values[selected],
             color="0.15",
             linestyle="--",
             linewidth=1.1,
             label="true level",
         )
-    ax.set_title(
+    title = (
         f"{fit.series_name}: posterior latent level"
         if fit.series_name
         else "Posterior latent level"
     )
+    if phase is not None:
+        title = f"{title}: phase {phase}"
+    ax.set_title(title)
     ax.set_ylabel("latent level")
     ax.legend()
     return figure, ax
@@ -844,8 +873,13 @@ def plot_predictor(
     credible_interval: float = 0.90,
     ax=None,
     color: str = "C3",
+    phase: int | None = None,
 ):
-    """Plot observations against the complete univariate latent predictor."""
+    """Plot observations against the complete univariate latent predictor.
+
+    ``phase`` is one-based. Selecting one phase removes the rapid seasonal
+    oscillation while retaining that phase's location trajectory.
+    """
 
     import matplotlib.pyplot as plt
 
@@ -857,8 +891,19 @@ def plot_predictor(
         figure = ax.figure
     values = fit.eta_draws(original_scale=True)
     lower, median, upper = _interval(values, credible_interval)
-    x = _time(fit)
-    ax.scatter(x, fit.observed, s=9, color="0.55", alpha=0.55, label="observed")
+    selected = _phase_indices(fit, phase)
+    x = np.asarray(_time(fit))[selected]
+    lower = lower[selected]
+    median = median[selected]
+    upper = upper[selected]
+    ax.scatter(
+        x,
+        np.asarray(fit.observed)[selected],
+        s=9,
+        color="0.55",
+        alpha=0.55,
+        label="observed",
+    )
     ax.fill_between(
         x,
         lower,
@@ -868,7 +913,10 @@ def plot_predictor(
         label=f"{credible_interval:.0%} credible interval",
     )
     ax.plot(x, median, color=color, label="complete latent predictor")
-    ax.set_title(fit.series_name or "Posterior predictor")
+    title = fit.series_name or "Posterior predictor"
+    if phase is not None:
+        title = f"{title}: phase {phase}"
+    ax.set_title(title)
     ax.legend()
     return figure, ax
 

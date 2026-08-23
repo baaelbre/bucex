@@ -58,7 +58,9 @@ def test_uccle_series_normalization_does_not_split_a_string():
 
 def test_v110_example_surface_contains_ten_top_level_scripts():
     directory = Path(__file__).resolve().parents[1] / "examples"
-    scripts = {path.name for path in directory.glob("*.py")}
+    scripts = {
+        path.name for path in directory.glob("*.py") if not path.name.startswith("_")
+    }
     assert scripts == {
         "00_uccle_record.py",
         "01_tail_simulations.py",
@@ -67,7 +69,7 @@ def test_v110_example_surface_contains_ten_top_level_scripts():
         "04_simulation_pgas.py",
         "05_uccle_laplace.py",
         "06_uccle_pgas.py",
-        "07_centered_ig_random_walk_gev.py",
+        "07_centered_ig.py",
         "08_simulation_laplace_mh.py",
         "09_uccle_laplace_mh.py",
     }
@@ -79,6 +81,7 @@ def test_v262_examples_are_standalone_public_api_scripts():
     sources = {
         path.name: path.read_text(encoding="utf-8")
         for path in directory.glob("*.py")
+        if not path.name.startswith("_")
     }
     for name, source in sources.items():
         compile(source, str(directory / name), "exec")
@@ -125,7 +128,7 @@ def test_v262_examples_are_standalone_public_api_scripts():
     assert "bx.fit_uccle_series(" not in sources["09_uccle_laplace_mh.py"]
     assert "init=laplace_fit" in sources["04_simulation_pgas.py"]
     assert "init=laplace_fit" in sources["06_uccle_pgas.py"]
-    centered_ig = sources["07_centered_ig_random_walk_gev.py"]
+    centered_ig = sources["07_centered_ig.py"]
     assert "bx.LocalLevel(" in centered_ig
     assert "bx.InverseGammaVariance(" in centered_ig
     assert 'os.environ.get("BUCEX_ENGINE", "laplace")' in centered_ig

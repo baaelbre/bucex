@@ -1,3 +1,33 @@
+Metadata-Version: 2.4
+Name: bucex
+Version: 1.2.0
+Summary: Bayesian unobserved-component models for environmental extremes
+Author: Bastiaan AVV
+License-Expression: MIT
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Science/Research
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy>=1.24
+Requires-Dist: scipy>=1.10
+Requires-Dist: pandas>=1.5
+Provides-Extra: plot
+Requires-Dist: matplotlib>=3.6; extra == "plot"
+Provides-Extra: test
+Requires-Dist: pytest>=7; extra == "test"
+Requires-Dist: matplotlib>=3.6; extra == "test"
+Provides-Extra: dev
+Requires-Dist: build>=1; extra == "dev"
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: matplotlib>=3.6; extra == "dev"
+Dynamic: license-file
+
 # bucex 1.2.0
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized

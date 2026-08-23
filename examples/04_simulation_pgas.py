@@ -30,16 +30,17 @@ SCRIPT_NAME = Path(__file__).stem
 RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
 OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {"1", "true", "yes"}
 
-# Simulation design. Keep aligned with scripts 02 and 03.
+# Canonical simulation design. It is repeated explicitly in examples 02, 03,
+# and 08; release tests enforce exact parity.
 N_TIME = int(os.environ.get("BUCEX_N_TIME", "1000"))
 PERIOD = int(os.environ.get("BUCEX_PERIOD", "4"))
 SIGMA = float(os.environ.get("BUCEX_SIGMA", "1.50"))
 XI = float(os.environ.get("BUCEX_XI", "-0.30"))
 INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
 LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
-RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.02"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00050"))
+RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.02"))
+LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.01"))
+LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00010"))
 LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.003"))
 DYNAMIC_SEASON_AMPLITUDE = float(
     os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
@@ -50,10 +51,10 @@ FIXED_SEASON_AMPLITUDE = float(
 SEASONAL_SD = float(os.environ.get("BUCEX_SEASONAL_SD", "0.05"))
 SIMULATION_SEED = int(os.environ.get("BUCEX_SIMULATION_SEED", "13081997"))
 
-# Prior hyperparameters. Keep aligned with script 03.
+# Prior hyperparameters. These are identical to examples 03 and 08.
 ALPHA_PRIOR_SD = float(os.environ.get("BUCEX_ALPHA_PRIOR_SD", "3.2"))
 BETA_PRIOR_MEAN = float(os.environ.get("BUCEX_BETA_PRIOR_MEAN", "0.0"))
-BETA_PRIOR_SD = float(os.environ.get("BUCEX_BETA_PRIOR_SD", "0.01"))
+BETA_PRIOR_SD = float(os.environ.get("BUCEX_BETA_PRIOR_SD", "0.006"))
 INITIAL_SEASON_PRIOR_SD = float(
     os.environ.get("BUCEX_INITIAL_SEASON_PRIOR_SD", "0.5")
 )
@@ -63,7 +64,7 @@ XI_PRIOR_BOUNDS = (-0.50, 0.50)
 XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
 INNOVATION_SLAB_SD = {
     "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.03")),
-    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.0008")),
+    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.00015")),
     "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
 }
 LEVEL_DYNAMIC_PROBABILITY = float(
@@ -82,10 +83,10 @@ SEASON_PROBABILITIES = tuple(
     ).split(",")
 )
 
-# MCMC. Final runs can set BUCEX_DRAWS=2000, BUCEX_WARMUP=2000,
-# BUCEX_CHAINS=4, and BUCEX_PARTICLES=512 without editing this file.
-DRAWS = int(os.environ.get("BUCEX_DRAWS", "400"))
-WARMUP = int(os.environ.get("BUCEX_WARMUP", "100"))
+# MCMC. Fit settings match examples 03 and 08; particle count is the only
+# PGAS-specific tuning value.
+DRAWS = int(os.environ.get("BUCEX_DRAWS", "1000"))
+WARMUP = int(os.environ.get("BUCEX_WARMUP", "1000"))
 CHAINS = int(os.environ.get("BUCEX_CHAINS", "1"))
 PARTICLES = int(os.environ.get("BUCEX_PARTICLES", "128"))
 SEED = int(os.environ.get("BUCEX_SEED", "13081997"))
@@ -101,7 +102,10 @@ FIGURE_FORMATS = ("pdf", "png")
 FIGURE_DPI = 180
 DIAGNOSTIC_FIGURES = False
 PHASE_LABELS = tuple(f"phase {index + 1}" for index in range(PERIOD))
-PREDICTIVE_DRAWS = int(os.environ.get("BUCEX_PREDICTIVE_DRAWS", "400"))
+PREDICTIVE_DRAWS = int(os.environ.get("BUCEX_PREDICTIVE_DRAWS", "500"))
+FOCUS_PHASE = int(os.environ.get("BUCEX_FOCUS_PHASE", "1"))
+if not 1 <= FOCUS_PHASE <= PERIOD:
+    raise ValueError(f"BUCEX_FOCUS_PHASE must be between 1 and {PERIOD}.")
 FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", str(10 * PERIOD)))
 FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)))
 
@@ -262,6 +266,7 @@ def main() -> None:
             "predictive_draws": PREDICTIVE_DRAWS,
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
+            "focus_phase": FOCUS_PHASE,
         },
         "chain_only": CHAIN_ONLY,
         "combined_chain_runs": [str(path) for path in COMBINE_RUNS],
@@ -462,7 +467,7 @@ def main() -> None:
         pd.DataFrame([{"metric": key, "value": value} for key, value in diagnostics["engine"].items()]).to_csv(table_dir / "algorithm.csv", index=False)
         eta_draws = pgas_fit.eta_draws(original_scale=True)
         lower, median, upper = np.quantile(eta_draws, [0.05, 0.50, 0.95], axis=0)
-        pd.DataFrame({"time": table["time"], "observed": pgas_fit.observed, "lower": lower, "median": median, "upper": upper, "truth": table["eta"]}).to_csv(
+        pd.DataFrame({"time": table["time"], "phase": table["phase"], "observed": pgas_fit.observed, "lower": lower, "median": median, "upper": upper, "truth": table["eta"]}).to_csv(
             table_dir / "trajectory.csv", index=False
         )
 
@@ -487,6 +492,12 @@ def main() -> None:
             seed=SEED + 30_000 + number,
         )
         forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
+        forecast.summary(level=0.90, phase=FOCUS_PHASE).to_csv(
+            table_dir / f"forecast_phase_{FOCUS_PHASE:02d}.csv", index=False
+        )
+        forecast.summary(level=0.90, target="level").to_csv(
+            table_dir / "forecast_level.csv", index=False
+        )
         (table_dir / "summary.json").write_text(
             json.dumps(
                 {
@@ -527,6 +538,30 @@ def main() -> None:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
+        selected_phase = table["phase"].to_numpy(int) == FOCUS_PHASE
+        figure, axis = pgas_fit.plot(
+            "predictor", credible_interval=0.90, phase=FOCUS_PHASE
+        )
+        axis.plot(
+            np.arange(N_TIME)[selected_phase],
+            table.loc[selected_phase, "eta"],
+            color="#123B4A",
+            linestyle="--",
+            linewidth=1.2,
+            label="true predictor",
+        )
+        axis.set_title(
+            f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} trajectory (PGAS)"
+        )
+        axis.legend()
+        for extension in FIGURE_FORMATS:
+            figure.savefig(
+                figure_dir / f"trajectory_phase_{FOCUS_PHASE:02d}.{extension}",
+                dpi=FIGURE_DPI,
+                bbox_inches="tight",
+            )
+        plt.close(figure)
+
         axis = predictive.plot(
             level=0.90,
             observed=pgas_fit.observed,
@@ -549,6 +584,44 @@ def main() -> None:
         figure = axis.figure
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"forecast.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
+        axis = forecast.plot(
+            level=0.90,
+            phase=FOCUS_PHASE,
+            phase_label=PHASE_LABELS[FOCUS_PHASE - 1],
+            history=pgas_fit.observed,
+            history_dates=np.arange(N_TIME),
+            history_points=FORECAST_HISTORY,
+            title=f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} forecast (PGAS)",
+            ylabel="temperature / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(
+                figure_dir / f"forecast_phase_{FOCUS_PHASE:02d}.{extension}",
+                dpi=FIGURE_DPI,
+                bbox_inches="tight",
+            )
+        plt.close(figure)
+
+        level_history = np.median(pgas_fit.state_original("level"), axis=0)
+        axis = forecast.plot(
+            level=0.90,
+            target="level",
+            history=level_history,
+            history_dates=np.arange(N_TIME),
+            history_points=FORECAST_HISTORY,
+            title=f"{scenario['name']}: seasonally adjusted level forecast (PGAS)",
+            ylabel="latent level / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(
+                figure_dir / f"forecast_level.{extension}",
+                dpi=FIGURE_DPI,
+                bbox_inches="tight",
+            )
         plt.close(figure)
 
         figure, axis = pgas_fit.plot(

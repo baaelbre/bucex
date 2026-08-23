@@ -30,17 +30,17 @@ SCRIPT_NAME = Path(__file__).stem
 RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
 OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {"1", "true", "yes"}
 
-# Simulation design. Keep these settings aligned with scripts 03 and 04 when
-# all three scripts use the same BUCEX_RUN_ID.
+# Canonical simulation design. These values are repeated explicitly in the
+# fitting examples 03, 04, and 08; release tests enforce exact parity.
 N_TIME = int(os.environ.get("BUCEX_N_TIME", "1000"))
 PERIOD = int(os.environ.get("BUCEX_PERIOD", "4"))
 SIGMA = float(os.environ.get("BUCEX_SIGMA", "1.50"))
 XI = float(os.environ.get("BUCEX_XI", "-0.30"))
 INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
 LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
-RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.02"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00050"))
+RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.02"))
+LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.01"))
+LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00010"))
 LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.003"))
 DYNAMIC_SEASON_AMPLITUDE = float(
     os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
@@ -72,6 +72,7 @@ fixed_cycle -= fixed_cycle.mean()
 SCENARIOS = (
     {
         "name": "stationary",
+        "key": "stationary",
         "title": "Stationary",
         "model": bx.Model(
             bx.GEV(xi_bounds=(-0.5, 0.5)),
@@ -85,6 +86,7 @@ SCENARIOS = (
     },
     {
         "name": "linear_trend",
+        "key": "linear",
         "title": "Linear trend",
         "model": bx.Model(
             bx.GEV(xi_bounds=(-0.5, 0.5)),
@@ -98,6 +100,7 @@ SCENARIOS = (
     },
     {
         "name": "random_walk",
+        "key": "random_walk",
         "title": "Random walk",
         "model": bx.Model(
             bx.GEV(xi_bounds=(-0.5, 0.5)),
@@ -111,6 +114,7 @@ SCENARIOS = (
     },
     {
         "name": "local_linear_trend",
+        "key": "llt",
         "title": "Local linear trend",
         "model": bx.Model(
             bx.GEV(xi_bounds=(-0.5, 0.5)),
@@ -124,6 +128,7 @@ SCENARIOS = (
     },
     {
         "name": "stationary_dynamic_season",
+        "key": "dynamic_season",
         "title": "Stationary + changing seasonality",
         "model": bx.Model(
             bx.GEV(xi_bounds=(-0.5, 0.5)),
@@ -140,6 +145,7 @@ SCENARIOS = (
     },
     {
         "name": "local_linear_trend_fixed_season",
+        "key": "llt_season",
         "title": "Local linear trend + fixed seasonality",
         "model": bx.Model(
             bx.GEV(xi_bounds=(-0.5, 0.5)),
@@ -193,6 +199,7 @@ def main() -> None:
         "scenarios": [
             {
                 "name": scenario["name"],
+                "key": scenario["key"],
                 "model": scenario["model"].to_dict(),
                 "params": scenario["params"],
                 "initial_state": scenario["initial_state"].tolist(),
@@ -241,6 +248,7 @@ def main() -> None:
         )
         truth = {
             "name": scenario["name"],
+            "key": scenario["key"],
             "title": scenario["title"],
             "n_time": N_TIME,
             "period": PERIOD,
@@ -257,13 +265,13 @@ def main() -> None:
             "initial_state": scenario["initial_state"].tolist(),
             "seed": scenario["seed"],
         }
-        data_path = simulation_dir / f"{scenario['name']}.csv"
+        data_path = simulation_dir / f"{scenario['key']}.csv"
         truth_path = data_path.with_suffix(".json")
         if not OVERWRITE and (data_path.exists() or truth_path.exists()):
             raise FileExistsError(f"Refusing to overwrite {data_path}; set BUCEX_OVERWRITE=1.")
         table.to_csv(data_path, index=False)
         truth_path.write_text(json.dumps(truth, indent=2, sort_keys=True), encoding="utf-8")
-        catalog.append({"name": scenario["name"], **scenario["structural_truth"], **truth["parameter_truth"], "seed": scenario["seed"]})
+        catalog.append({"name": scenario["name"], "key": scenario["key"], **scenario["structural_truth"], **truth["parameter_truth"], "seed": scenario["seed"]})
 
         # Each simulated series is a separate figure, as used in the talk.
         figure, axis = plt.subplots(figsize=(11, 4.2))
@@ -276,7 +284,7 @@ def main() -> None:
         axis.legend()
         figure.tight_layout()
         for extension in FIGURE_FORMATS:
-            figure.savefig(figure_dir / f"{scenario['name']}_series.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+            figure.savefig(figure_dir / f"{scenario['key']}_series.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         # The only multi-panel simulation graphic is the allowed structural
@@ -296,7 +304,7 @@ def main() -> None:
         figure.suptitle(f"{scenario['title']}: structural decomposition", weight="bold")
         figure.tight_layout()
         for extension in FIGURE_FORMATS:
-            figure.savefig(figure_dir / f"{scenario['name']}_decomposition.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+            figure.savefig(figure_dir / f"{scenario['key']}_decomposition.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         if seasonal_name is not None:
@@ -316,7 +324,7 @@ def main() -> None:
             axis.grid(axis="y", alpha=0.35)
             figure.tight_layout()
             for extension in FIGURE_FORMATS:
-                figure.savefig(figure_dir / f"{scenario['name']}_season.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+                figure.savefig(figure_dir / f"{scenario['key']}_season.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
             plt.close(figure)
 
         print(f"Simulated {scenario['name']}: {data_path}")

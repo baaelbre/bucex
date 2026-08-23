@@ -147,7 +147,7 @@ messages to the per-chain log files. It is `0` by default.
 | `04_simulation_pgas` | `N_TIME PERIOD SIMULATION_SEED DRAWS WARMUP CHAINS PARTICLES MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE` |
 | `05_uccle_laplace` | `START END DRAWS WARMUP CHAINS MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
 | `06_uccle_pgas` | `START END DRAWS WARMUP CHAINS PARTICLES MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
-| `07_centered_ig_random_walk_gev` | `N_TIME SIMULATION_SEED DRAWS WARMUP CHAINS PARTICLES MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE` |
+| `07_centered_ig` | `N_TIME SIMULATION_SEED DRAWS WARMUP CHAINS PARTICLES MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE` |
 | `08_simulation_laplace_mh` | `N_TIME PERIOD SIMULATION_SEED DRAWS WARMUP CHAINS MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE MH_STEPS` |
 | `09_uccle_laplace_mh` | `START END DRAWS WARMUP CHAINS MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE MH_STEPS` |
 
@@ -183,15 +183,15 @@ PBS dependency is required. Use one timestamp prefix and descriptive suffixes:
 STAMP="$(date +%Y%m%d_%H%M%S)"
 qsub -v RUN_ID="${STAMP}_structures",N_TIME=1000,PERIOD=4 \
   job_scripts/submit_02_structural_simulations.pbs
-qsub -v RUN_ID="${STAMP}_sim_lap",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHAINS=4 \
+qsub -v RUN_ID="${STAMP}_sim_lap",N_TIME=1000,PERIOD=4,DRAWS=1000,WARMUP=1000,CHAINS=4 \
   job_scripts/submit_03_simulation_laplace.pbs
-qsub -v RUN_ID="${STAMP}_sim_pgas",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128 \
+qsub -v RUN_ID="${STAMP}_sim_pgas",N_TIME=1000,PERIOD=4,DRAWS=1000,WARMUP=1000,CHAINS=4,PARTICLES=128 \
   job_scripts/submit_04_simulation_pgas.pbs
-qsub -v RUN_ID="${STAMP}_centered_ig",ENGINE=laplace,N_TIME=1000,DRAWS=400,WARMUP=100,CHAINS=4,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025 \
-  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
-RUN_ID="${STAMP}_sim_laplace_mh" DRAWS=400 WARMUP=100 CHAINS=4 \
+qsub -v RUN_ID="${STAMP}_centered_ig",ENGINE=laplace,N_TIME=1000,DRAWS=1000,WARMUP=1000,CHAINS=4,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025 \
+  job_scripts/submit_07_centered_ig.pbs
+RUN_ID="${STAMP}_sim_laplace_mh" DRAWS=1000 WARMUP=1000 CHAINS=4 \
   bash bash_scripts/qsub_08_simulation_laplace_mh.sh
-qsub -v RUN_ID="${STAMP}_uccle_laplace_mh",START=1892-01-01,DRAWS=500,WARMUP=500,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1 \
+qsub -v RUN_ID="${STAMP}_uccle_laplace_mh",START=1892-01-01,DRAWS=1000,WARMUP=1000,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1 \
   job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
 

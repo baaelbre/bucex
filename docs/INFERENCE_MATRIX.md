@@ -70,7 +70,7 @@ It does not make the GEV observation scale conjugate. In disturbance/FS form,
 the process scale enters the predictor and continues to use its appropriate
 nonconjugate update.
 
-`examples/07_centered_ig_random_walk_gev.py` is an intentional benchmark, not
+`examples/07_centered_ig.py` is an intentional benchmark, not
 the recommended SSVS default. It combines `parameterization="centered"`,
 `asis=False`, a fast approximate-Laplace default, and
 `InverseGammaVariance` priors on

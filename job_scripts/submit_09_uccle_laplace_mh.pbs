@@ -12,8 +12,8 @@ mkdir -p logs
 
 START="${START:-1892-01-01}"
 END="${END:-latest}"
-DRAWS="${DRAWS:-500}"
-WARMUP="${WARMUP:-500}"
+DRAWS="${DRAWS:-1000}"
+WARMUP="${WARMUP:-1000}"
 CHAINS="${CHAINS:-4}"
 MCMC_SEED="${MCMC_SEED:-56000}"
 DATA_DIR="${DATA_DIR:-data}"
@@ -48,4 +48,3 @@ hostname
 bash bash_scripts/run_09_uccle_laplace_mh.sh \
   "${START}" "${END}" "${DRAWS}" "${WARMUP}" "${CHAINS}" "${MCMC_SEED}" \
   "${DATA_DIR}" "${RESULTS_ROOT}" "${RUN_ID}" "${OVERWRITE}" "${MH_STEPS}"
-

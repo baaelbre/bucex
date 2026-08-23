@@ -48,10 +48,12 @@ def _runner_defaults(filename: str) -> dict[str, str]:
 
 
 def test_simulation_laplace_mh_is_method_matched_to_laplace(monkeypatch):
+    simulation = _load_example("02", "02_structural_simulations.py", monkeypatch)
     laplace = _load_example("03", "03_simulation_laplace.py", monkeypatch)
+    pgas = _load_example("04", "04_simulation_pgas.py", monkeypatch)
     laplace_mh = _load_example("08", "08_simulation_laplace_mh.py", monkeypatch)
 
-    settings = (
+    simulation_settings = (
         "N_TIME",
         "PERIOD",
         "SIGMA",
@@ -66,6 +68,17 @@ def test_simulation_laplace_mh_is_method_matched_to_laplace(monkeypatch):
         "FIXED_SEASON_AMPLITUDE",
         "SEASONAL_SD",
         "SIMULATION_SEED",
+    )
+    for setting in simulation_settings:
+        expected = getattr(simulation, setting)
+        assert getattr(laplace, setting) == expected
+        assert getattr(pgas, setting) == expected
+        assert getattr(laplace_mh, setting) == expected
+    assert _scenario_contract(simulation) == _scenario_contract(laplace)
+    assert _scenario_contract(pgas) == _scenario_contract(laplace)
+    assert _scenario_contract(laplace_mh) == _scenario_contract(laplace)
+
+    fit_settings = (
         "DRAWS",
         "WARMUP",
         "CHAINS",
@@ -74,12 +87,15 @@ def test_simulation_laplace_mh_is_method_matched_to_laplace(monkeypatch):
         "PREDICTIVE_DRAWS",
         "FORECAST_HORIZON",
         "FORECAST_HISTORY",
+        "FOCUS_PHASE",
     )
-    for setting in settings:
+    for setting in fit_settings:
+        assert getattr(pgas, setting) == getattr(laplace, setting)
         assert getattr(laplace_mh, setting) == getattr(laplace, setting)
+    assert pgas.FIT_MODEL.to_dict() == laplace.FIT_MODEL.to_dict()
     assert laplace_mh.FIT_MODEL.to_dict() == laplace.FIT_MODEL.to_dict()
+    assert pgas.PRIOR_SETTINGS == laplace.PRIOR_SETTINGS
     assert laplace_mh.PRIOR_SETTINGS == laplace.PRIOR_SETTINGS
-    assert _scenario_contract(laplace_mh) == _scenario_contract(laplace)
     assert len(laplace_mh.SCENARIOS) == 6
 
     source = (ROOT / "examples" / "08_simulation_laplace_mh.py").read_text(
@@ -93,6 +109,7 @@ def test_simulation_laplace_mh_is_method_matched_to_laplace(monkeypatch):
 
 def test_uccle_laplace_mh_is_method_matched_to_laplace(monkeypatch):
     laplace = _load_example("05", "05_uccle_laplace.py", monkeypatch)
+    pgas = _load_example("06", "06_uccle_pgas.py", monkeypatch)
     laplace_mh = _load_example("09", "09_uccle_laplace_mh.py", monkeypatch)
 
     settings = (
@@ -108,11 +125,35 @@ def test_uccle_laplace_mh_is_method_matched_to_laplace(monkeypatch):
         "PREDICTIVE_DRAWS",
         "FORECAST_HORIZON",
         "FORECAST_HISTORY",
+        "FOCUS_MONTH",
+        "MONTH_LABELS",
     )
     for setting in settings:
+        assert getattr(pgas, setting) == getattr(laplace, setting)
         assert getattr(laplace_mh, setting) == getattr(laplace, setting)
+    assert pgas.MODEL.to_dict() == laplace.MODEL.to_dict()
     assert laplace_mh.MODEL.to_dict() == laplace.MODEL.to_dict()
+    assert pgas.PRIOR_SETTINGS == laplace.PRIOR_SETTINGS
     assert laplace_mh.PRIOR_SETTINGS == laplace.PRIOR_SETTINGS
+
+
+def test_scientific_settings_are_explicit_in_each_fit_script():
+    for filename in (
+        "03_simulation_laplace.py",
+        "04_simulation_pgas.py",
+        "05_uccle_laplace.py",
+        "06_uccle_pgas.py",
+        "08_simulation_laplace_mh.py",
+        "09_uccle_laplace_mh.py",
+    ):
+        source = (ROOT / "examples" / filename).read_text(encoding="utf-8")
+        assert "ALPHA_PRIOR_SD =" in source
+        assert "BETA_PRIOR_SD =" in source
+        assert "INNOVATION_SLAB_SD =" in source
+        assert "DRAWS =" in source
+        assert "WARMUP =" in source
+        assert "from example_settings" not in source
+        assert "import example_settings" not in source
 
     source = (ROOT / "examples" / "09_uccle_laplace_mh.py").read_text(
         encoding="utf-8"

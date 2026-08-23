@@ -10,7 +10,7 @@ import bucex as bx
 
 
 def test_v110_version_and_workflow_removal():
-    assert bx.__version__ == "1.1.4"
+    assert bx.__version__ == "1.2.0"
     assert not hasattr(bx, "make_structural_scenarios")
     assert not hasattr(bx, "PresentationWorkflow")
 
@@ -231,7 +231,7 @@ def test_hpc_surface_matches_the_ten_examples():
         "04_simulation_pgas",
         "05_uccle_laplace",
         "06_uccle_pgas",
-        "07_centered_ig_random_walk_gev",
+        "07_centered_ig",
         "08_simulation_laplace_mh",
         "09_uccle_laplace_mh",
     }

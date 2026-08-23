@@ -48,6 +48,9 @@ class Forecast:
     observation_model: Any
     transform_sign: Any = 1.0
     channel_names: tuple[str, ...] = ()
+    state_names: tuple[str, ...] = ()
+    period: int | None = None
+    phases: Array | None = None
 
     @property
     def is_multiseries_forecast(self) -> bool:
@@ -72,10 +75,80 @@ class Forecast:
     def horizon(self) -> int:
         return int(self.observations.shape[1])
 
-    def summary(self, level: float = 0.90, *, channel: str | None = None):
+    def _phase_indices(self, phase: int | None) -> Array:
+        if phase is None:
+            return np.arange(self.horizon)
+        if self.period is None or int(self.period) < 2:
+            raise ValueError("phase= requires a forecast with a seasonal period.")
+        selected_phase = int(phase)
+        if selected_phase != phase or not 1 <= selected_phase <= int(self.period):
+            raise ValueError(f"phase must be an integer from 1 to {self.period}.")
+        phases = (
+            np.asarray(self.phases, dtype=int).reshape(-1)
+            if self.phases is not None
+            else np.arange(self.horizon, dtype=int) % int(self.period) + 1
+        )
+        if phases.size != self.horizon:
+            raise ValueError("Forecast phases must have length equal to horizon.")
+        indices = np.flatnonzero(phases == selected_phase)
+        if indices.size == 0:
+            raise ValueError(
+                f"phase {selected_phase} is not present in this forecast horizon."
+            )
+        return indices
+
+    def component_draws(self, name: str) -> Array:
+        """Return one latent state component on the response orientation.
+
+        Component forecasts are currently defined for univariate models.  In
+        particular, ``component_draws("level")`` is the seasonally adjusted
+        structural trajectory: it excludes both the seasonal state and future
+        observation noise.
+        """
+
+        if self.is_multiseries_forecast:
+            raise ValueError(
+                "Latent component forecasts are currently available only for "
+                "univariate models."
+            )
+        if name not in self.state_names:
+            raise KeyError(
+                f"Unknown forecast state '{name}'. Available: {self.state_names}"
+            )
+        values = np.asarray(self.states[..., self.state_names.index(name)], dtype=float)
+        return float(self.transform_sign) * values
+
+    def _target_draws(self, target: str, *, channel: str | None) -> Array:
+        key = str(target).lower().replace("-", "_")
+        if key in {"observation", "observations", "predictive"}:
+            index = self._channel_index(channel)
+            return (
+                self.observations[:, :, index]
+                if self.is_multiseries_forecast
+                else self.observations
+            )
+        if key in {"eta", "predictor", "latent_predictor"}:
+            index = self._channel_index(channel)
+            return self.eta[:, :, index] if self.is_multiseries_forecast else self.eta
+        if key in {"level", "latent_level", "seasonally_adjusted"}:
+            return self.component_draws("level")
+        raise ValueError(
+            "target must be 'observations', 'predictor', or 'level'."
+        )
+
+    def summary(
+        self,
+        level: float = 0.90,
+        *,
+        channel: str | None = None,
+        target: str = "observations",
+        phase: int | None = None,
+    ):
         if not 0.0 < float(level) < 1.0:
             raise ValueError("level must lie in (0, 1).")
         alpha = 1.0 - float(level)
+        target_key = str(target).lower().replace("-", "_")
+        selected_horizons = self._phase_indices(phase)
         rows = []
         channels = (
             self.channel_names
@@ -84,23 +157,27 @@ class Forecast:
         )
         for selected in channels:
             index = self._channel_index(selected) if self.is_multiseries_forecast else 0
-            for h in range(self.horizon):
-                obs = (
-                    self.observations[:, h, index]
-                    if self.is_multiseries_forecast
-                    else self.observations[:, h]
-                )
+            target_draws = self._target_draws(target_key, channel=selected)
+            for h in selected_horizons:
+                values = target_draws[:, h]
                 eta = self.eta[:, h, index] if self.is_multiseries_forecast else self.eta[:, h]
                 row = {
                     "time": self.dates[h],
-                    "mean": float(np.mean(obs)),
-                    "lower": float(np.quantile(obs, alpha / 2.0)),
-                    "median": float(np.median(obs)),
-                    "upper": float(np.quantile(obs, 1.0 - alpha / 2.0)),
-                    "eta_lower": float(np.quantile(eta, alpha / 2.0)),
-                    "eta_median": float(np.median(eta)),
-                    "eta_upper": float(np.quantile(eta, 1.0 - alpha / 2.0)),
+                    "mean": float(np.mean(values)),
+                    "lower": float(np.quantile(values, alpha / 2.0)),
+                    "median": float(np.median(values)),
+                    "upper": float(np.quantile(values, 1.0 - alpha / 2.0)),
                 }
+                if target_key in {"observation", "observations", "predictive"}:
+                    row.update(
+                        {
+                            "eta_lower": float(np.quantile(eta, alpha / 2.0)),
+                            "eta_median": float(np.median(eta)),
+                            "eta_upper": float(np.quantile(eta, 1.0 - alpha / 2.0)),
+                        }
+                    )
+                if phase is not None:
+                    row["phase"] = int(phase)
                 if selected is not None:
                     row["channel"] = selected
                 rows.append(row)
@@ -320,6 +397,9 @@ class Forecast:
         *,
         level: float = 0.90,
         channel: str | None = None,
+        target: str = "observations",
+        phase: int | None = None,
+        phase_label: str | None = None,
         ax=None,
         color: str = "C0",
         observed=None,
@@ -337,6 +417,10 @@ class Forecast:
         Supply ``history`` (and, for dated fits, ``history_dates``) to place
         recent observations immediately before a forecast.  The optional
         ``history_points`` argument keeps only the most recent values.
+
+        ``target="level"`` plots the seasonally adjusted latent level without
+        observation noise. ``phase=`` retains one one-based seasonal phase,
+        for example ``phase=7`` for July when a monthly fit starts in January.
         """
 
         import matplotlib.pyplot as plt
@@ -345,14 +429,21 @@ class Forecast:
             _, ax = plt.subplots(figsize=(9, 4))
         if self.is_multiseries_forecast and channel is None:
             channel = self.channel_names[0]
-        summary = self.summary(level=level, channel=channel)
+        target_key = str(target).lower().replace("-", "_")
+        selected_horizons = self._phase_indices(phase)
+        summary = self.summary(
+            level=level,
+            channel=channel,
+            target=target_key,
+            phase=phase,
+        )
         if hasattr(summary, "columns"):
             x = summary["time"]
             lower = summary["lower"].to_numpy()
             median = summary["median"].to_numpy()
             upper = summary["upper"].to_numpy()
         else:
-            x = np.arange(self.horizon)
+            x = np.asarray([row["time"] for row in summary])
             lower = np.asarray([row["lower"] for row in summary])
             median = np.asarray([row["median"] for row in summary])
             upper = np.asarray([row["upper"] for row in summary])
@@ -392,26 +483,63 @@ class Forecast:
                     raise ValueError("history_points must be positive.")
                 history_values = history_values[-history_points:]
                 history_x = history_x[-history_points:]
-            ax.scatter(
-                history_x,
-                history_values,
-                s=10,
-                color="0.55",
-                alpha=0.55,
-                label="observed history",
-            )
+            if phase is not None:
+                if self.period is None:
+                    raise ValueError("phase= requires a seasonal forecast.")
+                first_future_phase = (
+                    int(np.asarray(self.phases, dtype=int).reshape(-1)[0])
+                    if self.phases is not None
+                    else 1
+                )
+                history_phases = (
+                    first_future_phase
+                    - history_values.size
+                    - 1
+                    + np.arange(history_values.size)
+                ) % int(self.period) + 1
+                selected_history = history_phases == int(phase)
+                history_values = history_values[selected_history]
+                history_x = history_x[selected_history]
+            if target_key in {"level", "latent_level", "seasonally_adjusted"}:
+                ax.plot(
+                    history_x,
+                    history_values,
+                    color="0.45",
+                    linewidth=1.0,
+                    label="latent level history",
+                )
+            else:
+                ax.scatter(
+                    history_x,
+                    history_values,
+                    s=10,
+                    color="0.55",
+                    alpha=0.55,
+                    label="observed history",
+                )
             ax.axvline(np.asarray(x)[0], color="0.45", linestyle=":", linewidth=1.0)
 
+        latent_target = target_key not in {"observation", "observations", "predictive"}
         ax.fill_between(
             x,
             lower,
             upper,
             color=color,
             alpha=0.2,
-            label=f"{level:.0%} predictive interval",
+            label=f"{level:.0%} {'credible' if latent_target else 'predictive'} interval",
         )
-        ax.plot(x, median, color=color, label="predictive median")
+        line_label = {
+            "eta": "predictor median",
+            "predictor": "predictor median",
+            "latent_predictor": "predictor median",
+            "level": "latent level median",
+            "latent_level": "latent level median",
+            "seasonally_adjusted": "latent level median",
+        }.get(target_key, "predictive median")
+        ax.plot(x, median, color=color, label=line_label)
         if show_eta:
+            if latent_target:
+                raise ValueError("show_eta is only valid for target='observations'.")
             eta_values = (
                 self.eta[:, :, self._channel_index(channel)]
                 if self.is_multiseries_forecast
@@ -419,7 +547,7 @@ class Forecast:
             )
             ax.plot(
                 x,
-                np.median(eta_values, axis=0),
+                np.median(eta_values[:, selected_horizons], axis=0),
                 color=color,
                 linestyle="--",
                 linewidth=1.0,
@@ -427,8 +555,13 @@ class Forecast:
             )
         if observed is not None:
             observed_values = selected_values(observed, label="observed")
-            if observed_values.size != self.horizon:
-                raise ValueError("observed must have length equal to the predictive horizon.")
+            if observed_values.size == self.horizon:
+                observed_values = observed_values[selected_horizons]
+            elif observed_values.size != selected_horizons.size:
+                raise ValueError(
+                    "observed must have length equal to the predictive horizon "
+                    "or the selected phase."
+                )
             ax.scatter(
                 x,
                 observed_values,
@@ -437,13 +570,20 @@ class Forecast:
                 alpha=0.6,
                 label="observed",
             )
-        default_title = (
-            "Posterior predictive check"
-            if observed is not None
-            else "Posterior predictive forecast"
-        )
+        if target_key in {"level", "latent_level", "seasonally_adjusted"}:
+            default_title = "Latent level forecast"
+        elif target_key in {"eta", "predictor", "latent_predictor"}:
+            default_title = "Latent predictor forecast"
+        else:
+            default_title = (
+                "Posterior predictive check"
+                if observed is not None
+                else "Posterior predictive forecast"
+            )
         if channel is not None:
             default_title = f"{default_title}: {channel}"
+        if phase is not None:
+            default_title = f"{default_title}: {phase_label or f'phase {phase}'}"
         ax.set_title(default_title if title is None else str(title))
         if ylabel is not None:
             ax.set_ylabel(str(ylabel))
@@ -533,6 +673,13 @@ def posterior_predictive(
             observation_model=fit.model.observations,
             transform_sign=signs,
             channel_names=fit.channel_names,
+            state_names=fit.state_names,
+            period=fit.model.period,
+            phases=(
+                np.arange(fit.n_time, dtype=int) % int(fit.model.period) + 1
+                if fit.model.period is not None
+                else None
+            ),
         )
 
     required_parameters = ("sigma",) + (("xi",) if fit.family == "gev" else ())
@@ -565,6 +712,13 @@ def posterior_predictive(
         tail="lower" if sign < 0.0 else "upper",
         observation_model=fit.model.observation,
         transform_sign=sign,
+        state_names=fit.state_names,
+        period=fit.model.period,
+        phases=(
+            np.arange(fit.n_time, dtype=int) % int(fit.model.period) + 1
+            if fit.model.period is not None
+            else None
+        ),
     )
 
 
@@ -640,6 +794,15 @@ def posterior_predict(
             observation_model=fit.model.observations,
             transform_sign=signs,
             channel_names=fit.channel_names,
+            state_names=fit.state_names,
+            period=fit.model.period,
+            phases=(
+                np.arange(fit.n_time, fit.n_time + horizon, dtype=int)
+                % int(fit.model.period)
+                + 1
+                if fit.model.period is not None
+                else None
+            ),
         )
     required_parameters = [
         *(f"sd.{name}" for name in fit.compiled.noise_names),
@@ -697,4 +860,13 @@ def posterior_predict(
         tail="lower" if sign < 0.0 else "upper",
         observation_model=fit.model.observation,
         transform_sign=sign,
+        state_names=fit.state_names,
+        period=fit.model.period,
+        phases=(
+            np.arange(fit.n_time, fit.n_time + horizon, dtype=int)
+            % int(fit.model.period)
+            + 1
+            if fit.model.period is not None
+            else None
+        ),
     )

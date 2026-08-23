@@ -18,6 +18,43 @@ forecast.plot(save="figures/forecast.png")
 For hierarchical forecasts, pass `channel="TXx"` for a single-channel view or
 provide a held-out matrix with shape `(horizon, n_channels)` to `score()`.
 
+## Seasonal and latent-level views
+
+For a univariate seasonal model, `phase` is one-based and follows the fitted
+model cycle. It filters both summaries and plots:
+
+```python
+july = forecast.summary(phase=7)
+forecast.plot(
+    phase=7,
+    phase_label="July",
+    history=fit.observed,
+    history_dates=fit.dates,
+    history_points=360,
+)
+```
+
+The supplied history must be contiguous and end immediately before the
+forecast; the plot then retains the matching historical phase automatically.
+If the fit does not start in January, convert a calendar month to the model
+phase with `(month - first_month) % period + 1`, as the Uccle examples do.
+
+Use `target="level"` to exclude seasonality and future observation noise:
+
+```python
+level_table = forecast.summary(target="level")
+level_draws = forecast.component_draws("level")
+forecast.plot(
+    target="level",
+    history=np.median(fit.state_original("level"), axis=0),
+    history_dates=fit.dates,
+)
+```
+
+This is a posterior credible interval for the structural level, not a
+predictive interval for future extremes. The default `target="observations"`
+remains unchanged.
+
 ## Implemented proper scores
 
 - `log`: negative log posterior-predictive density. BUCEX evaluates the

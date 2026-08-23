@@ -1,4 +1,4 @@
-# bucex 1.1.4 examples
+# bucex 1.2.0 examples
 
 The first seven standalone files reproduce the complete COMPSTAT analysis. An
 eighth diagnostic benchmark makes the classical centered/inverse-gamma
@@ -13,7 +13,7 @@ intended to be read as well as run:
 5. `04_simulation_pgas.py` — PGAS fits initialized from Laplace.
 6. `05_uccle_laplace.py` — Laplace analysis of TXx, TXn, TNx, and TNn.
 7. `06_uccle_pgas.py` — PGAS analysis and engine comparison.
-8. `07_centered_ig_random_walk_gev.py` — centered random-walk GEV with
+8. `07_centered_ig.py` — centered random-walk GEV with
    conjugate inverse-gamma process-variance updates, a fast Laplace default,
    optional exact Laplace-MH/PGAS validation, and mandatory mixing diagnostics.
 9. `08_simulation_laplace_mh.py` — exact Laplace-MH analysis of the same six
@@ -24,10 +24,13 @@ intended to be read as well as run:
     and TNn under the same model, calibrated priors, tables, and figures as
     example 05, with acceptance and endpoint-support diagnostics.
 
-The four component-selection fitting examples also save both forms of the level plot, a dedicated
-slope plot, posterior seasonality, a posterior predictive check, and an
-out-of-sample forecast. The Uccle slope figures use degrees per decade and can
-show the conditional fixed-slope posterior beside the stochastic one.
+The six component-selection fitting examples save both forms of the level
+plot, a dedicated slope plot, posterior seasonality, a posterior predictive
+check, and an out-of-sample forecast. They also save one phase-specific
+trajectory/forecast and a seasonally adjusted latent-level forecast. The
+simulation phase defaults to 1; the Uccle calendar month defaults to July.
+The Uccle slope figures use degrees per decade and can show the conditional
+fixed-slope posterior beside the stochastic one.
 The diagnostic example has no slope or seasonal component; it saves both level
 figures, parameter and process-variance traces, ACFs, ESS/R-hat tables,
 engine diagnostics, a posterior predictive check, and a forecast.
@@ -46,7 +49,7 @@ python examples/03_simulation_laplace.py
 python examples/04_simulation_pgas.py
 python examples/05_uccle_laplace.py
 python examples/06_uccle_pgas.py
-python examples/07_centered_ig_random_walk_gev.py
+python examples/07_centered_ig.py
 python examples/08_simulation_laplace_mh.py
 python examples/09_uccle_laplace_mh.py
 ```
@@ -61,8 +64,9 @@ existing identifier.
 Simulation-fitting examples store artifacts under `simulations/`,
 `fits/<scenario>/`, `tables/<scenario>/`, and `figures/<scenario>/`. Uccle
 fitting examples use `fits/<series>/`, `tables/<series>/`, and
-`figures/<series>/`. The paired Laplace and Laplace-MH scripts intentionally
-share those layouts and all scientific defaults.
+`figures/<series>/`. The Laplace, PGAS, and Laplace-MH scripts intentionally
+share those layouts and all scientific defaults. The settings are repeated
+explicitly in each script and checked for equality by the release tests.
 
 Run signatures and repeated figure/table names are deliberately compact. This
 keeps the complete path below the legacy Windows directory limit even when the

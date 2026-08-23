@@ -21,7 +21,7 @@ def _load_example(name: str):
 
 
 def test_v114_version_and_scenario_filter(monkeypatch):
-    assert bx.__version__ == "1.1.4"
+    assert bx.__version__ == "1.2.0"
     monkeypatch.delenv("BUCEX_SCENARIO_KEYS", raising=False)
     complete = _load_example("bucex_example08_complete")
     assert [scenario["key"] for scenario in complete.SCENARIOS] == [

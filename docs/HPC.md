@@ -1,4 +1,4 @@
-# Running bucex 1.1.4 with PBS
+# Running bucex 1.2.0 with PBS
 
 Run every command below from the clean `bucex` repository root. Most fitting
 jobs reserve four cores and start one independent one-chain process per core.
@@ -22,7 +22,7 @@ missing; they never silently fall back to another Python. If the environment
 is elsewhere, include its location in the submission, for example:
 
 ```bash
-qsub -v BUCEX_VENV_DIR="$HOME/path/to/bucex_env",DRAWS=400,WARMUP=100,CHAINS=4 \
+qsub -v BUCEX_VENV_DIR="$HOME/path/to/bucex_env",DRAWS=1000,WARMUP=1000,CHAINS=4 \
   job_scripts/submit_03_simulation_laplace.pbs
 ```
 
@@ -35,7 +35,7 @@ This is the recommended example-08 workflow. The defaults submit six scenarios
 times four chains as 24 independent tasks, with all 24 eligible to run at once:
 
 ```bash
-cd /path/to/bucex-1.1.4
+cd /path/to/bucex-1.2.0
 export BUCEX_VENV_DIR="$HOME/venvs/bucex_env"
 bash bash_scripts/qsub_08_simulation_laplace_mh.sh
 ```
@@ -97,25 +97,25 @@ qsub -v N_TIME=800,PERIOD=4,RESULTS_ROOT=results,RUN_ID="${STAMP}_tails" \
 qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_structures" \
   job_scripts/submit_02_structural_simulations.pbs
 
-qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=400,WARMUP=100,CHAINS=4,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_lap" \
+qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=1000,WARMUP=1000,CHAINS=4,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_lap" \
   job_scripts/submit_03_simulation_laplace.pbs
 
-qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_pgas" \
+qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=1000,WARMUP=1000,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_pgas" \
   job_scripts/submit_04_simulation_pgas.pbs
 
-qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_lap" \
+qsub -v START=1892-01-01,END=latest,DRAWS=1000,WARMUP=1000,CHAINS=4,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_lap" \
   job_scripts/submit_05_uccle_laplace.pbs
 
-qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_pgas" \
+qsub -v START=1892-01-01,END=latest,DRAWS=1000,WARMUP=1000,CHAINS=4,PARTICLES=128,MCMC_SEED=56000,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_pgas" \
   job_scripts/submit_06_uccle_pgas.pbs
 
-qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig" \
-  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
+qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=1000,WARMUP=1000,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig" \
+  job_scripts/submit_07_centered_ig.pbs
 
-RUN_ID="${STAMP}_sim_laplace_mh" DRAWS=400 WARMUP=100 CHAINS=4 \
+RUN_ID="${STAMP}_sim_laplace_mh" DRAWS=1000 WARMUP=1000 CHAINS=4 \
   bash bash_scripts/qsub_08_simulation_laplace_mh.sh
 
-qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_laplace_mh" \
+qsub -v START=1892-01-01,END=latest,DRAWS=1000,WARMUP=1000,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_laplace_mh" \
   job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
 
@@ -146,7 +146,7 @@ qsub -v START=1892-01-01,END=latest,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=51
   job_scripts/submit_06_uccle_pgas.pbs
 
 qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig_final" \
-  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
+  job_scripts/submit_07_centered_ig.pbs
 
 RUN_ID="${STAMP}_sim_laplace_mh_final" \
   DRAWS=1000 WARMUP=1000 CHAINS=4 MAX_CONCURRENT=24 \
@@ -208,19 +208,19 @@ the top of each runner.  For example:
 
 ```bash
 bash bash_scripts/run_05_uccle_laplace.sh \
-  1892-01-01 latest 400 100 4 56000 data results manual_laplace 0
+  1892-01-01 latest 1000 1000 4 56000 data results manual_laplace 0
 
 bash bash_scripts/run_06_uccle_pgas.sh \
-  1892-01-01 latest 400 100 4 128 56000 data results manual_pgas 0
+  1892-01-01 latest 1000 1000 4 128 56000 data results manual_pgas 0
 
-bash bash_scripts/run_07_centered_ig_random_walk_gev.sh \
-  1000 13081997 400 100 4 128 13081997 results manual_centered_ig 0
+bash bash_scripts/run_07_centered_ig.sh \
+  1000 13081997 1000 1000 4 128 13081997 results manual_centered_ig 0
 
 bash bash_scripts/run_08_simulation_laplace_mh.sh \
-  1000 4 13081997 400 100 4 13081997 results manual_sim_laplace_mh 0 1
+  1000 4 13081997 1000 1000 4 13081997 results manual_sim_laplace_mh 0 1
 
 bash bash_scripts/run_09_uccle_laplace_mh.sh \
-  1892-01-01 latest 500 500 4 56000 data results manual_uccle_laplace_mh 0 1
+  1892-01-01 latest 1000 1000 4 56000 data results manual_uccle_laplace_mh 0 1
 ```
 
 For example 07, the process truth and inverse-gamma sensitivity settings may
@@ -228,7 +228,7 @@ be supplied by name without editing either HPC file:
 
 ```bash
 qsub -v ENGINE=laplace,RANDOM_WALK_SD=0.03,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0009,DRAWS=2000,WARMUP=2000,CHAINS=4 \
-  job_scripts/submit_07_centered_ig_random_walk_gev.pbs
+  job_scripts/submit_07_centered_ig.pbs
 ```
 
 Here `LEVEL_IG_B` is the scale of the prior on the innovation variance, not on

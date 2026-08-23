@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.2.0
+
+- Standardized the simulation truths across examples 02, 03, 04, and 08 and
+  the fitted model, calibrated SSVS prior, MCMC defaults, predictive settings,
+  and output names across examples 03, 04, and 08.
+- Standardized the Uccle model, prior, MCMC defaults, forecast settings, and
+  output names across examples 05, 06, and 09.
+- Kept every scientific setting explicitly defined in each script and expanded
+  parity tests to compare all approximate and exact engines.
+- Added one-based `phase=` filtering to fitted predictor and latent-level plots.
+- Added `phase=`, `target="level"`, and `component_draws()` to forecasts and
+  forecast summaries, including phase-matched history plotting.
+- Added phase-specific and seasonally adjusted forecast tables/figures to all
+  simulation and Uccle fitting examples.
+- Renamed the centered inverse-gamma example and its launchers to
+  `07_centered_ig` and standardized its output/log stem.
+- Raised the numbered fit-script, Bash-runner, and PBS defaults to 1,000 warmup
+  plus 1,000 retained iterations per chain.
+- Kept the exact inference kernels and archive schema 2.6.2 unchanged.
+
 ## 1.1.4
 
 - Added a PBS fan-out/fan-in workflow for example 08. The default six

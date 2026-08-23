@@ -77,9 +77,9 @@ SEASON_PROBABILITIES = tuple(
     for value in os.environ.get("BUCEX_SEASON_PROBABILITIES", "0:0.5:0.5").split(":")
 )
 
-# MCMC. These values can also be supplied through the environment.
-DRAWS = int(os.environ.get("BUCEX_DRAWS", "500"))
-WARMUP = int(os.environ.get("BUCEX_WARMUP", "500"))
+# MCMC. These defaults are deliberately identical to example 05.
+DRAWS = int(os.environ.get("BUCEX_DRAWS", "1000"))
+WARMUP = int(os.environ.get("BUCEX_WARMUP", "1000"))
 CHAINS = int(os.environ.get("BUCEX_CHAINS", "1"))
 SEED = int(os.environ.get("BUCEX_SEED", "56000"))
 MH_STEPS = int(os.environ.get("BUCEX_LAPLACE_MH_STEPS", "1"))
@@ -97,6 +97,13 @@ DIAGNOSTIC_FIGURES = False
 PREDICTIVE_DRAWS = int(os.environ.get("BUCEX_PREDICTIVE_DRAWS", "500"))
 FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", "120"))
 FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", "360"))
+FOCUS_MONTH = int(os.environ.get("BUCEX_FOCUS_MONTH", "7"))
+if not 1 <= FOCUS_MONTH <= PERIOD:
+    raise ValueError("BUCEX_FOCUS_MONTH must be between 1 and 12.")
+MONTH_LABELS = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)
 
 RUN_SIGNATURE = (
     f"y{START.removesuffix('-01-01')}-{(END or 'latest').removesuffix('-12-31')}"
@@ -177,6 +184,7 @@ def main() -> None:
             "predictive_draws": PREDICTIVE_DRAWS,
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
+            "focus_month": FOCUS_MONTH,
         },
         "chain_only": CHAIN_ONLY,
         "combined_chain_runs": [str(path) for path in COMBINE_RUNS],
@@ -187,6 +195,8 @@ def main() -> None:
 
     for number, name in enumerate(SERIES):
         values = bx.load_uccle_series(name, DATA_DIR, start=START, end=END)
+        focus_phase = (FOCUS_MONTH - int(values.index[0].month)) % PERIOD + 1
+        focus_label = MONTH_LABELS[FOCUS_MONTH - 1]
         tail = bx.UCCLE_INFO[name]["tail"]
         sign = -1.0 if tail == "min" else 1.0
         transformed = sign * values.to_numpy(float)
@@ -284,7 +294,7 @@ def main() -> None:
         pd.DataFrame([{"metric": key, "value": value} for key, value in diagnostics["engine"].items()]).to_csv(table_dir / "algorithm.csv", index=False)
         eta_draws = laplace_fit.eta_draws(original_scale=True)
         lower, median, upper = np.quantile(eta_draws, [0.05, 0.50, 0.95], axis=0)
-        pd.DataFrame({"date": values.index, "observed": values.to_numpy(), "lower": lower, "median": median, "upper": upper}).to_csv(
+        pd.DataFrame({"date": values.index, "month": values.index.month, "observed": values.to_numpy(), "lower": lower, "median": median, "upper": upper}).to_csv(
             table_dir / "trajectory.csv", index=False
         )
         selection = laplace_fit.component_probabilities().reset_index()
@@ -308,6 +318,15 @@ def main() -> None:
             seed=SEED + 30_000 + number,
         )
         forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
+        focus_forecast = forecast.summary(level=0.90, phase=focus_phase)
+        focus_forecast.insert(1, "calendar_month", FOCUS_MONTH)
+        focus_forecast.insert(2, "calendar_month_label", focus_label)
+        focus_forecast.to_csv(
+            table_dir / f"forecast_{focus_label.lower()}.csv", index=False
+        )
+        forecast.summary(level=0.90, target="level").to_csv(
+            table_dir / "forecast_level.csv", index=False
+        )
         (table_dir / "summary.json").write_text(
             json.dumps(
                 {
@@ -336,6 +355,19 @@ def main() -> None:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
+        figure, axis = laplace_fit.plot(
+            "predictor", credible_interval=0.90, phase=focus_phase
+        )
+        axis.set_title(f"{name}: {focus_label} GEV-location trajectory (Laplace-MH)")
+        axis.set_ylabel("GEV location / °C")
+        for extension in FIGURE_FORMATS:
+            figure.savefig(
+                figure_dir / f"trajectory_{focus_label.lower()}.{extension}",
+                dpi=FIGURE_DPI,
+                bbox_inches="tight",
+            )
+        plt.close(figure)
+
         axis = predictive.plot(
             level=0.90,
             observed=laplace_fit.observed,
@@ -358,6 +390,44 @@ def main() -> None:
         figure = axis.figure
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"forecast.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
+        plt.close(figure)
+
+        axis = forecast.plot(
+            level=0.90,
+            phase=focus_phase,
+            phase_label=focus_label,
+            history=laplace_fit.observed,
+            history_dates=values.index,
+            history_points=FORECAST_HISTORY,
+            title=f"{name}: {focus_label} posterior predictive forecast (Laplace-MH)",
+            ylabel="temperature / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(
+                figure_dir / f"forecast_{focus_label.lower()}.{extension}",
+                dpi=FIGURE_DPI,
+                bbox_inches="tight",
+            )
+        plt.close(figure)
+
+        level_history = np.median(laplace_fit.state_original("level"), axis=0)
+        axis = forecast.plot(
+            level=0.90,
+            target="level",
+            history=level_history,
+            history_dates=values.index,
+            history_points=FORECAST_HISTORY,
+            title=f"{name}: seasonally adjusted level forecast (Laplace-MH)",
+            ylabel="latent GEV level / °C",
+        )
+        figure = axis.figure
+        for extension in FIGURE_FORMATS:
+            figure.savefig(
+                figure_dir / f"forecast_level.{extension}",
+                dpi=FIGURE_DPI,
+                bbox_inches="tight",
+            )
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("level", credible_interval=0.90)
@@ -448,4 +518,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
