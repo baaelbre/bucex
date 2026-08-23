@@ -48,7 +48,7 @@ FIXED_SEASON_AMPLITUDE = float(
     os.environ.get("BUCEX_FIXED_SEASON_AMPLITUDE", "0.25")
 )
 SEASONAL_SD = float(os.environ.get("BUCEX_SEASONAL_SD", "0.05"))
-SIMULATION_SEED = int(os.environ.get("BUCEX_SIMULATION_SEED", "13081997"))
+SIMULATION_SEED = int(os.environ.get("BUCEX_SIMULATION_SEED", "13081998")) # set to 13081997
 
 # Prior hyperparameters.
 ALPHA_PRIOR_SD = float(os.environ.get("BUCEX_ALPHA_PRIOR_SD", "3.2"))
@@ -176,6 +176,9 @@ SCENARIOS = (
         "structural_truth": {"level": 2, "slope": 2, "seasonal": 1},
     },
 )
+
+# only stationary
+#SCENARIOS = tuple(scenario for scenario in SCENARIOS if scenario["name"] == "stationary")
 
 # Fit one encompassing model to every scenario. SSVS decides whether each
 # process is zero, fixed, or dynamic; no scenario-specific model is supplied.
