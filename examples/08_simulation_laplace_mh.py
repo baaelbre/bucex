@@ -11,6 +11,7 @@ writes the posterior summaries without a workflow layer.
 from __future__ import annotations
 
 from datetime import datetime
+import io
 import json
 import os
 from pathlib import Path
@@ -99,6 +100,11 @@ COMBINE_RUNS = tuple(
     for value in os.environ.get("BUCEX_COMBINE_RUNS", "").split(os.pathsep)
     if value
 )
+ARRAY_WORKFLOW = os.environ.get("BUCEX_ARRAY_WORKFLOW", "0").lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 FIGURE_FORMATS = ("pdf", "png")
 FIGURE_DPI = 180
@@ -117,7 +123,7 @@ dynamic_cycle -= dynamic_cycle.mean()
 fixed_cycle = -FIXED_SEASON_AMPLITUDE * np.cos(2.0 * np.pi * phase / PERIOD)
 fixed_cycle -= fixed_cycle.mean()
 
-SCENARIOS = (
+ALL_SCENARIOS = (
     {
         "name": "stationary",
         "key": "stationary",
@@ -182,6 +188,33 @@ SCENARIOS = (
     },
 )
 
+ALL_SCENARIO_INDEX = {
+    scenario["key"]: index for index, scenario in enumerate(ALL_SCENARIOS)
+}
+_requested_scenario_keys = tuple(
+    value.strip()
+    for value in os.environ.get("BUCEX_SCENARIO_KEYS", "").split(os.pathsep)
+    if value.strip()
+)
+if _requested_scenario_keys:
+    unknown_scenario_keys = tuple(
+        key for key in _requested_scenario_keys if key not in ALL_SCENARIO_INDEX
+    )
+    if unknown_scenario_keys:
+        raise ValueError(
+            "Unknown BUCEX_SCENARIO_KEYS: "
+            + ", ".join(unknown_scenario_keys)
+            + ". Available keys: "
+            + ", ".join(ALL_SCENARIO_INDEX)
+        )
+    if len(set(_requested_scenario_keys)) != len(_requested_scenario_keys):
+        raise ValueError("BUCEX_SCENARIO_KEYS must not contain duplicates.")
+    SCENARIOS = tuple(
+        ALL_SCENARIOS[ALL_SCENARIO_INDEX[key]] for key in _requested_scenario_keys
+    )
+else:
+    SCENARIOS = ALL_SCENARIOS
+
 # Fit one encompassing model to every scenario. SSVS decides whether each
 # process is zero, fixed, or dynamic; no scenario-specific model is supplied.
 FIT_MODEL = bx.Model(
@@ -206,6 +239,133 @@ PRIOR_SETTINGS = {
     "trend_probabilities": list(TREND_PROBABILITIES),
     "season_probabilities": list(SEASON_PROBABILITIES),
 }
+
+
+def expected_truth_for(scenario: dict[str, object]) -> dict[str, object]:
+    """Return the complete reproducibility record for one simulation."""
+
+    params = scenario["params"]
+    return {
+        "name": scenario["name"],
+        "n_time": N_TIME,
+        "period": PERIOD,
+        "model": scenario["model"].to_dict(),
+        "params": params,
+        "parameter_truth": {
+            "sigma": SIGMA,
+            "xi": XI,
+            "sd.level": params.get("sd.level", 0.0),
+            "sd.slope": params.get("sd.slope", 0.0),
+            "sd.seasonal": params.get("sd.seasonal", 0.0),
+        },
+        "structural_truth": scenario["structural_truth"],
+        "initial_state": scenario["initial_state"].tolist(),
+        "seed": scenario["seed"],
+    }
+
+
+def simulate_scenario_table(
+    scenario: dict[str, object],
+) -> tuple[pd.DataFrame, dict[str, object]]:
+    """Simulate one scenario and reproduce the canonical CSV representation."""
+
+    simulation = bx.simulate(
+        scenario["model"],
+        N_TIME,
+        scenario["params"],
+        initial_state=scenario["initial_state"],
+        seed=scenario["seed"],
+    )
+    state_names = scenario["model"].state_names
+    states = simulation.states[1:]
+    seasonal_name = next(
+        (name for name in state_names if name.startswith("seasonal[")), None
+    )
+    table = pd.DataFrame(
+        {
+            "time": np.arange(1, N_TIME + 1),
+            "cycle": np.arange(N_TIME) // PERIOD + 1,
+            "phase": np.arange(N_TIME) % PERIOD + 1,
+            "y": simulation.y,
+            "eta": simulation.eta,
+            "level": states[:, state_names.index("level")],
+            "slope": (
+                states[:, state_names.index("slope")]
+                if "slope" in state_names
+                else np.zeros(N_TIME)
+            ),
+            "seasonal": (
+                states[:, state_names.index(seasonal_name)]
+                if seasonal_name
+                else np.zeros(N_TIME)
+            ),
+        }
+    )
+    # Every standalone and PBS-array fit sees exactly the float representation
+    # written by the finalizer, without requiring concurrent jobs to share a
+    # simulation CSV while they are sampling.
+    csv_buffer = io.StringIO()
+    table.to_csv(csv_buffer, index=False)
+    csv_buffer.seek(0)
+    return pd.read_csv(csv_buffer), expected_truth_for(scenario)
+
+
+def priors_for(y: np.ndarray) -> bx.FSGEVPriors:
+    """Construct the method-matched SSVS prior used by examples 03 and 08."""
+
+    return bx.ssvs_gev_priors(
+        period=PERIOD,
+        alpha_mean=float(np.median(y)),
+        alpha_sd=ALPHA_PRIOR_SD,
+        beta_mean=BETA_PRIOR_MEAN,
+        beta_sd=BETA_PRIOR_SD,
+        seasonal_initial_sd=INITIAL_SEASON_PRIOR_SD,
+        sigma2_prior=bx.InverseGammaPrior(SIGMA2_PRIOR_A, SIGMA2_PRIOR_B),
+        xi_prior=bx.UniformPrior(*XI_PRIOR_BOUNDS),
+        xi_max_abs=XI_MAX_ABS,
+        innovation_slab_sd=INNOVATION_SLAB_SD,
+        level_dynamic_probability=LEVEL_DYNAMIC_PROBABILITY,
+        trend_probabilities=TREND_PROBABILITIES,
+        season_probabilities=SEASON_PROBABILITIES,
+    )
+
+
+def fit_scenario(
+    scenario: dict[str, object],
+    table: pd.DataFrame,
+    truth: dict[str, object],
+    *,
+    seed: int,
+    chains: int,
+    progress: bool,
+) -> bx.FitResult:
+    """Fit one structural scenario with the exact Laplace-MH kernel."""
+
+    fit = bx.fit(
+        table["y"].to_numpy(float),
+        model=FIT_MODEL,
+        priors=priors_for(table["y"].to_numpy(float)),
+        engine="laplace_mh",
+        parameterization="fruehwirth_schnatter",
+        asis=False,
+        mcmc=bx.MCMC(
+            draws=DRAWS,
+            warmup=WARMUP,
+            chains=chains,
+            seed=seed,
+            progress=progress,
+        ),
+        laplace=bx.Laplace(mh_steps=MH_STEPS),
+        name=scenario["name"],
+    )
+    fit.metadata.update(
+        {
+            "example": "simulation_laplace_mh",
+            "truth": truth,
+            "prior_settings": PRIOR_SETTINGS,
+        }
+    )
+    return fit
 
 
 def main() -> None:
@@ -233,6 +393,8 @@ def main() -> None:
         "bucex_version": bx.__version__,
         "engine": "laplace_mh",
         "target": "exact posterior",
+        "array_workflow": ARRAY_WORKFLOW,
+        "array_task_root": str(OUTPUT_DIR / "tasks") if ARRAY_WORKFLOW else None,
         "simulation": {
             "n_time": N_TIME,
             "period": PERIOD,
@@ -277,26 +439,11 @@ def main() -> None:
         json.dumps(run_config, indent=2, sort_keys=True), encoding="utf-8"
     )
 
-    for number, scenario in enumerate(SCENARIOS):
+    for scenario in SCENARIOS:
+        number = ALL_SCENARIO_INDEX[scenario["key"]]
         data_path = OUTPUT_DIR / "simulations" / f"{scenario['key']}.csv"
         truth_path = data_path.with_suffix(".json")
-        expected_truth = {
-            "name": scenario["name"],
-            "n_time": N_TIME,
-            "period": PERIOD,
-            "model": scenario["model"].to_dict(),
-            "params": scenario["params"],
-            "parameter_truth": {
-                "sigma": SIGMA,
-                "xi": XI,
-                "sd.level": scenario["params"].get("sd.level", 0.0),
-                "sd.slope": scenario["params"].get("sd.slope", 0.0),
-                "sd.seasonal": scenario["params"].get("sd.seasonal", 0.0),
-            },
-            "structural_truth": scenario["structural_truth"],
-            "initial_state": scenario["initial_state"].tolist(),
-            "seed": scenario["seed"],
-        }
+        expected_truth = expected_truth_for(scenario)
 
         if data_path.is_file() and truth_path.is_file() and not OVERWRITE:
             table = pd.read_csv(data_path)
@@ -307,29 +454,7 @@ def main() -> None:
         else:
             if not OVERWRITE and (data_path.exists() or truth_path.exists()):
                 raise FileExistsError(f"Only one simulation artifact exists for {scenario['name']}; set BUCEX_OVERWRITE=1.")
-            simulation = bx.simulate(
-                scenario["model"],
-                N_TIME,
-                scenario["params"],
-                initial_state=scenario["initial_state"],
-                seed=scenario["seed"],
-            )
-            state_names = scenario["model"].state_names
-            states = simulation.states[1:]
-            seasonal_name = next((name for name in state_names if name.startswith("seasonal[")), None)
-            table = pd.DataFrame(
-                {
-                    "time": np.arange(1, N_TIME + 1),
-                    "cycle": np.arange(N_TIME) // PERIOD + 1,
-                    "phase": np.arange(N_TIME) % PERIOD + 1,
-                    "y": simulation.y,
-                    "eta": simulation.eta,
-                    "level": states[:, state_names.index("level")],
-                    "slope": states[:, state_names.index("slope")] if "slope" in state_names else np.zeros(N_TIME),
-                    "seasonal": states[:, state_names.index(seasonal_name)] if seasonal_name else np.zeros(N_TIME),
-                }
-            )
-            truth = expected_truth
+            table, truth = simulate_scenario_table(scenario)
             data_path.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(data_path, index=False)
             truth_path.write_text(json.dumps(truth, indent=2, sort_keys=True), encoding="utf-8")
@@ -337,23 +462,6 @@ def main() -> None:
             # process reads these exact floats, and warm starts deliberately
             # require bit-identical observations.
             table = pd.read_csv(data_path)
-
-        y = table["y"].to_numpy(float)
-        priors = bx.ssvs_gev_priors(
-            period=PERIOD,
-            alpha_mean=float(np.median(y)),
-            alpha_sd=ALPHA_PRIOR_SD,
-            beta_mean=BETA_PRIOR_MEAN,
-            beta_sd=BETA_PRIOR_SD,
-            seasonal_initial_sd=INITIAL_SEASON_PRIOR_SD,
-            sigma2_prior=bx.InverseGammaPrior(SIGMA2_PRIOR_A, SIGMA2_PRIOR_B),
-            xi_prior=bx.UniformPrior(*XI_PRIOR_BOUNDS),
-            xi_max_abs=XI_MAX_ABS,
-            innovation_slab_sd=INNOVATION_SLAB_SD,
-            level_dynamic_probability=LEVEL_DYNAMIC_PROBABILITY,
-            trend_probabilities=TREND_PROBABILITIES,
-            season_probabilities=SEASON_PROBABILITIES,
-        )
 
         fit_path = OUTPUT_DIR / "fits" / scenario["key"] / "combined.bucex"
         if fit_path.is_file() and not OVERWRITE:
@@ -391,18 +499,14 @@ def main() -> None:
             fit_path.parent.mkdir(parents=True, exist_ok=True)
             laplace_fit.save(fit_path)
         else:
-            laplace_fit = bx.fit(
-                y,
-                model=FIT_MODEL,
-                priors=priors,
-                engine="laplace_mh",
-                parameterization="fruehwirth_schnatter",
-                asis=False,
-                mcmc=bx.MCMC(draws=DRAWS, warmup=WARMUP, chains=CHAINS, seed=SEED + 100 * number, progress=PROGRESS),
-                laplace=bx.Laplace(mh_steps=MH_STEPS),
-                name=scenario["name"],
+            laplace_fit = fit_scenario(
+                scenario,
+                table,
+                truth,
+                seed=SEED + 100 * number,
+                chains=CHAINS,
+                progress=PROGRESS,
             )
-            laplace_fit.metadata.update({"example": "simulation_laplace_mh", "truth": truth, "prior_settings": PRIOR_SETTINGS})
             fit_path.parent.mkdir(parents=True, exist_ok=True)
             laplace_fit.save(fit_path)
 

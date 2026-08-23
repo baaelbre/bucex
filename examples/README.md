@@ -1,4 +1,4 @@
-# bucex 1.1.3 examples
+# bucex 1.1.4 examples
 
 The first seven standalone files reproduce the complete COMPSTAT analysis. An
 eighth diagnostic benchmark makes the classical centered/inverse-gamma
@@ -17,7 +17,9 @@ intended to be read as well as run:
    conjugate inverse-gamma process-variance updates, a fast Laplace default,
    optional exact Laplace-MH/PGAS validation, and mandatory mixing diagnostics.
 9. `08_simulation_laplace_mh.py` — exact Laplace-MH analysis of the same six
-   simulations, priors, tables, and figures as example 03.
+   simulations, priors, tables, and figures as example 03. On PBS,
+   `_08_simulation_laplace_mh_task.py` is the internal one-scenario/one-chain
+   worker used by the 24-task array; it is not a separate scientific example.
 10. `09_uccle_laplace_mh.py` — exact Laplace-MH analysis of TXx, TXn, TNx,
     and TNn under the same model, calibrated priors, tables, and figures as
     example 05, with acceptance and endpoint-support diagnostics.
@@ -76,3 +78,15 @@ resource-and-logging submission file in `job_scripts/`. Their direct Bash and
 [`../docs/HPC_RUNNERS.md`](../docs/HPC_RUNNERS.md). A complete copy-and-paste
 submission sequence, including the parallel-chain setup, is in
 [`../docs/HPC.md`](../docs/HPC.md).
+
+For the final exact simulation run, submit the scenario-chain array and its
+dependent finalizer with one command:
+
+```bash
+bash bash_scripts/qsub_08_simulation_laplace_mh.sh
+```
+
+The array workers and finalizer share one output directory. Workers only write
+unique `tasks/chainXX/fits/<scenario>/` and `tasks/chainXX/manifests/` paths;
+the finalizer writes the combined `fits/`, `tables/`, `figures/`, and
+`simulations/` artifacts after all tasks succeed.

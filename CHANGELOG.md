@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.1.4
+
+- Added a PBS fan-out/fan-in workflow for example 08. The default six
+  scenarios and four chains are mapped bijectively onto 24 independent
+  one-core array tasks.
+- Added a single submission helper,
+  `bash_scripts/qsub_08_simulation_laplace_mh.sh`, which submits the fit array
+  and a dependent `afterok` finalizer and prints both job IDs and the shared
+  output directory.
+- Changed the final HPC simulation profile to 1,000 warm-up iterations and
+  1,000 retained draws per chain, with six-hour fit-task and one-hour finalizer
+  resource requests. The ordinary standalone example retains its local
+  defaults and remains backward compatible.
+- Added collision-free shared output: each worker writes one
+  `tasks/chainXX/fits/<scenario>/combined.bucex` and one task manifest; the
+  finalizer alone writes combined fits, simulations, tables, and figures.
+- Added `BUCEX_SCENARIO_KEYS` to select a reproducible subset without editing
+  the scientific example. Scenario-specific seed offsets remain those of the
+  full six-scenario design.
+- Refactored example 08 into reusable simulation, prior, and one-scenario fit
+  functions. The internal array worker imports these definitions rather than
+  maintaining a second model or prior specification.
+- Added task-map, shared-layout, resource-default, real worker, and real
+  multi-chain finalization regression coverage.
+- Kept the public inference API, Laplace-MH kernel, and archive schema 2.6.2
+  unchanged.
+
 ## 1.1.3
 
 - Repaired exact FS Laplace-MH proposal initialization for finite-endpoint GEV

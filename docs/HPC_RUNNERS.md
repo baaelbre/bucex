@@ -8,10 +8,11 @@ Every analysis now has two files, following the usual PBS pattern:
 - `job_scripts/submit_*.pbs` contains resource requests, logging, and
   named PBS settings. It calls the corresponding runner.
 
-For examples 03--09, `CHAINS=4` means four independent one-chain Python
-processes run concurrently on the four requested PBS cores. The runner waits
-for every process, combines the fits with `bucex.combine_fits`, and produces
-tables and figures from the combined four-chain result. Examples 00--02 remain
+For the ordinary runners in examples 03--09, `CHAINS=4` means four independent
+one-chain processes run concurrently on four requested PBS cores. Example 08
+also has a high-throughput alternative that maps all six scenarios and all
+four chains onto a 24-element PBS array. A dependent one-core job then combines
+the fits and produces the final tables and figures. Examples 00--02 remain
 single-process jobs.
 
 For example:
@@ -28,6 +29,17 @@ directory:
 ```bash
 qsub job_scripts/submit_03_simulation_laplace.pbs
 ```
+
+For the recommended final Laplace-MH simulation run, use the submission helper:
+
+```bash
+bash bash_scripts/qsub_08_simulation_laplace_mh.sh
+```
+
+It calls `qsub` twice: a scenario-chain fit array followed by an `afterok`
+finalizer. Defaults are 24 concurrent one-core tasks, 1,000 warm-up iterations,
+and 1,000 retained draws. All task and final artifacts use one shared run
+directory without concurrent writes to the same file.
 
 ## Environment
 
@@ -139,6 +151,19 @@ messages to the per-chain log files. It is `0` by default.
 | `08_simulation_laplace_mh` | `N_TIME PERIOD SIMULATION_SEED DRAWS WARMUP CHAINS MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE MH_STEPS` |
 | `09_uccle_laplace_mh` | `START END DRAWS WARMUP CHAINS MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE MH_STEPS` |
 
+The example-08 array additionally accepts environment variables
+`SCENARIO_KEYS` (colon-separated), `MAX_CONCURRENT`, and
+`BUCEX_PBS_DEPENDENCY`. Its internal files are:
+
+```text
+bash_scripts/qsub_08_simulation_laplace_mh.sh
+bash_scripts/run_08_simulation_laplace_mh_task.sh
+bash_scripts/run_08_simulation_laplace_mh_finalize.sh
+job_scripts/submit_08_simulation_laplace_mh_array.pbs
+job_scripts/submit_08_simulation_laplace_mh_finalize.pbs
+examples/_08_simulation_laplace_mh_task.py
+```
+
 The main scientific settings—GEV scale and shape, process-noise truths, SSVS
 probabilities, and prior scales—remain visible at the top of the Python files.
 Edit those there for scientific sensitivity analyses.
@@ -164,8 +189,8 @@ qsub -v RUN_ID="${STAMP}_sim_pgas",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHA
   job_scripts/submit_04_simulation_pgas.pbs
 qsub -v RUN_ID="${STAMP}_centered_ig",ENGINE=laplace,N_TIME=1000,DRAWS=400,WARMUP=100,CHAINS=4,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025 \
   job_scripts/submit_07_centered_ig_random_walk_gev.pbs
-qsub -v RUN_ID="${STAMP}_sim_laplace_mh",N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=400,WARMUP=100,CHAINS=4,MCMC_SEED=13081997,MH_STEPS=1 \
-  job_scripts/submit_08_simulation_laplace_mh.pbs
+RUN_ID="${STAMP}_sim_laplace_mh" DRAWS=400 WARMUP=100 CHAINS=4 \
+  bash bash_scripts/qsub_08_simulation_laplace_mh.sh
 qsub -v RUN_ID="${STAMP}_uccle_laplace_mh",START=1892-01-01,DRAWS=500,WARMUP=500,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1 \
   job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
@@ -173,11 +198,16 @@ qsub -v RUN_ID="${STAMP}_uccle_laplace_mh",START=1892-01-01,DRAWS=500,WARMUP=500
 See [`HPC.md`](HPC.md) for copy-and-paste pilot and final commands for all
 ten jobs, plus monitoring commands.
 
-For a four-chain job, use the result directory containing
+For an ordinary four-chain job, use the result directory containing
 `RUN_ID_combined__...c4...`. The `RUN_ID_chain01__...c1...` through
 `RUN_ID_chain04__...c1...` directories and their separate logs are retained
 for chain-level debugging. `CHAINS` must not exceed the `ppn` request in the
 PBS file.
+
+For the example-08 array, use the single directory printed by the submission
+helper. One-chain task fits remain under `tasks/chainXX/fits/<scenario>/`; the
+combined fit and presentation artifacts are under `fits/`, `tables/`, and
+`figures/` in that same directory.
 
 Monitor jobs with `qstat -u "$USER"` and cancel one with `qdel JOB_ID`.
 Adjust the `#PBS` walltime, memory, CPU, project, and queue directives in each

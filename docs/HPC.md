@@ -1,10 +1,10 @@
-# Running the ten BUCEX examples with PBS
+# Running bucex 1.1.4 with PBS
 
-Run every command below from the clean `bucex` repository root. The seven fitting
-jobs reserve four cores and start one independent one-chain Python process per
-core.  After all chains finish, the runner combines them and writes the final
-tables and figures once.  BLAS threads are fixed at one, so four chains use four
-cores without oversubscription.
+Run every command below from the clean `bucex` repository root. Most fitting
+jobs reserve four cores and start one independent one-chain process per core.
+Example 08 has an additional high-throughput workflow: every scenario-chain
+pair is a separate one-core PBS array task, followed by a dependent finalizer.
+BLAS threads are fixed at one throughout.
 
 ## One-time setup
 
@@ -28,6 +28,60 @@ qsub -v BUCEX_VENV_DIR="$HOME/path/to/bucex_env",DRAWS=400,WARMUP=100,CHAINS=4 \
 
 Set `BUCEX_PROGRESS=1` in `qsub -v` to write periodic MCMC progress lines to
 the per-chain logs. The default is `0` for quieter batch logs.
+
+## Final Laplace-MH simulations in one command
+
+This is the recommended example-08 workflow. The defaults submit six scenarios
+times four chains as 24 independent tasks, with all 24 eligible to run at once:
+
+```bash
+cd /path/to/bucex-1.1.4
+export BUCEX_VENV_DIR="$HOME/venvs/bucex_env"
+bash bash_scripts/qsub_08_simulation_laplace_mh.sh
+```
+
+The final profile is:
+
+```text
+N_TIME=1000  PERIOD=4  DRAWS=1000  WARMUP=1000
+CHAINS=4     MH_STEPS=1  MAX_CONCURRENT=24
+```
+
+Each fit task requests one core, 12 GB, and at most six hours. The dependent
+finalizer requests one core, 16 GB, and one hour. Based on the measured local
+runtime, the intended compute time is about four to five hours for the slowest
+fit task plus finalization; scheduler waiting time is not included or
+guaranteed by bucex.
+
+Override settings directly on the submission command:
+
+```bash
+RUN_ID="$(date +%Y%m%d_%H%M%S)_laplace_mh_final" \
+DRAWS=1000 WARMUP=1000 CHAINS=4 MAX_CONCURRENT=24 \
+bash bash_scripts/qsub_08_simulation_laplace_mh.sh
+```
+
+The helper prints the fit-array ID, finalizer ID, and exact shared result
+directory. The completely explicit equivalent is:
+
+```bash
+STAMP="$(date +%Y%m%d_%H%M%S)"
+RUN_ID="${STAMP}_sim_laplace_mh_final"
+VARS="N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=1000,WARMUP=1000,CHAINS=4,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID=${RUN_ID},OVERWRITE=0,MH_STEPS=1,SCENARIO_KEYS=stationary:linear:random_walk:llt:dynamic_season:llt_season,BUCEX_PROGRESS=1"
+
+FIT_ID=$(qsub -t 1-24%24 -v "${VARS}" \
+  job_scripts/submit_08_simulation_laplace_mh_array.pbs)
+FINAL_ID=$(qsub -W "depend=afterok:${FIT_ID}" -v "${VARS}" \
+  job_scripts/submit_08_simulation_laplace_mh_finalize.pbs)
+
+echo "fit array: ${FIT_ID}"
+echo "finalizer: ${FINAL_ID}"
+```
+
+Some PBS installations call the array dependency `afterokarray`; on such a
+cluster set `BUCEX_PBS_DEPENDENCY=afterokarray` before invoking the helper.
+Scenario keys are colon-separated when selecting a subset, for example
+`SCENARIO_KEYS=stationary:random_walk:llt`.
 
 ## Submit all ten pilot jobs
 
@@ -58,8 +112,8 @@ qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,
 qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=500,WARMUP=500,CHAINS=4,PARTICLES=128,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig" \
   job_scripts/submit_07_centered_ig_random_walk_gev.pbs
 
-qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=400,WARMUP=100,CHAINS=4,MCMC_SEED=13081997,MH_STEPS=1,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_laplace_mh" \
-  job_scripts/submit_08_simulation_laplace_mh.pbs
+RUN_ID="${STAMP}_sim_laplace_mh" DRAWS=400 WARMUP=100 CHAINS=4 \
+  bash bash_scripts/qsub_08_simulation_laplace_mh.sh
 
 qsub -v START=1892-01-01,END=latest,DRAWS=500,WARMUP=500,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_laplace_mh" \
   job_scripts/submit_09_uccle_laplace_mh.pbs
@@ -70,9 +124,11 @@ start each when its requested resources are available.
 
 ## Final fitting jobs
 
-After the pilot results and diagnostics are satisfactory, submit the four
-fitting jobs with 2,000 warm-up iterations, 2,000 retained draws, and four
-chains.  The PGAS examples below use 512 particles.
+After the pilot results and diagnostics are satisfactory, submit the ordinary
+fits with 2,000 warm-up iterations, 2,000 retained draws, and four chains. The
+PGAS examples below use 512 particles. The exact Laplace-MH simulation array
+instead uses 1,000 warm-up iterations and 1,000 retained draws per chain so
+each independent task fits the six-hour target.
 
 ```bash
 STAMP="$(date +%Y%m%d_%H%M%S)"
@@ -92,8 +148,9 @@ qsub -v START=1892-01-01,END=latest,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=51
 qsub -v N_TIME=1000,SIMULATION_SEED=13081997,RANDOM_WALK_SD=0.05,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025,DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512,MCMC_SEED=13081997,RESULTS_ROOT=results,RUN_ID="${STAMP}_centered_ig_final" \
   job_scripts/submit_07_centered_ig_random_walk_gev.pbs
 
-qsub -v N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=2000,WARMUP=2000,CHAINS=4,MCMC_SEED=13081997,MH_STEPS=1,RESULTS_ROOT=results,RUN_ID="${STAMP}_sim_laplace_mh_final" \
-  job_scripts/submit_08_simulation_laplace_mh.pbs
+RUN_ID="${STAMP}_sim_laplace_mh_final" \
+  DRAWS=1000 WARMUP=1000 CHAINS=4 MAX_CONCURRENT=24 \
+  bash bash_scripts/qsub_08_simulation_laplace_mh.sh
 
 qsub -v START=1892-01-01,END=latest,DRAWS=2000,WARMUP=2000,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1,DATA_DIR=data,RESULTS_ROOT=results,RUN_ID="${STAMP}_uccle_laplace_mh_final" \
   job_scripts/submit_09_uccle_laplace_mh.pbs
@@ -115,10 +172,34 @@ as `RUN_ID_chain01__...c1...` and writes the result to use for inference under
 `RUN_ID_combined__...c4...`.  It also keeps one log per chain.  If a chain
 fails, the runner exits nonzero and does not create a misleading combined fit.
 
-The requested resources are defined at the top of each `.pbs` file.  Current
+The example-08 array uses one shared directory instead:
+
+```text
+results/08_simulation_laplace_mh/<RUN_ID>__n1000p4_d1000w1000c4m1/
+  tasks/chain01/fits/stationary/combined.bucex
+  tasks/chain01/manifests/stationary.json
+  ...
+  tasks/chain04/fits/llt_season/combined.bucex
+  fits/<scenario>/combined.bucex
+  simulations/
+  tables/
+  figures/
+  logs/<scenario>/
+```
+
+Array tasks never share a writable fit or manifest path. The final `fits/`,
+`tables/`, `figures/`, and `simulations/` trees are produced only after every
+task succeeds. If one task fails, the `afterok` dependency prevents a partial
+result from being presented as final.
+
+The requested resources are defined at the top of each `.pbs` file. Current
 defaults are `ppn=4, mem=48gb` for Laplace and `ppn=4, mem=64gb` for PGAS.  Do
 not set `CHAINS` above `ppn`; if eight chains are ever needed, request eight
 cores and scale memory as well.
+
+That `CHAINS <= ppn` constraint applies to the older single-job runners. In the
+example-08 array, every task requests `ppn=1`; `CHAINS` determines the number
+of array elements instead.
 
 ## Running a bash runner directly
 

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Compatibility single-node runner. For the final simulation study use
+# bash_scripts/qsub_08_simulation_laplace_mh.sh, which fans out scenarios and
+# chains across a PBS array.
 #PBS -N bucex_sim_laplace_mh
 #PBS -l walltime=24:00:00
 #PBS -l nodes=1:ppn=4
@@ -49,4 +52,3 @@ bash bash_scripts/run_08_simulation_laplace_mh.sh \
   "${N_TIME}" "${PERIOD}" "${SIMULATION_SEED}" \
   "${DRAWS}" "${WARMUP}" "${CHAINS}" "${MCMC_SEED}" \
   "${RESULTS_ROOT}" "${RUN_ID}" "${OVERWRITE}" "${MH_STEPS}"
-

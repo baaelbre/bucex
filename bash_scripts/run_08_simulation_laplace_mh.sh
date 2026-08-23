@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Compatibility runner for local/interactive use. The recommended final PBS
+# workflow is submitted by bash_scripts/qsub_08_simulation_laplace_mh.sh.
+
 # Usage:
 # bash bash_scripts/run_08_simulation_laplace_mh.sh \
 #   [N_TIME] [PERIOD] [SIMULATION_SEED] [DRAWS] [WARMUP] [CHAINS] \
@@ -156,4 +159,3 @@ mkdir -p "${MPLCONFIGDIR}"
 
 echo "Finished simulation study with Laplace-MH inference"
 date
-

@@ -1,8 +1,56 @@
-# bucex 1.1.3 release notes
+# bucex 1.1.4 release notes
 
-Version 1.1.3 is a correctness and numerical-safety patch for exact FS
-Laplace-MH inference with finite-endpoint GEV likelihoods. It keeps the public
-API and archive schema unchanged.
+Version 1.1.4 is the HPC orchestration release for the exact Laplace-MH
+simulation study. It keeps the public modelling and inference APIs, exact
+kernel, and archive schema unchanged.
+
+## Scenario-chain PBS array
+
+The former example-08 PBS runner parallelized four chains, but every chain
+still fitted all six scenarios sequentially. Version 1.1.4 maps the Cartesian
+product directly onto the scheduler:
+
+```text
+6 scenarios x 4 chains = 24 independent one-core tasks
+```
+
+Array IDs 1--4 fit the stationary scenario, 5--8 the linear trend, 9--12 the
+random walk, 13--16 the local linear trend, 17--20 dynamic seasonality, and
+21--24 the local linear trend with fixed seasonality. A dependent finalizer
+runs only after every task succeeds.
+
+Submit the complete workflow from the repository root with:
+
+```bash
+bash bash_scripts/qsub_08_simulation_laplace_mh.sh
+```
+
+The final HPC defaults are `N_TIME=1000`, `DRAWS=1000`, `WARMUP=1000`,
+`CHAINS=4`, `MH_STEPS=1`, and `MAX_CONCURRENT=24`. Each fit task requests one
+core, 12 GB, and six hours; the finalizer requests one core, 16 GB, and one
+hour. These resource limits target a roughly four-to-five-hour slowest fit on
+the measured workload, excluding scheduler waiting time.
+
+## One shared, collision-free result
+
+All workers and the finalizer use
+`results/08_simulation_laplace_mh/<RUN_ID>__<signature>/`. Workers write only
+their unique paths below `tasks/chainXX/`; no two tasks write the same fit,
+manifest, log, simulation, table, or figure. Once every requested fit and
+manifest exists, the finalizer combines compatible chains and creates the
+usual `fits/`, `simulations/`, `tables/`, and `figures/` trees in that same
+directory. A failed task blocks finalization through the PBS dependency.
+
+The internal worker imports example 08's scenario definitions, simulation
+function, SSVS prior factory, and exact fit function. There is therefore one
+scientific specification for local, interactive, and PBS-array execution.
+`BUCEX_SCENARIO_KEYS` supports colon-separated subsets without changing the
+global scenario-specific seed offsets.
+
+## Inherited 1.1.3 numerical-safety patch
+
+Version 1.1.3 made exact FS Laplace-MH robust for finite-endpoint GEV
+likelihoods. All of those guarantees remain in 1.1.4.
 
 ## Finite-endpoint Laplace-MH initialization
 
@@ -41,7 +89,8 @@ onto their exact affine recursions without jitter.
 ## 1.1.2 example-consistency patch
 
 Version 1.1.2 made the paired Laplace and Laplace-MH examples scientifically
-and operationally consistent. Its example layout and runners remain unchanged.
+and operationally consistent. Its standalone layout remains unchanged;
+1.1.4 adds the optional scenario-chain array around the same example.
 
 ## Controlled Laplace versus Laplace-MH examples
 

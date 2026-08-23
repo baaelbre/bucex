@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#PBS -N bx_lmh_join
+#PBS -l walltime=01:00:00
+#PBS -l nodes=1:ppn=1
+#PBS -l mem=16gb
+#PBS -j oe
+
+set -euo pipefail
+
+cd "${PBS_O_WORKDIR}"
+source config/laplace_mh_simulation_array.sh
+
+N_TIME="${N_TIME:-1000}"
+PERIOD="${PERIOD:-4}"
+SIMULATION_SEED="${SIMULATION_SEED:-13081997}"
+DRAWS="${DRAWS:-1000}"
+WARMUP="${WARMUP:-1000}"
+CHAINS="${CHAINS:-4}"
+MCMC_SEED="${MCMC_SEED:-13081997}"
+RESULTS_ROOT="${RESULTS_ROOT:-results}"
+RUN_ID="${RUN_ID:?RUN_ID must be passed with qsub -v}"
+OVERWRITE="${OVERWRITE:-0}"
+MH_STEPS="${MH_STEPS:-1}"
+SCENARIO_KEYS="${SCENARIO_KEYS:-${LMH_DEFAULT_SCENARIO_KEYS}}"
+
+laplace_mh_parse_scenarios "${SCENARIO_KEYS}"
+SIGNATURE="$(laplace_mh_run_signature \
+  "${N_TIME}" "${PERIOD}" "${DRAWS}" "${WARMUP}" "${CHAINS}" "${MH_STEPS}")"
+SHARED_RUN_DIR="$(laplace_mh_run_directory \
+  "${RESULTS_ROOT}" "${RUN_ID}" "${SIGNATURE}")"
+mkdir -p "${SHARED_RUN_DIR}/logs"
+exec > "${SHARED_RUN_DIR}/logs/finalize_${PBS_JOBID:-manual}.log" 2>&1
+
+bash bash_scripts/run_08_simulation_laplace_mh_finalize.sh \
+  "${N_TIME}" "${PERIOD}" "${SIMULATION_SEED}" \
+  "${DRAWS}" "${WARMUP}" "${CHAINS}" "${MCMC_SEED}" \
+  "${RESULTS_ROOT}" "${RUN_ID}" "${OVERWRITE}" "${MH_STEPS}" \
+  "${LMH_SCENARIO_KEYS}"

@@ -1,19 +1,19 @@
-# bucex 1.1.3
+# bucex 1.1.4
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized
 extreme-value observations. The package combines a declarative structural
 model API, componentwise SSVS, approximate Laplace state updates, exact
 Laplace independence-MH updates, and exact-density PGAS state updates.
 
-Version 1.1.3 makes exact FS Laplace-MH robust when a zero non-centred path
-crosses the finite endpoint of a negative-shape GEV. Its deterministic repair
-handles integrated stochastic slopes without adding transition noise or using
-the current chain trajectory, so the independence-MH correction remains exact.
-Exact samplers now stop before recording any restored or duplicate draw after
-an unrecoverable numerical failure. The paired examples and output structure
-from 1.1.2, conjugate centered inverse-gamma updates from 1.1.1, and public
-`laplace_mh` API from 1.1.0 remain intact. The release includes ten transparent
-analysis scripts:
+Version 1.1.4 adds a fan-out/fan-in PBS workflow for the exact Laplace-MH
+simulation study. Six scenarios and four chains become 24 independent
+one-core array tasks; a dependent finalizer combines every chain and writes
+the simulations, fits, tables, figures, task manifests, and logs below one
+shared run directory. The final HPC profile uses 1,000 warm-up iterations and
+1,000 retained draws so all tasks can target a six-hour queue. The numerical
+support repair and exact-sampler fail-fast guarantees from 1.1.3, conjugate
+centered inverse-gamma updates from 1.1.1, and public `laplace_mh` API from
+1.1.0 remain intact. The release includes ten transparent analysis scripts:
 
 1. the complete Uccle record from 1892 and the evolution of TXx;
 2. matched GEV shape and scale simulations;
@@ -290,6 +290,24 @@ order and adapt the resource directives to the local cluster. `docs/HPC.md`
 gives complete pilot and final submission commands, while
 `docs/LAPLACE_SENSITIVITY_HPC.md` documents the seed/slab array study.
 
+Example 08 additionally has a PBS-array submitter that runs every
+`(scenario, chain)` pair as a separate job and combines the 24 fits only after
+they all succeed:
+
+```bash
+cd /path/to/bucex-1.1.4
+bash bash_scripts/qsub_08_simulation_laplace_mh.sh
+```
+
+Its defaults are `N_TIME=1000`, `DRAWS=1000`, `WARMUP=1000`, `CHAINS=4`,
+`MH_STEPS=1`, and a maximum of 24 concurrent tasks. Override settings without
+editing a file, for example
+`DRAWS=1500 WARMUP=1000 bash bash_scripts/qsub_08_simulation_laplace_mh.sh`.
+The shared result is
+`results/08_simulation_laplace_mh/<RUN_ID>__<signature>/`; task-specific files
+are under `tasks/` and final scientific artifacts remain under `fits/`,
+`tables/`, `figures/`, and `simulations/`.
+
 ## Risk summaries
 
 A fitted GEV result retains upper/lower-tail orientation and provides
@@ -311,6 +329,7 @@ summaries, not stationary return levels.
 ```bash
 python -m pytest
 python validation/run_release_validation.py
+python validation/run_hpc_fanout_smoke.py
 python -m build
 ```
 
