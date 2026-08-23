@@ -59,8 +59,8 @@ XI_PRIOR_BOUNDS = (-0.50, 0.50)
 XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
 INNOVATION_SLAB_SD = {
     "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.03")),
-    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.00010")),
-    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
+    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.0005")),
+    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.03")),
 }
 LEVEL_DYNAMIC_PROBABILITY = float(
     os.environ.get("BUCEX_LEVEL_DYNAMIC_PROBABILITY", "0.50")
