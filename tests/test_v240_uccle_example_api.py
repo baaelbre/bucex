@@ -117,16 +117,24 @@ def test_v262_examples_are_standalone_public_api_scripts():
         assert '.plot("season"' in sources[name]
     assert 'engine="laplace_mh"' in sources["08_simulation_laplace_mh.py"]
     assert 'engine="laplace_mh"' in sources["09_uccle_laplace_mh.py"]
-    assert "bx.fit_uccle_series(" in sources["09_uccle_laplace_mh.py"]
+    # The Laplace-MH Uccle example deliberately mirrors example 05 and uses
+    # the same explicit model and calibrated prior construction. The shorter
+    # fit_uccle_series helper would silently restore package-default priors.
+    assert "bx.fit(" in sources["09_uccle_laplace_mh.py"]
+    assert "bx.ssvs_gev_priors(" in sources["09_uccle_laplace_mh.py"]
+    assert "bx.fit_uccle_series(" not in sources["09_uccle_laplace_mh.py"]
     assert "init=laplace_fit" in sources["04_simulation_pgas.py"]
     assert "init=laplace_fit" in sources["06_uccle_pgas.py"]
     centered_ig = sources["07_centered_ig_random_walk_gev.py"]
     assert "bx.LocalLevel(" in centered_ig
     assert "bx.InverseGammaVariance(" in centered_ig
-    assert 'engine="pgas"' in centered_ig
+    assert 'os.environ.get("BUCEX_ENGINE", "laplace")' in centered_ig
+    assert "engine=ENGINE" in centered_ig
+    assert '"laplace_mh", "pgas"' in centered_ig
     assert 'parameterization="centered"' in centered_ig
     assert "asis=False" in centered_ig
     assert "bx.Particles(" in centered_ig
+    assert "bx.Laplace(" in centered_ig
     assert 'fit.plot(\n        "traces"' in centered_ig
     assert 'fit.plot(\n        "acf"' in centered_ig
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Direct-API smoke validation for the ten bucex 1.1.0 examples."""
+"""Direct-API smoke validation for the ten bucex 1.1.3 examples."""
 from __future__ import annotations
 
 import argparse
@@ -105,16 +105,19 @@ def run(work_dir: Path) -> dict[str, object]:
         centered_simulation.y,
         model=centered_model,
         priors=centered_priors,
-        engine="pgas",
+        engine="laplace",
         parameterization="centered",
         asis=False,
-        particles=bx.Particles(n=16, proposal="guided"),
         mcmc=bx.MCMC(draws=1, warmup=1, chains=1, seed=2626),
     )
     if centered_ig.plan.parameterization != "centered" or centered_ig.plan.asis:
         raise RuntimeError("The centered/inverse-gamma benchmark plan changed.")
-    if not centered_ig.plan.targets_exact_posterior:
-        raise RuntimeError("The centered/inverse-gamma PGAS fit was not exact-invariant.")
+    if centered_ig.plan.targets_exact_posterior:
+        raise RuntimeError("The centered/inverse-gamma Laplace fit was marked exact.")
+    if centered_ig.methods["parameter_updates"]["sd.level"] != (
+        "inverse_gamma_gibbs"
+    ):
+        raise RuntimeError("The centered process variance did not use Gibbs.")
 
     work_dir.mkdir(parents=True, exist_ok=True)
     laplace.save(work_dir / "laplace.bucex")
@@ -161,6 +164,9 @@ def run(work_dir: Path) -> dict[str, object]:
         "pgas_engine_diagnostics": pgas.diagnostics()["engine"],
         "laplace_mh_engine_diagnostics": laplace_mh.diagnostics()["engine"],
         "centered_ig_plan": centered_ig.plan.to_dict(),
+        "centered_ig_update_methods": centered_ig.methods[
+            "parameter_updates"
+        ],
         "centered_ig_engine_diagnostics": centered_ig.diagnostics()["engine"],
         "season_lines": len(axis.lines),
         "slope_ylabel": slope_axis.get_ylabel(),
@@ -171,8 +177,8 @@ def run(work_dir: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.1.0"))
-    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.1.0.json"))
+    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.1.3"))
+    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.1.3.json"))
     args = parser.parse_args()
     result = run(args.work_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -10,6 +10,8 @@ set -euo pipefail
 # match the Python file. For example:
 #   BUCEX_RANDOM_WALK_SD=0.03 BUCEX_LEVEL_IG_A=2 \
 #   BUCEX_LEVEL_IG_B=0.0009 bash bash_scripts/run_07_...sh
+# The state engine defaults to Laplace; set BUCEX_ENGINE=laplace_mh or pgas
+# for either exact validation run.
 
 N_TIME="${1:-1000}"
 SIMULATION_SEED="${2:-13081997}"
@@ -45,6 +47,7 @@ export BUCEX_SIMULATION_SEED="${SIMULATION_SEED}"
 export BUCEX_DRAWS="${DRAWS}"
 export BUCEX_WARMUP="${WARMUP}"
 export BUCEX_PARTICLES="${PARTICLES}"
+export BUCEX_ENGINE="${BUCEX_ENGINE:-laplace}"
 export BUCEX_RESULTS_ROOT="${RESULTS_ROOT}"
 export BUCEX_OVERWRITE="${OVERWRITE}"
 export BUCEX_PROGRESS="${BUCEX_PROGRESS:-0}"
@@ -73,7 +76,12 @@ echo "sim seed    = ${SIMULATION_SEED}"
 echo "draws       = ${DRAWS}"
 echo "warmup      = ${WARMUP}"
 echo "chains      = ${CHAINS} (parallel processes)"
-echo "particles   = ${PARTICLES} per chain"
+echo "engine      = ${BUCEX_ENGINE}"
+if [[ "${BUCEX_ENGINE}" == "pgas" ]]; then
+  echo "particles   = ${PARTICLES} per chain"
+elif [[ "${BUCEX_ENGINE}" == "laplace_mh" ]]; then
+  echo "MH steps    = ${BUCEX_LAPLACE_MH_STEPS:-1}"
+fi
 echo "MCMC seed   = ${MCMC_SEED}"
 echo "level IG    = a=${BUCEX_LEVEL_IG_A:-2.0}, b=${BUCEX_LEVEL_IG_B:-0.0025}"
 echo "RW truth SD = ${BUCEX_RANDOM_WALK_SD:-0.05}"

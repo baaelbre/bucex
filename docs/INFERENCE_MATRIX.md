@@ -38,7 +38,12 @@ proposal, so the independence-MH weight is simply
 This remains valid when `p(dx)` is supported on a lower-dimensional affine
 subspace. Proposal construction is deterministic in data and static
 parameters; the current path is never used as the finite-iteration mode start.
-An invalid finite-endpoint proposal has `log w=-inf` and is rejected.
+If the zero FS path crosses a finite endpoint, a deterministic feasible path
+is constructed from active innovations before the mode iteration begins. With
+an integrated slope and no contemporaneously loaded innovation, the repair is
+made one step ahead so its accumulation coordinate remains deterministic. An
+invalid draw from the resulting Gaussian proposal has `log w=-inf` and is
+rejected.
 
 ## Parameterizations
 
@@ -51,17 +56,33 @@ An invalid finite-endpoint proposal has `log w=-inf` and is rejected.
 ASIS is available for valid univariate combinations and disabled in the
 hierarchical structural sampler.
 
+For a centered Gaussian state transition with
+`InverseGammaVariance(shape=a, scale=b)`, bucex automatically uses
+
+\[
+q_j\mid x \sim \operatorname{IG}\left(
+a+T/2,\ b+\tfrac12\sum_{t=1}^{T}e_{j,t}^2
+\right).
+\]
+
+This conjugacy concerns the process variance conditional on the latent path.
+It does not make the GEV observation scale conjugate. In disturbance/FS form,
+the process scale enters the predictor and continues to use its appropriate
+nonconjugate update.
+
 `examples/07_centered_ig_random_walk_gev.py` is an intentional benchmark, not
 the recommended SSVS default. It combines `parameterization="centered"`,
-`asis=False`, exact-density PGAS, and `InverseGammaVariance` priors on
+`asis=False`, a fast approximate-Laplace default, and
+`InverseGammaVariance` priors on
 
 \[
 q_\mu=s_\mu^2 \quad\text{and}\quad \sigma^2.
 \]
 
-The run always saves parameter traces, the trace of \(q_\mu\), ACFs, ESS,
-R-hat, and particle diagnostics. This separates a visually plausible smoothed
-level from evidence that the posterior Markov chain actually mixed.
+The process variance uses its conjugate Gibbs update. The run always saves
+parameter traces, the trace of \(q_\mu\), ACFs, ESS, R-hat, and engine
+diagnostics. `BUCEX_ENGINE=laplace_mh` selects exact Laplace-MH validation and
+`BUCEX_ENGINE=pgas` selects the exact particle benchmark.
 
 ## Structural spaces
 
@@ -126,7 +147,7 @@ retain their required order. Independent chains are the safest HPC unit.
 - path-change rate and path-update fraction;
 - reference-ancestor change rate;
 - GEV support rejections and margins;
-- restored iterations/failure counts;
+- numerical failures, which abort exact sampling before a draw is recorded;
 - agreement after increasing particles;
 - parameter and allocation R-hat/ESS/switching across independent chains.
 
@@ -137,7 +158,9 @@ do not prove predictive adequacy. Use leave-future-out scoring for the latter.
 
 - full-trajectory state acceptance (reported per draw and by chain);
 - proposal support-rejection rate;
+- deterministic initializer support-repair rate;
 - iterated-Laplace convergence, iterations, and relative change;
+- zero restored iterations (any unrecoverable exact-state failure aborts);
 - parameter R-hat/ESS and state summaries across independent chains;
 - stability after changing `Laplace(mh_steps=...)`;
 - ESS per second relative to PGAS on the same model and record.

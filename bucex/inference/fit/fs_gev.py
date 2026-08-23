@@ -367,7 +367,17 @@ class FSGEVKernel:
         window_attempt_failures: Counter[str] = Counter()
         window_restored = 0
         window_iterations = 0
-        max_state_tries = int(state_kwargs.get("max_state_tries", 25))
+        exact_state_method = state_method in {"laplace_mh", "pgas"}
+        # Retrying an entire exact MCMC iteration after a numerical exception
+        # does not define a valid rejection kernel.  In particular, the
+        # Laplace-MH approximation is deterministic for fixed parameters, so
+        # repeating a failed construction 25 times can never repair it.  Exact
+        # engines therefore try once and fail loudly before any draw is saved.
+        max_state_tries = (
+            1
+            if exact_state_method
+            else int(state_kwargs.get("max_state_tries", 25))
+        )
         lasso_var = (
             self.priors.lasso.variance_scale(None) if self.priors.lasso is not None else 1.0
         )
@@ -380,6 +390,7 @@ class FSGEVKernel:
             "laplace_converged": [],
             "laplace_relative_change": [],
             "laplace_support_rejections": [],
+            "laplace_initial_support_repaired": [],
             "laplace_mh_acceptance": [],
             "laplace_mh_mean_log_acceptance_ratio": [],
             "laplace_mh_log_weight": [],
@@ -848,6 +859,19 @@ class FSGEVKernel:
                         last_failure_detail += f":{detail}"
                     continue
 
+            if not iteration_ok and exact_state_method:
+                failure_summary = _compact_counter(iteration_failures)
+                detail = (
+                    f" Last failure: {last_failure_detail}."
+                    if last_failure_detail
+                    else ""
+                )
+                raise RuntimeError(
+                    f"Exact {state_method} iteration {it + 1}/{n_iter} failed "
+                    f"({failure_summary}).{detail} The sampler stopped before "
+                    "recording a restored or duplicate posterior draw."
+                )
+
             if not iteration_ok:
                 (
                     z_path, params_state, params_obs, tau, lambda2,
@@ -877,12 +901,16 @@ class FSGEVKernel:
                         else successful_laplace_mh_result.proposal_support_failures
                     )
                 )
+                engine_diagnostics["laplace_initial_support_repaired"].append(
+                    float(laplace_diagnostic.initial_support_repaired)
+                )
             else:
                 for name in (
                     "laplace_iterations",
                     "laplace_converged",
                     "laplace_relative_change",
                     "laplace_support_rejections",
+                    "laplace_initial_support_repaired",
                 ):
                     engine_diagnostics[name].append(np.nan)
             if successful_laplace_mh_result is not None:

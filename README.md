@@ -1,12 +1,19 @@
-# bucex 1.1.0
+# bucex 1.1.3
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized
 extreme-value observations. The package combines a declarative structural
 model API, componentwise SSVS, approximate Laplace state updates, exact
 Laplace independence-MH updates, and exact-density PGAS state updates.
 
-Version 1.1.0 adds a full-trajectory `laplace_mh` engine to the stable 1.0.1
-codebase. The interface now includes ten transparent analysis scripts:
+Version 1.1.3 makes exact FS Laplace-MH robust when a zero non-centred path
+crosses the finite endpoint of a negative-shape GEV. Its deterministic repair
+handles integrated stochastic slopes without adding transition noise or using
+the current chain trajectory, so the independence-MH correction remains exact.
+Exact samplers now stop before recording any restored or duplicate draw after
+an unrecoverable numerical failure. The paired examples and output structure
+from 1.1.2, conjugate centered inverse-gamma updates from 1.1.1, and public
+`laplace_mh` API from 1.1.0 remain intact. The release includes ten transparent
+analysis scripts:
 
 1. the complete Uccle record from 1892 and the evolution of TXx;
 2. matched GEV shape and scale simulations;
@@ -15,10 +22,12 @@ codebase. The interface now includes ten transparent analysis scripts:
 5. the same recovery experiment with Laplace-initialized PGAS;
 6. Laplace analysis of TXx, TXn, TNx, and TNn;
 7. PGAS analysis of the same four series.
-8. an exact-PGAS random-walk GEV benchmark with centered states and explicit
-   inverse-gamma priors on the process and observation variances.
-9. exact Laplace-MH fits for representative structural simulations;
-10. exact Laplace-MH fits of Uccle TXx, TXn, TNx, and TNn.
+8. a centered random-walk GEV mixing benchmark with a fast Laplace default,
+   conjugate inverse-gamma process-variance updates, and exact validation
+   through Laplace-MH or PGAS.
+9. exact Laplace-MH fits for the same six structural simulations as item 4;
+10. exact Laplace-MH fits of Uccle TXx, TXn, TNx, and TNn under the same
+    model and calibrated priors as item 6.
 
 There is no presentation workflow layer. Every script constructs its models
 with `bx.Model`, `bx.LocalLinearTrend`, `bx.DummySeasonal`, and `bx.GEV`, then
@@ -53,6 +62,12 @@ and the dummy seasonal component may have innovation coefficient \(s_\gamma\).
 The Fruehwirth--Schnatter representation estimates signed coefficients and
 standard-normal non-centred states, keeping the important neighbourhood near
 zero accessible without an inverse-gamma process-variance prior.
+
+For a centered Gaussian state equation, an `InverseGammaVariance` process
+prior is conjugate conditional on the complete state trajectory. bucex detects
+this combination automatically and draws the process variance by Gibbs. No
+extra API flag is required. An inverse-gamma prior on the GEV observation scale
+is not conjugate and therefore retains its Metropolis--Hastings update.
 
 Componentwise SSVS assigns:
 
@@ -179,11 +194,14 @@ Metropolis--Hastings. If (L) is the exact observation likelihood and
 The exact and proposal state laws are the same, so their possibly singular
 transition densities cancel. Integrated-slope and dummy-seasonal lag
 coordinates are projected onto their exact affine recursion after Gaussian
-simulation. GEV endpoint violations are ordinary MH rejections; proposals are
-not truncated and never fall back to an atom at the mode. The returned plan is
-therefore labelled exact-invariant. Inspect state acceptance, support
-rejections, Laplace convergence, and ESS per second. `Laplace(mh_steps=...)`
-controls repeated full-path proposals at fixed parameters.
+simulation. If the zero FS trajectory is outside finite GEV support, the mode
+search starts from a deterministic feasible trajectory that does not depend on
+the current chain state. GEV endpoint violations by Gaussian proposal draws are
+ordinary MH rejections; proposals are not truncated and never fall back to an
+atom at the mode. The returned plan is therefore labelled exact-invariant.
+Inspect state acceptance, support repairs and rejections, Laplace convergence,
+and ESS per second. `Laplace(mh_steps=...)` controls repeated full-path
+proposals at fixed parameters.
 
 `engine="pgas"` uses conditional sequential Monte Carlo with ancestor
 sampling and the exact GEV observation density. Fixed or excluded components
@@ -199,10 +217,12 @@ structural switching, and GEV support diagnostics before trusting a run.
 The explicit classical benchmark in
 `examples/07_centered_ig_random_walk_gev.py` instead uses a random-walk level,
 `parameterization="centered"`, `asis=False`, and `InverseGammaVariance`
-priors. It fits with exact-density PGAS and always exports traces, ACFs,
-ESS/R-hat, process-variance summaries, and particle diagnostics. Its purpose is
-diagnostic comparison with the FS/non-centred specification, not to replace
-the latter as the default structural-selection model.
+priors. It uses approximate `laplace` by default for a fast mixing diagnostic
+and always exports traces, ACFs, ESS/R-hat, and process-variance summaries.
+Set `BUCEX_ENGINE=laplace_mh` for exact Laplace-MH validation or
+`BUCEX_ENGINE=pgas` for the exact particle benchmark. Its purpose is diagnostic
+comparison with the FS/non-centred specification, not to replace the latter as
+the default structural-selection model.
 
 ## Ten standalone examples
 
@@ -228,9 +248,15 @@ Outputs are written below
 contains `run_config.json`. Change the root with `BUCEX_RESULTS_ROOT`, or set
 `BUCEX_OVERWRITE=1` to deliberately regenerate an existing identifier.
 
+Simulation fitting runs use `simulations/`, `fits/<scenario>/`,
+`tables/<scenario>/`, and `figures/<scenario>/`. Uccle fitting runs use
+`fits/<series>/`, `tables/<series>/`, and `figures/<series>/`. Examples 08 and
+09 follow exactly the same artifact layout as examples 03 and 05.
+
 All scientific settings remain near the top of each script. MCMC controls can
 also be overridden with `BUCEX_DRAWS`, `BUCEX_WARMUP`, `BUCEX_CHAINS`,
-`BUCEX_PARTICLES`, and `BUCEX_SEED`.
+`BUCEX_PARTICLES`, and `BUCEX_SEED`. Example 07 additionally accepts
+`BUCEX_ENGINE=laplace|laplace_mh|pgas`.
 
 The simulations use period 4 and 1,000 observations for structural recovery.
 Every simulated time series has its own figure. Only each scenario's level,

@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.1.0 has five software layers:
+Release 1.1.3 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -26,6 +26,11 @@ evidence for a scientific conclusion.
   exact-invariant;
 - quadratic-observation Laplace-MH proposals accept with constant correction
   weights, and singular FS recursions hold exactly after projection;
+- negative-shape GEV proposal construction repairs an invalid zero FS path
+  deterministically, including when only an integrated slope moves the
+  predictor;
+- exact samplers abort before recording restored or duplicate draws after an
+  unrecoverable numerical exception;
 - a univariate Laplace `FitResult` exports a compatible full-path warm start;
 - PGAS metadata records that Laplace supplied the initializer;
 - singular-support ancestor calculations remain finite and keep the
@@ -39,15 +44,21 @@ evidence for a scientific conclusion.
 - the six period-4 structural scenarios share scale/shape and cover stationary,
   linear-trend, random-walk, local-linear-trend, dynamic-seasonal, and
   fixed-seasonal truths;
+- examples 08 and 09 match examples 03 and 05 respectively in scientific
+  settings, priors, MCMC defaults, output tables, and figures, changing only
+  the exact Laplace-MH state engine and its diagnostics;
 - timestamped paths are shared by `BUCEX_RUN_ID` and existing artifacts require
   explicit overwrite authorization;
 - independently saved chains combine only when model, prior, plan, data, and
   dates agree;
 - schema-2.6.2 archives round-trip and older supported archives remain readable;
 - the ten Python examples are self-contained calls to the public API;
-- the centered/inverse-gamma benchmark records an exact-PGAS centered plan,
-  disables ASIS, and exposes both MCMC and particle diagnostics;
-- the ten PBS jobs invoke those same examples, and the fitting runners
+- centered inverse-gamma process variances use their exact Gibbs full
+  conditional and are labelled `inverse_gamma_gibbs` in diagnostics;
+- the centered/inverse-gamma benchmark defaults to approximate Laplace for
+  speed, disables ASIS, and exposes Laplace-MH and PGAS as exact validation
+  engines through `BUCEX_ENGINE`;
+- the ten PBS jobs invoke those same examples, and all seven fitting runners
   combine independent chains only after all chain processes succeed;
 - dedicated level and slope figures keep observations off the slope scale;
 - LOESS and seasonal-component plots satisfy their numerical contracts;

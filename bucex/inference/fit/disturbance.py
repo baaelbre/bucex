@@ -18,7 +18,12 @@ from ..state.laplace import (
 from ..config import Laplace, MCMC, Particles
 from ..state.particle import pgas
 from ..plan import InferencePlan
-from ...priors.process import FixedSD, Priors, SpikeSlabSD
+from ...priors.process import (
+    FixedSD,
+    InverseGammaVariance,
+    Priors,
+    SpikeSlabSD,
+)
 from ...core.fit import FitResult
 from ._progress import (
     mcmc_progress_line,
@@ -29,6 +34,7 @@ from ._progress import (
 
 
 Array = np.ndarray
+UpdateOutcome = bool | None
 
 
 def _prior_logpdf(prior, value: float, indicator: int | None = None) -> float:
@@ -107,6 +113,40 @@ def _adapt(step: float, accepted: bool, iteration: int, target: float = 0.30) ->
     return float(np.clip(updated, 0.01, 2.5))
 
 
+def _draw_centered_inverse_gamma_sd(
+    prior: InverseGammaVariance,
+    innovations: Array,
+    rng: np.random.Generator,
+) -> float:
+    """Draw a Gaussian process SD from its conjugate full conditional.
+
+    ``InverseGammaVariance`` is a shape/scale prior on ``q = sd**2``.  Given
+    the centred structural innovations, ``1 / q`` is gamma distributed with
+    the posterior shape and rate below.  Sampling the precision directly
+    avoids a SciPy distribution call in every MCMC iteration.
+    """
+
+    values = np.asarray(innovations, dtype=float).reshape(-1)
+    if values.size < 1 or not np.all(np.isfinite(values)):
+        raise ValueError("Centered innovations must be finite and non-empty.")
+    posterior_shape = float(prior.shape) + 0.5 * values.size
+    posterior_scale = float(prior.scale) + 0.5 * float(values @ values)
+    precision = float(
+        rng.gamma(shape=posterior_shape, scale=1.0 / posterior_scale)
+    )
+    if not np.isfinite(precision) or precision <= 0.0:
+        raise FloatingPointError("Invalid conjugate process-precision draw.")
+    return float(np.sqrt(1.0 / precision))
+
+
+def _scale_update_method(prior, *, centered: bool) -> str:
+    if isinstance(prior, FixedSD):
+        return "fixed"
+    if centered and isinstance(prior, InverseGammaVariance):
+        return "inverse_gamma_gibbs"
+    return "log_sd_random_walk_mh"
+
+
 def _centered_scale_sweep(
     path: Array,
     compiled: CompiledModel,
@@ -119,24 +159,34 @@ def _centered_scale_sweep(
     adapt: bool,
     iteration: int,
     step_prefix: str = "",
-) -> tuple[dict[str, bool], dict[str, float]]:
+) -> tuple[dict[str, UpdateOutcome], dict[str, float]]:
     noncentered = compiled.to_disturbance(path, params)
     current_sd = compiled.process_vector(params)
     innovations = noncentered.z * current_sd[None, :]
-    accepted: dict[str, bool] = {}
+    accepted: dict[str, UpdateOutcome] = {}
     for j, name in enumerate(compiled.noise_names):
         prior = priors.process[name]
         key = f"sd.{name}"
         step_key = f"{step_prefix}{key}"
         if isinstance(prior, FixedSD):
-            accepted[key] = False
+            accepted[key] = None
             continue
+        sum_squares = float(np.sum(innovations[:, j] ** 2))
+        n_time = innovations.shape[0]
+        if isinstance(prior, InverseGammaVariance):
+            params[key] = _draw_centered_inverse_gamma_sd(
+                prior, innovations[:, j], rng
+            )
+            # Gibbs updates have no acceptance probability.  ``None`` keeps
+            # them out of MH acceptance diagnostics instead of reporting a
+            # misleading rate of one.
+            accepted[key] = None
+            continue
+
         current = float(params[key])
         proposal_log = float(np.log(current) + steps[step_key] * rng.normal())
         proposal = float(np.exp(proposal_log))
         indicator = indicators.get(name)
-        sum_squares = float(np.sum(innovations[:, j] ** 2))
-        n_time = innovations.shape[0]
 
         def target(value: float) -> float:
             if value <= 0.0:
@@ -167,18 +217,18 @@ def _noncentered_scale_sweep(
     adapt: bool,
     iteration: int,
     step_prefix: str = "",
-) -> tuple[Array, dict[str, bool], dict[str, float]]:
+) -> tuple[Array, dict[str, UpdateOutcome], dict[str, float]]:
     noncentered = compiled.to_disturbance(path, params)
     current_path = path
     current_likelihood = observation_log_likelihood(
         y, compiled.eta(current_path), compiled, params
     )
-    accepted: dict[str, bool] = {}
+    accepted: dict[str, UpdateOutcome] = {}
     for name in compiled.noise_names:
         prior = priors.process[name]
         key = f"sd.{name}"
         if isinstance(prior, FixedSD):
-            accepted[key] = False
+            accepted[key] = None
             continue
         current = float(params[key])
         step_key = f"{step_prefix}{key}"
@@ -215,13 +265,13 @@ def _observation_parameter_sweep(
     *,
     adapt: bool,
     iteration: int,
-) -> tuple[dict[str, bool], dict[str, float]]:
+) -> tuple[dict[str, UpdateOutcome], dict[str, float]]:
     eta = compiled.eta(path)
-    accepted: dict[str, bool] = {}
+    accepted: dict[str, UpdateOutcome] = {}
 
     sigma_prior = priors.observation_sd
     if isinstance(sigma_prior, FixedSD):
-        accepted["sigma"] = False
+        accepted["sigma"] = None
     else:
         current = float(params["sigma"])
         proposal_log = float(np.log(current) + steps["sigma"] * rng.normal())
@@ -378,6 +428,23 @@ def sample_posterior(
         name: np.zeros((chains, draws), dtype=np.int8 if name.startswith("slab.") else float)
         for name in parameter_names + slab_names
     }
+    update_methods: dict[str, str] = {}
+    primary_centered = plan.parameterization == "centered"
+    for name in compiled.noise_names:
+        key = f"sd.{name}"
+        prior = priors.process[name]
+        update_methods[key] = _scale_update_method(
+            prior, centered=primary_centered
+        )
+        if plan.asis:
+            update_methods[f"asis.{key}"] = _scale_update_method(
+                prior, centered=not primary_centered
+            )
+    update_methods["sigma"] = _scale_update_method(
+        priors.observation_sd, centered=False
+    )
+    if compiled.family == "gev":
+        update_methods["xi"] = "bounded_random_walk_mh"
     metric_names = [
         "laplace_iterations",
         "laplace_converged",
@@ -394,17 +461,15 @@ def sample_posterior(
         "particle_changed_fraction",
     ]
     draw_metrics = {name: np.full((chains, draws), np.nan) for name in metric_names}
+    mh_parameter_names = [
+        name for name, method in update_methods.items() if method.endswith("_mh")
+    ]
     acceptance_by_chain: dict[str, list[float]] = {
-        name: [] for name in sampled_parameter_names
+        name: [] for name in mh_parameter_names
     }
     if plan.engine == "laplace_mh":
         acceptance_by_chain["state_laplace_mh"] = []
-    if plan.asis:
-        for name in compiled.noise_names:
-            acceptance_by_chain[f"asis.sd.{name}"] = []
-    final_step_names = list(sampled_parameter_names) + (
-        [f"asis.sd.{name}" for name in compiled.noise_names] if plan.asis else []
-    )
+    final_step_names = list(mh_parameter_names)
     final_steps: dict[str, list[float]] = {name: [] for name in final_step_names}
 
     seed_sequence = np.random.SeedSequence(mcmc.seed)
@@ -523,6 +588,8 @@ def sample_posterior(
                     iteration=iteration,
                 )
                 for key, outcome in outcomes.items():
+                    if outcome is None:
+                        continue
                     attempts[key] += 1
                     accepts[key] += int(outcome)
                 if plan.asis:
@@ -540,6 +607,8 @@ def sample_posterior(
                         step_prefix="asis.",
                     )
                     for key, outcome in outcomes.items():
+                        if outcome is None:
+                            continue
                         label = f"asis.{key}"
                         attempts[label] += 1
                         accepts[label] += int(outcome)
@@ -557,6 +626,8 @@ def sample_posterior(
                     iteration=iteration,
                 )
                 for key, outcome in outcomes.items():
+                    if outcome is None:
+                        continue
                     attempts[key] += 1
                     accepts[key] += int(outcome)
                 if plan.asis:
@@ -573,6 +644,8 @@ def sample_posterior(
                         step_prefix="asis.",
                     )
                     for key, outcome in outcomes.items():
+                        if outcome is None:
+                            continue
                         label = f"asis.{key}"
                         attempts[label] += 1
                         accepts[label] += int(outcome)
@@ -593,6 +666,8 @@ def sample_posterior(
                 iteration=iteration,
             )
             for key, outcome in outcomes.items():
+                if outcome is None:
+                    continue
                 attempts[key] += 1
                 accepts[key] += int(outcome)
             _update_indicators(compiled, params, priors, indicators, rng)
@@ -671,6 +746,7 @@ def sample_posterior(
         "mcmc": asdict(mcmc),
         "particles": asdict(particles),
         "laplace": asdict(laplace),
+        "update_methods": dict(update_methods),
         "plan_warnings": list(plan.warnings),
     }
     return FitResult(
@@ -705,5 +781,11 @@ def sample_posterior(
             "restore_failure_counts": {},
             "pgas_exact_invariant": plan.engine == "pgas",
             "laplace_mh_exact_invariant": plan.engine == "laplace_mh",
+            "parameter_update_methods": dict(update_methods),
+            "conjugate_process_variance_updates": sorted(
+                name
+                for name, method in update_methods.items()
+                if method == "inverse_gamma_gibbs"
+            ),
         },
     )

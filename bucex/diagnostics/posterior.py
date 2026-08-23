@@ -152,6 +152,7 @@ def posterior_pit(fit) -> Array:
 
 def fit_diagnostics(fit):
     acceptance = fit.sampler_diagnostics.get("acceptance", {})
+    update_methods = fit.sampler_diagnostics.get("update_methods", {})
     rows = []
     for name, values in fit.parameter_draws.items():
         if values.ndim != 2:
@@ -166,6 +167,7 @@ def fit_diagnostics(fit):
             "rhat": rhat(values),
             "ess_bulk": ess_bulk(values),
             "acceptance": _finite_mean(acceptance[name]) if name in acceptance else np.nan,
+            "update": update_methods.get(name, "derived_or_fixed"),
             "constant": constant,
             "diagnostic": (
                 "constant draw; R-hat and ESS undefined"
@@ -193,6 +195,13 @@ def fit_diagnostics(fit):
                 metrics["laplace_support_rejections"]
             ),
         }
+        support_repair_rate = _finite_mean(
+            metrics.get(
+                "laplace_initial_support_repaired", np.asarray([])
+            )
+        )
+        if np.isfinite(support_repair_rate):
+            engine["initial_support_repair_rate"] = support_repair_rate
         if fit.plan.engine == "laplace_mh":
             engine.update(
                 state_acceptance=_finite_mean(

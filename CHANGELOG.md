@@ -1,5 +1,63 @@
 # Changelog
 
+## 1.1.3
+
+- Repaired exact FS Laplace-MH proposal initialization for finite-endpoint GEV
+  models. When the zero non-centred trajectory violates GEV support, bucex now
+  constructs a deterministic support-feasible trajectory without using the
+  current chain state.
+- Added a one-step-ahead repair for integrated stochastic slopes, preserving
+  their deterministic accumulation coordinate and singular transition law.
+- Preserved the independence-MH target: the repaired proposal remains a fixed
+  function of observations and static parameters, and endpoint-invalid draws
+  from that proposal remain ordinary MH rejections.
+- Exact Laplace-MH and PGAS iterations now fail immediately on unrecoverable
+  numerical errors. They never retry an identical deterministic calculation or
+  save a restored state as a new posterior draw.
+- Added `initial_support_repair_rate` to Laplace diagnostics and retained the
+  per-draw repair indicator in result archives.
+- Added regression coverage for a negative-shape GEV whose zero FS path is
+  invalid while a full integrated-slope trajectory is valid, plus a fail-fast
+  test proving that exact samplers do not emit duplicate draws.
+- Kept the public modelling API and archive schema 2.6.2 unchanged.
+
+## 1.1.2
+
+- Rebuilt `08_simulation_laplace_mh.py` as the exact-engine counterpart of
+  `03_simulation_laplace.py`: the same six truths, observations, model,
+  calibrated priors, MCMC defaults, posterior summaries, and PDF/PNG figures.
+- Rebuilt `09_uccle_laplace_mh.py` as the exact-engine counterpart of
+  `05_uccle_laplace.py`, including the median-centred level prior, calibrated
+  slope/innovation slabs, fixed-versus-dynamic model odds, predictive checks,
+  forecasts, endpoint plots, and complete tables.
+- Standardized simulation outputs under `simulations/`, `fits/`, `tables/`,
+  and `figures/`, and Uccle outputs under `fits/`, `tables/`, and `figures/`.
+- Added aggregate Laplace-MH acceptance/support diagnostics while retaining
+  per-series and per-scenario algorithm tables.
+- Replaced the abbreviated Laplace-MH HPC launchers with independent-chain
+  runners that match the Laplace runner contracts and combine results only
+  after all chains succeed.
+- Removed temporary output-directory and random-walk-only overrides from
+  `03_simulation_laplace.py`.
+- Added regression tests that enforce scientific-setting, artifact-layout,
+  and runner-default parity between examples 03/08 and 05/09.
+- Kept inference internals and archive schema 2.6.2 unchanged.
+
+## 1.1.1
+
+- Added automatic conjugate inverse-gamma Gibbs updates for Gaussian process
+  variances under the centered parameterization.
+- Kept inverse-gamma GEV observation-scale updates and non-centred process-scale
+  updates on their nonconjugate MH paths.
+- Added explicit parameter-update-method diagnostics and removed Gibbs/fixed
+  updates from MH acceptance summaries.
+- Changed `07_centered_ig_random_walk_gev.py` to use approximate Laplace by
+  default, with `BUCEX_ENGINE=laplace_mh` and `BUCEX_ENGINE=pgas` as exact
+  validation options.
+- Updated the example runner, PBS job, validation, documentation, and release
+  metadata. Laplace-MH performance internals are unchanged.
+- Kept archive schema 2.6.2 for backward compatibility.
+
 ## 1.1.0
 
 - Added `engine="laplace_mh"` for exact-invariant whole-trajectory state

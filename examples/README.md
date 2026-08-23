@@ -1,4 +1,4 @@
-# bucex 1.1.0 examples
+# bucex 1.1.3 examples
 
 The first seven standalone files reproduce the complete COMPSTAT analysis. An
 eighth diagnostic benchmark makes the classical centered/inverse-gamma
@@ -13,20 +13,22 @@ intended to be read as well as run:
 5. `04_simulation_pgas.py` — PGAS fits initialized from Laplace.
 6. `05_uccle_laplace.py` — Laplace analysis of TXx, TXn, TNx, and TNn.
 7. `06_uccle_pgas.py` — PGAS analysis and engine comparison.
-8. `07_centered_ig_random_walk_gev.py` — exact-PGAS random-walk GEV with
-   centered states, inverse-gamma variance priors, and mandatory mixing
-   diagnostics.
-9. `08_simulation_laplace_mh.py` — exact Laplace-MH structural simulations.
+8. `07_centered_ig_random_walk_gev.py` — centered random-walk GEV with
+   conjugate inverse-gamma process-variance updates, a fast Laplace default,
+   optional exact Laplace-MH/PGAS validation, and mandatory mixing diagnostics.
+9. `08_simulation_laplace_mh.py` — exact Laplace-MH analysis of the same six
+   simulations, priors, tables, and figures as example 03.
 10. `09_uccle_laplace_mh.py` — exact Laplace-MH analysis of TXx, TXn, TNx,
-    and TNn, including acceptance and endpoint-support diagnostics.
+    and TNn under the same model, calibrated priors, tables, and figures as
+    example 05, with acceptance and endpoint-support diagnostics.
 
 The four component-selection fitting examples also save both forms of the level plot, a dedicated
 slope plot, posterior seasonality, a posterior predictive check, and an
 out-of-sample forecast. The Uccle slope figures use degrees per decade and can
 show the conditional fixed-slope posterior beside the stochastic one.
 The diagnostic example has no slope or seasonal component; it saves both level
-figures, parameter and process-variance traces, ACFs, ESS/R-hat tables, particle
-diagnostics, a posterior predictive check, and a forecast.
+figures, parameter and process-variance traces, ACFs, ESS/R-hat tables,
+engine diagnostics, a posterior predictive check, and a forecast.
 
 Run them from the package root. Each script writes to its own directory and
 automatically combines a timestamp with the settings that identify that run.
@@ -53,6 +55,12 @@ There is no switch for disabling either part of the run name. Set
 `BUCEX_RESULTS_ROOT` to change the root. Every run also contains a complete
 `run_config.json`; set `BUCEX_OVERWRITE=1` only when deliberately rerunning an
 existing identifier.
+
+Simulation-fitting examples store artifacts under `simulations/`,
+`fits/<scenario>/`, `tables/<scenario>/`, and `figures/<scenario>/`. Uccle
+fitting examples use `fits/<series>/`, `tables/<series>/`, and
+`figures/<series>/`. The paired Laplace and Laplace-MH scripts intentionally
+share those layouts and all scientific defaults.
 
 Run signatures and repeated figure/table names are deliberately compact. This
 keeps the complete path below the legacy Windows directory limit even when the

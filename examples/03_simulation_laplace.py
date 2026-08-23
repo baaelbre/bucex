@@ -105,7 +105,6 @@ FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_d{DRAWS}w{WARMUP}c{CHAINS}"
 OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
-OUTPUT_DIR = "results//03_simulation_laplace//all_great_except_for_RW"  # --- IGNORE ---
 
 phase = np.arange(PERIOD, dtype=float)
 dynamic_cycle = -DYNAMIC_SEASON_AMPLITUDE * np.cos(2.0 * np.pi * phase / PERIOD)
@@ -177,17 +176,6 @@ SCENARIOS = (
         "structural_truth": {"level": 2, "slope": 2, "seasonal": 1},
     },
 )
-
-# only the random walk
-SCENARIOS = (    {
-        "name": "random_walk",
-        "key": "random_walk",
-        "model": bx.Model(bx.GEV(), (bx.LocalLinearTrend(level_mode="dynamic", trend_mode="off"),), name="random walk"),
-        "params": {"sigma": SIGMA, "xi": XI, "sd.level": RANDOM_WALK_SD},
-        "initial_state": np.array([INITIAL_LEVEL]),
-        "seed": SIMULATION_SEED + 2,
-        "structural_truth": {"level": 2, "slope": 0, "seasonal": 0},
-    })
 
 # Fit one encompassing model to every scenario. SSVS decides whether each
 # process is zero, fixed, or dynamic; no scenario-specific model is supplied.

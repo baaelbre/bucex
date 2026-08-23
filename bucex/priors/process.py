@@ -123,7 +123,12 @@ class PCSD:
 
 @dataclass(frozen=True)
 class InverseGammaVariance:
-    """Inverse-gamma prior on ``sd**2`` in shape/scale form."""
+    """Inverse-gamma prior on ``sd**2`` in shape/scale form.
+
+    General univariate fits use the conjugate full conditional for Gaussian
+    process variances in a centered parameterization. Observation-scale and
+    non-centred process-scale updates remain nonconjugate.
+    """
 
     shape: float
     scale: float

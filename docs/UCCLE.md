@@ -108,3 +108,9 @@ The scripts store input truths, checksummed fits, tables, figures, and a full
 `run_config.json` under
 `results/<script>/<BUCEX_RUN_ID>__<automatic-settings-signature>/`.
 Set `BUCEX_OVERWRITE=1` only to replace compatible existing artifacts.
+
+Examples 03 and 08 use the same `simulations/`, `fits/<scenario>/`,
+`tables/<scenario>/`, and `figures/<scenario>/` layout. Examples 05 and 09 use
+the same `fits/<series>/`, `tables/<series>/`, and `figures/<series>/` layout.
+The paired scripts differ only in approximate Laplace versus exact
+Laplace-MH state inference and the associated algorithm diagnostics.

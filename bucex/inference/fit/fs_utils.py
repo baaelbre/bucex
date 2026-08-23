@@ -1928,6 +1928,7 @@ class NCPLaplaceResult:
     relative_change: float
     objective: float
     support_rejections: int
+    initial_support_repaired: bool = False
 
 
 @dataclass(frozen=True)
@@ -1946,6 +1947,7 @@ class NCPLaplaceApproximation:
     iterations: int
     relative_change: float
     objective: float
+    initial_support_repaired: bool = False
 
 
 @dataclass(frozen=True)
@@ -2406,6 +2408,135 @@ def _ncp_laplace_pseudo_data(
     return pseudo_y, pseudo_variance
 
 
+def _deterministic_feasible_ncp_path(
+    y: Array,
+    model: StateSpaceModel,
+    params_state: ParamDict,
+    params_obs: ParamDict,
+    layout: NCPLayout,
+    G: Array,
+    Q: Array,
+    H: Array,
+    offset: Array,
+    *,
+    minimum_support: float = 0.25,
+) -> tuple[Array, bool]:
+    """Return a deterministic FS path from which Laplace iteration can start.
+
+    The Laplace-MH proposal must be fixed conditional on the observations and
+    static parameters.  Initialising its mode search from the current MCMC path
+    would make the proposal state dependent and would require an additional
+    forward/reverse proposal correction.  A zero non-centred path is normally
+    sufficient, but it can cross a finite GEV endpoint even when the current
+    full trajectory is valid.
+
+    This helper repairs that case without consulting the current trajectory.
+    It exploits the causal FS state structure.  A contemporaneously loaded
+    level or seasonal innovation is used when available; otherwise an
+    integrated-slope innovation is chosen one step ahead.  Every repair moves
+    the affected predictor to ``eta_t = y_t``, where the GEV support value is
+    exactly one and its derivatives are well behaved.  The resulting path is
+    deterministic in ``(y, params_state, params_obs)`` and lies on the exact
+    singular transition support.
+    """
+
+    y = np.asarray(y, dtype=float).reshape(-1)
+    path = np.zeros((y.size + 1, layout.ncp_state_dim), dtype=float)
+    if np.isfinite(
+        _ncp_exact_observation_loglik(
+            y, path, params_state, params_obs, model, layout
+        )
+    ):
+        return path, False
+
+    if "xi" not in params_obs or "sigma" not in params_obs:
+        raise FloatingPointError(
+            "The deterministic Laplace initializer is outside observation support."
+        )
+    sigma = float(params_obs["sigma"])
+    xi = float(params_obs["xi"])
+    if not np.isfinite(sigma) or sigma <= 0.0 or not np.isfinite(xi):
+        raise FloatingPointError("Invalid GEV sigma or xi at Laplace initialization.")
+    if abs(xi) < 1e-12:
+        raise FloatingPointError(
+            "The Gumbel Laplace initializer has a non-finite objective."
+        )
+
+    minimum_support = float(minimum_support)
+    if not 0.0 < minimum_support < 1.0:
+        raise ValueError("minimum_support must lie strictly between zero and one.")
+
+    def support_value(observation: float, predictor: float) -> float:
+        return float(1.0 + xi * (observation - predictor) / sigma)
+
+    active, _, _ = _ncp_transition_structure(Q)
+    immediate = np.asarray(H[active], dtype=float)
+    usable_now = np.flatnonzero(
+        np.isfinite(immediate) & (immediate != 0.0)
+    )
+
+    if usable_now.size:
+        local = int(usable_now[np.argmax(np.abs(immediate[usable_now]))])
+        innovation_index = int(active[local])
+        loading = float(H[innovation_index])
+        for time in range(1, y.size + 1):
+            state = G @ path[time - 1]
+            predictor = float(offset[time - 1] + H @ state)
+            support = support_value(float(y[time - 1]), predictor)
+            if not np.isfinite(support) or support < minimum_support:
+                state[innovation_index] += (
+                    float(y[time - 1]) - predictor
+                ) / loading
+            path[time] = state
+    else:
+        # With only a dynamic slope, its innovation is measured through the
+        # integrated coordinate at the next observation.  The first predictor
+        # is deterministic; a valid current FS path therefore guarantees that
+        # its first-observation support cannot require repair.
+        one_step = np.asarray(H @ G[:, active], dtype=float)
+        usable_next = np.flatnonzero(
+            np.isfinite(one_step) & (one_step != 0.0)
+        )
+        if not usable_next.size:
+            raise FloatingPointError(
+                "No stochastic FS component can move the predictor into GEV support."
+            )
+        local = int(usable_next[np.argmax(np.abs(one_step[usable_next]))])
+        innovation_index = int(active[local])
+        loading = float(one_step[local])
+        for time in range(1, y.size + 1):
+            state = G @ path[time - 1]
+            predictor = float(offset[time - 1] + H @ state)
+            support = support_value(float(y[time - 1]), predictor)
+            if not np.isfinite(support) or support <= 0.0:
+                raise FloatingPointError(
+                    "The deterministic first-lag FS predictor is outside GEV support."
+                )
+            if time < y.size:
+                next_predictor = float(offset[time] + H @ (G @ state))
+                next_support = support_value(float(y[time]), next_predictor)
+                if not np.isfinite(next_support) or next_support < minimum_support:
+                    state[innovation_index] += (
+                        float(y[time]) - next_predictor
+                    ) / loading
+            path[time] = state
+
+    path = _project_ncp_path_to_support(path, G, Q)
+    if not np.isfinite(_ncp_state_log_density(path, G, Q)):
+        raise FloatingPointError(
+            "The repaired Laplace initializer left FS transition support."
+        )
+    if not np.isfinite(
+        _ncp_exact_observation_loglik(
+            y, path, params_state, params_obs, model, layout
+        )
+    ):
+        raise FloatingPointError(
+            "Could not construct a deterministic FS path inside GEV support."
+        )
+    return path, True
+
+
 def build_ncp_laplace_approximation(
     y: Array,
     model: StateSpaceModel,
@@ -2434,8 +2565,19 @@ def build_ncp_laplace_approximation(
     G, Q = build_ncp_system(layout)
     H = measurement_vector(params_state, layout)
     offset = baseline_mu_path(Tn, params_state, layout)
+    initial_support_repaired = False
     if initial_path is None:
-        mode = np.zeros((Tn + 1, layout.ncp_state_dim), dtype=float)
+        mode, initial_support_repaired = _deterministic_feasible_ncp_path(
+            y,
+            model,
+            params_state,
+            params_obs,
+            layout,
+            G,
+            Q,
+            H,
+            offset,
+        )
     else:
         mode = np.asarray(initial_path, dtype=float).copy()
     if mode.shape != (Tn + 1, layout.ncp_state_dim):
@@ -2546,6 +2688,7 @@ def build_ncp_laplace_approximation(
         iterations=int(iteration),
         relative_change=float(relative_change),
         objective=float(current_objective),
+        initial_support_repaired=bool(initial_support_repaired),
     )
 
 
@@ -2769,4 +2912,7 @@ def iterated_laplace_ncp(
         relative_change=approximation.relative_change,
         objective=approximation.objective,
         support_rejections=int(support_rejections),
+        initial_support_repaired=bool(
+            approximation.initial_support_repaired
+        ),
     )

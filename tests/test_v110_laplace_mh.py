@@ -36,7 +36,7 @@ def _gev_sample(seed: int = 710) -> tuple[bx.Model, np.ndarray]:
 def test_v110_version_plan_and_configuration_contract():
     model, values = _gev_sample()
     plan = bx.plan(model, values, engine="laplace_mh", parameterization="fs")
-    assert bx.__version__ == "1.1.0"
+    assert bx.__version__ == "1.1.3"
     assert plan.engine == "laplace_mh"
     assert plan.targets_exact_posterior
     assert plan.approximation is None
@@ -128,6 +128,10 @@ def test_public_laplace_mh_fit_is_exact_and_reports_diagnostics(
     engine = fit.diagnostics()["engine"]
     assert 0.0 <= engine["state_acceptance"] <= 1.0
     assert engine["mean_proposal_support_rejections"] >= 0.0
+    if parameterization == "fs":
+        assert 0.0 <= engine["initial_support_repair_rate"] <= 1.0
+    else:
+        assert "initial_support_repair_rate" not in engine
     archive = tmp_path / f"laplace_mh_{parameterization}.bucex"
     fit.save(archive)
     restored = bx.FitResult.load(archive)

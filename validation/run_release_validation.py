@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.1.0."""
+"""Fixed-seed numerical release validation for bucex 1.1.3."""
 from __future__ import annotations
 
 import argparse
@@ -17,6 +17,13 @@ if str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
 
 import bucex as bx
+from bucex.inference.fit.fs_utils import (
+    _ncp_exact_observation_loglik,
+    build_ncp_laplace_approximation,
+    build_ncp_system,
+    infer_ncp_layout,
+    ncp_laplace_mh,
+)
 
 
 def _dates(n_time: int) -> np.ndarray:
@@ -60,8 +67,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.1.0":
-        raise RuntimeError(f"Expected bucex 1.1.0, found {bx.__version__}.")
+    if bx.__version__ != "1.1.3":
+        raise RuntimeError(f"Expected bucex 1.1.3, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -70,6 +77,114 @@ def run() -> dict[str, object]:
         "bucex_version": bx.__version__,
         "python": platform.python_version(),
         "platform": platform.platform(),
+    }
+
+    # Regression for the 1.1.0--1.1.2 failure: the zero FS trajectory crosses
+    # a negative-shape endpoint, while a valid trajectory exists through the
+    # one-step-delayed integrated slope. Proposal construction must repair the
+    # initializer deterministically without using that current trajectory.
+    support_model = bx.Model(bx.GEV(), [bx.LocalLinearTrend()])
+    support_layout = infer_ncp_layout(support_model)
+    support_y = np.asarray([0.0, 5.0, 5.0, 5.0, 5.0])
+    support_state = {
+        "alpha0": 0.0,
+        "beta0": 0.0,
+        "s_level": 0.0,
+        "q_level": 0.0,
+        "s_trend": 1.0,
+        "q_trend": 1.0,
+    }
+    support_observation = {"sigma": 1.0, "xi": -0.25}
+    support_transition, support_covariance = build_ncp_system(support_layout)
+    support_current = np.zeros(
+        (support_y.size + 1, support_layout.ncp_state_dim)
+    )
+    for state_time in range(1, support_y.size + 1):
+        support_current[state_time] = (
+            support_transition @ support_current[state_time - 1]
+        )
+        if state_time == 1:
+            support_current[
+                state_time, int(support_layout.idx_tilde_beta)
+            ] += 5.0
+        elif state_time == 2:
+            support_current[
+                state_time, int(support_layout.idx_tilde_beta)
+            ] -= 5.0
+    zero_support_loglik = _ncp_exact_observation_loglik(
+        support_y,
+        np.zeros_like(support_current),
+        support_state,
+        support_observation,
+        support_model,
+        support_layout,
+    )
+    current_support_loglik = _ncp_exact_observation_loglik(
+        support_y,
+        support_current,
+        support_state,
+        support_observation,
+        support_model,
+        support_layout,
+    )
+    support_approximation = build_ncp_laplace_approximation(
+        support_y,
+        support_model,
+        support_state,
+        support_observation,
+        support_layout,
+        max_iterations=15,
+    )
+    support_repeat = build_ncp_laplace_approximation(
+        support_y,
+        support_model,
+        support_state,
+        support_observation,
+        support_layout,
+        max_iterations=15,
+    )
+    support_result = ncp_laplace_mh(
+        support_y,
+        support_model,
+        support_state,
+        support_observation,
+        support_layout,
+        support_current,
+        rng=np.random.default_rng(2499),
+        mh_steps=2,
+        max_iterations=15,
+    )
+    support_residual = (
+        support_approximation.mode_path[1:]
+        - support_approximation.mode_path[:-1] @ support_transition.T
+    )
+    deterministic = np.flatnonzero(np.diag(support_covariance) == 0.0)
+    record["negative_xi_fs_support_repair"] = {
+        "zero_path_invalid": bool(not np.isfinite(zero_support_loglik)),
+        "current_path_valid": bool(np.isfinite(current_support_loglik)),
+        "initializer_repaired": bool(
+            support_approximation.initial_support_repaired
+        ),
+        "initializer_deterministic": bool(
+            np.array_equal(
+                support_approximation.mode_path,
+                support_repeat.mode_path,
+            )
+        ),
+        "mode_converged": bool(support_approximation.converged),
+        "mode_objective_finite": bool(
+            np.isfinite(support_approximation.objective)
+        ),
+        "singular_recursion_exact": bool(
+            np.array_equal(
+                support_residual[:, deterministic],
+                np.zeros_like(support_residual[:, deterministic]),
+            )
+        ),
+        "laplace_mh_exact_invariant": bool(support_result.exact_invariant),
+        "finite_returned_path": bool(
+            np.all(np.isfinite(support_result.z_path))
+        ),
     }
 
     # Long, nearly deterministic Gaussian path: regression for stable Joseph
@@ -238,6 +353,51 @@ def run() -> dict[str, object]:
             laplace_mh_diagnostics["mean_proposal_support_rejections"]
         ),
     }
+
+    centered_ig_model = bx.Model(
+        bx.GEV(xi_bounds=(-0.5, 0.5)),
+        [bx.LocalLevel(mode="dynamic", initial_mean=20.0, initial_sd=2.0)],
+    )
+    centered_ig_simulation = bx.simulate(
+        centered_ig_model,
+        24,
+        {"sd.level": 0.05, "sigma": 1.0, "xi": -0.2},
+        initial_state=[20.0],
+        seed=2424,
+    )
+    centered_ig_fit = bx.fit(
+        centered_ig_simulation.y,
+        model=centered_ig_model,
+        priors=bx.Priors(
+            process={
+                "level": bx.InverseGammaVariance(
+                    shape=2.0, scale=0.0025
+                )
+            },
+            observation_sd=bx.InverseGammaVariance(
+                shape=2.0, scale=1.0
+            ),
+            shape=bx.TruncatedNormalPrior(
+                mean=0.0, sd=0.2, lower=-0.5, upper=0.5
+            ),
+            profile="centered_ig_validation",
+        ),
+        engine="laplace",
+        parameterization="centered",
+        asis=False,
+        mcmc=bx.MCMC(draws=2, warmup=2, chains=1, seed=2425),
+    )
+    record["centered_inverse_gamma_gibbs"] = {
+        **_finite_fit(centered_ig_fit),
+        "update_method": centered_ig_fit.sampler_diagnostics[
+            "update_methods"
+        ]["sd.level"],
+        "has_mh_acceptance": "sd.level"
+        in centered_ig_fit.sampler_diagnostics["acceptance"],
+        "conjugate_updates": centered_ig_fit.meta[
+            "conjugate_process_variance_updates"
+        ],
+    }
     record["total_seconds"] = time.perf_counter() - started
     return record
 
@@ -247,7 +407,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.1.0.json"),
+        default=Path("validation/release_validation_1.1.3.json"),
     )
     args = parser.parse_args()
     result = run()

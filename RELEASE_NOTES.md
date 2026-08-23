@@ -1,9 +1,107 @@
-# bucex 1.1.0 release notes
+# bucex 1.1.3 release notes
+
+Version 1.1.3 is a correctness and numerical-safety patch for exact FS
+Laplace-MH inference with finite-endpoint GEV likelihoods. It keeps the public
+API and archive schema unchanged.
+
+## Finite-endpoint Laplace-MH initialization
+
+For negative shape, a valid GEV trajectory must satisfy
+
+```text
+1 + xi * (y_t - eta_t) / sigma > 0.
+```
+
+The 1.1.0--1.1.2 independence proposal began its deterministic mode search at
+the zero non-centred trajectory. A current full trajectory could be valid while
+that zero baseline crossed the endpoint, causing proposal construction to fail
+before an MH draw was made. Repeating the same deterministic calculation did
+not resolve the failure.
+
+Version 1.1.3 constructs a deterministic support-feasible FS path whenever the
+zero path is invalid. It uses a contemporaneous level or seasonal innovation
+when available and otherwise repairs an integrated stochastic slope one step
+ahead. The initializer depends only on observations and static parameters, not
+on the current MCMC trajectory, so the existing exact independence-MH
+correction remains valid. Singular transition coordinates are still projected
+onto their exact affine recursions without jitter.
+
+## Exact-sampler failure contract
+
+- Exact FS Laplace-MH and PGAS iterations are attempted once.
+- An unrecoverable numerical exception stops the fit before a restored or
+  duplicate posterior draw can be recorded.
+- The former 25-attempt loop remains only for the explicitly approximate
+  Laplace path where its historical recovery behavior is part of that method.
+- Laplace diagnostics now report `initial_support_repair_rate`; the underlying
+  per-draw indicator is retained in the fit archive.
+- Regression tests reproduce the negative-shape integrated-slope support case
+  and verify the fail-fast contract.
+
+## 1.1.2 example-consistency patch
+
+Version 1.1.2 made the paired Laplace and Laplace-MH examples scientifically
+and operationally consistent. Its example layout and runners remain unchanged.
+
+## Controlled Laplace versus Laplace-MH examples
+
+- `08_simulation_laplace_mh.py` now uses exactly the six structural truths,
+  record length, GEV parameters, fitted model, calibrated SSVS prior, seeds,
+  MCMC defaults, summaries, and figure suite of `03_simulation_laplace.py`.
+- `09_uccle_laplace_mh.py` now uses exactly the data window, model, calibrated
+  prior, structural odds, MCMC defaults, summaries, and figure suite of
+  `05_uccle_laplace.py`.
+- The only inferential differences in each pair are `engine="laplace_mh"`,
+  `Laplace(mh_steps=...)`, exactness metadata, and MH acceptance/support
+  diagnostics.
+- Simulation fits now consistently write `simulations/`, `fits/`, `tables/`,
+  and `figures/`; Uccle fits consistently write `fits/`, `tables/`, and
+  `figures/`. Both PNG and PDF figures are retained.
+- The Laplace-MH Bash/PBS launchers now run independent chains concurrently
+  and combine compatible fits exactly like their Laplace counterparts.
+- Temporary local-debug overrides in example 03 were removed.
+- New parity tests prevent future drift in settings, model declarations,
+  priors, output contracts, and runner defaults.
+
+## 1.1.1 centered-inference patch
+
+Version 1.1.1 added automatic centered inverse-gamma process-variance updates.
+It did not change or optimize the Laplace-MH implementation introduced in
+1.1.0.
+
+### Conjugate centered process-variance updates
+
+- A process component with `InverseGammaVariance` is now updated from its
+  exact inverse-gamma full conditional whenever
+  `parameterization="centered"`.
+- The dispatch is automatic from the existing prior object; no sampler flag or
+  new public prior type is required.
+- The conjugate update applies to Gaussian state-transition variances
+  conditional on the complete latent path. An inverse-gamma prior on the GEV
+  observation scale remains nonconjugate and retains its log-scale MH update.
+- Disturbance/non-centred scale updates remain MH. With ASIS, bucex records the
+  method used by each centered and non-centred sweep separately.
+- `FitResult` diagnostics now report parameter update methods. Gibbs and fixed
+  updates are omitted from MH acceptance summaries instead of receiving a
+  misleading acceptance rate of one or zero.
+
+### Centered inverse-gamma benchmark
+
+- `07_centered_ig_random_walk_gev.py` now uses `engine="laplace"` by default,
+  matching its purpose as a fast qualitative demonstration of centered/IG
+  mixing.
+- Set `BUCEX_ENGINE=laplace_mh` for exact Laplace-MH validation or
+  `BUCEX_ENGINE=pgas` for the exact particle benchmark. The model, priors,
+  diagnostics, and saved outputs remain the same across engines.
+- Example, Bash, PBS, and run metadata include the selected engine. Laplace-MH
+  performance code is unchanged in this release.
+
+## 1.1.0 Laplace-MH release
 
 Version 1.1.0 adds exact-invariant, full-trajectory Laplace independence-MH
 inference for univariate non-Gaussian state-space models.
 
-## New `laplace_mh` engine
+### New `laplace_mh` engine
 
 - `bx.fit(..., engine="laplace_mh")` is available for univariate GEV models
   under the FS, centered, and disturbance parameterizations.
@@ -24,7 +122,7 @@ inference for univariate non-Gaussian state-space models.
 - `bx.Laplace(mh_steps=...)` controls repeated whole-trajectory proposals while
   reusing a cached Gaussian forward filter in the FS implementation.
 
-## Diagnostics and API
+### Diagnostics and API
 
 - `fit.diagnostics()["engine"]` reports state acceptance, proposal support
   rejections, Laplace convergence, iteration count, and relative mode change.
@@ -37,7 +135,7 @@ inference for univariate non-Gaussian state-space models.
 - Hierarchical `MultiSeriesModel` fitting rejects `laplace_mh` in this release
   until the shared hierarchy receives a matching exact correction.
 
-## Examples and validation
+### Examples and validation
 
 - Added `08_simulation_laplace_mh.py` and `09_uccle_laplace_mh.py`, plus Bash
   runners and PBS submission files.

@@ -2,9 +2,10 @@
 
 This is the deliberately difficult reference analysis discussed in the paper:
 the latent level is sampled in the centred parameterisation, while its small
-innovation variance has an inverse-gamma prior.  The script therefore saves
-the trace, ACF, ESS, and R-hat diagnostics needed to see whether the apparently
-reasonable latent trajectory is supported by a well-mixing Markov chain.
+innovation variance has a conjugate inverse-gamma update.  The default fast
+Laplace state update is intentionally approximate because the target of this
+example is Markov-chain mixing.  Set ``BUCEX_ENGINE=laplace_mh`` for the exact
+Laplace-MH validation or ``BUCEX_ENGINE=pgas`` for the particle benchmark.
 
 Run with ``python examples/07_centered_ig_random_walk_gev.py``.
 """
@@ -74,14 +75,20 @@ XI_PRIOR_MEAN = float(os.environ.get("BUCEX_XI_PRIOR_MEAN", "0.0"))
 XI_PRIOR_SD = float(os.environ.get("BUCEX_XI_PRIOR_SD", "0.20"))
 XI_PRIOR_BOUNDS = (-0.50, 0.50)
 
-# MCMC and particle settings. Four independent chains are important here: the
-# purpose of this example is to diagnose the centred/IG geometry, not only draw
-# a smooth path. PGAS keeps the GEV observation update exact; it also lets us
-# distinguish parameter mixing from particle-path degeneracy.
+# MCMC and state-update settings. Four independent chains are important here:
+# the purpose is to diagnose the centred/IG geometry, not only draw a smooth
+# path. Plain Laplace is the fast default; Laplace-MH and PGAS remain available
+# as exact validation engines without changing the model or priors.
+ENGINE = os.environ.get("BUCEX_ENGINE", "laplace").strip().lower()
+if ENGINE not in {"laplace", "laplace_mh", "pgas"}:
+    raise ValueError(
+        "BUCEX_ENGINE must be one of: laplace, laplace_mh, pgas."
+    )
 DRAWS = int(os.environ.get("BUCEX_DRAWS", "1000"))
 WARMUP = int(os.environ.get("BUCEX_WARMUP", "1000"))
 CHAINS = int(os.environ.get("BUCEX_CHAINS", "4"))
 PARTICLES = int(os.environ.get("BUCEX_PARTICLES", "256"))
+LAPLACE_MH_STEPS = int(os.environ.get("BUCEX_LAPLACE_MH_STEPS", "1"))
 SEED = int(os.environ.get("BUCEX_SEED", "13081997"))
 PROGRESS = os.environ.get("BUCEX_PROGRESS", "1").lower() not in {
     "0",
@@ -107,8 +114,14 @@ MAX_ACF_LAG = int(os.environ.get("BUCEX_MAX_ACF_LAG", "100"))
 FIGURE_FORMATS = ("pdf", "png")
 FIGURE_DPI = 180
 
+ENGINE_SIGNATURE = {
+    "laplace": "lap",
+    "laplace_mh": f"lmh{LAPLACE_MH_STEPS}",
+    "pgas": f"pgas{PARTICLES}",
+}[ENGINE]
 RUN_SIGNATURE = (
-    f"n{N_TIME}_p{PARTICLES}_d{DRAWS}w{WARMUP}c{CHAINS}_s{SIMULATION_SEED}"
+    f"{ENGINE_SIGNATURE}_n{N_TIME}_d{DRAWS}w{WARMUP}c{CHAINS}"
+    f"_s{SIMULATION_SEED}"
 )
 OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
 
@@ -219,11 +232,15 @@ def main() -> None:
         },
         "priors": PRIOR_SETTINGS,
         "inference": {
-            "engine": "pgas",
+            "engine": ENGINE,
             "parameterization": "centered",
             "asis": False,
-            "particles": PARTICLES,
-            "proposal": "guided",
+            "targets_exact_posterior": ENGINE in {"laplace_mh", "pgas"},
+            "particles": PARTICLES if ENGINE == "pgas" else None,
+            "particle_proposal": "guided" if ENGINE == "pgas" else None,
+            "laplace_mh_steps": (
+                LAPLACE_MH_STEPS if ENGINE == "laplace_mh" else None
+            ),
         },
         "mcmc": {
             "draws": DRAWS,
@@ -293,7 +310,7 @@ def main() -> None:
             fit.n_time != N_TIME
             or fit.n_chains != CHAINS
             or fit.draws_per_chain != DRAWS
-            or fit.plan.engine != "pgas"
+            or fit.plan.engine != ENGINE
             or fit.plan.parameterization != "centered"
             or fit.plan.asis
             or fit.metadata.get("prior_settings") != PRIOR_SETTINGS
@@ -315,14 +332,22 @@ def main() -> None:
         fit_path.parent.mkdir(parents=True, exist_ok=True)
         fit.save(fit_path)
     else:
+        engine_options = {}
+        if ENGINE == "pgas":
+            engine_options["particles"] = bx.Particles(
+                n=PARTICLES, proposal="guided"
+            )
+        else:
+            engine_options["laplace"] = bx.Laplace(
+                mh_steps=LAPLACE_MH_STEPS
+            )
         fit = bx.fit(
             simulation.y,
             model=MODEL,
             priors=PRIORS,
-            engine="pgas",
+            engine=ENGINE,
             parameterization="centered",
             asis=False,
-            particles=bx.Particles(n=PARTICLES, proposal="guided"),
             mcmc=bx.MCMC(
                 draws=DRAWS,
                 warmup=WARMUP,
@@ -331,6 +356,7 @@ def main() -> None:
                 progress=PROGRESS,
             ),
             name="centered inverse-gamma random-walk GEV",
+            **engine_options,
         )
         fit.metadata.update(
             {

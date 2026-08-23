@@ -274,6 +274,7 @@ def _stack_fs_chains(
         "laplace_converged",
         "laplace_relative_change",
         "laplace_support_rejections",
+        "laplace_initial_support_repaired",
         "laplace_mh_acceptance",
         "laplace_mh_mean_log_acceptance_ratio",
         "laplace_mh_log_weight",

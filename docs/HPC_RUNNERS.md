@@ -8,7 +8,7 @@ Every analysis now has two files, following the usual PBS pattern:
 - `job_scripts/submit_*.pbs` contains resource requests, logging, and
   named PBS settings. It calls the corresponding runner.
 
-For examples 03--07, `CHAINS=4` means four independent one-chain Python
+For examples 03--09, `CHAINS=4` means four independent one-chain Python
 processes run concurrently on the four requested PBS cores. The runner waits
 for every process, combines the fits with `bucex.combine_fits`, and produces
 tables and figures from the combined four-chain result. Examples 00--02 remain
@@ -136,14 +136,15 @@ messages to the per-chain log files. It is `0` by default.
 | `05_uccle_laplace` | `START END DRAWS WARMUP CHAINS MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
 | `06_uccle_pgas` | `START END DRAWS WARMUP CHAINS PARTICLES MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE` |
 | `07_centered_ig_random_walk_gev` | `N_TIME SIMULATION_SEED DRAWS WARMUP CHAINS PARTICLES MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE` |
-| `08_simulation_laplace_mh` | `N_TIME DRAWS WARMUP CHAINS SEED RESULTS_ROOT RUN_ID MH_STEPS` |
-| `09_uccle_laplace_mh` | `START END SERIES DRAWS WARMUP CHAINS SEED DATA_DIR RESULTS_ROOT RUN_ID MH_STEPS` |
+| `08_simulation_laplace_mh` | `N_TIME PERIOD SIMULATION_SEED DRAWS WARMUP CHAINS MCMC_SEED RESULTS_ROOT RUN_ID OVERWRITE MH_STEPS` |
+| `09_uccle_laplace_mh` | `START END DRAWS WARMUP CHAINS MCMC_SEED DATA_DIR RESULTS_ROOT RUN_ID OVERWRITE MH_STEPS` |
 
 The main scientific settings—GEV scale and shape, process-noise truths, SSVS
 probabilities, and prior scales—remain visible at the top of the Python files.
 Edit those there for scientific sensitivity analyses.
 
-For example 07, the PBS file also accepts `RANDOM_WALK_SD`, `LEVEL_IG_A`,
+For example 07, the PBS file also accepts `ENGINE` (`laplace` by default,
+`laplace_mh`, or `pgas`), `RANDOM_WALK_SD`, `LEVEL_IG_A`,
 `LEVEL_IG_B`, `SIGMA_IG_A`, `SIGMA_IG_B`, `XI_PRIOR_MEAN`, and `XI_PRIOR_SD`.
 The `LEVEL_IG_*` pair parameterizes the inverse-gamma prior on
 `q_level = sd.level**2` in shape/scale form.
@@ -161,11 +162,11 @@ qsub -v RUN_ID="${STAMP}_sim_lap",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHAI
   job_scripts/submit_03_simulation_laplace.pbs
 qsub -v RUN_ID="${STAMP}_sim_pgas",N_TIME=1000,PERIOD=4,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128 \
   job_scripts/submit_04_simulation_pgas.pbs
-qsub -v RUN_ID="${STAMP}_centered_ig",N_TIME=1000,DRAWS=400,WARMUP=100,CHAINS=4,PARTICLES=128,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025 \
+qsub -v RUN_ID="${STAMP}_centered_ig",ENGINE=laplace,N_TIME=1000,DRAWS=400,WARMUP=100,CHAINS=4,LEVEL_IG_A=2.0,LEVEL_IG_B=0.0025 \
   job_scripts/submit_07_centered_ig_random_walk_gev.pbs
-qsub -v RUN_ID="${STAMP}_sim_laplace_mh",N_TIME=240,DRAWS=400,WARMUP=400,CHAINS=2,MH_STEPS=1 \
+qsub -v RUN_ID="${STAMP}_sim_laplace_mh",N_TIME=1000,PERIOD=4,SIMULATION_SEED=13081997,DRAWS=400,WARMUP=100,CHAINS=4,MCMC_SEED=13081997,MH_STEPS=1 \
   job_scripts/submit_08_simulation_laplace_mh.pbs
-qsub -v RUN_ID="${STAMP}_uccle_laplace_mh",START=1892-01-01,SERIES=TXx,DRAWS=400,WARMUP=400,CHAINS=2,MH_STEPS=1 \
+qsub -v RUN_ID="${STAMP}_uccle_laplace_mh",START=1892-01-01,DRAWS=500,WARMUP=500,CHAINS=4,MCMC_SEED=56000,MH_STEPS=1 \
   job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
 

@@ -137,6 +137,9 @@ class FitResult:
             "parameterization": self.plan.parameterization,
             "asis": bool(self.plan.asis),
             "proposal": self.plan.proposal,
+            "parameter_updates": dict(
+                self.sampler_diagnostics.get("update_methods", {})
+            ),
         }
 
     @property
@@ -299,7 +302,12 @@ class FitResult:
     @property
     def acceptance(self) -> dict[str, float]:
         values = self.sampler_diagnostics.get("acceptance", {})
-        return {name: float(np.nanmean(rate)) for name, rate in values.items()}
+        output: dict[str, float] = {}
+        for name, rate in values.items():
+            array = np.asarray(rate, dtype=float)
+            finite = array[np.isfinite(array)]
+            output[name] = float(np.mean(finite)) if finite.size else np.nan
+        return output
 
     def process_sd_draws(self) -> dict[str, Array]:
         return {name: self.parameter(f"sd.{name}") for name in self.compiled.noise_names}

@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.1.0 keeps one model compiler, one fitting entry point, and one result
+Release 1.1.3 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text
@@ -30,6 +30,12 @@ bucex/
 
 FS auxiliary paths and signed coefficients never replace the centered
 scientific state stored in `FitResult`.
+
+In the general univariate sampler, the prior type and parameterization jointly
+select the process-scale update. `InverseGammaVariance` receives its conjugate
+full-conditional Gibbs draw in a centered sweep; other centered priors and all
+non-centred scale sweeps retain their log-scale MH updates. The public prior API
+therefore declares the mathematics without a separate `conjugate` switch.
 
 ## Hierarchical sampler
 
@@ -64,9 +70,13 @@ Laplace-MH factors its state update into three reusable operations:
 
 The common state prior cancels in the MH ratio, including singular directions.
 FS Gaussian filter arrays are cached so repeated `mh_steps` reuse one forward
-pass. Approximate `laplace` retains its historical support-draw loop, while
-exact `laplace_mh` makes one untruncated proposal per step and treats endpoint
-violations as rejections.
+pass. If the zero FS path crosses a finite GEV endpoint, proposal construction
+starts from a deterministic support-feasible path derived without consulting
+the current chain trajectory. Approximate `laplace` retains its historical
+support-draw loop, while exact `laplace_mh` makes one untruncated proposal per
+step and treats endpoint violations as rejections. An unrecoverable numerical
+failure in an exact state update aborts the fit before a restored state can be
+saved as a new draw.
 
 ## Analysis-script lifecycle
 
@@ -77,7 +87,9 @@ benchmark; the final two exercise exact Laplace-MH. Ten matching PBS jobs
 invoke those exact files and share a `BUCEX_RUN_ID`; scheduler code does not
 define the statistics. Reusable
 scientific behavior belongs in the core API, while analysis-specific choices
-remain visible in the scripts.
+remain visible in the scripts. Examples 08 and 09 deliberately mirror the
+scientific contracts and artifact trees of examples 03 and 05, so engine
+comparisons do not silently change the data, priors, or summaries.
 
 ## Persistence
 
