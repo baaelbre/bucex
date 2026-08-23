@@ -1,0 +1,17 @@
+In powershell:
+
+$runId = "laplace_split_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+
+$env:BUCEX_RUN_ID = $runId
+$env:BUCEX_RESULTS_ROOT = "results"
+$env:BUCEX_N_TIME = "1000"
+$env:BUCEX_DRAWS = "1000"
+$env:BUCEX_WARMUP = "1000"
+$env:BUCEX_CHAINS = "1"
+$env:BUCEX_PROGRESS = "1"
+$env:BUCEX_OVERWRITE = "1"
+
+$env:BUCEX_SCENARIO_KEYS = "stationary;linear;random_walk"
+$env:BUCEX_SCENARIO_KEYS = "llt;dynamic_season;llt_season"
+
+python .\examples\03_simulation_laplace.py

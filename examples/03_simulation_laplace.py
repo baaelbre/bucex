@@ -111,7 +111,9 @@ FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", str(10 * PERIOD)
 FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)))
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_d{DRAWS}w{WARMUP}c{CHAINS}"
-OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
+# all of them results/03_simulation_laplace/the_ideal_seed
+OUTPUT_DIR = Path("results/03_simulation_laplace/the_ideal_seed")
+#OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}" # comment out to have a new directory.
 
 phase = np.arange(PERIOD, dtype=float)
 dynamic_cycle = -DYNAMIC_SEASON_AMPLITUDE * np.cos(2.0 * np.pi * phase / PERIOD)
@@ -183,7 +185,8 @@ SCENARIOS = (
         "structural_truth": {"level": 2, "slope": 2, "seasonal": 1},
     },
 )
-
+# only the stationary, linear and random walk here
+SCENARIOS = SCENARIOS[:3]  # for quick testing; comment out to run all six
 # Fit one encompassing model to every scenario. SSVS decides whether each
 # process is zero, fixed, or dynamic; no scenario-specific model is supplied.
 FIT_MODEL = bx.Model(

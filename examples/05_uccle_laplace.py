@@ -66,7 +66,7 @@ LEVEL_DYNAMIC_PROBABILITY = float(
 # overrides (for example 0.2:0.4:0.4) for a sensitivity analysis through qsub.
 TREND_PROBABILITIES = tuple(
     float(value)
-    for value in os.environ.get("BUCEX_TREND_PROBABILITIES", "0:0.5:0.5").split(":")
+    for value in os.environ.get("BUCEX_TREND_PROBABILITIES", "0.2:0.4:0.4").split(":")
 )
 SEASON_PROBABILITIES = tuple(
     float(value)
