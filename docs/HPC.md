@@ -9,7 +9,7 @@ BLAS threads are fixed at one throughout.
 ## One-time setup
 
 ```bash
-cd /path/to/bucex
+cd /kyukon/data/gent/vo/000/gvo00048/vsc42619/GitHub/bucex
 source "$HOME/venvs/bucex_env/bin/activate"
 python -m pip install --upgrade pip setuptools wheel
 python -m pip install -e ".[plot]"

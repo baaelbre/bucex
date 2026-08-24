@@ -1,8 +1,11 @@
-"""Fit all six structural simulations with Laplace state updates.
+"""Fit selected structural simulations with Laplace state updates.
 
 This is a standalone, sequential example: it declares the simulation models,
 declares the larger fitted model, constructs the priors, calls ``bx.fit``, and
-writes the posterior summaries without a workflow layer.
+writes the posterior summaries without a workflow layer. Set
+``BUCEX_SCENARIO_KEYS`` to a platform-separated list of scenario keys to run a
+subset. Reusing the same run ID and settings appends another subset to the same
+output directory.
 """
 from __future__ import annotations
 
@@ -38,10 +41,10 @@ SIGMA = float(os.environ.get("BUCEX_SIGMA", "1.50"))
 XI = float(os.environ.get("BUCEX_XI", "-0.30"))
 INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
 LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
-RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.02"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00050"))
-LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.002"))
+RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.02"))
+LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.01"))
+LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.0008"))
+LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.003"))
 DYNAMIC_SEASON_AMPLITUDE = float(
     os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
 )
@@ -56,7 +59,7 @@ SIMULATION_SEED = int(os.environ.get("BUCEX_SIMULATION_SEED", "13081997"))
 # probabilities are deliberately neutral because recovery is the experiment.
 ALPHA_PRIOR_SD = float(os.environ.get("BUCEX_ALPHA_PRIOR_SD", "3.2"))
 BETA_PRIOR_MEAN = float(os.environ.get("BUCEX_BETA_PRIOR_MEAN", "0.0"))
-BETA_PRIOR_SD = float(os.environ.get("BUCEX_BETA_PRIOR_SD", "0.006"))
+BETA_PRIOR_SD = float(os.environ.get("BUCEX_BETA_PRIOR_SD", "0.01"))
 INITIAL_SEASON_PRIOR_SD = float(
     os.environ.get("BUCEX_INITIAL_SEASON_PRIOR_SD", "0.5")
 )
@@ -65,8 +68,8 @@ SIGMA2_PRIOR_B = float(os.environ.get("BUCEX_SIGMA2_PRIOR_B", "2.25"))
 XI_PRIOR_BOUNDS = (-0.50, 0.50)
 XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
 INNOVATION_SLAB_SD = {
-    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.02")),
-    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.00050")),
+    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.03")),
+    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.003")),
     "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
 }
 LEVEL_DYNAMIC_PROBABILITY = float(
@@ -111,9 +114,7 @@ FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", str(10 * PERIOD)
 FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)))
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_d{DRAWS}w{WARMUP}c{CHAINS}"
-# all of them results/03_simulation_laplace/the_ideal_seed
-OUTPUT_DIR = Path("results/03_simulation_laplace/the_ideal_seed")
-#OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}" # comment out to have a new directory.
+OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
 
 phase = np.arange(PERIOD, dtype=float)
 dynamic_cycle = -DYNAMIC_SEASON_AMPLITUDE * np.cos(2.0 * np.pi * phase / PERIOD)
@@ -185,8 +186,36 @@ SCENARIOS = (
         "structural_truth": {"level": 2, "slope": 2, "seasonal": 1},
     },
 )
-# only the stationary, linear and random walk here
-SCENARIOS = SCENARIOS[:3]  # for quick testing; comment out to run all six
+
+# Optional subset selection. ``os.pathsep`` is ``;`` on Windows and ``:`` on
+# Linux/HPC systems. SCENARIOS deliberately remains the complete canonical
+# collection so examples 02, 03, 04, and 08 retain the same public contract.
+SCENARIO_INDEX = {
+    scenario["key"]: index for index, scenario in enumerate(SCENARIOS)
+}
+_requested_scenario_keys = tuple(
+    value.strip()
+    for value in os.environ.get("BUCEX_SCENARIO_KEYS", "").split(os.pathsep)
+    if value.strip()
+)
+if len(set(_requested_scenario_keys)) != len(_requested_scenario_keys):
+    raise ValueError("BUCEX_SCENARIO_KEYS must not contain duplicates.")
+_unknown_scenario_keys = tuple(
+    key for key in _requested_scenario_keys if key not in SCENARIO_INDEX
+)
+if _unknown_scenario_keys:
+    raise ValueError(
+        "Unknown BUCEX_SCENARIO_KEYS: "
+        + ", ".join(_unknown_scenario_keys)
+        + ". Available keys: "
+        + ", ".join(SCENARIO_INDEX)
+    )
+ACTIVE_CASES = (
+    tuple(SCENARIOS[SCENARIO_INDEX[key]] for key in _requested_scenario_keys)
+    if _requested_scenario_keys
+    else SCENARIOS
+)
+
 # Fit one encompassing model to every scenario. SSVS decides whether each
 # process is zero, fixed, or dynamic; no scenario-specific model is supplied.
 FIT_MODEL = bx.Model(
@@ -213,6 +242,70 @@ PRIOR_SETTINGS = {
 }
 
 
+def _merge_run_config(
+    config_path: Path,
+    current: dict[str, object],
+) -> dict[str, object]:
+    """Merge a scenario subset into an existing compatible run manifest."""
+
+    if not config_path.is_file():
+        return current
+
+    existing = json.loads(config_path.read_text(encoding="utf-8"))
+    invariant_keys = (
+        "script",
+        "run_timestamp",
+        "run_signature",
+        "output_directory",
+        "bucex_version",
+        "engine",
+        "simulation",
+        "fit_model",
+        "priors",
+        "mcmc",
+        "figures",
+        "chain_only",
+        "combined_chain_runs",
+    )
+    mismatches = [
+        key for key in invariant_keys if existing.get(key) != current.get(key)
+    ]
+    if mismatches:
+        raise ValueError(
+            f"{config_path} belongs to a run with different settings "
+            f"({', '.join(mismatches)}). Use a new BUCEX_RUN_ID."
+        )
+
+    existing_keys = set(existing.get("scenario_keys", ()))
+    if not existing_keys:
+        existing_keys.update(existing.get("scenario_directories", {}).values())
+    existing_keys.update(current["scenario_keys"])
+    merged_keys = [key for key in SCENARIO_INDEX if key in existing_keys]
+
+    existing["modified_at"] = current["modified_at"]
+    existing["scenario_keys"] = merged_keys
+    existing["scenarios"] = [
+        SCENARIOS[SCENARIO_INDEX[key]]["name"] for key in merged_keys
+    ]
+    existing["scenario_directories"] = {
+        SCENARIOS[SCENARIO_INDEX[key]]["name"]: key for key in merged_keys
+    }
+    batches = list(existing.get("scenario_batches", ()))
+    batches.extend(current["scenario_batches"])
+    existing["scenario_batches"] = batches
+    return existing
+
+
+def _write_json_atomic(path: Path, value: dict[str, object]) -> None:
+    """Write a manifest without leaving a partially written JSON file."""
+
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(value, indent=2, sort_keys=True), encoding="utf-8"
+    )
+    temporary.replace(path)
+
+
 def main() -> None:
     if COMBINE_RUNS and len(COMBINE_RUNS) != CHAINS:
         raise ValueError(
@@ -222,15 +315,17 @@ def main() -> None:
     plt.rcParams.update({"axes.spines.top": False, "axes.spines.right": False, "axes.titleweight": "bold", "legend.frameon": False})
     labels = {0: "zero", 1: "fixed", 2: "dynamic"}
 
-    config_path = OUTPUT_DIR / "run_config.json"
-    if config_path.exists() and not OVERWRITE:
-        raise FileExistsError(
-            f"Refusing to overwrite {config_path}; set BUCEX_OVERWRITE=1 to rerun."
-        )
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    now = datetime.now().astimezone().isoformat()
+    active_keys = [scenario["key"] for scenario in ACTIVE_CASES]
+    print("Laplace scenarios: " + ", ".join(active_keys))
+    print(f"Shared output directory: {OUTPUT_DIR}")
+
+    config_path = OUTPUT_DIR / "run_config.json"
     run_config = {
         "script": SCRIPT_NAME,
-        "created_at": datetime.now().astimezone().isoformat(),
+        "created_at": now,
+        "modified_at": now,
         "run_timestamp": RUN_TIMESTAMP,
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
@@ -260,10 +355,17 @@ def main() -> None:
             "chains": CHAINS,
             "seed": SEED,
         },
-        "scenarios": [scenario["name"] for scenario in SCENARIOS],
+        "scenario_keys": active_keys,
+        "scenarios": [scenario["name"] for scenario in ACTIVE_CASES],
         "scenario_directories": {
-            scenario["name"]: scenario["key"] for scenario in SCENARIOS
+            scenario["name"]: scenario["key"] for scenario in ACTIVE_CASES
         },
+        "scenario_batches": [
+            {
+                "started_at": now,
+                "scenario_keys": active_keys,
+            }
+        ],
         "figures": {
             "formats": list(FIGURE_FORMATS),
             "dpi": FIGURE_DPI,
@@ -276,11 +378,11 @@ def main() -> None:
         "chain_only": CHAIN_ONLY,
         "combined_chain_runs": [str(path) for path in COMBINE_RUNS],
     }
-    config_path.write_text(
-        json.dumps(run_config, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    run_config = _merge_run_config(config_path, run_config)
+    _write_json_atomic(config_path, run_config)
 
-    for number, scenario in enumerate(SCENARIOS):
+    for scenario in ACTIVE_CASES:
+        scenario_number = SCENARIO_INDEX[scenario["key"]]
         data_path = OUTPUT_DIR / "simulations" / f"{scenario['key']}.csv"
         truth_path = data_path.with_suffix(".json")
         expected_truth = {
@@ -400,7 +502,13 @@ def main() -> None:
                 engine="laplace",
                 parameterization="fruehwirth_schnatter",
                 asis=False,
-                mcmc=bx.MCMC(draws=DRAWS, warmup=WARMUP, chains=CHAINS, seed=SEED + 100 * number, progress=PROGRESS),
+                mcmc=bx.MCMC(
+                    draws=DRAWS,
+                    warmup=WARMUP,
+                    chains=CHAINS,
+                    seed=SEED + 100 * scenario_number,
+                    progress=PROGRESS,
+                ),
                 name=scenario["name"],
             )
             laplace_fit.metadata.update({"example": "simulation_laplace", "truth": truth, "prior_settings": PRIOR_SETTINGS})
@@ -444,7 +552,7 @@ def main() -> None:
         # equation into the future. Both operations use the FitResult API.
         predictive = laplace_fit.posterior_predictive(
             draws=PREDICTIVE_DRAWS,
-            seed=SEED + 20_000 + number,
+            seed=SEED + 20_000 + scenario_number,
         )
         predictive.summary(level=0.90).to_csv(
             table_dir / "posterior_predictive.csv", index=False
@@ -452,7 +560,7 @@ def main() -> None:
         forecast = laplace_fit.forecast(
             FORECAST_HORIZON,
             draws=PREDICTIVE_DRAWS,
-            seed=SEED + 30_000 + number,
+            seed=SEED + 30_000 + scenario_number,
         )
         forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
         forecast.summary(level=0.90, phase=FOCUS_PHASE).to_csv(
