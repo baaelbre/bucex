@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.3.1 keeps one model compiler, one fitting entry point, and one result
+Release 1.3.2 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text
@@ -88,12 +88,17 @@ layer. Seven examples form the COMPSTAT analysis, one exposes the
 centered/inverse-gamma random-walk benchmark, and the final two exercise exact
 Laplace-MH. Ten matching Bash/PBS pairs invoke those exact files.
 
-For a multi-chain job, `hpc/run_example.py` creates one temporary one-chain
-JSON per independent process, waits for all processes, and then asks the same
-numbered example to combine the saved `FitResult` objects and make the final
-tables and figures. Scheduler code controls resources only; it never defines
-the model or prior. Examples 08 and 09 deliberately mirror the scientific
-contracts and artifact trees of examples 03 and 05, so engine comparisons do
+For a multi-chain job, `job_scripts/run_parallel_chains.py` creates one
+temporary one-chain JSON per independent process, waits for all processes, and
+then asks the same numbered example to combine the saved `FitResult` objects
+and make the final tables and figures. The selected source JSON remains the
+sole scientific and computational specification. Scheduler code controls
+resources only. The runner sits beside the PBS files; there is no separate
+`hpc/` directory or second settings layer. Automatic run IDs include the
+configuration name and PBS job ID, so independent scenarios or Uccle series
+cannot collide when they start in the same second. Examples 08 and 09
+deliberately mirror the scientific contracts and artifact trees of examples
+03 and 05, so engine comparisons do
 not silently change the data, priors, or summaries.
 
 ## Persistence

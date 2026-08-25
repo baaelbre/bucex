@@ -148,9 +148,9 @@ def test_scientific_settings_are_authoritative_json_files():
         "season": 0.07,
     }
     assert uccle["priors"]["innovation_slab_sd"] == {
-        "level": 0.03,
-        "trend": 0.0001,
-        "season": 0.05,
+        "level": 0.02,
+        "trend": 0.00005,
+        "season": 0.02,
     }
 
     simulation_scripts = (

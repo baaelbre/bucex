@@ -1,115 +1,135 @@
 # Uccle temperature-extremes analysis
 
-## Series used in the presentation
+## Series and orientation
 
-| Name | Model orientation | Description |
-|---|---|---|
-| `TXx` | upper tail | monthly maximum daily maximum temperature |
-| `TXn` | lower tail | monthly minimum daily maximum temperature |
-| `TNx` | upper tail | monthly maximum daily minimum temperature |
-| `TNn` | lower tail | monthly minimum daily minimum temperature |
+| JSON | Series | Fitted orientation | Description |
+|---|---|---|---|
+| `uccle/01_txx.json` | `TXx` | upper tail | monthly maximum daily maximum temperature |
+| `uccle/02_txn.json` | `TXn` | sign-transformed lower tail | monthly minimum daily maximum temperature |
+| `uccle/03_tnx.json` | `TNx` | upper tail | monthly maximum daily minimum temperature |
+| `uccle/04_tnn.json` | `TNn` | sign-transformed lower tail | monthly minimum daily minimum temperature |
 
-Lower-tail series are sign-transformed internally, fitted as maxima, and
-mapped back by all result methods. Loaders require finite, consecutive monthly
-observations. The broader data API still includes the Gaussian monthly means
-`TXm` and `TNm`; they are not part of the seven-example analysis.
+TXn and TNn are negated internally, fitted as maxima, and transformed back for
+figures, tables, predictions, and risk summaries. Data begin on 1892-01-01 and
+continue through the latest complete bundled observation. The time step is one
+month and the seasonal period is 12.
 
-## Story and stages
+## Model in the JSON
 
-The workflow is ordered to separate questions that are otherwise easy to mix:
+All four files specify the same location-varying GEV model:
 
-1. The complete Uccle record, beginning in 1892, and TXx evolution establish
-   why stationarity is doubtful.
-2. Matched simulations vary `xi` over `-0.30`, `0`, and `+0.30`, then vary
-   `sigma` over `0.75`, `1.50`, and `3.00`. Tail/scale and latent
-   nonstationarity are therefore kept as separate modelling decisions.
-3. Structural simulations fix `sigma=1.5` and `xi=-0.30`, then vary only the
-   unobserved components with innovations large enough to distinguish fixed
-   from stochastic evolution visually.
-4. Laplace fits give a fast, explicitly approximate SSVS analysis.
-5. PGAS fits use the Laplace path as an initializer and the exact GEV density.
-6. The same model/prior is fitted to TXx, TXn, TNx, and TNn.
-7. Laplace-MH uses the fast Gaussian smoother as a proposal and targets the
-   exact GEV posterior without particles.
+\[
+Y_t\mid\eta_t,\sigma,\xi\sim\operatorname{GEV}(\eta_t,\sigma,\xi),
+\qquad \eta_t=\alpha_t+\gamma_t.
+\]
+
+The level and slope form a local-linear trend, and `gamma_t` is a 12-month
+dummy seasonal component. Scale and shape remain static. The fitted maximum
+structure permits SSVS to distinguish:
+
+- level: fixed or dynamic;
+- slope: absent, fixed, or dynamic;
+- seasonality: fixed or dynamic.
+
+The parameterization is Fruehwirth-Schnatter non-centred and ASIS is disabled.
+The initial level centre is the median of the internally transformed series.
+These choices are explicit under `model`, `priors`, and `inference` in every
+Uccle JSON.
+
+## Calibrated primary prior
+
+| Setting | Value |
+|---|---:|
+| initial level SD | 3.2 °C |
+| fixed slope mean | 0.0 °C/month |
+| fixed slope SD | 0.0025 °C/month = 0.30 °C/decade |
+| initial seasonal SD | 2.25 °C |
+| observation variance prior | inverse-gamma(2, 2) |
+| shape prior | uniform(-0.5, 0.5) |
+| level innovation slab | 0.02 °C/month |
+| slope innovation slab | 0.00005 °C/month per monthly update |
+| seasonal innovation slab | 0.02 °C/month |
+| P(level dynamic) | 0.50 |
+| P(slope absent, fixed, dynamic) | (0.20, 0.40, 0.40) |
+| P(season absent, fixed, dynamic) | (0.00, 0.50, 0.50) |
+
+For 30 years (`H=360`), the level slab implies a displacement SD of
+`0.02 sqrt(360) = 0.379 °C`. The slope slab implies a level-displacement SD of
+
+\[
+0.00005\sqrt{360\times359\times719/6}=0.197\ ^\circ\mathrm C.
+\]
+
+The seasonal component is never absent because strong annual seasonality is
+known to be present; the model distinguishes fixed from evolving seasonality.
+
+## Inference and prediction defaults
+
+Every primary Uccle JSON uses:
+
+- 1,000 warmup iterations per chain;
+- 1,000 retained draws per chain;
+- four independent chains;
+- base seed 56,000;
+- one Laplace-MH trajectory proposal per MCMC iteration;
+- 500 posterior-predictive draws;
+- July as the focus month;
+- 30 years of forecast history and a 10-year forecast horizon;
+- PDF and PNG output at 180 dpi;
+- diagnostic figures off by default.
+
+Use example 05 for quick Laplace tuning. Once the specification is fixed, use
+the identical JSON with example 09 for exact Laplace-MH inference. Increase to
+2,000 warmup and 2,000 retained draws only when diagnostics or Monte Carlo
+errors require it; longer chains do not repair poor mixing.
+
+## Run locally
+
+Each script visibly selects its JSON through `DEFAULT_CONFIG_FILE`, while
+`--config` overrides that path:
 
 ```bash
-python examples/00_uccle_record.py --config examples/config/record.json
-python examples/01_tail_simulations.py --config examples/config/tail.json
-python examples/02_structural_simulations.py --config examples/config/simulation.json
-python examples/03_simulation_laplace.py --config examples/config/simulation.json
-python examples/04_simulation_pgas.py --config examples/config/simulation.json
-python examples/05_uccle_laplace.py --config examples/config/uccle.json
-python examples/06_uccle_pgas.py --config examples/config/uccle.json
-python examples/08_simulation_laplace_mh.py --config examples/config/simulation.json
-python examples/09_uccle_laplace_mh.py --config examples/config/uccle.json
+python examples/05_uccle_laplace.py --config examples/config/uccle/01_txx.json
+python examples/05_uccle_laplace.py --config examples/config/uccle/02_txn.json
+python examples/05_uccle_laplace.py --config examples/config/uccle/03_tnx.json
+python examples/05_uccle_laplace.py --config examples/config/uccle/04_tnn.json
 ```
 
-Each PGAS script creates or reuses its matching Laplace initializer. A fit on
-one record window cannot initialize another because observations and path
-length must match exactly.
+For four concurrent local chain processes:
 
-The standalone examples use `START="1892-01-01"`. Each simulated series is
-saved as a separate figure; only its level/slope/seasonal truth decomposition
-uses a three-panel layout.
+```bash
+bash bash_scripts/run_05_uccle_laplace.sh examples/config/uccle/01_txx.json 4
+```
 
-## What the structural probabilities mean
+For four parallel series jobs and their four parallel chains on PBS, see
+`docs/HPC.md`.
 
-For each series, report posterior probabilities for:
+## Minimum slab sensitivity
 
-- fixed versus dynamic level;
-- absent, fixed, or dynamic slope;
-- absent, fixed, or dynamic annual cycle.
+Copy each primary JSON and change only `priors.innovation_slab_sd`:
 
-These are posterior model probabilities under the stated SSVS prior and GEV
-model. They are not frequentist tests and should not be collapsed to a single
-selected model unless a decision rule is stated. Trajectory and risk summaries
-remain model averaged over the sampled structures.
+| Setting | level | trend | season |
+|---|---:|---:|---:|
+| narrower | 0.01 | 0.000025 | 0.01 |
+| primary | 0.02 | 0.000050 | 0.02 |
+| wider | 0.04 | 0.000100 | 0.04 |
 
-The v2.6 presentation model keeps `sigma` and `xi` constant in time while
-inferring both. Structural selection applies to location, slope, and seasonal
-location components only. A time-varying scale or shape analysis is a distinct
-model extension, not another label in the current three-component SSVS table.
+Keep the data, model probabilities, shape bounds, MCMC settings, and all other
+fields identical. Compare posterior structural probabilities, model-averaged
+trajectories, process-scale posteriors, and scientifically important risk
+measures.
 
-## What to report for each fit
+## What to report
 
 - component and joint structural probabilities;
-- structural-state switching by chain;
-- model-averaged latent predictor and interval;
-- prior and posterior process-scale distributions, including mass at zero;
-- observation scale, shape, and finite endpoint when `xi<0`;
-- particle ESS, ancestor diversity, path change, path-update fraction, and
-  reference-ancestor change for PGAS;
-- whole-trajectory acceptance, proposal support rejections, and Laplace-mode
-  convergence for Laplace-MH;
-- R-hat and ESS from independent combined chains;
-- sensitivity to particles, slab widths, record start, and prior model odds.
+- structural switching across chains;
+- model-averaged predictor, level, slope, and seasonal trajectories;
+- prior-to-posterior process-scale distributions;
+- observation scale, shape, and finite endpoints where applicable;
+- R-hat, ESS, Monte Carlo errors, and Laplace-MH state acceptance;
+- posterior predictive and forecast diagnostics;
+- sensitivity to calibrated slab widths and other defensible prior choices.
 
-TXx is presented first because its physical interpretation is immediate. The
-other three series are confirmatory applications of the same inferential
-grammar, not opportunities to change the model after seeing the answer.
-
-## Risk assessment
-
-The dynamic GEV fit is usable for posterior risk calculations because every
-draw supplies a time-indexed location, scale, and shape. `FitResult` exposes
-return-level, exceedance-probability, return-period, and endpoint draws on the
-original upper/lower-tail orientation.
-
-For nonstationary data, attach the time index to every reported risk. A
-"20-year return level" at time `t` is conditional on the fitted parameters at
-that time; it is not one timeless property of the entire record. Annual
-exceedance probabilities are composed from the twelve monthly probabilities,
-so the seasonal cycle is retained in the risk functional.
-
-## Artifact layout
-
-The scripts store input truths, checksummed fits, tables, figures, and a full
-`run_config.json` under
-`results/<script>/<timestamp>__<automatic-settings-signature>/`.
-Set `output.run_id` or `output.overwrite` in the selected JSON when needed.
-
-Examples 03 and 08 use the same `simulations/`, `fits/<scenario>/`,
-`tables/<scenario>/`, and `figures/<scenario>/` layout. Examples 05 and 09 use
-the same `fits/<series>/`, `tables/<series>/`, and `figures/<series>/` layout.
-The paired scripts differ only in approximate Laplace versus exact
-Laplace-MH state inference and the associated algorithm diagnostics.
+Risk summaries must retain their time index. A return level at time `t` is
+conditional on the fitted parameters at that time, not a timeless property of
+the full 1892-present record.

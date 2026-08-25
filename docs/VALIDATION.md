@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.3.1 has five software layers:
+Release 1.3.2 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -53,6 +53,11 @@ evidence for a scientific conclusion.
   dates agree;
 - the generic HPC runner creates one JSON copy per chain, launches independent
   chains concurrently, and combines them only after every process succeeds;
+- automatic run IDs distinguish simultaneous configurations and PBS jobs, and
+  every manifest records the original selected JSON rather than a temporary
+  chain copy;
+- four calibrated one-series Uccle JSON files differ only by series and encode
+  the final model, slab, structural-probability, and four-chain settings;
 - schema-2.6.2 archives round-trip and older supported archives remain readable;
 - the ten Python examples are self-contained calls to the public API;
 - centered inverse-gamma process variances use their exact Gibbs full

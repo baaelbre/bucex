@@ -40,7 +40,7 @@ date
 hostname
 "${PYTHON_BIN}" -c 'import bucex, matplotlib; print("bucex       =", bucex.__version__); print("matplotlib  =", matplotlib.__version__)'
 
-"${PYTHON_BIN}" -u hpc/run_example.py \
+"${PYTHON_BIN}" -u job_scripts/run_parallel_chains.py \
   --script "${SCRIPT_PATH}" \
   --config "${CONFIG_PATH}" \
   --max-workers "${MAX_WORKERS}"

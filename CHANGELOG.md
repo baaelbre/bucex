@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.3.2
+
+- Added four complete calibrated Uccle configurations, one each for TXx, TXn,
+  TNx, and TNn, with the supported model structure and initial-level rule
+  explicit in JSON.
+- Updated the all-series Uccle configuration to the calibrated zero-centred
+  slope prior, physical innovation slabs, structural probabilities, and four-
+  chain production profile.
+- Standardized every one-scenario simulation preset to 1,000 warmup iterations,
+  1,000 retained draws, and four chains without changing its proven scientific
+  settings.
+- Replaced second-only HPC run IDs with collision-safe IDs containing the
+  configuration name and PBS job ID or local process ID.
+- Preserved original JSON provenance in chain and combined manifests while
+  keeping temporary per-chain settings operational and source files unchanged.
+- Moved the generic parallel-chain runner beside the PBS files and removed the
+  separate `hpc/` directory.
+- Rewrote the configuration, Uccle, PBS, architecture, validation, release, and
+  main documentation around the JSON-only settings contract and four-series
+  parallel workflow.
+
 ## 1.3.1
 
 - Added six complete schema-1 simulation configurations, one for each

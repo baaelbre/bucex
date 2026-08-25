@@ -12,6 +12,7 @@ from datetime import datetime
 import json
 from pathlib import Path
 import sys
+import tempfile
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -34,6 +35,9 @@ CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
 CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
 SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
 CONFIG = bx.load_config(SETTINGS_PATH)
+SETTINGS_FILE = Path(
+    CONFIG.get("_runner", {}).get("source_config", SETTINGS_PATH)
+).resolve()
 SIMULATION = CONFIG["simulation"]
 PRIOR_SETTINGS = CONFIG["priors"]
 MCMC_SETTINGS = CONFIG["mcmc"]
@@ -238,7 +242,6 @@ def _merge_run_config(
         "run_signature",
         "output_directory",
         "bucex_version",
-        "settings_file",
         "engine",
         "simulation",
         "fit_model",
@@ -281,11 +284,20 @@ def _merge_run_config(
 def _write_json_atomic(path: Path, value: dict[str, object]) -> None:
     """Write a manifest without leaving a partially written JSON file."""
 
-    temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(value, indent=2, sort_keys=True), encoding="utf-8"
-    )
-    temporary.replace(path)
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        delete=False,
+    ) as stream:
+        json.dump(value, stream, indent=2, sort_keys=True)
+        temporary = Path(stream.name)
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def main() -> None:
@@ -312,7 +324,7 @@ def main() -> None:
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
         "bucex_version": bx.__version__,
-        "settings_file": str(SETTINGS_PATH),
+        "settings_file": str(SETTINGS_FILE),
         "engine": "laplace",
         "simulation": {
             "n_time": N_TIME,

@@ -40,9 +40,9 @@
     "season_probabilities": [0.333333333333, 0.333333333333, 0.333333333334]
   },
   "mcmc": {
-    "draws": 600,
-    "warmup": 300,
-    "chains": 1,
+    "draws": 1000,
+    "warmup": 1000,
+    "chains": 4,
     "seed": 13081997
   },
   "inference": {

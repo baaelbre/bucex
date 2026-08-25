@@ -36,7 +36,11 @@ CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
 CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
 SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
 CONFIG = bx.load_config(SETTINGS_PATH)
+SETTINGS_FILE = Path(
+    CONFIG.get("_runner", {}).get("source_config", SETTINGS_PATH)
+).resolve()
 DATA = CONFIG["data"]
+MODEL_SETTINGS = CONFIG["model"]
 PRIOR_SETTINGS = CONFIG["priors"]
 MCMC_SETTINGS = CONFIG["mcmc"]
 INFERENCE = CONFIG["inference"]
@@ -54,7 +58,18 @@ START = str(DATA["start"])
 END = DATA["end"] or None
 SERIES = tuple(DATA["series"])
 PERIOD = int(DATA["period"])
+if (
+    str(MODEL_SETTINGS["observation_family"]).lower() != "gev"
+    or str(MODEL_SETTINGS["time_varying_parameter"]).lower() != "location"
+    or str(MODEL_SETTINGS["trend_component"]).lower() != "local_linear_trend"
+    or str(MODEL_SETTINGS["seasonal_component"]).lower() != "dummy"
+):
+    raise ValueError(
+        "The Uccle examples currently support a location-varying GEV with "
+        "a local-linear trend and dummy seasonality."
+    )
 
+ALPHA_PRIOR_MEAN = PRIOR_SETTINGS["alpha_mean"]
 ALPHA_PRIOR_SD = float(PRIOR_SETTINGS["alpha_sd"])
 BETA_PRIOR_MEAN = float(PRIOR_SETTINGS["beta_mean"])
 BETA_PRIOR_SD = float(PRIOR_SETTINGS["beta_sd"])
@@ -106,13 +121,20 @@ OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
 MODEL = bx.Model(
     bx.GEV(xi_bounds=XI_PRIOR_BOUNDS),
     (
-        bx.LocalLinearTrend(level_mode="dynamic", trend_mode="dynamic"),
-        bx.DummySeasonal(period=PERIOD, mode="dynamic"),
+        bx.LocalLinearTrend(
+            level_mode=str(MODEL_SETTINGS["level_mode"]),
+            trend_mode=str(MODEL_SETTINGS["trend_mode"]),
+        ),
+        bx.DummySeasonal(
+            period=PERIOD,
+            mode=str(MODEL_SETTINGS["seasonal_mode"]),
+        ),
     ),
     name="monthly GEV unobserved-components model",
 )
 
 PRIOR_SETTINGS = {
+    "alpha_mean": ALPHA_PRIOR_MEAN,
     "alpha_sd": ALPHA_PRIOR_SD,
     "beta_mean": BETA_PRIOR_MEAN,
     "beta_sd": BETA_PRIOR_SD,
@@ -150,7 +172,7 @@ def main() -> None:
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
         "bucex_version": bx.__version__,
-        "settings_file": str(SETTINGS_PATH),
+        "settings_file": str(SETTINGS_FILE),
         "engine": "laplace_mh",
         "target": "exact posterior",
         "data": {
@@ -200,10 +222,15 @@ def main() -> None:
         tail = bx.UCCLE_INFO[name]["tail"]
         sign = -1.0 if tail == "min" else 1.0
         transformed = sign * values.to_numpy(float)
+        alpha_mean = (
+            float(np.nanmedian(transformed))
+            if ALPHA_PRIOR_MEAN == "transformed_series_median"
+            else float(ALPHA_PRIOR_MEAN)
+        )
 
         priors = bx.ssvs_gev_priors(
             period=PERIOD,
-            alpha_mean=float(np.nanmedian(transformed)),
+            alpha_mean=alpha_mean,
             alpha_sd=ALPHA_PRIOR_SD,
             beta_mean=BETA_PRIOR_MEAN,
             beta_sd=BETA_PRIOR_SD,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.3.1."""
+"""Fixed-seed numerical release validation for bucex 1.3.2."""
 from __future__ import annotations
 
 import argparse
@@ -67,8 +67,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.3.1":
-        raise RuntimeError(f"Expected bucex 1.3.1, found {bx.__version__}.")
+    if bx.__version__ != "1.3.2":
+        raise RuntimeError(f"Expected bucex 1.3.2, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -79,14 +79,18 @@ def run() -> dict[str, object]:
         "platform": platform.platform(),
     }
 
-    parallel_runner = (SOURCE_ROOT / "hpc" / "run_example.py").read_text(
-        encoding="utf-8"
-    )
+    runner_path = SOURCE_ROOT / "job_scripts" / "run_parallel_chains.py"
+    parallel_runner = runner_path.read_text(encoding="utf-8")
     record["configured_hpc_runner"] = {
+        "runner_next_to_pbs": runner_path.is_file(),
+        "separate_hpc_removed": not (SOURCE_ROOT / "hpc").exists(),
         "json_chain_copies": 'chain_config["mcmc"]["chains"] = 1'
         in parallel_runner,
         "concurrent_processes": "subprocess.Popen" in parallel_runner,
         "public_fit_combination": 'combined_config["runtime"]["combine_runs"]'
+        in parallel_runner,
+        "collision_safe_ids": 'os.environ.get("PBS_JOBID")' in parallel_runner,
+        "source_config_provenance": '"source_config": str(config_path)'
         in parallel_runner,
         "pbs_jobs": len(list((SOURCE_ROOT / "job_scripts").glob("submit_*.pbs"))),
         "bash_runners": len(list((SOURCE_ROOT / "bash_scripts").glob("run_*.sh"))),
@@ -422,7 +426,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.3.1.json"),
+        default=Path("validation/release_validation_1.3.2.json"),
     )
     args = parser.parse_args()
     result = run()

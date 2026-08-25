@@ -1,4 +1,4 @@
-# bucex 1.3.1 examples
+# bucex 1.3.2 examples
 
 The ten numbered files are direct, sequential uses of the public `bucex` API:
 
@@ -13,29 +13,19 @@ The ten numbered files are direct, sequential uses of the public `bucex` API:
 9. `08_simulation_laplace_mh.py` — exact Laplace-MH simulation fits.
 10. `09_uccle_laplace_mh.py` — exact Laplace-MH Uccle fits.
 
-All choices are visible in JSON:
+Every script exposes `DEFAULT_CONFIG_FILE`, accepts `--config PATH`, and calls
+`bx.load_config` directly. JSON contains the scientific, MCMC, figure, runtime,
+and output settings; there are no hidden scientific `BUCEX_*` overrides.
 
-- `config/record.json`: descriptive Uccle figures;
-- `config/tail.json`: tail/scale simulations;
-- `config/simulation.json`: examples 02, 03, 04, and 08;
-- `config/simulations/*.json`: one ready-to-run file for each of the six
-  structural simulation truths;
-- `config/uccle.json`: examples 05, 06, and 09;
-- `config/centered_ig.json`: example 07.
+The complete configuration sets are:
 
-Every script has a visible `DEFAULT_CONFIG_FILE` near the top and calls
-`bx.load_config` directly. Change that path for an IDE/notebook run, or leave
-the file untouched and select a JSON with `--config PATH` at launch. The
-command-line choice takes precedence.
+- `config/simulations/*.json`: one file for each of six simulation truths;
+- `config/uccle/*.json`: one file for each of TXx, TXn, TNx, and TNn;
+- `config/simulation.json` and `config/uccle.json`: all-case defaults;
+- `config/record.json`, `config/tail.json`, and `config/centered_ig.json`:
+  settings for examples 00, 01, and 07.
 
-Run a default or edited copy from the repository root:
-
-```bash
-python examples/03_simulation_laplace.py
-python examples/03_simulation_laplace.py --config examples/config/my_pilot.json
-```
-
-To run the six Laplace recovery analyses separately and in presentation order:
+Run the six Laplace simulation analyses separately:
 
 ```bash
 python examples/03_simulation_laplace.py --config examples/config/simulations/01_stationary.json
@@ -46,16 +36,21 @@ python examples/03_simulation_laplace.py --config examples/config/simulations/05
 python examples/03_simulation_laplace.py --config examples/config/simulations/06_llt_fixed_seasonality.json
 ```
 
-There are no hidden `BUCEX_*` scientific overrides. The run directory is
-`output.results_root/<script>/<run-id>__<short-signature>/`; a timestamp is
-used when `output.run_id` is `null`. `run_config.json` records the complete
-effective specification.
+Run the four Uccle Laplace analyses separately:
 
-Fit examples save predictor, level, observation-free level, slope, structural
-selection, process-SD, GEV-parameter, seasonality, posterior-predictive, and
-forecast outputs. Titles are `null` by default. Legends use $y_t$,
-$\hat{\mu}_t$, $\hat{\alpha}_t$, $\hat{\beta}_t$, and $\hat{\beta}_0$.
-Uccle slopes are in degrees per decade; the fixed-slope median is purple and
-has no ribbon.
+```bash
+python examples/05_uccle_laplace.py --config examples/config/uccle/01_txx.json
+python examples/05_uccle_laplace.py --config examples/config/uccle/02_txn.json
+python examples/05_uccle_laplace.py --config examples/config/uccle/03_tnx.json
+python examples/05_uccle_laplace.py --config examples/config/uccle/04_tnn.json
+```
 
-For PBS execution, see [`../docs/HPC.md`](../docs/HPC.md).
+Direct Python commands execute the selected example normally. To run four
+chains as four concurrent processes, use the matching Bash runner with
+`MAX_WORKERS=4`, or submit its PBS file as described in `docs/HPC.md`.
+
+Outputs are stored under
+`results/<script>/<run-id>__<settings-signature>/`. Fitting examples save
+independent fits, combined fits, tables, and figures. Titles are absent by
+default; Uccle slopes are shown in degrees Celsius per decade, and lower-tail
+series are returned to their original temperature orientation.

@@ -33,6 +33,9 @@ CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
 CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
 SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
 CONFIG = bx.load_config(SETTINGS_PATH)
+SETTINGS_FILE = Path(
+    CONFIG.get("_runner", {}).get("source_config", SETTINGS_PATH)
+).resolve()
 DATA = CONFIG["data"]
 LOESS = CONFIG["loess"]
 FIGURES = CONFIG["figures"]
@@ -71,7 +74,7 @@ run_config = deepcopy(CONFIG)
 run_config.update(
     {
         "script": SCRIPT_NAME,
-        "settings_file": str(SETTINGS_PATH),
+        "settings_file": str(SETTINGS_FILE),
         "created_at": datetime.now().astimezone().isoformat(),
         "bucex_version": bx.__version__,
         "output_directory": str(OUTPUT_DIR),

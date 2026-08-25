@@ -1,57 +1,59 @@
-# bucex 1.3.1 release notes
+# bucex 1.3.2 release notes
 
-Version 1.3.1 is a simulation-configuration release. It does not change the
-state equations, Laplace, Laplace-MH, or PGAS targets, the public fitting API,
-or the result-archive schema.
+Version 1.3.2 completes the JSON-driven local and PBS workflow. It does not
+change the state equations, Laplace, Laplace-MH, or PGAS targets, the public
+fitting API, or the result-archive schema.
 
-## Six one-scenario configurations
+## Four calibrated Uccle configurations
 
-The release adds one complete schema-1 JSON input for each structural truth:
+The release adds one complete input file per temperature-extreme series:
 
-- `examples/config/simulations/01_stationary.json`;
-- `examples/config/simulations/02_linear_trend.json`;
-- `examples/config/simulations/03_random_walk.json`;
-- `examples/config/simulations/04_local_linear_trend.json`;
-- `examples/config/simulations/05_changing_seasonality.json`;
-- `examples/config/simulations/06_llt_fixed_seasonality.json`.
+- `examples/config/uccle/01_txx.json`;
+- `examples/config/uccle/02_txn.json`;
+- `examples/config/uccle/03_tnx.json`;
+- `examples/config/uccle/04_tnn.json`.
 
-Each file activates exactly one of the stable scenario keys used by examples
-02, 03, 04, and 08. The six files are ordinary inputs selected with
-`--config`; they are not output `run_config.json` manifests. Their
-`output.run_id` values are `null`, so local runs automatically receive
-separate timestamped directories.
+The files differ only by selected series. Each contains the location-varying
+GEV structure, data-derived initial level centre, calibrated priors, inference
+controls, prediction and figure settings, and output policy. The primary slabs
+are `(0.02, 0.00005, 0.02)` for level, slope, and season; the fixed-slope prior
+is centred at zero with SD `0.0025` degrees Celsius per month; structural odds
+are `(0.20, 0.40, 0.40)` for absent/fixed/dynamic slope and
+`(0.00, 0.50, 0.50)` for absent/fixed/dynamic seasonality.
 
-Every numbered example exposes a `DEFAULT_CONFIG_FILE` next to its imports and
-calls `bx.load_config` directly. The path can be changed in the script for an
-IDE/notebook run, while `--config PATH` overrides it at launch. The former
-`examples/_example_config.py` wrapper module has been removed.
+The all-series `examples/config/uccle.json` carries the same calibrated
+settings. Examples 05, 06, and 09 now construct the supported model modes and
+initial-level rule directly from the selected JSON.
 
-The successful supplied manifests were converted to the current input schema.
-The recorded scenario identity is authoritative: the supplied file named
-`run_config_stationary.json` contains a random-walk-only retry and therefore
-provides the random-walk settings. The later joint stationary/linear run
-provides those two presets, while the all-six baseline provides the local
-linear trend and seasonal presets.
+## Production MCMC defaults
 
-Run the cases separately from the repository root:
+The four Uccle presets and all six simulation presets now use 1,000 warmup
+iterations, 1,000 retained draws, and four independent chains. Scenario-
+specific simulation and prior values from the proven runs are unchanged.
 
-```bash
-python examples/03_simulation_laplace.py --config examples/config/simulations/01_stationary.json
-python examples/03_simulation_laplace.py --config examples/config/simulations/02_linear_trend.json
-python examples/03_simulation_laplace.py --config examples/config/simulations/03_random_walk.json
-python examples/03_simulation_laplace.py --config examples/config/simulations/04_local_linear_trend.json
-python examples/03_simulation_laplace.py --config examples/config/simulations/05_changing_seasonality.json
-python examples/03_simulation_laplace.py --config examples/config/simulations/06_llt_fixed_seasonality.json
-```
+## Collision-safe parallel jobs
 
-The same files can be passed to example 02 for simulation-only figures,
-example 04 for PGAS, or example 08 for exact Laplace-MH.
+The generic runner now lives at `job_scripts/run_parallel_chains.py`; the
+separate `hpc/` directory has been removed. With `output.run_id: null`, every
+Bash/PBS invocation receives a readable ID containing the timestamp,
+configuration filename, and PBS job ID or local process ID. Simultaneous
+series or scenario jobs therefore cannot share outputs or per-chain logs.
 
-## Backward compatibility
+Temporary chain JSONs retain draws and warmup, set only one chain, offset the
+seed, and select chain-only output. They also record the original selected
+JSON, so `run_config.json` no longer points to a temporary configuration that
+disappears after the job. The source JSON remains untouched.
 
-The existing `examples/config/simulation.json` remains the shared all-scenario
-default. Version 1.3.1 retains phase-specific and seasonally adjusted
-trajectories, automatic conjugate centred inverse-gamma process-variance
-updates, deterministic finite-endpoint repair for Laplace-MH proposals,
-singular affine state-transition handling, conditional PGAS ancestor sampling,
-and the JSON-driven parallel-chain PBS workflow for all fitting examples.
+The four Uccle series may be submitted as four separate four-core PBS jobs.
+Each job runs its four chains concurrently; when the scheduler grants every
+job, all 16 series-chain fits run in parallel and are combined within their own
+series job.
+
+## Documentation and compatibility
+
+The main README and the configuration, Uccle, architecture, validation, and
+HPC guides now describe the same JSON-only setting contract and include the
+complete simulation and Uccle submission commands. Existing custom schema-1
+JSON files remain valid for non-Uccle examples. Older Uccle JSON files need the
+new explicit `model` section and `priors.alpha_mean` field when used with
+examples 05, 06, or 09.

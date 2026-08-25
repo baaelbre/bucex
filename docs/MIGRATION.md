@@ -1,4 +1,4 @@
-# Migration from the former 2.6.2 package to 1.3.1
+# Migration from the former 2.6.2 package to 1.3.2
 
 The general `Model`, `MultiSeriesModel`, `fit`, `FitResult`, prediction,
 diagnostic, plotting, Uccle-loader, and hierarchical APIs remain available.
@@ -45,9 +45,10 @@ results/<script>/<timestamp>__<settings-signature>/
   figures/<scenario-or-series>/
 ```
 
-Set `output.run_id` in the selected JSON when several scripts should share a
-human-chosen prefix. Leave it as JSON `null` for an automatic timestamp. The
-settings signature is always present.
+Set `output.run_id` only when a manually chosen identifier is useful and unique
+to the submission. Leave it as JSON `null` for the collision-safe automatic
+identifier. Bash/PBS runs include the configuration name and PBS job ID (or
+local process ID); the settings signature is always present.
 
 ## New plots
 

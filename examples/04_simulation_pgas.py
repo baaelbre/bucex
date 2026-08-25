@@ -33,6 +33,9 @@ CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
 CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
 SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
 CONFIG = bx.load_config(SETTINGS_PATH)
+SETTINGS_FILE = Path(
+    CONFIG.get("_runner", {}).get("source_config", SETTINGS_PATH)
+).resolve()
 SIMULATION = CONFIG["simulation"]
 PRIOR_SETTINGS = CONFIG["priors"]
 MCMC_SETTINGS = CONFIG["mcmc"]
@@ -246,7 +249,7 @@ def main() -> None:
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
         "bucex_version": bx.__version__,
-        "settings_file": str(SETTINGS_PATH),
+        "settings_file": str(SETTINGS_FILE),
         "engine": "pgas",
         "initializer": "laplace",
         "simulation": {

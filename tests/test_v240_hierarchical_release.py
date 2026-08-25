@@ -247,7 +247,7 @@ def test_level_slope_plot_uses_seasonally_adjusted_observations():
     seasonal = np.median(fit.state_original("seasonal[1]"), axis=0)
     np.testing.assert_allclose(plotted, fit.observed - seasonal)
     labels = axes[0].get_legend_handles_labels()[1]
-    assert "seasonally adjusted observed" in labels
+    assert r"$y_t-\hat{\gamma}_t$" in labels
     import matplotlib.pyplot as plt
 
     plt.close(figure)

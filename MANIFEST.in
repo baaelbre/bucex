@@ -6,8 +6,7 @@ include RELEASE_NOTES.md
 recursive-include docs *.md
 recursive-include examples *.py *.md *.json
 recursive-include bash_scripts *.sh
-recursive-include job_scripts *.pbs
-recursive-include hpc *.py
+recursive-include job_scripts *.pbs *.py
 recursive-include validation *.py
 recursive-include data *.csv *.md
 recursive-include tests *.py

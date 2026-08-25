@@ -53,6 +53,12 @@ def test_each_simulation_config_is_complete_and_selects_one_truth(
     assert config["inference"]["asis"] is False
     assert config["inference"]["pgas_proposal"] == "guided"
     assert config["figures"]["interval_probability"] == pytest.approx(0.9)
+    assert config["mcmc"] == {
+        "draws": 1000,
+        "warmup": 1000,
+        "chains": 4,
+        "seed": 13081997,
+    }
     assert sum(config["priors"]["trend_probabilities"]) == pytest.approx(1.0)
     assert sum(config["priors"]["season_probabilities"]) == pytest.approx(1.0)
 
@@ -66,12 +72,6 @@ def test_stationary_and_linear_presets_retain_the_successful_joint_run():
             "level": 0.03,
             "trend": 0.00015,
             "season": 0.05,
-        }
-        assert config["mcmc"] == {
-            "draws": 1000,
-            "warmup": 1000,
-            "chains": 1,
-            "seed": 13081997,
         }
 
 

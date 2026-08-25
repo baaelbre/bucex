@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: bucex
-Version: 1.3.1
+Version: 1.3.2
 Summary: Bayesian unobserved-component models for environmental extremes
 Author: Bastiaan AVV
 License-Expression: MIT
@@ -28,23 +28,22 @@ Requires-Dist: pytest>=7; extra == "dev"
 Requires-Dist: matplotlib>=3.6; extra == "dev"
 Dynamic: license-file
 
-# bucex 1.3.1
+# bucex 1.3.2
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized
 extreme-value observations. The package combines a declarative structural
 model API, componentwise SSVS, approximate Laplace state updates, exact
 Laplace independence-MH updates, and exact-density PGAS state updates.
 
-Version 1.3.1 adds six ready-to-run JSON presets under
-`examples/config/simulations/`, one for each structural simulation truth. The
-presets turn the successful exploratory run manifests into current schema-1
-inputs, so each case can be launched locally with one explicit `--config`
-argument. Every numbered example shows its editable `DEFAULT_CONFIG_FILE` and
-loads that file directly with `bx.load_config`; there is no example-level
-configuration wrapper. The existing all-scenario `simulation.json` and the
-public modelling and inference APIs remain unchanged. Figure titles are absent
-by default and can be enabled in JSON. The release includes ten transparent
-analysis scripts:
+Version 1.3.2 makes the JSON/PBS workflow complete and collision-safe. Six
+simulation presets live under `examples/config/simulations/`; four calibrated
+single-series Uccle presets live under `examples/config/uccle/`. Every numbered
+example exposes `DEFAULT_CONFIG_FILE`, accepts `--config PATH`, and reads the
+file directly with `bx.load_config`. The PBS files allocate resources only;
+draws, warmup, chains, seeds, priors, model choices, and figure settings remain
+in JSON. Concurrent jobs receive IDs containing the configuration name and PBS
+job ID, so series or scenarios starting in the same second cannot share output
+directories. The release includes ten transparent analysis scripts:
 
 1. the complete Uccle record from 1892 and the evolution of TXx;
 2. matched GEV shape and scale simulations;
@@ -52,10 +51,10 @@ analysis scripts:
 4. selection recovery with Laplace state updates;
 5. the same recovery experiment with Laplace-initialized PGAS;
 6. Laplace analysis of TXx, TXn, TNx, and TNn;
-7. PGAS analysis of the same four series.
+7. PGAS analysis of the same four series;
 8. a centered random-walk GEV mixing benchmark with a fast Laplace default,
    conjugate inverse-gamma process-variance updates, and exact validation
-   through Laplace-MH or PGAS.
+   through Laplace-MH or PGAS;
 9. exact Laplace-MH fits for the same six structural simulations as item 4;
 10. exact Laplace-MH fits of Uccle TXx, TXn, TNx, and TNn under the same
     model and calibrated priors as item 6.
@@ -127,12 +126,16 @@ model = bx.Model(
 priors = bx.ssvs_gev_priors(
     period=12,
     alpha_mean=float(np.median(y)),
-    beta_mean=0.2 / 120.0,
-    beta_sd=0.004,
+    alpha_sd=3.2,
+    beta_mean=0.0,
+    beta_sd=0.0025,
     seasonal_initial_sd=2.25,
-    innovation_slab_sd={"level": 0.03, "trend": 0.00010, "season": 0.05},
+    sigma2_prior=bx.InverseGammaPrior(2.0, 2.0),
+    xi_prior=bx.UniformPrior(-0.5, 0.5),
+    xi_max_abs=0.5,
+    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02},
     level_dynamic_probability=0.5,
-    trend_probabilities=(0.0, 0.5, 0.5),
+    trend_probabilities=(0.2, 0.4, 0.4),
     season_probabilities=(0.0, 0.5, 0.5),
 )
 
@@ -142,7 +145,8 @@ laplace = bx.fit(
     priors=priors,
     engine="laplace",
     parameterization="fruehwirth_schnatter",
-    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=26001),
+    asis=False,
+    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_000),
 )
 
 pgas = bx.fit(
@@ -151,9 +155,10 @@ pgas = bx.fit(
     priors=laplace.priors,
     engine="pgas",
     parameterization="fruehwirth_schnatter",
+    asis=False,
     init=laplace,
-    mcmc=bx.MCMC(draws=2_000, warmup=2_000, chains=4, seed=26002),
-    particles=bx.Particles(n=512, proposal="guided"),
+    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_000),
+    particles=bx.Particles(n=128, proposal="guided"),
 )
 
 laplace_mh = bx.fit(
@@ -162,7 +167,8 @@ laplace_mh = bx.fit(
     priors=priors,
     engine="laplace_mh",
     parameterization="fruehwirth_schnatter",
-    mcmc=bx.MCMC(draws=2_000, warmup=2_000, chains=4, seed=26003),
+    asis=False,
+    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_000),
     laplace=bx.Laplace(mh_steps=1),
 )
 
@@ -296,9 +302,11 @@ python examples/09_uccle_laplace_mh.py --config examples/config/uccle.json
 
 Outputs are written below
 `results/<script>/<run-id>__<automatic-settings-signature>/`. The run ID is a
-timestamp unless `output.run_id` is set in JSON. Every run contains
-`run_config.json`; `output.results_root` and `output.overwrite` control its
-location and collision policy.
+timestamp for direct Python execution. Bash/PBS execution adds the selected
+configuration name and PBS job ID (or local process ID), preventing concurrent
+jobs from colliding. Set `output.run_id` only when a manually chosen ID is
+unique. Every run contains `run_config.json`; `output.results_root` and
+`output.overwrite` control its location and collision policy.
 
 Simulation fitting runs use `simulations/`, `fits/<scenario>/`,
 `tables/<scenario>/`, and `figures/<scenario>/`. Uccle fitting runs use
@@ -306,9 +314,9 @@ Simulation fitting runs use `simulations/`, `fits/<scenario>/`,
 PGAS, and Laplace-MH examples share the same scientific settings and artifact
 names; only method-specific diagnostics and warm-start fits differ.
 
-Scientific settings live in `examples/config/simulation.json`,
-`examples/config/uccle.json`, and `examples/config/centered_ig.json`. Use a
-copy without editing Python:
+Complete settings live in `examples/config/`, including the six files under
+`simulations/` and four files under `uccle/`. Use a selected file or an edited
+copy without changing Python:
 
 ```bash
 python examples/03_simulation_laplace.py --config my_simulation.json
@@ -331,28 +339,30 @@ probabilities, prior-to-posterior process SDs, GEV parameters, finite endpoints
 where applicable, posterior seasonality, posterior predictive checks, and
 ten-year forecasts by default. Each fit also saves a July-only trajectory and
 forecast plus a seasonally adjusted latent-level forecast. Change the calendar
-month with `figures.focus_month` in `examples/config/uccle.json`.
+month with `figures.focus_month` in the selected Uccle JSON.
 
 ## HPC
 
-Each Python example has a normal Bash runner and a matching PBS submission
-file. The PBS file handles resources and logging and calls the runner with a
-JSON path:
+Each example has a Bash runner and a matching PBS file. The PBS file requests
+resources and receives one JSON path; it does not redefine chains, draws,
+warmup, priors, or model settings:
 
 ```bash
-qsub job_scripts/submit_00_uccle_record.pbs
-
-qsub -v CONFIG=examples/config/uccle_final.json job_scripts/submit_06_uccle_pgas.pbs
+qsub -N bx_txx_lap \
+  -v CONFIG=examples/config/uccle/01_txx.json \
+  job_scripts/submit_05_uccle_laplace.pbs
 ```
 
-The ten numbered `run_*.sh` files also run directly and accept only
-`[CONFIG] [MAX_WORKERS]`. For MCMC examples, `hpc/run_example.py` reads
-`mcmc.chains`, launches one process per chain up to the allocated worker count,
-and combines the saved fits before producing final figures:
+`job_scripts/run_parallel_chains.py` reads `mcmc.chains`, launches one process
+per chain up to the allocated worker count, and combines successful fits before
+creating final figures. Thus four Uccle PBS jobs can each run four parallel
+chains, for up to 16 concurrent processes when the scheduler grants all jobs.
+The ten numbered Bash files use the same logic interactively:
 
 ```bash
-bash bash_scripts/run_03_simulation_laplace.sh examples/config/simulation.json 4
+bash bash_scripts/run_05_uccle_laplace.sh examples/config/uccle/01_txx.json 4
 ```
+
 Set `runtime.progress` to `true` in JSON. A one-chain local run prints progress
 to the terminal; parallel chains write separate files under `logs/`, which can
 be followed with `tail -f`. See `docs/HPC.md` and `docs/HPC_RUNNERS.md`.
