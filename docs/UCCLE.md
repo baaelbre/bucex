@@ -33,16 +33,15 @@ The workflow is ordered to separate questions that are otherwise easy to mix:
    exact GEV posterior without particles.
 
 ```bash
-export BUCEX_RUN_ID=$(date +%Y%m%d_%H%M%S)
-python examples/00_uccle_record.py
-python examples/01_tail_simulations.py
-python examples/02_structural_simulations.py
-python examples/03_simulation_laplace.py
-python examples/04_simulation_pgas.py
-python examples/05_uccle_laplace.py
-python examples/06_uccle_pgas.py
-python examples/08_simulation_laplace_mh.py
-python examples/09_uccle_laplace_mh.py
+python examples/00_uccle_record.py --config examples/config/record.json
+python examples/01_tail_simulations.py --config examples/config/tail.json
+python examples/02_structural_simulations.py --config examples/config/simulation.json
+python examples/03_simulation_laplace.py --config examples/config/simulation.json
+python examples/04_simulation_pgas.py --config examples/config/simulation.json
+python examples/05_uccle_laplace.py --config examples/config/uccle.json
+python examples/06_uccle_pgas.py --config examples/config/uccle.json
+python examples/08_simulation_laplace_mh.py --config examples/config/simulation.json
+python examples/09_uccle_laplace_mh.py --config examples/config/uccle.json
 ```
 
 Each PGAS script creates or reuses its matching Laplace initializer. A fit on
@@ -106,8 +105,8 @@ so the seasonal cycle is retained in the risk functional.
 
 The scripts store input truths, checksummed fits, tables, figures, and a full
 `run_config.json` under
-`results/<script>/<BUCEX_RUN_ID>__<automatic-settings-signature>/`.
-Set `BUCEX_OVERWRITE=1` only to replace compatible existing artifacts.
+`results/<script>/<timestamp>__<automatic-settings-signature>/`.
+Set `output.run_id` or `output.overwrite` in the selected JSON when needed.
 
 Examples 03 and 08 use the same `simulations/`, `fits/<scenario>/`,
 `tables/<scenario>/`, and `figures/<scenario>/` layout. Examples 05 and 09 use

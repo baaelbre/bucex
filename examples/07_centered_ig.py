@@ -4,8 +4,8 @@ This is the deliberately difficult reference analysis discussed in the paper:
 the latent level is sampled in the centred parameterisation, while its small
 innovation variance has a conjugate inverse-gamma update.  The default fast
 Laplace state update is intentionally approximate because the target of this
-example is Markov-chain mixing.  Set ``BUCEX_ENGINE=laplace_mh`` for the exact
-Laplace-MH validation or ``BUCEX_ENGINE=pgas`` for the particle benchmark.
+example is Markov-chain mixing.  Set ``inference.engine=laplace_mh`` for the exact
+Laplace-MH validation or ``inference.engine=pgas`` for the particle benchmark.
 
 Run with ``python examples/07_centered_ig.py``.
 """
@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -43,9 +42,7 @@ RUNTIME = CONFIG["runtime"]
 
 RESULTS_ROOT = Path(CONFIG["output"]["results_root"])
 SCRIPT_NAME = Path(__file__).stem
-RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime(
-    "%Y%m%d_%H%M%S"
-)
+RUN_TIMESTAMP = CONFIG["output"].get("run_id") or datetime.now().strftime("%Y%m%d_%H%M%S")
 OVERWRITE = bool(CONFIG["output"]["overwrite"])
 
 # Random-walk GEV truth. The process SD is deliberately small relative to the
@@ -84,7 +81,7 @@ XI_PRIOR_BOUNDS = tuple(PRIOR_SETTINGS["shape"]["bounds"])
 ENGINE = str(INFERENCE["engine"]).strip().lower()
 if ENGINE not in {"laplace", "laplace_mh", "pgas"}:
     raise ValueError(
-        "BUCEX_ENGINE must be one of: laplace, laplace_mh, pgas."
+        "inference.engine must be one of: laplace, laplace_mh, pgas."
     )
 DRAWS = int(MCMC_SETTINGS["draws"])
 WARMUP = int(MCMC_SETTINGS["warmup"])
@@ -95,9 +92,7 @@ SEED = int(MCMC_SETTINGS["seed"])
 PROGRESS = bool(RUNTIME["progress"])
 CHAIN_ONLY = bool(RUNTIME["chain_only"])
 COMBINE_RUNS = tuple(
-    Path(value)
-    for value in os.environ.get("BUCEX_COMBINE_RUNS", "").split(os.pathsep)
-    if value
+    Path(value) for value in RUNTIME.get("combine_runs", ()) if value
 )
 
 # Output settings.
@@ -187,8 +182,8 @@ PRIOR_SETTINGS = {
 def main() -> None:
     if COMBINE_RUNS and len(COMBINE_RUNS) != CHAINS:
         raise ValueError(
-            f"BUCEX_COMBINE_RUNS contains {len(COMBINE_RUNS)} runs, "
-            f"but BUCEX_CHAINS={CHAINS}."
+            f"runtime.combine_runs contains {len(COMBINE_RUNS)} runs, "
+            f"but mcmc.chains={CHAINS}."
         )
 
     plt.rcParams.update(
@@ -203,7 +198,7 @@ def main() -> None:
     config_path = OUTPUT_DIR / "run_config.json"
     if config_path.exists() and not OVERWRITE:
         raise FileExistsError(
-            f"Refusing to overwrite {config_path}; set BUCEX_OVERWRITE=1 to rerun."
+            f"Refusing to overwrite {config_path}; set output.overwrite=1 to rerun."
         )
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -282,11 +277,10 @@ def main() -> None:
     simulation_table.to_csv(table_dir / "simulation.csv", index=False)
 
     figure, axis = plt.subplots(figsize=(10, 4.5))
-    axis.scatter(time, simulation.y, s=10, color="0.55", alpha=0.5, label="observed")
-    axis.plot(time, true_level, color="#123B4A", linewidth=1.3, label="true level")
+    axis.scatter(time, simulation.y, s=10, color="0.55", alpha=0.5, label=r"$y_t$")
+    axis.plot(time, true_level, color="#123B4A", linewidth=1.3, label=r"$\alpha_t$")
     axis.set_xlabel("time")
     axis.set_ylabel("GEV location / °C")
-    axis.set_title("Random-walk GEV simulation")
     axis.legend()
     for extension in FIGURE_FORMATS:
         figure.savefig(
@@ -446,7 +440,6 @@ def main() -> None:
         credible_interval=0.90,
         truth=true_level,
     )
-    axis.set_title("Posterior random-walk level")
     for extension in FIGURE_FORMATS:
         figure.savefig(
             figure_dir / f"level.{extension}",
@@ -461,7 +454,6 @@ def main() -> None:
         truth=true_level,
         show_observed=False,
     )
-    axis.set_title("Posterior random-walk level")
     for extension in FIGURE_FORMATS:
         figure.savefig(
             figure_dir / f"level_no_observations.{extension}",
@@ -536,7 +528,6 @@ def main() -> None:
     )
     axis.set_xlabel("retained draw")
     axis.set_ylabel(r"level innovation variance $q_\mu$")
-    axis.set_title("Centered process-variance trace")
     axis.legend(ncol=min(fit.n_chains + 1, 5))
     for extension in FIGURE_FORMATS:
         figure.savefig(
@@ -549,7 +540,7 @@ def main() -> None:
     axis = predictive.plot(
         level=0.90,
         observed=fit.observed,
-        title="Posterior predictive check",
+        title=bx.config_title(CONFIG, "posterior_predictive"),
         ylabel="temperature / °C",
     )
     for extension in FIGURE_FORMATS:
@@ -565,7 +556,7 @@ def main() -> None:
         history=fit.observed,
         history_dates=time,
         history_points=FORECAST_HISTORY,
-        title="Posterior predictive forecast",
+        title=bx.config_title(CONFIG, "forecast"),
         ylabel="temperature / °C",
     )
     for extension in FIGURE_FORMATS:

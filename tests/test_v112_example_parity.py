@@ -4,7 +4,6 @@ import importlib.util
 import json
 import os
 from pathlib import Path
-import re
 
 import numpy as np
 
@@ -41,11 +40,8 @@ def _scenario_contract(module):
     return result
 
 
-def _runner_defaults(filename: str) -> dict[str, str]:
-    text = (ROOT / "bash_scripts" / filename).read_text(encoding="utf-8")
-    return dict(
-        re.findall(r'^([A-Z][A-Z0-9_]*)="\$\{[0-9]+:-([^}]*)\}"$', text, re.MULTILINE)
-    )
+def _runner_text(filename: str) -> str:
+    return (ROOT / "bash_scripts" / filename).read_text(encoding="utf-8")
 
 
 def test_simulation_laplace_mh_is_method_matched_to_laplace(monkeypatch):
@@ -195,16 +191,17 @@ def test_example_figure_titles_do_not_name_the_inference_engine():
         assert not any(label in source for label in forbidden), path
 
 
-def test_laplace_mh_runners_match_their_laplace_counterparts():
-    simulation = _runner_defaults("run_03_simulation_laplace.sh")
-    simulation_mh = _runner_defaults("run_08_simulation_laplace_mh.sh")
-    uccle = _runner_defaults("run_05_uccle_laplace.sh")
-    uccle_mh = _runner_defaults("run_09_uccle_laplace_mh.sh")
+def test_laplace_mh_runners_share_the_authoritative_json_files():
+    simulation = _runner_text("run_03_simulation_laplace.sh")
+    simulation_mh = _runner_text("run_08_simulation_laplace_mh.sh")
+    uccle = _runner_text("run_05_uccle_laplace.sh")
+    uccle_mh = _runner_text("run_09_uccle_laplace_mh.sh")
 
-    assert {key: simulation_mh[key] for key in simulation} == simulation
-    assert {key: uccle_mh[key] for key in uccle} == uccle
-    assert simulation_mh["MH_STEPS"] == "1"
-    assert uccle_mh["MH_STEPS"] == "1"
+    assert "examples/config/simulation.json" in simulation
+    assert "examples/config/simulation.json" in simulation_mh
+    assert "examples/config/uccle.json" in uccle
+    assert "examples/config/uccle.json" in uccle_mh
+    assert "BUCEX_" not in simulation + simulation_mh + uccle + uccle_mh
 
 
 def test_no_temporary_simulation_debug_overrides_remain():

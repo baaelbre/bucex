@@ -1,11 +1,11 @@
-# Migration from the former 2.6.2 package to 1.0.0
+# Migration from the former 2.6.2 package to 1.3.0
 
 The general `Model`, `MultiSeriesModel`, `fit`, `FitResult`, prediction,
 diagnostic, plotting, Uccle-loader, and hierarchical APIs remain available.
 
 ## Presentation workflow removal
 
-The clean 1.0.0 repository preserves the public API decisions made in former
+The clean 1.x repository preserves the public API decisions made in former
 version 2.6.2, including removal of `bucex.workflows`, `PresentationConfig`,
 `PresentationWorkflow`, `WorkflowPaths`, the scenario factories, result
 workflow helpers, and the `bucex-presentation` console command. These objects
@@ -37,7 +37,7 @@ matching PBS jobs are in `job_scripts/`.
 Results are always indexed by script, timestamp, and identifying settings:
 
 ```text
-results/<script>/<BUCEX_RUN_ID>__<settings-signature>/
+results/<script>/<timestamp>__<settings-signature>/
   run_config.json
   simulations/               # simulation scripts
   fits/<scenario-or-series>/
@@ -45,8 +45,9 @@ results/<script>/<BUCEX_RUN_ID>__<settings-signature>/
   figures/<scenario-or-series>/
 ```
 
-Export one `BUCEX_RUN_ID` before running multiple scripts to share a timestamp
-prefix. The settings signature is always present.
+Set `output.run_id` in the selected JSON when several scripts should share a
+human-chosen prefix. Leave it as JSON `null` for an automatic timestamp. The
+settings signature is always present.
 
 ## New plots
 

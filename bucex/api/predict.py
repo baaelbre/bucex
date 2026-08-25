@@ -506,7 +506,7 @@ class Forecast:
                     history_values,
                     color="0.45",
                     linewidth=1.0,
-                    label="latent level history",
+                    label=r"$\hat{\alpha}_t$ (history)",
                 )
             else:
                 ax.scatter(
@@ -515,7 +515,7 @@ class Forecast:
                     s=10,
                     color="0.55",
                     alpha=0.55,
-                    label="observed history",
+                    label=r"$y_t$ (history)",
                 )
             ax.axvline(np.asarray(x)[0], color="0.45", linestyle=":", linewidth=1.0)
 
@@ -529,13 +529,13 @@ class Forecast:
             label=f"{level:.0%} {'credible' if latent_target else 'predictive'} interval",
         )
         line_label = {
-            "eta": "predictor median",
-            "predictor": "predictor median",
-            "latent_predictor": "predictor median",
-            "level": "latent level median",
-            "latent_level": "latent level median",
-            "seasonally_adjusted": "latent level median",
-        }.get(target_key, "predictive median")
+            "eta": r"$\hat{\mu}_t$",
+            "predictor": r"$\hat{\mu}_t$",
+            "latent_predictor": r"$\hat{\mu}_t$",
+            "level": r"$\hat{\alpha}_t$",
+            "latent_level": r"$\hat{\alpha}_t$",
+            "seasonally_adjusted": r"$\hat{\alpha}_t$",
+        }.get(target_key, "posterior predictive median")
         ax.plot(x, median, color=color, label=line_label)
         if show_eta:
             if latent_target:
@@ -551,7 +551,7 @@ class Forecast:
                 color=color,
                 linestyle="--",
                 linewidth=1.0,
-                label="latent predictor median",
+                label=r"$\hat{\mu}_t$",
             )
         if observed is not None:
             observed_values = selected_values(observed, label="observed")
@@ -568,7 +568,7 @@ class Forecast:
                 s=10,
                 color="0.35",
                 alpha=0.6,
-                label="observed",
+                label=r"$y_t$",
             )
         if target_key in {"level", "latent_level", "seasonally_adjusted"}:
             default_title = "Latent level forecast"
@@ -584,7 +584,8 @@ class Forecast:
             default_title = f"{default_title}: {channel}"
         if phase is not None:
             default_title = f"{default_title}: {phase_label or f'phase {phase}'}"
-        ax.set_title(default_title if title is None else str(title))
+        if title is not None:
+            ax.set_title(str(title))
         if ylabel is not None:
             ax.set_ylabel(str(ylabel))
         ax.legend()

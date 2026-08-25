@@ -81,8 +81,9 @@ q_\mu=s_\mu^2 \quad\text{and}\quad \sigma^2.
 
 The process variance uses its conjugate Gibbs update. The run always saves
 parameter traces, the trace of \(q_\mu\), ACFs, ESS, R-hat, and engine
-diagnostics. `BUCEX_ENGINE=laplace_mh` selects exact Laplace-MH validation and
-`BUCEX_ENGINE=pgas` selects the exact particle benchmark.
+diagnostics. Set `inference.engine` in
+`examples/config/centered_ig.json` to `laplace_mh` for exact Laplace-MH
+validation or to `pgas` for the exact particle benchmark.
 
 ## Structural spaces
 

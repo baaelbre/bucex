@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.2.1 has five software layers:
+Release 1.3.0 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -12,7 +12,6 @@ Release 1.2.1 has five software layers:
 python -m pytest
 python validation/run_release_validation.py
 python validation/run_presentation_smoke.py
-python validation/run_hpc_fanout_smoke.py
 python -m build
 ```
 
@@ -48,22 +47,19 @@ evidence for a scientific conclusion.
 - examples 08 and 09 match examples 03 and 05 respectively in scientific
   settings, priors, MCMC defaults, output tables, and figures, changing only
   the exact Laplace-MH state engine and its diagnostics;
-- timestamped paths are shared by `BUCEX_RUN_ID` and existing artifacts require
-  explicit overwrite authorization;
+- timestamped paths and overwrite behavior are declared in each selected JSON
+  configuration;
 - independently saved chains combine only when model, prior, plan, data, and
   dates agree;
-- the example-08 PBS array maps every scenario-chain pair exactly once, gives
-  each task a collision-free fit and manifest path below one shared run
-  directory, and finalizes only after all requested task artifacts exist;
-- the default exact simulation array uses 24 one-core tasks with 1,000 warm-up
-  and 1,000 retained iterations under a six-hour per-task resource request;
+- the generic HPC runner creates one JSON copy per chain, launches independent
+  chains concurrently, and combines them only after every process succeeds;
 - schema-2.6.2 archives round-trip and older supported archives remain readable;
 - the ten Python examples are self-contained calls to the public API;
 - centered inverse-gamma process variances use their exact Gibbs full
   conditional and are labelled `inverse_gamma_gibbs` in diagnostics;
 - the centered/inverse-gamma benchmark defaults to approximate Laplace for
-  speed, disables ASIS, and exposes Laplace-MH and PGAS as exact validation
-  engines through `BUCEX_ENGINE`;
+  speed, disables ASIS, and selects Laplace-MH or PGAS through
+  `examples/config/centered_ig.json`;
 - the ten ordinary PBS jobs invoke those same examples, and every fitting
   workflow combines independent chains only after all chain processes or array
   tasks succeed;

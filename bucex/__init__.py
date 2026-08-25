@@ -6,6 +6,7 @@ simulation, persistence, plotting, and data APIs.
 from __future__ import annotations
 
 from .__about__ import __version__
+from .config import config_title, load_config, save_config
 from . import api as _api
 from . import components as _components
 from . import core as _core
@@ -38,6 +39,9 @@ __all__ = sorted(
         "__version__",
         "CompiledModel",
         "compile_model",
+        "config_title",
+        "load_config",
+        "save_config",
         *(_api.__all__),
         *(_components.__all__),
         *(_core.__all__),

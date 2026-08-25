@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.2.1 keeps one model compiler, one fitting entry point, and one result
+Release 1.3.0 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text
@@ -81,20 +81,20 @@ saved as a new draw.
 ## Analysis-script lifecycle
 
 The ten files under `examples/` declare models, priors, simulation truths,
-fit calls, summaries, and figures in one readable sequence. Seven form the
-COMPSTAT analysis; the eighth exposes the centered/inverse-gamma random-walk
-benchmark; the final two exercise exact Laplace-MH. Ten matching PBS jobs
-invoke those exact files and share a `BUCEX_RUN_ID`; scheduler code does not
-define the statistics. Example 08 also exposes reusable functions for one
-simulation, prior construction, and one exact fit. Its internal array worker
-imports those functions, so the 24-task PBS workflow cannot drift away from
-the standalone scientific example. Each worker owns one scenario-chain path
-under `tasks/`; the dependent finalizer alone combines fits and writes the
-final tables and figures. Reusable
-scientific behavior belongs in the core API, while analysis-specific choices
-remain visible in the scripts. Examples 08 and 09 deliberately mirror the
-scientific contracts and artifact trees of examples 03 and 05, so engine
-comparisons do not silently change the data, priors, or summaries.
+fit calls, summaries, and figures in one readable sequence. Their scientific,
+sampling, figure, and output choices come from the JSON files under
+`examples/config/`; there is no second environment-variable configuration
+layer. Seven examples form the COMPSTAT analysis, one exposes the
+centered/inverse-gamma random-walk benchmark, and the final two exercise exact
+Laplace-MH. Ten matching Bash/PBS pairs invoke those exact files.
+
+For a multi-chain job, `hpc/run_example.py` creates one temporary one-chain
+JSON per independent process, waits for all processes, and then asks the same
+numbered example to combine the saved `FitResult` objects and make the final
+tables and figures. Scheduler code controls resources only; it never defines
+the model or prior. Examples 08 and 09 deliberately mirror the scientific
+contracts and artifact trees of examples 03 and 05, so engine comparisons do
+not silently change the data, priors, or summaries.
 
 ## Persistence
 

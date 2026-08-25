@@ -12,7 +12,6 @@ from __future__ import annotations
 from datetime import datetime
 import io
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -42,7 +41,7 @@ RUNTIME = CONFIG["runtime"]
 
 RESULTS_ROOT = Path(CONFIG["output"]["results_root"])
 SCRIPT_NAME = Path(__file__).stem
-RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
+RUN_TIMESTAMP = CONFIG["output"].get("run_id") or datetime.now().strftime("%Y%m%d_%H%M%S")
 OVERWRITE = bool(CONFIG["output"]["overwrite"])
 
 N_TIME = int(SIMULATION["n_time"])
@@ -81,15 +80,8 @@ MH_STEPS = int(INFERENCE["laplace_mh_steps"])
 PROGRESS = bool(RUNTIME["progress"])
 CHAIN_ONLY = bool(RUNTIME["chain_only"])
 COMBINE_RUNS = tuple(
-    Path(value)
-    for value in os.environ.get("BUCEX_COMBINE_RUNS", "").split(os.pathsep)
-    if value
+    Path(value) for value in RUNTIME.get("combine_runs", ()) if value
 )
-ARRAY_WORKFLOW = os.environ.get("BUCEX_ARRAY_WORKFLOW", "0").lower() in {
-    "1",
-    "true",
-    "yes",
-}
 
 FIGURE_FORMATS = tuple(FIGURES["formats"])
 FIGURE_DPI = int(FIGURES["dpi"])
@@ -98,7 +90,7 @@ PHASE_LABELS = tuple(f"phase {index + 1}" for index in range(PERIOD))
 PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
 FOCUS_PHASE = int(FIGURES["focus_phase"])
 if not 1 <= FOCUS_PHASE <= PERIOD:
-    raise ValueError(f"BUCEX_FOCUS_PHASE must be between 1 and {PERIOD}.")
+    raise ValueError(f"figures.focus_phase must be between 1 and {PERIOD}.")
 FORECAST_HORIZON = int(FIGURES["forecast_horizon"])
 FORECAST_HISTORY = int(FIGURES["forecast_history"])
 
@@ -188,13 +180,13 @@ if _requested_scenario_keys:
     )
     if unknown_scenario_keys:
         raise ValueError(
-            "Unknown BUCEX_SCENARIO_KEYS: "
+            "Unknown simulation.scenario_keys: "
             + ", ".join(unknown_scenario_keys)
             + ". Available keys: "
             + ", ".join(ALL_SCENARIO_INDEX)
         )
     if len(set(_requested_scenario_keys)) != len(_requested_scenario_keys):
-        raise ValueError("BUCEX_SCENARIO_KEYS must not contain duplicates.")
+        raise ValueError("simulation.scenario_keys must not contain duplicates.")
     SCENARIOS = tuple(
         ALL_SCENARIOS[ALL_SCENARIO_INDEX[key]] for key in _requested_scenario_keys
     )
@@ -357,8 +349,8 @@ def fit_scenario(
 def main() -> None:
     if COMBINE_RUNS and len(COMBINE_RUNS) != CHAINS:
         raise ValueError(
-            f"BUCEX_COMBINE_RUNS contains {len(COMBINE_RUNS)} runs, "
-            f"but BUCEX_CHAINS={CHAINS}."
+            f"runtime.combine_runs contains {len(COMBINE_RUNS)} runs, "
+            f"but mcmc.chains={CHAINS}."
         )
     plt.rcParams.update({"axes.spines.top": False, "axes.spines.right": False, "axes.titleweight": "bold", "legend.frameon": False})
     labels = {0: "zero", 1: "fixed", 2: "dynamic"}
@@ -367,7 +359,7 @@ def main() -> None:
     config_path = OUTPUT_DIR / "run_config.json"
     if config_path.exists() and not OVERWRITE:
         raise FileExistsError(
-            f"Refusing to overwrite {config_path}; set BUCEX_OVERWRITE=1 to rerun."
+            f"Refusing to overwrite {config_path}; set output.overwrite=1 to rerun."
         )
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     run_config = {
@@ -380,8 +372,6 @@ def main() -> None:
         "settings_file": str(SETTINGS_PATH),
         "engine": "laplace_mh",
         "target": "exact posterior",
-        "array_workflow": ARRAY_WORKFLOW,
-        "array_task_root": str(OUTPUT_DIR / "tasks") if ARRAY_WORKFLOW else None,
         "simulation": {
             "n_time": N_TIME,
             "period": PERIOD,
@@ -438,10 +428,10 @@ def main() -> None:
             truth = json.loads(truth_path.read_text(encoding="utf-8"))
             for key in ("name", "n_time", "period", "model", "params", "initial_state", "seed"):
                 if truth.get(key) != expected_truth[key]:
-                    raise ValueError(f"{truth_path} has different {key}; set BUCEX_OVERWRITE=1.")
+                    raise ValueError(f"{truth_path} has different {key}; set output.overwrite=1.")
         else:
             if not OVERWRITE and (data_path.exists() or truth_path.exists()):
-                raise FileExistsError(f"Only one simulation artifact exists for {scenario['name']}; set BUCEX_OVERWRITE=1.")
+                raise FileExistsError(f"Only one simulation artifact exists for {scenario['name']}; set output.overwrite=1.")
             table, truth = simulate_scenario_table(scenario)
             data_path.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(data_path, index=False)
@@ -572,8 +562,10 @@ def main() -> None:
         )
 
         figure, axis = laplace_fit.plot("predictor", credible_interval=0.90)
-        axis.plot(np.arange(N_TIME), table["eta"], color="#123B4A", linestyle="--", linewidth=1.2, label="true predictor")
-        axis.set_title(f"{scenario['name']}: posterior latent predictor")
+        axis.plot(np.arange(N_TIME), table["eta"], color="#123B4A", linestyle="--", linewidth=1.2, label=r"$\mu_t$")
+        title = bx.config_title(CONFIG, "predictor")
+        if title is not None:
+            axis.set_title(title.format(**scenario))
         axis.legend()
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -589,11 +581,11 @@ def main() -> None:
             color="#123B4A",
             linestyle="--",
             linewidth=1.2,
-            label="true predictor",
+            label=r"$\mu_t$",
         )
-        axis.set_title(
-            f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} trajectory"
-        )
+        title = bx.config_title(CONFIG, "phase_predictor")
+        if title is not None:
+            axis.set_title(title.format(**scenario, phase=PHASE_LABELS[FOCUS_PHASE - 1]))
         axis.legend()
         for extension in FIGURE_FORMATS:
             figure.savefig(
@@ -606,7 +598,7 @@ def main() -> None:
         axis = predictive.plot(
             level=0.90,
             observed=laplace_fit.observed,
-            title=f"{scenario['name']}: posterior predictive check",
+            title=bx.config_title(CONFIG, "posterior_predictive"),
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -619,7 +611,7 @@ def main() -> None:
             history=laplace_fit.observed,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
-            title=f"{scenario['name']}: posterior predictive forecast",
+            title=bx.config_title(CONFIG, "forecast"),
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -634,7 +626,7 @@ def main() -> None:
             history=laplace_fit.observed,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
-            title=f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} forecast",
+            title=bx.config_title(CONFIG, "phase_forecast"),
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -653,7 +645,7 @@ def main() -> None:
             history=level_history,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
-            title=f"{scenario['name']}: seasonally adjusted level forecast",
+            title=bx.config_title(CONFIG, "level_forecast"),
             ylabel="latent level / °C",
         )
         figure = axis.figure
@@ -668,7 +660,6 @@ def main() -> None:
         figure, axis = laplace_fit.plot(
             "level", credible_interval=0.90, truth=table["level"].to_numpy()
         )
-        axis.set_title(f"{scenario['name']}: posterior latent level")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
@@ -679,7 +670,6 @@ def main() -> None:
             truth=table["level"].to_numpy(),
             show_observed=False,
         )
-        axis.set_title(f"{scenario['name']}: posterior latent level")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level_no_observations.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
@@ -687,13 +677,11 @@ def main() -> None:
         figure, axis = laplace_fit.plot(
             "slope", credible_interval=0.90, truth=table["slope"].to_numpy()
         )
-        axis.set_title(f"{scenario['name']}: posterior latent slope")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"slope.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("component_probabilities")
-        axis.set_title(f"{scenario['name']}: structural selection")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"selection.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)

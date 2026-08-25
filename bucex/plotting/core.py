@@ -598,9 +598,10 @@ def plot_state(
     ax=None,
     color: str = "C0",
     observed=None,
-    observed_label: str = "observed",
+    observed_label: str = r"$y_t$",
     show_observed: bool = True,
     phase: int | None = None,
+    title: str | None = None,
 ):
     import matplotlib.pyplot as plt
 
@@ -640,11 +641,13 @@ def plot_state(
         alpha=0.2,
         label=f"{credible_interval:.0%} credible interval",
     )
-    ax.plot(x, median, color=color, label=f"{state} median")
-    title = fit.series_name or f"Posterior {state}"
-    if phase is not None:
-        title = f"{title}: phase {phase}"
-    ax.set_title(title)
+    state_label = {
+        "level": r"$\hat{\alpha}_t$",
+        "slope": r"$\hat{\beta}_t$",
+    }.get(state, rf"$\hat{{{state}}}_t$")
+    ax.plot(x, median, color=color, label=state_label)
+    if title is not None:
+        ax.set_title(str(title))
     ax.legend()
     return figure, ax
 
@@ -658,6 +661,7 @@ def plot_level(
     truth=None,
     show_observed: bool = True,
     phase: int | None = None,
+    title: str | None = None,
 ):
     """Plot the posterior latent level as a standalone component figure.
 
@@ -674,7 +678,7 @@ def plot_level(
         raise ValueError("Use channel plots for a multiseries result.")
 
     adjusted = np.asarray(fit.observed, dtype=float).copy()
-    observed_label = "observed"
+    observed_label = r"$y_t$"
     seasonal_state = next(
         (name for name in fit.state_names if name.startswith("seasonal[")),
         None,
@@ -682,7 +686,7 @@ def plot_level(
     if seasonal_state is not None:
         seasonal = np.median(fit.state_original(seasonal_state), axis=0)
         adjusted = adjusted - seasonal
-        observed_label = "seasonally adjusted observed"
+        observed_label = r"$y_t-\hat{\gamma}_t$"
 
     figure, ax = plot_state(
         fit,
@@ -694,6 +698,7 @@ def plot_level(
         observed_label=observed_label,
         show_observed=show_observed,
         phase=phase,
+        title=title,
     )
     if truth is not None:
         truth_values = np.asarray(truth, dtype=float)
@@ -706,17 +711,9 @@ def plot_level(
             color="0.15",
             linestyle="--",
             linewidth=1.1,
-            label="true level",
+            label=r"$\alpha_t$",
         )
-    title = (
-        f"{fit.series_name}: posterior latent level"
-        if fit.series_name
-        else "Posterior latent level"
-    )
-    if phase is not None:
-        title = f"{title}: phase {phase}"
-    ax.set_title(title)
-    ax.set_ylabel("latent level")
+    ax.set_ylabel("level")
     ax.legend()
     return figure, ax
 
@@ -732,7 +729,8 @@ def plot_slope(
     unit: str | None = None,
     condition_on: str | None = None,
     show_fixed: bool = False,
-    fixed_color: str = "0.25",
+    fixed_color: str = "#6A3D9A",
+    title: str | None = None,
 ):
     """Plot the posterior latent slope without observation-scale scatter.
 
@@ -741,8 +739,8 @@ def plot_slope(
     former generic ``plot_state(..., state="slope")`` presentation. ``scale``
     accepts a positive multiplier or the aliases ``interval``, ``year``, and
     ``decade``. For SSVS fits, ``condition_on`` selects one structural class;
-    ``show_fixed=True`` overlays the fixed-slope median and interval as dashed
-    lines.
+    ``show_fixed=True`` overlays only the fixed-slope posterior median as a
+    purple dashed line.
     """
 
     import matplotlib.pyplot as plt
@@ -806,9 +804,9 @@ def plot_slope(
         median,
         color=color,
         label=(
-            f"{condition_on} slope median"
+            rf"$\hat{{\beta}}_t$ ({condition_on})"
             if condition_code is not None
-            else "slope median"
+            else r"$\hat{\beta}_t$"
         ),
     )
 
@@ -820,7 +818,7 @@ def plot_slope(
             )
         fixed = structural_states == 1
         if np.any(fixed):
-            fixed_lower, fixed_median, fixed_upper = _interval(
+            _, fixed_median, _ = _interval(
                 scale_factor
                 * np.asarray(fit.state_original("slope"), dtype=float)[fixed],
                 credible_interval,
@@ -831,24 +829,7 @@ def plot_slope(
                 color=fixed_color,
                 linestyle="--",
                 linewidth=1.35,
-                label="fixed slope median",
-            )
-            ax.plot(
-                x,
-                fixed_lower,
-                color=fixed_color,
-                linestyle="--",
-                linewidth=0.8,
-                alpha=0.75,
-                label=f"fixed {credible_interval:.0%} credible interval",
-            )
-            ax.plot(
-                x,
-                fixed_upper,
-                color=fixed_color,
-                linestyle="--",
-                linewidth=0.8,
-                alpha=0.75,
+                label=r"$\hat{\beta}_0$",
             )
     ax.axhline(0.0, color="0.4", linestyle="--", linewidth=0.8)
     if truth is not None:
@@ -861,9 +842,10 @@ def plot_slope(
             color="0.15",
             linestyle="--",
             linewidth=1.1,
-            label="true slope",
+            label=r"$\beta_t$",
         )
-    ax.set_title("Posterior slope")
+    if title is not None:
+        ax.set_title(str(title))
     ax.set_ylabel(unit or "slope per observation interval")
     ax.legend()
     return figure, ax
@@ -876,6 +858,7 @@ def plot_predictor(
     ax=None,
     color: str = "C3",
     phase: int | None = None,
+    title: str | None = None,
 ):
     """Plot observations against the complete univariate latent predictor.
 
@@ -904,7 +887,7 @@ def plot_predictor(
         s=9,
         color="0.55",
         alpha=0.55,
-        label="observed",
+        label=r"$y_t$",
     )
     ax.fill_between(
         x,
@@ -914,11 +897,9 @@ def plot_predictor(
         alpha=0.2,
         label=f"{credible_interval:.0%} credible interval",
     )
-    ax.plot(x, median, color=color, label="complete latent predictor")
-    title = fit.series_name or "Posterior predictor"
-    if phase is not None:
-        title = f"{title}: phase {phase}"
-    ax.set_title(title)
+    ax.plot(x, median, color=color, label=r"$\hat{\mu}_t$")
+    if title is not None:
+        ax.set_title(str(title))
     ax.legend()
     return figure, ax
 
@@ -930,6 +911,7 @@ def plot_channel_predictor(
     credible_interval: float = 0.90,
     ax=None,
     color: str = "C0",
+    title: str | None = None,
 ):
     """Plot observed data against a channel's full latent predictor."""
 
@@ -947,10 +929,11 @@ def plot_channel_predictor(
     values = fit.channel_eta_draws(channel, original_scale=True)
     lower, median, upper = _interval(values, credible_interval)
     x = _time(fit)
-    ax.scatter(x, fit.observed[:, index], s=9, color="0.55", alpha=0.55, label="observed")
+    ax.scatter(x, fit.observed[:, index], s=9, color="0.55", alpha=0.55, label=r"$y_t$")
     ax.fill_between(x, lower, upper, color=color, alpha=0.2, label="credible interval")
-    ax.plot(x, median, color=color, label="latent predictor")
-    ax.set_title(channel)
+    ax.plot(x, median, color=color, label=r"$\hat{\mu}_t$")
+    if title is not None:
+        ax.set_title(str(title))
     ax.legend()
     return figure, ax
 
@@ -1148,6 +1131,7 @@ def plot_season(
     show_interval: bool = False,
     ax=None,
     figsize=(10, 5),
+    title: str | None = None,
 ):
     """Plot the posterior seasonal effect for every phase of the cycle.
 
@@ -1220,7 +1204,8 @@ def plot_season(
             )
         ax.plot(horizontal, median[selected], color=colour, linewidth=1.45, label=label)
 
-    ax.set_title("Posterior seasonality")
+    if title is not None:
+        ax.set_title(str(title))
     ax.set_xlabel("year" if dates is not None else "cycle")
     ax.set_ylabel("seasonal effect")
     ax.grid(axis="y", alpha=0.35)
@@ -1230,7 +1215,14 @@ def plot_season(
     return figure, ax
 
 
-def plot_endpoint(fit, *, credible_interval: float = 0.90, ax=None, color="C3"):
+def plot_endpoint(
+    fit,
+    *,
+    credible_interval: float = 0.90,
+    ax=None,
+    color="C3",
+    title: str | None = None,
+):
     import matplotlib.pyplot as plt
 
     if ax is None:
@@ -1245,8 +1237,8 @@ def plot_endpoint(fit, *, credible_interval: float = 0.90, ax=None, color="C3"):
     x = _time(fit)
     ax.fill_between(x, lower, upper, color=color, alpha=0.2)
     ax.plot(x, median, color=color)
-    direction = "lower" if fit.transform_sign < 0.0 else "upper"
-    ax.set_title(f"Finite GEV {direction} endpoint")
+    if title is not None:
+        ax.set_title(str(title))
     ax.set_ylabel("endpoint")
     return figure, ax
 
@@ -1293,7 +1285,9 @@ def plot_risk(
     return figure, ax
 
 
-def plot_component_probabilities(fit, *, channel: str | None = None, ax=None):
+def plot_component_probabilities(
+    fit, *, channel: str | None = None, ax=None, title: str | None = None
+):
     import matplotlib.pyplot as plt
 
     table = fit.component_probabilities(channel=channel)
@@ -1327,7 +1321,8 @@ def plot_component_probabilities(fit, *, channel: str | None = None, ax=None):
     ax.set_xticks(positions, names)
     ax.set_ylim(0.0, 1.0)
     ax.set_ylabel("posterior probability")
-    ax.set_title("Structural selection")
+    if title is not None:
+        ax.set_title(str(title))
     ax.legend()
     return figure, ax
 

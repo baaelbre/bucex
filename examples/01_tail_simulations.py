@@ -6,8 +6,8 @@ API. Run with ``python examples/01_tail_simulations.py``.
 from __future__ import annotations
 
 from datetime import datetime
+from copy import deepcopy
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -19,39 +19,48 @@ from scipy.stats import genextreme
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 if (SOURCE_ROOT / "bucex").is_dir() and str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
+EXAMPLE_ROOT = Path(__file__).resolve().parent
+if str(EXAMPLE_ROOT) not in sys.path:
+    sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
+from _example_config import load_example_config
 
 
-# Results. The timestamp can be shared across HPC jobs through BUCEX_RUN_ID.
-# The concise signature is for browsing; run_config.json stores every value.
-RESULTS_ROOT = Path(os.environ.get("BUCEX_RESULTS_ROOT", "results"))
+# Every setting is in one editable JSON file.
+CONFIG, SETTINGS_PATH = load_example_config("tail.json")
+SIMULATION = CONFIG["simulation"]
+DENSITY = CONFIG["density"]
+FIGURES = CONFIG["figures"]
+OUTPUT = CONFIG["output"]
+
+RESULTS_ROOT = Path(OUTPUT["results_root"])
 SCRIPT_NAME = Path(__file__).stem
-RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
-OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {"1", "true", "yes"}
+RUN_TIMESTAMP = OUTPUT.get("run_id") or datetime.now().strftime("%Y%m%d_%H%M%S")
+OVERWRITE = bool(OUTPUT["overwrite"])
 
 # Simulation design.
-N_TIME = int(os.environ.get("BUCEX_N_TIME", "800"))
-PERIOD = int(os.environ.get("BUCEX_PERIOD", "4"))
-START_DATE = "1901-01-01"
-INITIAL_LEVEL = 25.0
-LEVEL_PROCESS_SD = 0.08
+N_TIME = int(SIMULATION["n_time"])
+PERIOD = int(SIMULATION["period"])
+START_DATE = str(SIMULATION["start_date"])
+INITIAL_LEVEL = float(SIMULATION["initial_level"])
+LEVEL_PROCESS_SD = float(SIMULATION["level_process_sd"])
 
-TAIL_SIGMA = 1.50
-TAIL_XI_VALUES = (-0.30, 0.0, 0.30)
-TAIL_SEED = 2_601  # Same seed gives all three series the same latent path.
+TAIL_SIGMA = float(SIMULATION["tail_sigma"])
+TAIL_XI_VALUES = tuple(float(value) for value in SIMULATION["tail_xi_values"])
+TAIL_SEED = int(SIMULATION["tail_seed"])
 
-SCALE_SIGMA_VALUES = (0.75, 1.50, 3.00)
-SCALE_XI = -0.30
-SCALE_SEED = 2_602  # Same seed gives all three series the same latent path.
+SCALE_SIGMA_VALUES = tuple(float(value) for value in SIMULATION["scale_sigma_values"])
+SCALE_XI = float(SIMULATION["scale_xi"])
+SCALE_SEED = int(SIMULATION["scale_seed"])
 
 # The theoretical density plots show this central probability range. Their
 # horizontal axis is y - mu, so the changing local-level path plays no role.
-DENSITY_PROBABILITY_RANGE = (0.001, 0.995)
-DENSITY_GRID_POINTS = 900
+DENSITY_PROBABILITY_RANGE = tuple(float(value) for value in DENSITY["probability_range"])
+DENSITY_GRID_POINTS = int(DENSITY["grid_points"])
 
-FIGURE_FORMATS = ("pdf", "png")
-FIGURE_DPI = 180
+FIGURE_FORMATS = tuple(FIGURES["formats"])
+FIGURE_DPI = int(FIGURES["dpi"])
 COLORS = {"navy": "#123B4A", "teal": "#1D7F7A", "grey": "#7A8589"}
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_s{TAIL_SEED}"
@@ -124,16 +133,18 @@ def main() -> None:
     config_path = OUTPUT_DIR / "run_config.json"
     if config_path.exists() and not OVERWRITE:
         raise FileExistsError(
-            f"Refusing to overwrite {config_path}; set BUCEX_OVERWRITE=1 to rerun."
+            f"Refusing to overwrite {config_path}; change output.run_id or output.overwrite in the JSON."
         )
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    run_config = {
+    run_config = deepcopy(CONFIG)
+    run_config.update({
         "script": SCRIPT_NAME,
         "created_at": datetime.now().astimezone().isoformat(),
         "run_timestamp": RUN_TIMESTAMP,
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
         "bucex_version": bx.__version__,
+        "settings_file": str(SETTINGS_PATH),
         "simulation": {
             "n_time": N_TIME,
             "period": PERIOD,
@@ -153,10 +164,8 @@ def main() -> None:
             "relative_to_location": True,
         },
         "figures": {"formats": list(FIGURE_FORMATS), "dpi": FIGURE_DPI},
-    }
-    config_path.write_text(
-        json.dumps(run_config, indent=2, sort_keys=True), encoding="utf-8"
-    )
+    })
+    bx.save_config(run_config, config_path)
 
     for group, scenarios in grouped_scenarios.items():
         for scenario in scenarios:
@@ -181,7 +190,7 @@ def main() -> None:
             data_path = OUTPUT_DIR / "simulations" / group / f"{scenario['name']}.csv"
             truth_path = data_path.with_suffix(".json")
             if not OVERWRITE and (data_path.exists() or truth_path.exists()):
-                raise FileExistsError(f"Refusing to overwrite {data_path}; set BUCEX_OVERWRITE=1.")
+                raise FileExistsError(f"Refusing to overwrite {data_path}; set output.overwrite=1.")
             data_path.parent.mkdir(parents=True, exist_ok=True)
             table.to_csv(data_path, index=False)
             truth = {
@@ -207,10 +216,12 @@ def main() -> None:
         for scenario in scenarios:
             table = grouped_tables[group][scenario["name"]]
             figure, axis = plt.subplots(figsize=(11, 4.2))
-            axis.scatter(table["date"], table["y"], s=7, alpha=0.27, color=COLORS["grey"], label="observed")
-            axis.plot(table["date"], table["eta"], color=COLORS["teal"], linewidth=1.8, label="latent location")
+            axis.scatter(table["date"], table["y"], s=7, alpha=0.27, color=COLORS["grey"], label=r"$y_t$")
+            axis.plot(table["date"], table["eta"], color=COLORS["teal"], linewidth=1.8, label=r"$\mu_t$")
             axis.set_ylim(*common_ylim)
-            axis.set_title(scenario["title"])
+            time_series_title = bx.config_title(CONFIG, "time_series")
+            if time_series_title is not None:
+                axis.set_title(time_series_title.format(**scenario))
             axis.set_ylabel("GEV observation")
             axis.grid(axis="y", alpha=0.35)
             axis.legend(loc="upper left")
@@ -279,11 +290,9 @@ def main() -> None:
             )
 
         axis.set_xlim(lower - padding, upper + padding)
-        axis.set_title(
-            "The GEV shape changes the tail and its support"
-            if group == "shape"
-            else "The GEV scale changes dispersion and the bounded endpoint"
-        )
+        density_title = bx.config_title(CONFIG, f"{group}_density")
+        if density_title is not None:
+            axis.set_title(density_title)
         axis.set_xlabel(r"value relative to location, $y-\mu$")
         axis.set_ylabel("density")
         axis.grid(axis="y", alpha=0.35)

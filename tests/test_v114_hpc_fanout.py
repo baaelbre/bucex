@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import importlib.util
-import os
 from pathlib import Path
-import subprocess
 
 import bucex as bx
 
@@ -11,108 +8,52 @@ import bucex as bx
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _load_example(name: str):
-    path = ROOT / "examples" / "08_simulation_laplace_mh.py"
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def test_v130_parallel_runner_uses_json_chain_copies_and_public_combine_paths():
+    assert bx.__version__ == "1.3.0"
+    source = (ROOT / "hpc" / "run_example.py").read_text(encoding="utf-8")
+    assert 'chain_config["mcmc"]["chains"] = 1' in source
+    assert 'chain_config["runtime"]["chain_only"] = True' in source
+    assert 'combined_config["runtime"]["combine_runs"]' in source
+    assert "subprocess.Popen" in source
+    assert "--config" in source
+    assert "BUCEX_SCENARIO_KEYS" not in source
 
 
-def test_v114_version_and_scenario_filter(monkeypatch):
-    assert bx.__version__ == "1.2.1"
-    monkeypatch.delenv("BUCEX_SCENARIO_KEYS", raising=False)
-    complete = _load_example("bucex_example08_complete")
-    assert [scenario["key"] for scenario in complete.SCENARIOS] == [
-        "stationary",
-        "linear",
-        "random_walk",
-        "llt",
-        "dynamic_season",
-        "llt_season",
-    ]
+def test_v130_hpc_surface_has_one_runner_and_one_pbs_file_per_example():
+    expected = {
+        "00_uccle_record",
+        "01_tail_simulations",
+        "02_structural_simulations",
+        "03_simulation_laplace",
+        "04_simulation_pgas",
+        "05_uccle_laplace",
+        "06_uccle_pgas",
+        "07_centered_ig",
+        "08_simulation_laplace_mh",
+        "09_uccle_laplace_mh",
+    }
+    assert {
+        path.stem.removeprefix("run_")
+        for path in (ROOT / "bash_scripts").glob("run_*.sh")
+    } == expected
+    assert {
+        path.stem.removeprefix("submit_")
+        for path in (ROOT / "job_scripts").glob("submit_*.pbs")
+    } == expected
 
-    monkeypatch.setenv("BUCEX_SCENARIO_KEYS", os.pathsep.join(("stationary", "llt")))
-    selected = _load_example("bucex_example08_selected")
-    assert [scenario["key"] for scenario in selected.SCENARIOS] == [
-        "stationary",
-        "llt",
-    ]
-    assert selected.ALL_SCENARIO_INDEX["llt"] == 3
-
-
-def test_pbs_array_maps_all_24_scenario_chain_pairs_once():
-    command = r'''
-source config/laplace_mh_simulation_array.sh
-for task in $(seq 1 24); do
-  laplace_mh_map_task "$task" 4 "$LMH_DEFAULT_SCENARIO_KEYS"
-  printf '%s,%s\n' "$LMH_TASK_SCENARIO" "$LMH_TASK_CHAIN"
-done
-'''
-    completed = subprocess.run(
-        ["bash", "-c", command],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
+    obsolete = (
+        ROOT / "examples" / "_08_simulation_laplace_mh_task.py",
+        ROOT / "config" / "laplace_mh_simulation_array.sh",
+        ROOT / "validation" / "run_hpc_fanout_smoke.py",
     )
-    pairs = [tuple(line.split(",")) for line in completed.stdout.splitlines()]
-    assert len(pairs) == 24
-    assert len(set(pairs)) == 24
-    assert pairs[0] == ("stationary", "1")
-    assert pairs[3] == ("stationary", "4")
-    assert pairs[4] == ("linear", "1")
-    assert pairs[-1] == ("llt_season", "4")
+    assert not any(path.exists() for path in obsolete)
 
 
-def test_array_resources_defaults_and_shared_layout_contract():
-    fit_pbs = (
-        ROOT / "job_scripts" / "submit_08_simulation_laplace_mh_array.pbs"
-    ).read_text(encoding="utf-8")
-    final_pbs = (
-        ROOT / "job_scripts" / "submit_08_simulation_laplace_mh_finalize.pbs"
-    ).read_text(encoding="utf-8")
-    submitter = (
-        ROOT / "bash_scripts" / "qsub_08_simulation_laplace_mh.sh"
-    ).read_text(encoding="utf-8")
-    worker = (
-        ROOT / "examples" / "_08_simulation_laplace_mh_task.py"
-    ).read_text(encoding="utf-8")
-    finalizer = (
-        ROOT / "bash_scripts" / "run_08_simulation_laplace_mh_finalize.sh"
-    ).read_text(encoding="utf-8")
-
-    assert "#PBS -l walltime=06:00:00" in fit_pbs
-    assert "#PBS -l nodes=1:ppn=1" in fit_pbs
-    assert "#PBS -l walltime=01:00:00" in final_pbs
-    assert 'DRAWS="${DRAWS:-1000}"' in submitter
-    assert 'WARMUP="${WARMUP:-1000}"' in submitter
-    assert 'N_TASKS=$((LMH_N_SCENARIOS * CHAINS))' in submitter
-    assert '-t "1-${N_TASKS}%${MAX_CONCURRENT}"' in submitter
-    assert 'depend=${DEPENDENCY_KIND}:${FIT_ID}' in submitter
-
-    assert 'shared_run_dir / "tasks" / f"chain{chain_index:02d}"' in worker
-    assert '"fits" / scenario_key / "combined.bucex"' in worker
-    assert '"manifests" / f"{scenario_key}.json"' in worker
-    assert 'chain_dir="${SHARED_RUN_DIR}/tasks/chain${chain_label}"' in finalizer
-    assert 'export BUCEX_COMBINE_RUNS="${COMBINE_RUNS}"' in finalizer
-
-
-def test_shared_run_directory_has_the_final_chain_signature():
-    command = r'''
-source config/laplace_mh_simulation_array.sh
-signature=$(laplace_mh_run_signature 1000 4 1000 1000 4 1)
-laplace_mh_run_directory results run42 "$signature"
-'''
-    completed = subprocess.run(
-        ["bash", "-c", command],
-        cwd=ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert completed.stdout.strip() == (
-        "results/08_simulation_laplace_mh/"
-        "run42__n1000p4_d1000w1000c4m1"
-    )
+def test_v130_pbs_allocates_parallel_chain_workers_and_passes_one_config():
+    for path in sorted((ROOT / "job_scripts").glob("submit_*.pbs")):
+        source = path.read_text(encoding="utf-8")
+        assert "#PBS -l nodes=1:ppn=" in source
+        assert 'CONFIG="${CONFIG:-examples/config/' in source
+        assert '"${CONFIG}" "${PBS_NP:-' in source
+        assert "BUCEX_DRAWS" not in source
+        assert "BUCEX_WARMUP" not in source

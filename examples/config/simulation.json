@@ -58,14 +58,17 @@
     "predictive_draws": 500,
     "focus_phase": 1,
     "forecast_horizon": 40,
-    "forecast_history": 80
+    "forecast_history": 80,
+    "titles": {}
   },
   "runtime": {
     "progress": true,
-    "chain_only": false
+    "chain_only": false,
+    "combine_runs": []
   },
   "output": {
     "results_root": "results",
+    "run_id": null,
     "overwrite": false
   }
 }

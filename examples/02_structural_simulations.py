@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -35,7 +34,7 @@ FIGURES = CONFIG["figures"]
 
 RESULTS_ROOT = Path(CONFIG["output"]["results_root"])
 SCRIPT_NAME = Path(__file__).stem
-RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
+RUN_TIMESTAMP = CONFIG["output"].get("run_id") or datetime.now().strftime("%Y%m%d_%H%M%S")
 OVERWRITE = bool(CONFIG["output"]["overwrite"])
 
 N_TIME = int(SIMULATION["n_time"])
@@ -172,7 +171,7 @@ def main() -> None:
     config_path = OUTPUT_DIR / "run_config.json"
     if config_path.exists() and not OVERWRITE:
         raise FileExistsError(
-            f"Refusing to overwrite {config_path}; set BUCEX_OVERWRITE=1 to rerun."
+            f"Refusing to overwrite {config_path}; set output.overwrite=1 to rerun."
         )
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     run_config = {
@@ -271,16 +270,18 @@ def main() -> None:
         data_path = simulation_dir / f"{scenario['key']}.csv"
         truth_path = data_path.with_suffix(".json")
         if not OVERWRITE and (data_path.exists() or truth_path.exists()):
-            raise FileExistsError(f"Refusing to overwrite {data_path}; set BUCEX_OVERWRITE=1.")
+            raise FileExistsError(f"Refusing to overwrite {data_path}; set output.overwrite=1.")
         table.to_csv(data_path, index=False)
         truth_path.write_text(json.dumps(truth, indent=2, sort_keys=True), encoding="utf-8")
         catalog.append({"name": scenario["name"], "key": scenario["key"], **scenario["structural_truth"], **truth["parameter_truth"], "seed": scenario["seed"]})
 
         # Each simulated series is a separate figure, as used in the talk.
         figure, axis = plt.subplots(figsize=(11, 4.2))
-        axis.scatter(table["time"], table["y"], s=7, alpha=0.24, color=COLORS["grey"], label="observed")
-        axis.plot(table["time"], table["eta"], color=COLORS["teal"], linewidth=1.8, label="latent predictor")
-        axis.set_title(scenario["title"])
+        axis.scatter(table["time"], table["y"], s=7, alpha=0.24, color=COLORS["grey"], label=r"$y_t$")
+        axis.plot(table["time"], table["eta"], color=COLORS["teal"], linewidth=1.8, label=r"$\mu_t$")
+        time_series_title = bx.config_title(CONFIG, "time_series")
+        if time_series_title is not None:
+            axis.set_title(time_series_title.format(**scenario))
         axis.set_xlabel("observation")
         axis.set_ylabel("GEV location / °C")
         axis.grid(axis="y", alpha=0.35)
@@ -304,7 +305,9 @@ def main() -> None:
         axes[2].set_xlabel("observation")
         for axis in axes:
             axis.grid(axis="y", alpha=0.35)
-        figure.suptitle(f"{scenario['title']}: structural decomposition", weight="bold")
+        decomposition_title = bx.config_title(CONFIG, "decomposition")
+        if decomposition_title is not None:
+            figure.suptitle(decomposition_title.format(**scenario), weight="bold")
         figure.tight_layout()
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"{scenario['key']}_decomposition.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -320,7 +323,9 @@ def main() -> None:
                     linewidth=1.35,
                     label=f"phase {current_phase}",
                 )
-            axis.set_title(f"{scenario['title']}: seasonality")
+            season_title = bx.config_title(CONFIG, "seasonality")
+            if season_title is not None:
+                axis.set_title(season_title.format(**scenario))
             axis.set_xlabel("cycle")
             axis.set_ylabel("seasonal effect")
             axis.legend(ncol=PERIOD)

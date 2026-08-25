@@ -1,4 +1,4 @@
-"""Fit TXx, TXn, TNx, and TNn with exact Laplace-MH state updates.
+"""Fit Uccle monthly extremes with exact Laplace-MH state updates.
 
 This is the method-matched counterpart of ``05_uccle_laplace.py``. It uses the
 same data, model, calibrated priors, MCMC defaults, tables, and figures; only
@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
-import os
 from pathlib import Path
 import sys
 
@@ -41,11 +40,11 @@ RUNTIME = CONFIG["runtime"]
 
 RESULTS_ROOT = Path(CONFIG["output"]["results_root"])
 SCRIPT_NAME = Path(__file__).stem
-RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
+RUN_TIMESTAMP = CONFIG["output"].get("run_id") or datetime.now().strftime("%Y%m%d_%H%M%S")
 OVERWRITE = bool(CONFIG["output"]["overwrite"])
 
-# Data.
-DATA_DIR = Path(DATA["data_dir"]) if DATA["data_dir"] else None
+# Data. ``None`` uses the complete series shipped with bucex.
+DATA_DIR = None if DATA.get("data_dir") is None else Path(DATA["data_dir"])
 START = str(DATA["start"])
 END = DATA["end"] or None
 SERIES = tuple(DATA["series"])
@@ -72,9 +71,7 @@ MH_STEPS = int(INFERENCE["laplace_mh_steps"])
 PROGRESS = bool(RUNTIME["progress"])
 CHAIN_ONLY = bool(RUNTIME["chain_only"])
 COMBINE_RUNS = tuple(
-    Path(value)
-    for value in os.environ.get("BUCEX_COMBINE_RUNS", "").split(os.pathsep)
-    if value
+    Path(value) for value in RUNTIME.get("combine_runs", ()) if value
 )
 
 FIGURE_FORMATS = tuple(FIGURES["formats"])
@@ -85,7 +82,7 @@ FORECAST_HORIZON = int(FIGURES["forecast_horizon"])
 FORECAST_HISTORY = int(FIGURES["forecast_history"])
 FOCUS_MONTH = int(FIGURES["focus_month"])
 if not 1 <= FOCUS_MONTH <= PERIOD:
-    raise ValueError("BUCEX_FOCUS_MONTH must be between 1 and 12.")
+    raise ValueError("figures.focus_month must be between 1 and 12.")
 MONTH_LABELS = (
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December",
@@ -125,8 +122,8 @@ PRIOR_SETTINGS = {
 def main() -> None:
     if COMBINE_RUNS and len(COMBINE_RUNS) != CHAINS:
         raise ValueError(
-            f"BUCEX_COMBINE_RUNS contains {len(COMBINE_RUNS)} runs, "
-            f"but BUCEX_CHAINS={CHAINS}."
+            f"runtime.combine_runs contains {len(COMBINE_RUNS)} runs, "
+            f"but mcmc.chains={CHAINS}."
         )
     plt.rcParams.update({"axes.spines.top": False, "axes.spines.right": False, "axes.titleweight": "bold", "legend.frameon": False})
     selection_rows = []
@@ -135,7 +132,7 @@ def main() -> None:
     config_path = OUTPUT_DIR / "run_config.json"
     if config_path.exists() and not OVERWRITE:
         raise FileExistsError(
-            f"Refusing to overwrite {config_path}; set BUCEX_OVERWRITE=1 to rerun."
+            f"Refusing to overwrite {config_path}; set output.overwrite=1 to rerun."
         )
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     run_config = {
@@ -181,7 +178,9 @@ def main() -> None:
     )
 
     for number, name in enumerate(SERIES):
-        values = bx.load_uccle_series(name, DATA_DIR, start=START, end=END)
+        values = bx.load_uccle_series(
+            name, DATA_DIR, start=START, end=END
+        )
         focus_phase = (FOCUS_MONTH - int(values.index[0].month)) % PERIOD + 1
         focus_label = MONTH_LABELS[FOCUS_MONTH - 1]
         tail = bx.UCCLE_INFO[name]["tail"]
@@ -190,7 +189,7 @@ def main() -> None:
 
         priors = bx.ssvs_gev_priors(
             period=PERIOD,
-            alpha_mean=float(np.median(transformed)),
+            alpha_mean=float(np.nanmedian(transformed)),
             alpha_sd=ALPHA_PRIOR_SD,
             beta_mean=BETA_PRIOR_MEAN,
             beta_sd=BETA_PRIOR_SD,
@@ -336,7 +335,6 @@ def main() -> None:
         )
 
         figure, axis = laplace_fit.plot("predictor", credible_interval=0.90)
-        axis.set_title(f"{name}: posterior latent predictor")
         axis.set_ylabel("GEV location / °C")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -345,7 +343,6 @@ def main() -> None:
         figure, axis = laplace_fit.plot(
             "predictor", credible_interval=0.90, phase=focus_phase
         )
-        axis.set_title(f"{name}: {focus_label} GEV-location trajectory")
         axis.set_ylabel("GEV location / °C")
         for extension in FIGURE_FORMATS:
             figure.savefig(
@@ -358,7 +355,7 @@ def main() -> None:
         axis = predictive.plot(
             level=0.90,
             observed=laplace_fit.observed,
-            title=f"{name}: posterior predictive check",
+            title=bx.config_title(CONFIG, "posterior_predictive"),
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -371,7 +368,7 @@ def main() -> None:
             history=laplace_fit.observed,
             history_dates=values.index,
             history_points=FORECAST_HISTORY,
-            title=f"{name}: posterior predictive forecast",
+            title=bx.config_title(CONFIG, "forecast"),
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -386,7 +383,7 @@ def main() -> None:
             history=laplace_fit.observed,
             history_dates=values.index,
             history_points=FORECAST_HISTORY,
-            title=f"{name}: {focus_label} posterior predictive forecast",
+            title=bx.config_title(CONFIG, "phase_forecast"),
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -405,7 +402,7 @@ def main() -> None:
             history=level_history,
             history_dates=values.index,
             history_points=FORECAST_HISTORY,
-            title=f"{name}: seasonally adjusted level forecast",
+            title=bx.config_title(CONFIG, "level_forecast"),
             ylabel="latent GEV level / °C",
         )
         figure = axis.figure
@@ -418,7 +415,6 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("level", credible_interval=0.90)
-        axis.set_title(f"{name}: posterior latent level")
         axis.set_ylabel("GEV level / °C")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -427,7 +423,6 @@ def main() -> None:
         figure, axis = laplace_fit.plot(
             "level", credible_interval=0.90, show_observed=False
         )
-        axis.set_title(f"{name}: posterior latent level")
         axis.set_ylabel("GEV level / °C")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level_no_observations.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -442,13 +437,11 @@ def main() -> None:
             condition_on=slope_condition,
             show_fixed=bool(np.any(trend_states == 1)),
         )
-        axis.set_title("Posterior slope")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"slope.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("component_probabilities")
-        axis.set_title(f"{name}: structural selection")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"selection.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)

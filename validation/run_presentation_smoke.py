@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Direct-API smoke validation for the ten bucex 1.2.1 examples."""
+"""Direct-API smoke validation for the ten bucex 1.3.0 examples."""
 from __future__ import annotations
 
 import argparse
@@ -177,8 +177,8 @@ def run(work_dir: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.2.1"))
-    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.2.1.json"))
+    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.3.0"))
+    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.3.0.json"))
     args = parser.parse_args()
     result = run(args.work_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)

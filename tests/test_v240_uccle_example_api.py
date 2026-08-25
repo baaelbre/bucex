@@ -93,14 +93,13 @@ def test_v262_examples_are_standalone_public_api_scripts():
         assert "export_fit_results" not in source
         assert "plot_fit_results" not in source
         assert "SCRIPT_NAME = Path(__file__).stem" in source
-        assert "RUN_SIGNATURE" in source
-        assert 'OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"' in source
         assert 'run_config.json' in source
-        assert "TIMESTAMP_RESULTS" not in source
-        assert "BUCEX_TIMESTAMP_RESULTS" not in source
+        assert "os.environ" not in source
+        assert "BUCEX_" not in source
+        assert "--config" not in source or "_example_config" in source
 
     assert "bx.loess_smooth(" in sources["00_uccle_record.py"]
-    assert '"1892-01-01"' in sources["00_uccle_record.py"]
+    assert 'load_example_config("record.json")' in sources["00_uccle_record.py"]
     assert "common_ylim" in sources["01_tail_simulations.py"]
     assert "axis.set_ylim(*common_ylim)" in sources["01_tail_simulations.py"]
     for name in ("01_tail_simulations.py", "02_structural_simulations.py"):
@@ -160,3 +159,10 @@ def test_direct_path_example_prefers_the_adjacent_source_checkout(tmp_path):
         text=True,
     )
     assert completed.returncode == 0, completed.stderr
+
+
+def test_default_record_configuration_starts_in_1892_and_has_no_titles():
+    root = Path(__file__).resolve().parents[1]
+    config = bx.load_config(root / "examples" / "config" / "record.json")
+    assert config["data"]["start"] == "1892-01-01"
+    assert all(value is None for value in config["figures"]["titles"].values())

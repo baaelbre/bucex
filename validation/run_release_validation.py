@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.2.1."""
+"""Fixed-seed numerical release validation for bucex 1.3.0."""
 from __future__ import annotations
 
 import argparse
 import json
 from pathlib import Path
 import platform
-import subprocess
 import sys
 import time
 
@@ -68,8 +67,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.2.1":
-        raise RuntimeError(f"Expected bucex 1.2.1, found {bx.__version__}.")
+    if bx.__version__ != "1.3.0":
+        raise RuntimeError(f"Expected bucex 1.3.0, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -80,56 +79,20 @@ def run() -> dict[str, object]:
         "platform": platform.platform(),
     }
 
-    mapping_command = r'''
-source config/laplace_mh_simulation_array.sh
-for task in $(seq 1 24); do
-  laplace_mh_map_task "$task" 4 "$LMH_DEFAULT_SCENARIO_KEYS"
-  printf '%s,%s\n' "$LMH_TASK_SCENARIO" "$LMH_TASK_CHAIN"
-done
-'''
-    mapping_result = subprocess.run(
-        ["bash", "-c", mapping_command],
-        cwd=SOURCE_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
+    parallel_runner = (SOURCE_ROOT / "hpc" / "run_example.py").read_text(
+        encoding="utf-8"
     )
-    mapping_pairs = [
-        tuple(line.split(","))
-        for line in mapping_result.stdout.splitlines()
-        if line
-    ]
-    fit_pbs = (
-        SOURCE_ROOT
-        / "job_scripts"
-        / "submit_08_simulation_laplace_mh_array.pbs"
-    ).read_text(encoding="utf-8")
-    final_pbs = (
-        SOURCE_ROOT
-        / "job_scripts"
-        / "submit_08_simulation_laplace_mh_finalize.pbs"
-    ).read_text(encoding="utf-8")
-    record["laplace_mh_hpc_fanout"] = {
-        "task_count": len(mapping_pairs),
-        "unique_task_count": len(set(mapping_pairs)),
-        "first_task": list(mapping_pairs[0]),
-        "last_task": list(mapping_pairs[-1]),
-        "fit_walltime_six_hours": "#PBS -l walltime=06:00:00" in fit_pbs,
-        "one_core_per_fit": "#PBS -l nodes=1:ppn=1" in fit_pbs,
-        "one_hour_finalizer": "#PBS -l walltime=01:00:00" in final_pbs,
-        "submission_helper_present": (
-            SOURCE_ROOT
-            / "bash_scripts"
-            / "qsub_08_simulation_laplace_mh.sh"
-        ).is_file(),
+    record["configured_hpc_runner"] = {
+        "json_chain_copies": 'chain_config["mcmc"]["chains"] = 1'
+        in parallel_runner,
+        "concurrent_processes": "subprocess.Popen" in parallel_runner,
+        "public_fit_combination": 'combined_config["runtime"]["combine_runs"]'
+        in parallel_runner,
+        "pbs_jobs": len(list((SOURCE_ROOT / "job_scripts").glob("submit_*.pbs"))),
+        "bash_runners": len(list((SOURCE_ROOT / "bash_scripts").glob("run_*.sh"))),
     }
-    if len(mapping_pairs) != 24 or len(set(mapping_pairs)) != 24:
-        raise RuntimeError("Example-08 PBS fan-out must contain 24 unique tasks.")
-    if mapping_pairs[0] != ("stationary", "1") or mapping_pairs[-1] != (
-        "llt_season",
-        "4",
-    ):
-        raise RuntimeError("Example-08 PBS task ordering changed unexpectedly.")
+    if not all(record["configured_hpc_runner"].values()):
+        raise RuntimeError("The JSON-driven HPC runner contract is incomplete.")
 
     # Regression for the 1.1.0--1.1.2 failure: the zero FS trajectory crosses
     # a negative-shape endpoint, while a valid trajectory exists through the
@@ -459,7 +422,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.2.1.json"),
+        default=Path("validation/release_validation_1.3.0.json"),
     )
     args = parser.parse_args()
     result = run()

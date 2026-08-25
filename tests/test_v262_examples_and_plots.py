@@ -10,7 +10,7 @@ import bucex as bx
 
 
 def test_v110_version_and_workflow_removal():
-    assert bx.__version__ == "1.2.1"
+    assert bx.__version__ == "1.3.0"
     assert not hasattr(bx, "make_structural_scenarios")
     assert not hasattr(bx, "PresentationWorkflow")
 
@@ -80,7 +80,7 @@ def test_phase_specific_season_plot_uses_only_the_seasonal_effect():
     seasonal_name = next(name for name in fit.state_names if name.startswith("seasonal["))
     seasonal_median = np.median(fit.state_original(seasonal_name), axis=0)
     np.testing.assert_allclose(axis.lines[0].get_ydata(), seasonal_median[0::4])
-    assert axis.get_title() == "Posterior seasonality"
+    assert axis.get_title() == ""
     assert axis.get_ylabel() == "seasonal effect"
     plt.close(figure)
 
@@ -118,7 +118,7 @@ def test_level_and_slope_have_separate_scientific_scales():
     )
     assert not any(isinstance(item, PathCollection) for item in slope_axis.collections)
     assert "slope per observation interval" == slope_axis.get_ylabel()
-    assert "true slope" in {line.get_label() for line in slope_axis.lines}
+    assert r"$\beta_t$" in {line.get_label() for line in slope_axis.lines}
     plt.close(level_figure)
     plt.close(clean_level_figure)
     plt.close(slope_figure)
@@ -136,7 +136,7 @@ def test_posterior_predictive_and_forecast_share_the_public_plot_api():
     predictive = fit.posterior_predictive(draws=4, seed=1011)
     assert predictive.observations.shape == (4, 20)
     predictive_axis = predictive.plot(observed=fit.observed)
-    assert predictive_axis.get_title() == "Posterior predictive check"
+    assert predictive_axis.get_title() == ""
 
     forecast = fit.forecast(4, draws=4, seed=1012)
     np.testing.assert_array_equal(forecast.dates, np.arange(20, 24))
@@ -145,12 +145,12 @@ def test_posterior_predictive_and_forecast_share_the_public_plot_api():
         history_dates=np.arange(fit.n_time),
         history_points=5,
     )
-    assert forecast_axis.get_title() == "Posterior predictive forecast"
+    assert forecast_axis.get_title() == ""
     plt.close(predictive_axis.figure)
     plt.close(forecast_axis.figure)
 
 
-def test_slope_can_condition_on_dynamic_draws_and_overlay_fixed_uncertainty():
+def test_slope_can_condition_on_dynamic_draws_and_overlay_fixed_median():
     fit = bx.fit(
         np.linspace(0.0, 1.0, 24),
         family="gaussian",
@@ -168,10 +168,11 @@ def test_slope_can_condition_on_dynamic_draws_and_overlay_fixed_uncertainty():
         show_fixed=True,
     )
     labels = {line.get_label() for line in axis.lines}
-    assert "dynamic slope median" in labels
-    assert "fixed slope median" in labels
-    assert axis.get_title() == "Posterior slope"
+    assert r"$\hat{\beta}_t$ (dynamic)" in labels
+    assert r"$\hat{\beta}_0$" in labels
+    assert axis.get_title() == ""
     assert axis.get_ylabel() == "slope / unit per decade"
+    assert not any(collection.get_label().startswith("fixed") for collection in axis.collections)
     plt.close(figure)
 
 
@@ -248,7 +249,8 @@ def test_hpc_surface_matches_the_ten_examples():
         submission = (submit_directory / f"submit_{stem}.pbs").read_text(encoding="utf-8")
         assert "set -euo pipefail" in runner
         assert f"examples/{stem}.py" in runner
-        assert "BUCEX_RESULTS_ROOT" in runner
-        assert "BUCEX_RUN_ID" in runner
+        assert "examples/config/" in runner
+        assert "BUCEX_" not in runner
         assert "#PBS -N" in submission
         assert f"bash_scripts/run_{stem}.sh" in submission
+        assert 'CONFIG="${CONFIG:-examples/config/' in submission

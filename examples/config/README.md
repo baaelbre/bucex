@@ -12,9 +12,13 @@ Edit a copy and pass it directly:
 python examples/03_simulation_laplace.py --config my_simulation.json
 ```
 
-`BUCEX_CONFIG=/path/to/file.json` is equivalent and is convenient in PBS
-jobs. Existing `BUCEX_*` variables are applied after the JSON file, so short
-pilot runs can still override such fields as `BUCEX_N_TIME`, `BUCEX_DRAWS`,
-`BUCEX_WARMUP`, `BUCEX_CHAINS`, and `BUCEX_PARTICLES` without changing the
-scientific baseline. Every output `run_config.json` records the resolved
-settings file and all effective values.
+For PBS, pass the same file as `CONFIG`:
+
+```bash
+qsub -v CONFIG=examples/config/my_simulation.json \
+  job_scripts/submit_03_simulation_laplace.pbs
+```
+
+There are no environment-variable overrides of scientific settings. Copy a
+JSON file for a pilot or sensitivity run and edit that copy. Every output
+`run_config.json` records the selected file and all effective values.

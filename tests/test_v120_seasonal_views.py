@@ -43,8 +43,8 @@ def test_fitted_trajectory_and_level_accept_one_based_phase_selection():
 
     assert len(predictor_axis.lines[0].get_xdata()) == 6
     assert len(level_axis.lines[0].get_xdata()) == 6
-    assert "phase 2" in predictor_axis.get_title()
-    assert "phase 2" in level_axis.get_title()
+    assert predictor_axis.get_title() == ""
+    assert level_axis.get_title() == ""
 
     plt.close(predictor_figure)
     plt.close(level_figure)
@@ -79,9 +79,9 @@ def test_forecast_supports_phase_and_seasonally_adjusted_level_targets():
         history_dates=np.arange(fit.n_time),
         history_points=12,
     )
-    assert "second phase" in phase_axis.get_title()
-    assert level_axis.get_title() == "Latent level forecast"
-    assert "latent level median" in {line.get_label() for line in level_axis.lines}
+    assert phase_axis.get_title() == ""
+    assert level_axis.get_title() == ""
+    assert r"$\hat{\alpha}_t$" in {line.get_label() for line in level_axis.lines}
 
     plt.close(phase_axis.figure)
     plt.close(level_axis.figure)
@@ -103,4 +103,3 @@ def test_phase_selection_rejects_nonseasonal_or_out_of_range_requests():
         assert "seasonal period" in str(error)
     else:
         raise AssertionError("A nonseasonal forecast accepted phase=.")
-

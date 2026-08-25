@@ -1,28 +1,32 @@
-# Python caches and local environments
+# Python and test caches
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Virtual environments
 .venv/
 venv/
+bucex_env/
 
-# Packaging products
+# Packaging artifacts
 build/
 dist/
 *.egg-info/
-*.whl
-*.tar.gz
 
-# Generated scientific output
+# Generated analyses and scheduler output
 results/
 logs/
+validation_reports/
 *.bucex
 *.pdf
 *.log
+*.o[0-9]*
+*.e[0-9]*
 
-# Editor and operating-system files
+# Editors and operating systems
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
-.idea/
-.vscode/
