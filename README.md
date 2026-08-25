@@ -1,18 +1,20 @@
-# bucex 1.3.0
+# bucex 1.3.1
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized
 extreme-value observations. The package combines a declarative structural
 model API, componentwise SSVS, approximate Laplace state updates, exact
 Laplace independence-MH updates, and exact-density PGAS state updates.
 
-Version 1.3.0 makes the scientific examples easier to inspect and harder to
-misconfigure. Every setting is read from a short JSON file; the numbered
-Python scripts contain the sequential model, fit, and plotting workflow rather
-than a second layer of environment-variable overrides. Examples 02/03/04/08
-share one simulation JSON, examples 05/06/09 share one calibrated Uccle JSON,
-and example 07 has a centred-IG JSON. Figure titles are absent by default and
-can be enabled in JSON. The exact-inference kernels and archive schema are
-unchanged. The release includes ten transparent analysis scripts:
+Version 1.3.1 adds six ready-to-run JSON presets under
+`examples/config/simulations/`, one for each structural simulation truth. The
+presets turn the successful exploratory run manifests into current schema-1
+inputs, so each case can be launched locally with one explicit `--config`
+argument. Every numbered example shows its editable `DEFAULT_CONFIG_FILE` and
+loads that file directly with `bx.load_config`; there is no example-level
+configuration wrapper. The existing all-scenario `simulation.json` and the
+public modelling and inference APIs remain unchanged. Figure titles are absent
+by default and can be enabled in JSON. The release includes ten transparent
+analysis scripts:
 
 1. the complete Uccle record from 1892 and the evolution of TXx;
 2. matched GEV shape and scale simulations;

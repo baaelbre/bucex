@@ -5,6 +5,7 @@ Laplace initialization and exact PGAS fit calls explicit.
 """
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 import json
 from pathlib import Path
@@ -22,11 +23,15 @@ if str(EXAMPLE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
-from _example_config import load_uccle_config
 
 
-# One calibrated file is shared by all three Uccle inference engines.
-CONFIG, SETTINGS_PATH = load_uccle_config()
+# Pick another JSON here for IDE/notebook runs; ``--config PATH`` overrides it.
+DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "uccle.json"
+CONFIG_PARSER = argparse.ArgumentParser()
+CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
+CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
+SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
+CONFIG = bx.load_config(SETTINGS_PATH)
 DATA = CONFIG["data"]
 PRIOR_SETTINGS = CONFIG["priors"]
 MCMC_SETTINGS = CONFIG["mcmc"]
@@ -59,10 +64,13 @@ LEVEL_DYNAMIC_PROBABILITY = float(PRIOR_SETTINGS["level_dynamic_probability"])
 TREND_PROBABILITIES = tuple(PRIOR_SETTINGS["trend_probabilities"])
 SEASON_PROBABILITIES = tuple(PRIOR_SETTINGS["season_probabilities"])
 
+PARAMETERIZATION = str(INFERENCE["parameterization"])
+ASIS = bool(INFERENCE["asis"])
 DRAWS = int(MCMC_SETTINGS["draws"])
 WARMUP = int(MCMC_SETTINGS["warmup"])
 CHAINS = int(MCMC_SETTINGS["chains"])
 PARTICLES = int(INFERENCE["pgas_particles"])
+PGAS_PROPOSAL = str(INFERENCE["pgas_proposal"])
 SEED = int(MCMC_SETTINGS["seed"])
 PROGRESS = bool(RUNTIME["progress"])
 CHAIN_ONLY = bool(RUNTIME["chain_only"])
@@ -73,6 +81,7 @@ COMBINE_RUNS = tuple(
 FIGURE_FORMATS = tuple(FIGURES["formats"])
 FIGURE_DPI = int(FIGURES["dpi"])
 DIAGNOSTIC_FIGURES = bool(FIGURES["diagnostics"])
+INTERVAL_PROBABILITY = float(FIGURES["interval_probability"])
 PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
 FORECAST_HORIZON = int(FIGURES["forecast_horizon"])
 FORECAST_HISTORY = int(FIGURES["forecast_history"])
@@ -146,6 +155,12 @@ def main() -> None:
         },
         "model": MODEL.to_dict(),
         "priors": PRIOR_SETTINGS,
+        "inference": {
+            "parameterization": PARAMETERIZATION,
+            "asis": ASIS,
+            "particles": PARTICLES,
+            "particle_proposal": PGAS_PROPOSAL,
+        },
         "mcmc": {
             "draws": DRAWS,
             "warmup": WARMUP,
@@ -157,6 +172,7 @@ def main() -> None:
             "formats": list(FIGURE_FORMATS),
             "dpi": FIGURE_DPI,
             "diagnostics": DIAGNOSTIC_FIGURES,
+            "interval_probability": INTERVAL_PROBABILITY,
             "predictive_draws": PREDICTIVE_DRAWS,
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
@@ -233,8 +249,8 @@ def main() -> None:
                 model=MODEL,
                 priors=priors,
                 engine="laplace",
-                parameterization="fruehwirth_schnatter",
-                asis=False,
+                parameterization=PARAMETERIZATION,
+                asis=ASIS,
                 mcmc=bx.MCMC(draws=DRAWS, warmup=WARMUP, chains=CHAINS, seed=SEED + 100 * number, progress=PROGRESS),
                 name=name,
                 tail=tail,
@@ -293,10 +309,10 @@ def main() -> None:
                 model=MODEL,
                 priors=laplace_fit.priors,
                 engine="pgas",
-                parameterization="fruehwirth_schnatter",
-                asis=False,
+                parameterization=PARAMETERIZATION,
+                asis=ASIS,
                 mcmc=bx.MCMC(draws=DRAWS, warmup=WARMUP, chains=CHAINS, seed=SEED + 10_000 + 100 * number, progress=PROGRESS),
-                particles=bx.Particles(n=PARTICLES, proposal="guided"),
+                particles=bx.Particles(n=PARTICLES, proposal=PGAS_PROPOSAL),
                 name=name,
                 tail=tail,
                 init=laplace_fit,
@@ -344,7 +360,7 @@ def main() -> None:
             draws=PREDICTIVE_DRAWS,
             seed=SEED + 20_000 + number,
         )
-        predictive.summary(level=0.90).to_csv(
+        predictive.summary(level=INTERVAL_PROBABILITY).to_csv(
             table_dir / "posterior_predictive.csv", index=False
         )
         forecast = pgas_fit.forecast(
@@ -352,14 +368,14 @@ def main() -> None:
             draws=PREDICTIVE_DRAWS,
             seed=SEED + 30_000 + number,
         )
-        forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
-        focus_forecast = forecast.summary(level=0.90, phase=focus_phase)
+        forecast.summary(level=INTERVAL_PROBABILITY).to_csv(table_dir / "forecast.csv", index=False)
+        focus_forecast = forecast.summary(level=INTERVAL_PROBABILITY, phase=focus_phase)
         focus_forecast.insert(1, "calendar_month", FOCUS_MONTH)
         focus_forecast.insert(2, "calendar_month_label", focus_label)
         focus_forecast.to_csv(
             table_dir / f"forecast_{focus_label.lower()}.csv", index=False
         )
-        forecast.summary(level=0.90, target="level").to_csv(
+        forecast.summary(level=INTERVAL_PROBABILITY, target="level").to_csv(
             table_dir / "forecast_level.csv", index=False
         )
         (table_dir / "summary.json").write_text(
@@ -390,14 +406,14 @@ def main() -> None:
         laplace_selection.insert(1, "engine", "laplace")
         selection_rows.extend((laplace_selection, selection))
 
-        figure, axis = pgas_fit.plot("predictor", credible_interval=0.90)
+        figure, axis = pgas_fit.plot("predictor", credible_interval=INTERVAL_PROBABILITY)
         axis.set_ylabel("GEV location / °C")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         figure, axis = pgas_fit.plot(
-            "predictor", credible_interval=0.90, phase=focus_phase
+            "predictor", credible_interval=INTERVAL_PROBABILITY, phase=focus_phase
         )
         axis.set_ylabel("GEV location / °C")
         for extension in FIGURE_FORMATS:
@@ -409,7 +425,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = predictive.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             observed=pgas_fit.observed,
             title=bx.config_title(CONFIG, "posterior_predictive"),
             ylabel="temperature / °C",
@@ -420,7 +436,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             history=pgas_fit.observed,
             history_dates=values.index,
             history_points=FORECAST_HISTORY,
@@ -433,7 +449,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             phase=focus_phase,
             phase_label=focus_label,
             history=pgas_fit.observed,
@@ -453,7 +469,7 @@ def main() -> None:
 
         level_history = np.median(pgas_fit.state_original("level"), axis=0)
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             target="level",
             history=level_history,
             history_dates=values.index,
@@ -470,14 +486,14 @@ def main() -> None:
             )
         plt.close(figure)
 
-        figure, axis = pgas_fit.plot("level", credible_interval=0.90)
+        figure, axis = pgas_fit.plot("level", credible_interval=INTERVAL_PROBABILITY)
         axis.set_ylabel("GEV level / °C")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         figure, axis = pgas_fit.plot(
-            "level", credible_interval=0.90, show_observed=False
+            "level", credible_interval=INTERVAL_PROBABILITY, show_observed=False
         )
         axis.set_ylabel("GEV level / °C")
         for extension in FIGURE_FORMATS:
@@ -487,7 +503,7 @@ def main() -> None:
         trend_states = np.asarray(pgas_fit.parameter("state_trend"), dtype=int)
         slope_condition = "dynamic" if np.any(trend_states == 2) else None
         figure, axis = pgas_fit.plot(
-            "slope", credible_interval=0.90,
+            "slope", credible_interval=INTERVAL_PROBABILITY,
             scale="decade",
             unit="slope / °C per decade",
             condition_on=slope_condition,

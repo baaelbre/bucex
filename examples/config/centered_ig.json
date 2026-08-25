@@ -22,12 +22,16 @@
   },
   "inference": {
     "engine": "laplace",
+    "parameterization": "centered",
+    "asis": false,
     "pgas_particles": 256,
+    "pgas_proposal": "guided",
     "laplace_mh_steps": 1
   },
   "figures": {
     "formats": ["pdf", "png"],
     "dpi": 180,
+    "interval_probability": 0.9,
     "predictive_draws": 500,
     "forecast_horizon": 40,
     "forecast_history": 200,

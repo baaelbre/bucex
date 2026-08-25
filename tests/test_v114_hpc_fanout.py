@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_v130_parallel_runner_uses_json_chain_copies_and_public_combine_paths():
-    assert bx.__version__ == "1.3.0"
+    assert bx.__version__ == "1.3.1"
     source = (ROOT / "hpc" / "run_example.py").read_text(encoding="utf-8")
     assert 'chain_config["mcmc"]["chains"] = 1' in source
     assert 'chain_config["runtime"]["chain_only"] = True' in source

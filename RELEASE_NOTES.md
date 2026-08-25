@@ -1,58 +1,57 @@
-# bucex 1.3.0 release notes
+# bucex 1.3.1 release notes
 
-Version 1.3.0 is a configuration and figure-cleanup release. It does not
-change the state equations, Laplace-MH target, PGAS target, public fitting API,
-or archive schema.
+Version 1.3.1 is a simulation-configuration release. It does not change the
+state equations, Laplace, Laplace-MH, or PGAS targets, the public fitting API,
+or the result-archive schema.
 
-## Authoritative JSON settings
+## Six one-scenario configurations
 
-The numbered examples remain sequential, but duplicated blocks of scientific
-settings have moved to three human-readable files:
+The release adds one complete schema-1 JSON input for each structural truth:
 
-- `examples/config/simulation.json` is shared by examples 02, 03, 04, and 08;
-- `examples/config/uccle.json` is shared by examples 05, 06, and 09;
-- `examples/config/centered_ig.json` controls example 07.
+- `examples/config/simulations/01_stationary.json`;
+- `examples/config/simulations/02_linear_trend.json`;
+- `examples/config/simulations/03_random_walk.json`;
+- `examples/config/simulations/04_local_linear_trend.json`;
+- `examples/config/simulations/05_changing_seasonality.json`;
+- `examples/config/simulations/06_llt_fixed_seasonality.json`.
 
-This fixes the configuration drift that had developed between the nominally
-matched inference scripts. The canonical simulation prior uses the broad
-baseline slabs retained after the sensitivity exercise: 0.1 for level,
-0.0008 for slope, and 0.07 for seasonality. The Uccle configuration uses the
-documented monthly calibration 0.03 / 0.0001 / 0.05 and equal prior odds for
-fixed versus dynamic slope and season.
+Each file activates exactly one of the stable scenario keys used by examples
+02, 03, 04, and 08. The six files are ordinary inputs selected with
+`--config`; they are not output `run_config.json` manifests. Their
+`output.run_id` values are `null`, so local runs automatically receive
+separate timestamped directories.
 
-Pass a custom file without editing Python:
+Every numbered example exposes a `DEFAULT_CONFIG_FILE` next to its imports and
+calls `bx.load_config` directly. The path can be changed in the script for an
+IDE/notebook run, while `--config PATH` overrides it at launch. The former
+`examples/_example_config.py` wrapper module has been removed.
+
+The successful supplied manifests were converted to the current input schema.
+The recorded scenario identity is authoritative: the supplied file named
+`run_config_stationary.json` contains a random-walk-only retry and therefore
+provides the random-walk settings. The later joint stationary/linear run
+provides those two presets, while the all-six baseline provides the local
+linear trend and seasonal presets.
+
+Run the cases separately from the repository root:
 
 ```bash
-python examples/03_simulation_laplace.py --config my_simulation.json
+python examples/03_simulation_laplace.py --config examples/config/simulations/01_stationary.json
+python examples/03_simulation_laplace.py --config examples/config/simulations/02_linear_trend.json
+python examples/03_simulation_laplace.py --config examples/config/simulations/03_random_walk.json
+python examples/03_simulation_laplace.py --config examples/config/simulations/04_local_linear_trend.json
+python examples/03_simulation_laplace.py --config examples/config/simulations/05_changing_seasonality.json
+python examples/03_simulation_laplace.py --config examples/config/simulations/06_llt_fixed_seasonality.json
 ```
 
-PBS files receive the same path through `qsub -v CONFIG=...`. Scientific and
-sampling values are never silently overridden by environment variables. A
-small generic HPC runner fans independent chains across allocated cores and
-combines them through the examples' existing public fit-combination API. Each
-output manifest records the selected settings file and resolved values.
+The same files can be passed to example 02 for simulation-only figures,
+example 04 for PGAS, or example 08 for exact Laplace-MH.
 
-## Cleaner examples and figures
+## Backward compatibility
 
-- Removed the complete Laplace-sensitivity runner, reducer, grid, PBS jobs,
-  and dedicated documentation from the release.
-- Removed obsolete launchers for the former long example-07 filename.
-- Removed parenthetical inference-engine labels from scientific figure titles.
-- Prior-to-posterior process-SD figures no longer say "analytic half-normal".
-- Level figures are saved with and without seasonally adjusted observations.
-- Seasonal plots contain only the seasonal effect; fixed-slope overlays are
-  purple median lines without an uncertainty ribbon.
-- Plot labels use mathematical notation such as $y_t$, $\hat{\mu}_t$,
-  $\hat{\alpha}_t$, $\hat{\beta}_t$, and $\hat{\beta}_0$.
-- Posterior predictive checks and forecasts are generated through the public
-  `FitResult` API.
-- Added regression coverage for shared JSON settings, absent sensitivity
-  artifacts, engine-neutral titles, and title-free process-SD panels.
-
-## Inherited guarantees
-
-Version 1.3.0 retains phase-specific and seasonally adjusted trajectories,
-automatic conjugate centred inverse-gamma process-variance updates,
-deterministic finite-endpoint repair for Laplace-MH proposals, singular affine
-state-transition handling, conditional PGAS ancestor sampling, and the
-JSON-driven parallel-chain PBS workflow for all fitting examples.
+The existing `examples/config/simulation.json` remains the shared all-scenario
+default. Version 1.3.1 retains phase-specific and seasonally adjusted
+trajectories, automatic conjugate centred inverse-gamma process-variance
+updates, deterministic finite-endpoint repair for Laplace-MH proposals,
+singular affine state-transition handling, conditional PGAS ancestor sampling,
+and the JSON-driven parallel-chain PBS workflow for all fitting examples.

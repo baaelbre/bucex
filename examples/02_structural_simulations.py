@@ -1,11 +1,13 @@
-"""Simulate six structural GEV models with the public bucex API.
+"""Simulate selected structural GEV models with the public bucex API.
 
 Every model is visible below: stationary, linear trend, random walk, local
 linear trend, changing seasonality, and local linear trend plus a fixed cycle.
-Run with ``python examples/02_structural_simulations.py``.
+Run all six with ``python examples/02_structural_simulations.py`` or select a
+subset with ``simulation.scenario_keys`` in a JSON configuration.
 """
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 import json
 from pathlib import Path
@@ -23,12 +25,15 @@ if str(EXAMPLE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
-from _example_config import load_simulation_config
 
 
-# One JSON file is shared by examples 02, 03, 04, and 08. This keeps the
-# simulated truth identical across every inference engine.
-CONFIG, SETTINGS_PATH = load_simulation_config()
+# Pick another JSON here for IDE/notebook runs; ``--config PATH`` overrides it.
+DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "simulation.json"
+CONFIG_PARSER = argparse.ArgumentParser()
+CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
+CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
+SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
+CONFIG = bx.load_config(SETTINGS_PATH)
 SIMULATION = CONFIG["simulation"]
 FIGURES = CONFIG["figures"]
 
@@ -70,7 +75,7 @@ fixed_cycle -= fixed_cycle.mean()
 
 # These are six ordinary declarative bucex models. The structural truth codes
 # follow zero=0, fixed=1, dynamic=2, matching FitResult.component_probabilities.
-SCENARIOS = (
+ALL_SCENARIOS = (
     {
         "name": "stationary",
         "key": "stationary",
@@ -163,6 +168,34 @@ SCENARIOS = (
         "seed": SIMULATION_SEED + 3,
         "structural_truth": {"level": 2, "slope": 2, "seasonal": 1},
     },
+)
+
+SCENARIO_INDEX = {
+    scenario["key"]: index for index, scenario in enumerate(ALL_SCENARIOS)
+}
+_requested_scenario_keys = tuple(
+    str(value).strip()
+    for value in SIMULATION.get("scenario_keys", ())
+    if str(value).strip()
+)
+if len(set(_requested_scenario_keys)) != len(_requested_scenario_keys):
+    raise ValueError("simulation.scenario_keys must not contain duplicates.")
+_unknown_scenario_keys = tuple(
+    key for key in _requested_scenario_keys if key not in SCENARIO_INDEX
+)
+if _unknown_scenario_keys:
+    raise ValueError(
+        "Unknown simulation.scenario_keys: "
+        + ", ".join(_unknown_scenario_keys)
+        + ". Available keys: "
+        + ", ".join(SCENARIO_INDEX)
+    )
+SCENARIOS = (
+    tuple(
+        ALL_SCENARIOS[SCENARIO_INDEX[key]] for key in _requested_scenario_keys
+    )
+    if _requested_scenario_keys
+    else ALL_SCENARIOS
 )
 
 

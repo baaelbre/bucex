@@ -1,4 +1,4 @@
-# Migration from the former 2.6.2 package to 1.3.0
+# Migration from the former 2.6.2 package to 1.3.1
 
 The general `Model`, `MultiSeriesModel`, `fit`, `FitResult`, prediction,
 diagnostic, plotting, Uccle-loader, and hierarchical APIs remain available.

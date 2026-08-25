@@ -1,4 +1,4 @@
-"""Fit all six simulations with Laplace-initialized PGAS.
+"""Fit selected simulations with Laplace-initialized PGAS.
 
 It reads the same ``config/simulation.json`` as examples 02, 03, and 08,
 constructs the models with the bucex API, creates a missing Laplace
@@ -6,6 +6,7 @@ initializer, and calls ``bx.fit(..., engine="pgas", init=laplace_fit)``.
 """
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 import json
 from pathlib import Path
@@ -23,11 +24,15 @@ if str(EXAMPLE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
-from _example_config import load_simulation_config
 
 
-# Scientific settings live in one file shared by examples 02, 03, 04, and 08.
-CONFIG, SETTINGS_PATH = load_simulation_config()
+# Pick another JSON here for IDE/notebook runs; ``--config PATH`` overrides it.
+DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "simulation.json"
+CONFIG_PARSER = argparse.ArgumentParser()
+CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
+CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
+SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
+CONFIG = bx.load_config(SETTINGS_PATH)
 SIMULATION = CONFIG["simulation"]
 PRIOR_SETTINGS = CONFIG["priors"]
 MCMC_SETTINGS = CONFIG["mcmc"]
@@ -68,10 +73,13 @@ LEVEL_DYNAMIC_PROBABILITY = float(PRIOR_SETTINGS["level_dynamic_probability"])
 TREND_PROBABILITIES = tuple(PRIOR_SETTINGS["trend_probabilities"])
 SEASON_PROBABILITIES = tuple(PRIOR_SETTINGS["season_probabilities"])
 
+PARAMETERIZATION = str(INFERENCE["parameterization"])
+ASIS = bool(INFERENCE["asis"])
 DRAWS = int(MCMC_SETTINGS["draws"])
 WARMUP = int(MCMC_SETTINGS["warmup"])
 CHAINS = int(MCMC_SETTINGS["chains"])
 PARTICLES = int(INFERENCE["pgas_particles"])
+PGAS_PROPOSAL = str(INFERENCE["pgas_proposal"])
 SEED = int(MCMC_SETTINGS["seed"])
 PROGRESS = bool(RUNTIME["progress"])
 CHAIN_ONLY = bool(RUNTIME["chain_only"])
@@ -82,6 +90,7 @@ COMBINE_RUNS = tuple(
 FIGURE_FORMATS = tuple(FIGURES["formats"])
 FIGURE_DPI = int(FIGURES["dpi"])
 DIAGNOSTIC_FIGURES = bool(FIGURES["diagnostics"])
+INTERVAL_PROBABILITY = float(FIGURES["interval_probability"])
 PHASE_LABELS = tuple(f"phase {index + 1}" for index in range(PERIOD))
 PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
 FOCUS_PHASE = int(FIGURES["focus_phase"])
@@ -100,7 +109,7 @@ dynamic_cycle -= dynamic_cycle.mean()
 fixed_cycle = -FIXED_SEASON_AMPLITUDE * np.cos(2.0 * np.pi * phase / PERIOD)
 fixed_cycle -= fixed_cycle.mean()
 
-SCENARIOS = (
+ALL_SCENARIOS = (
     {
         "name": "stationary",
         "key": "stationary",
@@ -163,6 +172,34 @@ SCENARIOS = (
         "seed": SIMULATION_SEED + 3,
         "structural_truth": {"level": 2, "slope": 2, "seasonal": 1},
     },
+)
+
+SCENARIO_INDEX = {
+    scenario["key"]: index for index, scenario in enumerate(ALL_SCENARIOS)
+}
+_requested_scenario_keys = tuple(
+    str(value).strip()
+    for value in SIMULATION.get("scenario_keys", ())
+    if str(value).strip()
+)
+if len(set(_requested_scenario_keys)) != len(_requested_scenario_keys):
+    raise ValueError("simulation.scenario_keys must not contain duplicates.")
+_unknown_scenario_keys = tuple(
+    key for key in _requested_scenario_keys if key not in SCENARIO_INDEX
+)
+if _unknown_scenario_keys:
+    raise ValueError(
+        "Unknown simulation.scenario_keys: "
+        + ", ".join(_unknown_scenario_keys)
+        + ". Available keys: "
+        + ", ".join(SCENARIO_INDEX)
+    )
+SCENARIOS = (
+    tuple(
+        ALL_SCENARIOS[SCENARIO_INDEX[key]] for key in _requested_scenario_keys
+    )
+    if _requested_scenario_keys
+    else ALL_SCENARIOS
 )
 
 FIT_MODEL = bx.Model(
@@ -230,6 +267,12 @@ def main() -> None:
         },
         "fit_model": FIT_MODEL.to_dict(),
         "priors": PRIOR_SETTINGS,
+        "inference": {
+            "parameterization": PARAMETERIZATION,
+            "asis": ASIS,
+            "particles": PARTICLES,
+            "particle_proposal": PGAS_PROPOSAL,
+        },
         "mcmc": {
             "draws": DRAWS,
             "warmup": WARMUP,
@@ -245,6 +288,7 @@ def main() -> None:
             "formats": list(FIGURE_FORMATS),
             "dpi": FIGURE_DPI,
             "diagnostics": DIAGNOSTIC_FIGURES,
+            "interval_probability": INTERVAL_PROBABILITY,
             "predictive_draws": PREDICTIVE_DRAWS,
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
@@ -257,7 +301,10 @@ def main() -> None:
         json.dumps(run_config, indent=2, sort_keys=True), encoding="utf-8"
     )
 
-    for number, scenario in enumerate(SCENARIOS):
+    for scenario in SCENARIOS:
+        # Keep the same inference and predictive seed offsets whether this
+        # scenario is run alone or as part of the full six-case catalogue.
+        number = SCENARIO_INDEX[scenario["key"]]
         data_path = OUTPUT_DIR / "simulations" / f"{scenario['key']}.csv"
         truth_path = data_path.with_suffix(".json")
         expected_truth = {
@@ -364,8 +411,8 @@ def main() -> None:
                 model=FIT_MODEL,
                 priors=priors,
                 engine="laplace",
-                parameterization="fruehwirth_schnatter",
-                asis=False,
+                parameterization=PARAMETERIZATION,
+                asis=ASIS,
                 mcmc=bx.MCMC(draws=DRAWS, warmup=WARMUP, chains=CHAINS, seed=SEED + 100 * number, progress=PROGRESS),
                 name=scenario["name"],
             )
@@ -415,10 +462,10 @@ def main() -> None:
                 model=FIT_MODEL,
                 priors=laplace_fit.priors,
                 engine="pgas",
-                parameterization="fruehwirth_schnatter",
-                asis=False,
+                parameterization=PARAMETERIZATION,
+                asis=ASIS,
                 mcmc=bx.MCMC(draws=DRAWS, warmup=WARMUP, chains=CHAINS, seed=SEED + 10_000 + 100 * number, progress=PROGRESS),
-                particles=bx.Particles(n=PARTICLES, proposal="guided"),
+                particles=bx.Particles(n=PARTICLES, proposal=PGAS_PROPOSAL),
                 name=scenario["name"],
                 init=laplace_fit,
             )
@@ -465,7 +512,7 @@ def main() -> None:
             draws=PREDICTIVE_DRAWS,
             seed=SEED + 20_000 + number,
         )
-        predictive.summary(level=0.90).to_csv(
+        predictive.summary(level=INTERVAL_PROBABILITY).to_csv(
             table_dir / "posterior_predictive.csv", index=False
         )
         forecast = pgas_fit.forecast(
@@ -473,11 +520,11 @@ def main() -> None:
             draws=PREDICTIVE_DRAWS,
             seed=SEED + 30_000 + number,
         )
-        forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
-        forecast.summary(level=0.90, phase=FOCUS_PHASE).to_csv(
+        forecast.summary(level=INTERVAL_PROBABILITY).to_csv(table_dir / "forecast.csv", index=False)
+        forecast.summary(level=INTERVAL_PROBABILITY, phase=FOCUS_PHASE).to_csv(
             table_dir / f"forecast_phase_{FOCUS_PHASE:02d}.csv", index=False
         )
-        forecast.summary(level=0.90, target="level").to_csv(
+        forecast.summary(level=INTERVAL_PROBABILITY, target="level").to_csv(
             table_dir / "forecast_level.csv", index=False
         )
         (table_dir / "summary.json").write_text(
@@ -512,7 +559,7 @@ def main() -> None:
                     }
                 )
 
-        figure, axis = pgas_fit.plot("predictor", credible_interval=0.90)
+        figure, axis = pgas_fit.plot("predictor", credible_interval=INTERVAL_PROBABILITY)
         axis.plot(np.arange(N_TIME), table["eta"], color="#123B4A", linestyle="--", linewidth=1.2, label=r"$\mu_t$")
         title = bx.config_title(CONFIG, "predictor")
         if title is not None:
@@ -524,7 +571,7 @@ def main() -> None:
 
         selected_phase = table["phase"].to_numpy(int) == FOCUS_PHASE
         figure, axis = pgas_fit.plot(
-            "predictor", credible_interval=0.90, phase=FOCUS_PHASE
+            "predictor", credible_interval=INTERVAL_PROBABILITY, phase=FOCUS_PHASE
         )
         axis.plot(
             np.arange(N_TIME)[selected_phase],
@@ -547,7 +594,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = predictive.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             observed=pgas_fit.observed,
             title=bx.config_title(CONFIG, "posterior_predictive"),
             ylabel="temperature / °C",
@@ -558,7 +605,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             history=pgas_fit.observed,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
@@ -571,7 +618,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             phase=FOCUS_PHASE,
             phase_label=PHASE_LABELS[FOCUS_PHASE - 1],
             history=pgas_fit.observed,
@@ -591,7 +638,7 @@ def main() -> None:
 
         level_history = np.median(pgas_fit.state_original("level"), axis=0)
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             target="level",
             history=level_history,
             history_dates=np.arange(N_TIME),
@@ -609,7 +656,7 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = pgas_fit.plot(
-            "level", credible_interval=0.90, truth=table["level"].to_numpy()
+            "level", credible_interval=INTERVAL_PROBABILITY, truth=table["level"].to_numpy()
         )
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -617,7 +664,7 @@ def main() -> None:
 
         figure, axis = pgas_fit.plot(
             "level",
-            credible_interval=0.90,
+            credible_interval=INTERVAL_PROBABILITY,
             truth=table["level"].to_numpy(),
             show_observed=False,
         )
@@ -626,7 +673,7 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = pgas_fit.plot(
-            "slope", credible_interval=0.90, truth=table["slope"].to_numpy()
+            "slope", credible_interval=INTERVAL_PROBABILITY, truth=table["slope"].to_numpy()
         )
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"slope.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")

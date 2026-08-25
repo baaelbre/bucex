@@ -9,6 +9,7 @@ examples 02, 03, and 04; the exact-correction fit and diagnostics stay visible.
 """
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 import io
 import json
@@ -27,11 +28,15 @@ if str(EXAMPLE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
-from _example_config import load_simulation_config
 
 
-# Scientific settings live in one file shared by examples 02, 03, 04, and 08.
-CONFIG, SETTINGS_PATH = load_simulation_config()
+# Pick another JSON here for IDE/notebook runs; ``--config PATH`` overrides it.
+DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "simulation.json"
+CONFIG_PARSER = argparse.ArgumentParser()
+CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
+CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
+SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
+CONFIG = bx.load_config(SETTINGS_PATH)
 SIMULATION = CONFIG["simulation"]
 PRIOR_SETTINGS = CONFIG["priors"]
 MCMC_SETTINGS = CONFIG["mcmc"]
@@ -72,6 +77,8 @@ LEVEL_DYNAMIC_PROBABILITY = float(PRIOR_SETTINGS["level_dynamic_probability"])
 TREND_PROBABILITIES = tuple(PRIOR_SETTINGS["trend_probabilities"])
 SEASON_PROBABILITIES = tuple(PRIOR_SETTINGS["season_probabilities"])
 
+PARAMETERIZATION = str(INFERENCE["parameterization"])
+ASIS = bool(INFERENCE["asis"])
 DRAWS = int(MCMC_SETTINGS["draws"])
 WARMUP = int(MCMC_SETTINGS["warmup"])
 CHAINS = int(MCMC_SETTINGS["chains"])
@@ -86,6 +93,7 @@ COMBINE_RUNS = tuple(
 FIGURE_FORMATS = tuple(FIGURES["formats"])
 FIGURE_DPI = int(FIGURES["dpi"])
 DIAGNOSTIC_FIGURES = bool(FIGURES["diagnostics"])
+INTERVAL_PROBABILITY = float(FIGURES["interval_probability"])
 PHASE_LABELS = tuple(f"phase {index + 1}" for index in range(PERIOD))
 PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
 FOCUS_PHASE = int(FIGURES["focus_phase"])
@@ -324,8 +332,8 @@ def fit_scenario(
         model=FIT_MODEL,
         priors=priors_for(table["y"].to_numpy(float)),
         engine="laplace_mh",
-        parameterization="fruehwirth_schnatter",
-        asis=False,
+        parameterization=PARAMETERIZATION,
+        asis=ASIS,
         mcmc=bx.MCMC(
             draws=DRAWS,
             warmup=WARMUP,
@@ -390,6 +398,11 @@ def main() -> None:
         },
         "fit_model": FIT_MODEL.to_dict(),
         "priors": PRIOR_SETTINGS,
+        "inference": {
+            "parameterization": PARAMETERIZATION,
+            "asis": ASIS,
+            "laplace_mh_steps": MH_STEPS,
+        },
         "mcmc": {
             "draws": DRAWS,
             "warmup": WARMUP,
@@ -405,6 +418,7 @@ def main() -> None:
             "formats": list(FIGURE_FORMATS),
             "dpi": FIGURE_DPI,
             "diagnostics": DIAGNOSTIC_FIGURES,
+            "interval_probability": INTERVAL_PROBABILITY,
             "predictive_draws": PREDICTIVE_DRAWS,
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
@@ -529,7 +543,7 @@ def main() -> None:
             draws=PREDICTIVE_DRAWS,
             seed=SEED + 20_000 + number,
         )
-        predictive.summary(level=0.90).to_csv(
+        predictive.summary(level=INTERVAL_PROBABILITY).to_csv(
             table_dir / "posterior_predictive.csv", index=False
         )
         forecast = laplace_fit.forecast(
@@ -537,11 +551,11 @@ def main() -> None:
             draws=PREDICTIVE_DRAWS,
             seed=SEED + 30_000 + number,
         )
-        forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
-        forecast.summary(level=0.90, phase=FOCUS_PHASE).to_csv(
+        forecast.summary(level=INTERVAL_PROBABILITY).to_csv(table_dir / "forecast.csv", index=False)
+        forecast.summary(level=INTERVAL_PROBABILITY, phase=FOCUS_PHASE).to_csv(
             table_dir / f"forecast_phase_{FOCUS_PHASE:02d}.csv", index=False
         )
-        forecast.summary(level=0.90, target="level").to_csv(
+        forecast.summary(level=INTERVAL_PROBABILITY, target="level").to_csv(
             table_dir / "forecast_level.csv", index=False
         )
         (table_dir / "summary.json").write_text(
@@ -561,7 +575,7 @@ def main() -> None:
             encoding="utf-8",
         )
 
-        figure, axis = laplace_fit.plot("predictor", credible_interval=0.90)
+        figure, axis = laplace_fit.plot("predictor", credible_interval=INTERVAL_PROBABILITY)
         axis.plot(np.arange(N_TIME), table["eta"], color="#123B4A", linestyle="--", linewidth=1.2, label=r"$\mu_t$")
         title = bx.config_title(CONFIG, "predictor")
         if title is not None:
@@ -573,7 +587,7 @@ def main() -> None:
 
         selected_phase = table["phase"].to_numpy(int) == FOCUS_PHASE
         figure, axis = laplace_fit.plot(
-            "predictor", credible_interval=0.90, phase=FOCUS_PHASE
+            "predictor", credible_interval=INTERVAL_PROBABILITY, phase=FOCUS_PHASE
         )
         axis.plot(
             np.arange(N_TIME)[selected_phase],
@@ -596,7 +610,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = predictive.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             observed=laplace_fit.observed,
             title=bx.config_title(CONFIG, "posterior_predictive"),
             ylabel="temperature / °C",
@@ -607,7 +621,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             history=laplace_fit.observed,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
@@ -620,7 +634,7 @@ def main() -> None:
         plt.close(figure)
 
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             phase=FOCUS_PHASE,
             phase_label=PHASE_LABELS[FOCUS_PHASE - 1],
             history=laplace_fit.observed,
@@ -640,7 +654,7 @@ def main() -> None:
 
         level_history = np.median(laplace_fit.state_original("level"), axis=0)
         axis = forecast.plot(
-            level=0.90,
+            level=INTERVAL_PROBABILITY,
             target="level",
             history=level_history,
             history_dates=np.arange(N_TIME),
@@ -658,7 +672,7 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = laplace_fit.plot(
-            "level", credible_interval=0.90, truth=table["level"].to_numpy()
+            "level", credible_interval=INTERVAL_PROBABILITY, truth=table["level"].to_numpy()
         )
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -666,7 +680,7 @@ def main() -> None:
 
         figure, axis = laplace_fit.plot(
             "level",
-            credible_interval=0.90,
+            credible_interval=INTERVAL_PROBABILITY,
             truth=table["level"].to_numpy(),
             show_observed=False,
         )
@@ -675,7 +689,7 @@ def main() -> None:
         plt.close(figure)
 
         figure, axis = laplace_fit.plot(
-            "slope", credible_interval=0.90, truth=table["slope"].to_numpy()
+            "slope", credible_interval=INTERVAL_PROBABILITY, truth=table["slope"].to_numpy()
         )
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"slope.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")

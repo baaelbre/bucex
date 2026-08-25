@@ -166,14 +166,15 @@ def test_scientific_settings_are_authoritative_json_files():
     )
     for filename in simulation_scripts:
         source = (ROOT / "examples" / filename).read_text(encoding="utf-8")
-        assert "load_simulation_config" in source
-        assert 'SETTINGS_PATH' in source
+        assert 'DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "simulation.json"' in source
+        assert "CONFIG = bx.load_config(SETTINGS_PATH)" in source
     for filename in uccle_scripts:
         source = (ROOT / "examples" / filename).read_text(encoding="utf-8")
-        assert "load_uccle_config" in source
-        assert 'SETTINGS_PATH' in source
+        assert 'DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "uccle.json"' in source
+        assert "CONFIG = bx.load_config(SETTINGS_PATH)" in source
     centered_source = (ROOT / "examples" / "07_centered_ig.py").read_text()
-    assert "load_centered_ig_config" in centered_source
+    assert 'DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "centered_ig.json"' in centered_source
+    assert "CONFIG = bx.load_config(SETTINGS_PATH)" in centered_source
 
     source = (ROOT / "examples" / "09_uccle_laplace_mh.py").read_text(
         encoding="utf-8"

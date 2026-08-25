@@ -5,6 +5,7 @@ API. Run with ``python examples/01_tail_simulations.py``.
 """
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 from copy import deepcopy
 import json
@@ -24,11 +25,15 @@ if str(EXAMPLE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
-from _example_config import load_example_config
 
 
-# Every setting is in one editable JSON file.
-CONFIG, SETTINGS_PATH = load_example_config("tail.json")
+# Pick another JSON here for IDE/notebook runs; ``--config PATH`` overrides it.
+DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "tail.json"
+CONFIG_PARSER = argparse.ArgumentParser()
+CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
+CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
+SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
+CONFIG = bx.load_config(SETTINGS_PATH)
 SIMULATION = CONFIG["simulation"]
 DENSITY = CONFIG["density"]
 FIGURES = CONFIG["figures"]

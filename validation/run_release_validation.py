@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.3.0."""
+"""Fixed-seed numerical release validation for bucex 1.3.1."""
 from __future__ import annotations
 
 import argparse
@@ -67,8 +67,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.3.0":
-        raise RuntimeError(f"Expected bucex 1.3.0, found {bx.__version__}.")
+    if bx.__version__ != "1.3.1":
+        raise RuntimeError(f"Expected bucex 1.3.1, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -422,7 +422,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.3.0.json"),
+        default=Path("validation/release_validation_1.3.1.json"),
     )
     args = parser.parse_args()
     result = run()

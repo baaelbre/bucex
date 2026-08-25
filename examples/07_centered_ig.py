@@ -11,6 +11,7 @@ Run with ``python examples/07_centered_ig.py``.
 """
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
 import json
 from pathlib import Path
@@ -28,11 +29,15 @@ if str(EXAMPLE_ROOT) not in sys.path:
     sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
-from _example_config import load_centered_ig_config
 
 
-# This benchmark has its own compact, editable configuration file.
-CONFIG, SETTINGS_PATH = load_centered_ig_config()
+# Pick another JSON here for IDE/notebook runs; ``--config PATH`` overrides it.
+DEFAULT_CONFIG_FILE = EXAMPLE_ROOT / "config" / "centered_ig.json"
+CONFIG_PARSER = argparse.ArgumentParser()
+CONFIG_PARSER.add_argument("--config", type=Path, default=DEFAULT_CONFIG_FILE)
+CONFIG_ARGUMENTS, _ = CONFIG_PARSER.parse_known_args()
+SETTINGS_PATH = CONFIG_ARGUMENTS.config.expanduser().resolve()
+CONFIG = bx.load_config(SETTINGS_PATH)
 SIMULATION = CONFIG["simulation"]
 PRIOR_SETTINGS = CONFIG["priors"]
 MCMC_SETTINGS = CONFIG["mcmc"]
@@ -83,10 +88,13 @@ if ENGINE not in {"laplace", "laplace_mh", "pgas"}:
     raise ValueError(
         "inference.engine must be one of: laplace, laplace_mh, pgas."
     )
+PARAMETERIZATION = str(INFERENCE["parameterization"])
+ASIS = bool(INFERENCE["asis"])
 DRAWS = int(MCMC_SETTINGS["draws"])
 WARMUP = int(MCMC_SETTINGS["warmup"])
 CHAINS = int(MCMC_SETTINGS["chains"])
 PARTICLES = int(INFERENCE["pgas_particles"])
+PGAS_PROPOSAL = str(INFERENCE["pgas_proposal"])
 LAPLACE_MH_STEPS = int(INFERENCE["laplace_mh_steps"])
 SEED = int(MCMC_SETTINGS["seed"])
 PROGRESS = bool(RUNTIME["progress"])
@@ -97,6 +105,7 @@ COMBINE_RUNS = tuple(
 
 # Output settings.
 PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
+INTERVAL_PROBABILITY = float(FIGURES["interval_probability"])
 FORECAST_HORIZON = int(FIGURES["forecast_horizon"])
 FORECAST_HISTORY = int(FIGURES["forecast_history"])
 MAX_ACF_LAG = int(FIGURES["max_acf_lag"])
@@ -223,11 +232,11 @@ def main() -> None:
         "priors": PRIOR_SETTINGS,
         "inference": {
             "engine": ENGINE,
-            "parameterization": "centered",
-            "asis": False,
+            "parameterization": PARAMETERIZATION,
+            "asis": ASIS,
             "targets_exact_posterior": ENGINE in {"laplace_mh", "pgas"},
             "particles": PARTICLES if ENGINE == "pgas" else None,
-            "particle_proposal": "guided" if ENGINE == "pgas" else None,
+            "particle_proposal": PGAS_PROPOSAL if ENGINE == "pgas" else None,
             "laplace_mh_steps": (
                 LAPLACE_MH_STEPS if ENGINE == "laplace_mh" else None
             ),
@@ -241,6 +250,7 @@ def main() -> None:
         "figures": {
             "formats": list(FIGURE_FORMATS),
             "dpi": FIGURE_DPI,
+            "interval_probability": INTERVAL_PROBABILITY,
             "predictive_draws": PREDICTIVE_DRAWS,
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
@@ -324,7 +334,7 @@ def main() -> None:
         engine_options = {}
         if ENGINE == "pgas":
             engine_options["particles"] = bx.Particles(
-                n=PARTICLES, proposal="guided"
+                n=PARTICLES, proposal=PGAS_PROPOSAL
             )
         else:
             engine_options["laplace"] = bx.Laplace(
@@ -335,8 +345,8 @@ def main() -> None:
             model=MODEL,
             priors=PRIORS,
             engine=ENGINE,
-            parameterization="centered",
-            asis=False,
+            parameterization=PARAMETERIZATION,
+            asis=ASIS,
             mcmc=bx.MCMC(
                 draws=DRAWS,
                 warmup=WARMUP,
@@ -408,7 +418,7 @@ def main() -> None:
     ).to_csv(table_dir / "trajectory.csv", index=False)
 
     predictive = fit.posterior_predictive(draws=PREDICTIVE_DRAWS, seed=SEED + 1)
-    predictive.summary(level=0.90).to_csv(
+    predictive.summary(level=INTERVAL_PROBABILITY).to_csv(
         table_dir / "posterior_predictive.csv", index=False
     )
     forecast = fit.forecast(
@@ -416,7 +426,7 @@ def main() -> None:
         draws=PREDICTIVE_DRAWS,
         seed=SEED + 2,
     )
-    forecast.summary(level=0.90).to_csv(table_dir / "forecast.csv", index=False)
+    forecast.summary(level=INTERVAL_PROBABILITY).to_csv(table_dir / "forecast.csv", index=False)
 
     (table_dir / "summary.json").write_text(
         json.dumps(
@@ -437,7 +447,7 @@ def main() -> None:
     # Posterior state and parameter figures.
     figure, axis = fit.plot(
         "level",
-        credible_interval=0.90,
+        credible_interval=INTERVAL_PROBABILITY,
         truth=true_level,
     )
     for extension in FIGURE_FORMATS:
@@ -450,7 +460,7 @@ def main() -> None:
 
     figure, axis = fit.plot(
         "level",
-        credible_interval=0.90,
+        credible_interval=INTERVAL_PROBABILITY,
         truth=true_level,
         show_observed=False,
     )
@@ -538,7 +548,7 @@ def main() -> None:
     plt.close(figure)
 
     axis = predictive.plot(
-        level=0.90,
+        level=INTERVAL_PROBABILITY,
         observed=fit.observed,
         title=bx.config_title(CONFIG, "posterior_predictive"),
         ylabel="temperature / °C",
@@ -552,7 +562,7 @@ def main() -> None:
     plt.close(axis.figure)
 
     axis = forecast.plot(
-        level=0.90,
+        level=INTERVAL_PROBABILITY,
         history=fit.observed,
         history_dates=time,
         history_points=FORECAST_HISTORY,

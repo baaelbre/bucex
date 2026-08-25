@@ -1,4 +1,4 @@
-# Running bucex 1.3.0 with PBS
+# Running bucex 1.3.1 with PBS
 
 ## One-time setup
 

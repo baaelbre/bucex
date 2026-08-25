@@ -96,10 +96,13 @@ def test_v262_examples_are_standalone_public_api_scripts():
         assert 'run_config.json' in source
         assert "os.environ" not in source
         assert "BUCEX_" not in source
-        assert "--config" not in source or "_example_config" in source
+        assert "--config" in source
+        assert "DEFAULT_CONFIG_FILE" in source
+        assert "CONFIG = bx.load_config(SETTINGS_PATH)" in source
+        assert "_example_config" not in source
 
     assert "bx.loess_smooth(" in sources["00_uccle_record.py"]
-    assert 'load_example_config("record.json")' in sources["00_uccle_record.py"]
+    assert 'EXAMPLE_ROOT / "config" / "record.json"' in sources["00_uccle_record.py"]
     assert "common_ylim" in sources["01_tail_simulations.py"]
     assert "axis.set_ylim(*common_ylim)" in sources["01_tail_simulations.py"]
     for name in ("01_tail_simulations.py", "02_structural_simulations.py"):
@@ -114,8 +117,8 @@ def test_v262_examples_are_standalone_public_api_scripts():
     ):
         assert "bx.Model(" in sources[name]
         assert "bx.fit(" in sources[name]
-        assert '"level", credible_interval=0.90' in sources[name]
-        assert '"slope", credible_interval=0.90' in sources[name]
+        assert '"level", credible_interval=INTERVAL_PROBABILITY' in sources[name]
+        assert '"slope", credible_interval=INTERVAL_PROBABILITY' in sources[name]
         assert '.plot("season"' in sources[name]
     assert 'engine="laplace_mh"' in sources["08_simulation_laplace_mh.py"]
     assert 'engine="laplace_mh"' in sources["09_uccle_laplace_mh.py"]
@@ -130,12 +133,14 @@ def test_v262_examples_are_standalone_public_api_scripts():
     centered_ig = sources["07_centered_ig.py"]
     assert "bx.LocalLevel(" in centered_ig
     assert "bx.InverseGammaVariance(" in centered_ig
-    assert "load_centered_ig_config" in centered_ig
+    assert 'EXAMPLE_ROOT / "config" / "centered_ig.json"' in centered_ig
     assert 'ENGINE = str(INFERENCE["engine"])' in centered_ig
     assert "engine=ENGINE" in centered_ig
     assert '"laplace_mh", "pgas"' in centered_ig
-    assert 'parameterization="centered"' in centered_ig
-    assert "asis=False" in centered_ig
+    assert 'PARAMETERIZATION = str(INFERENCE["parameterization"])' in centered_ig
+    assert 'ASIS = bool(INFERENCE["asis"])' in centered_ig
+    assert "parameterization=PARAMETERIZATION" in centered_ig
+    assert "asis=ASIS" in centered_ig
     assert "bx.Particles(" in centered_ig
     assert "bx.Laplace(" in centered_ig
     assert 'fit.plot(\n        "traces"' in centered_ig

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.3.1
+
+- Added six complete schema-1 simulation configurations, one for each
+  structural truth, under `examples/config/simulations/`.
+- Converted the supplied successful run manifests into clean input files and
+  retained their scenario-specific simulation, prior, and MCMC settings.
+- Removed the example configuration-wrapper module. Every numbered example now
+  exposes `DEFAULT_CONFIG_FILE`, accepts `--config PATH`, and calls
+  `bx.load_config` directly.
+- Documented the six local one-by-one commands and added regression checks for
+  JSON completeness, scenario-key order, and compatibility with every matched
+  simulation engine.
+- Kept the all-scenario configuration, state equations, inference targets,
+  public API, and archive schema unchanged.
+
 ## 1.3.0
 
 - Replaced duplicated example settings with authoritative JSON files shared
