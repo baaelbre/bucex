@@ -1,19 +1,19 @@
-# bucex 1.2.0
+# bucex 1.2.1
 
 `bucex` fits Bayesian unobserved-components models to Gaussian and generalized
 extreme-value observations. The package combines a declarative structural
 model API, componentwise SSVS, approximate Laplace state updates, exact
 Laplace independence-MH updates, and exact-density PGAS state updates.
 
-Version 1.2.0 is the calibrated-examples and seasonal-view release. Examples
-02, 03, 04, and 08 now repeat one canonical simulation design, while examples
-03, 04, and 08 repeat the same model-selection prior and MCMC defaults.
-Examples 05, 06, and 09 likewise repeat one Uccle model, prior, and sampling
-specification. The settings remain visibly defined inside every script;
-parity tests prevent future drift. Forecasts and fitted trajectories can now
-show one seasonal phase or the seasonally adjusted latent level. The existing
-PBS fan-out and exact-sampler safeguards remain intact. The release includes
-ten transparent analysis scripts:
+Version 1.2.1 makes the scientific examples easier to inspect and harder to
+misconfigure. Examples 02/03/04/08 now read one canonical simulation JSON,
+examples 05/06/09 read one calibrated Uccle JSON, and example 07 has a small
+centred-IG JSON. This removes the duplicated settings that had drifted between
+engines while retaining environment overrides for PBS pilots. The obsolete
+Laplace-sensitivity workflow has been removed. Figure titles no longer append
+the inference engine, and prior-to-posterior process-SD panels have no titles.
+The exact-inference kernels and archive schema are unchanged. The release
+includes ten transparent analysis scripts:
 
 1. the complete Uccle record from 1892 and the evolution of TXx;
 2. matched GEV shape and scale simulations;
@@ -274,9 +274,17 @@ Simulation fitting runs use `simulations/`, `fits/<scenario>/`,
 PGAS, and Laplace-MH examples share the same scientific settings and artifact
 names; only method-specific diagnostics and warm-start fits differ.
 
-All scientific settings remain near the top of each script. MCMC controls can
-also be overridden with `BUCEX_DRAWS`, `BUCEX_WARMUP`, `BUCEX_CHAINS`,
-`BUCEX_PARTICLES`, and `BUCEX_SEED`. Example 07 additionally accepts
+Scientific settings live in `examples/config/simulation.json`,
+`examples/config/uccle.json`, and `examples/config/centered_ig.json`. Use a
+copy without editing Python:
+
+```bash
+python examples/03_simulation_laplace.py --config my_simulation.json
+```
+
+`BUCEX_CONFIG` selects the same file in PBS jobs. Operational overrides such
+as `BUCEX_DRAWS`, `BUCEX_WARMUP`, `BUCEX_CHAINS`, `BUCEX_PARTICLES`, and
+`BUCEX_SEED` are applied after JSON loading. Example 07 additionally accepts
 `BUCEX_ENGINE=laplace|laplace_mh|pgas`.
 
 The simulations use period 4 and 1,000 observations for structural recovery.
@@ -307,18 +315,17 @@ qsub -v DRAWS=2000,WARMUP=2000,CHAINS=4,PARTICLES=512 \
 ```
 
 The ten numbered `run_*.sh` files under `bash_scripts/` also run directly with
-positional arguments. There is no hidden scientific settings layer; every
-pair is readable by itself. See `docs/HPC_RUNNERS.md` for the exact argument
-order and adapt the resource directives to the local cluster. `docs/HPC.md`
-gives complete pilot and final submission commands, while
-`docs/LAPLACE_SENSITIVITY_HPC.md` documents the seed/slab array study.
+positional arguments. They override the matching fields in the documented
+JSON settings files. See `docs/HPC_RUNNERS.md` for the exact argument order
+and adapt the resource directives to the local cluster. `docs/HPC.md` gives
+complete pilot and final submission commands.
 
 Example 08 additionally has a PBS-array submitter that runs every
 `(scenario, chain)` pair as a separate job and combines the 24 fits only after
 they all succeed:
 
 ```bash
-cd /path/to/bucex-1.2.0
+cd /path/to/bucex-1.2.1
 bash bash_scripts/qsub_08_simulation_laplace_mh.sh
 ```
 

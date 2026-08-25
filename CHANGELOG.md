@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.1
+
+- Replaced duplicated example settings with authoritative JSON files shared
+  across the simulation, Uccle, and centered inverse-gamma analyses.
+- Standardized the effective simulation and Uccle priors across Laplace,
+  PGAS, and Laplace-MH scripts and retained environment overrides for HPC.
+- Added `--config PATH` and `BUCEX_CONFIG=PATH` selection with resolved
+  settings-file provenance in every fitting run manifest.
+- Removed the Laplace-sensitivity reducer, shell grid, PBS jobs, and dedicated
+  documentation, plus obsolete launchers for the former example-07 name.
+- Removed inference-engine suffixes from scientific figure titles and made
+  prior-to-posterior process-SD panels title-free.
+- Added configuration, cleanup, and plot-title regression coverage while
+  keeping the public inference API and archive schema 2.6.2 unchanged.
+
 ## 1.2.0
 
 - Standardized the simulation truths across examples 02, 03, 04, and 08 and

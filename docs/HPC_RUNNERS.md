@@ -165,8 +165,10 @@ examples/_08_simulation_laplace_mh_task.py
 ```
 
 The main scientific settings—GEV scale and shape, process-noise truths, SSVS
-probabilities, and prior scales—remain visible at the top of the Python files.
-Edit those there for scientific sensitivity analyses.
+probabilities, and prior scales—live in the three JSON files under
+`examples/config/`. Pass `BUCEX_CONFIG=/path/to/custom.json` to select a custom
+file in a PBS job; named runner variables still override the corresponding
+JSON fields for short pilots.
 
 For example 07, the PBS file also accepts `ENGINE` (`laplace` by default,
 `laplace_mh`, or `pgas`), `RANDOM_WALK_SD`, `LEVEL_IG_A`,

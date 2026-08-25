@@ -88,6 +88,7 @@ def test_analytic_pc_plot_acf_and_save_api(tmp_path):
         line.get_label() for axis in process_axes for line in axis.lines
     }
     assert "prior (analytic PC)" in labels
+    assert all(axis.get_title() == "" for axis in process_axes)
     assert process_path.is_file() and process_path.stat().st_size > 0
 
     acf_path = tmp_path / "acf.png"

@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.2.0 has five software layers:
+Release 1.2.1 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;

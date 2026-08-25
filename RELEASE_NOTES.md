@@ -1,89 +1,51 @@
-# bucex 1.2.0 release notes
+# bucex 1.2.1 release notes
 
-Version 1.2.0 standardizes the scientific examples and adds seasonal views to
-fitted trajectories and forecasts. It does not change the Laplace-MH target,
-PGAS target, state equations, or archive schema.
+Version 1.2.1 is a configuration and figure-cleanup release. It does not
+change the state equations, Laplace-MH target, PGAS target, public fitting API,
+or archive schema.
 
-## One explicit settings contract
+## Authoritative JSON settings
 
-Every scientific setting remains defined near the top of each example. There
-is no hidden settings module.
+The numbered examples remain sequential, but duplicated blocks of scientific
+settings have moved to three human-readable files:
 
-- Examples 02, 03, 04, and 08 use the same six simulation truths, scenario
-  keys, record length, seeds, GEV parameters, and structural innovation SDs.
-- Examples 03, 04, and 08 use the same encompassing fitted model, SSVS prior,
-  structural probabilities, MCMC defaults, predictive settings, and artifact
-  names. Only the state engine and its tuning/diagnostics differ.
-- Examples 05, 06, and 09 use the same Uccle data window, four series, monthly
-  model, calibrated prior, fixed-versus-dynamic odds, MCMC defaults, forecast
-  horizon, and figure/table names.
-- Release tests import every script and compare these contracts directly, so a
-  future edit cannot silently change only one method.
+- `examples/config/simulation.json` is shared by examples 02, 03, 04, and 08;
+- `examples/config/uccle.json` is shared by examples 05, 06, and 09;
+- `examples/config/centered_ig.json` controls example 07.
 
-The canonical simulation calibration is:
+This fixes the configuration drift that had developed between the nominally
+matched inference scripts. The canonical simulation prior uses the broad
+baseline slabs retained after the sensitivity exercise: 0.1 for level,
+0.0008 for slope, and 0.07 for seasonality. The Uccle configuration uses the
+documented monthly calibration 0.03 / 0.0001 / 0.05 and equal prior odds for
+fixed versus dynamic slope and season.
 
-```text
-truth: RW level SD 0.02; LLT level SD 0.01; slope SD 0.00010;
-       seasonal SD 0.05; fixed slope 0.006
-prior: fixed-slope SD 0.006; innovation slabs 0.03 / 0.00015 / 0.05;
-       neutral structural probabilities
-MCMC:  1000 warmup + 1000 retained iterations per chain
+Pass a custom file without editing Python:
+
+```bash
+python examples/03_simulation_laplace.py --config my_simulation.json
 ```
 
-The Uccle prior remains calibrated in monthly units: fixed-slope SD 0.0015,
-innovation slabs 0.03 / 0.00010 / 0.05, initial-season SD 2.25, and equal prior
-odds for fixed versus dynamic slope and season. The numbered Bash and PBS
-runners now use the same 1000 + 1000 baseline as their Python scripts.
+`BUCEX_CONFIG=/path/to/file.json` is equivalent. Existing `BUCEX_*`
+environment overrides are applied after loading JSON, preserving the PBS
+pilot and multi-chain workflows. Each output manifest records the selected
+settings file and the resolved values.
 
-## Seasonal and seasonally adjusted views
+## Cleaner examples and figures
 
-Fitted univariate seasonal models now accept one-based phase selection:
+- Removed the complete Laplace-sensitivity runner, reducer, grid, PBS jobs,
+  and dedicated documentation from the release.
+- Removed obsolete launchers for the former long example-07 filename.
+- Removed parenthetical inference-engine labels from scientific figure titles.
+- Prior-to-posterior process-SD figures now use labelled horizontal axes and
+  no panel or figure titles.
+- Added regression coverage for shared JSON settings, absent sensitivity
+  artifacts, engine-neutral titles, and title-free process-SD panels.
 
-```python
-fit.plot("predictor", phase=7)
-fit.plot("level", phase=7)
-```
+## Inherited guarantees
 
-Forecasts retain the model period, phase sequence, and state names. The public
-summary and plotting APIs support either one seasonal phase or the latent
-level without seasonality and observation noise:
-
-```python
-forecast.summary(phase=7)
-forecast.plot(phase=7, phase_label="July")
-
-forecast.summary(target="level")
-forecast.plot(target="level")
-forecast.component_draws("level")
-```
-
-When a phase-specific plot receives contiguous history, the same phase filter
-is applied to that history. Uccle examples convert `BUCEX_FOCUS_MONTH` to the
-correct model phase even when the fitted data window starts in a month other
-than January.
-
-All simulation fit examples save `trajectory_phase_XX`, `forecast_phase_XX`,
-and `forecast_level` figures/tables. All Uccle fit examples save July-specific
-trajectory/forecast artifacts and `forecast_level`; set `BUCEX_FOCUS_MONTH`
-to choose another calendar month.
-
-## Naming and output cleanup
-
-- `07_centered_ig_random_walk_gev.py` is now `07_centered_ig.py`.
-- Its Bash runner, PBS submission file, result directory, logs, metadata, and
-  documentation use the same concise stem.
-- Scenario 02 now uses the same short output keys as examples 03, 04, and 08:
-  `stationary`, `linear`, `random_walk`, `llt`, `dynamic_season`, and
-  `llt_season`.
-- Simulation fits continue to write `simulations/`, `fits/`, `tables/`, and
-  `figures/`; Uccle fits continue to write `fits/`, `tables/`, and `figures/`.
-
-## Inherited exact-inference guarantees
-
-The release retains the 1.1 series guarantees: deterministic support-feasible
-Laplace proposal initialization for finite-endpoint GEV likelihoods, ordinary
-MH rejection of endpoint-invalid proposal draws, exact affine handling of
-singular state transitions, fail-fast exact kernels, conditional PGAS ancestor
-sampling, automatic conjugate centered inverse-gamma process-variance updates,
-and the 24-task scenario-chain PBS workflow for example 08.
-
+Version 1.2.1 retains phase-specific and seasonally adjusted trajectories,
+automatic conjugate centred inverse-gamma process-variance updates,
+deterministic finite-endpoint repair for Laplace-MH proposals, singular affine
+state-transition handling, conditional PGAS ancestor sampling, and the
+24-task scenario-chain PBS workflow for example 08.

@@ -19,40 +19,42 @@ import pandas as pd
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 if (SOURCE_ROOT / "bucex").is_dir() and str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
+EXAMPLE_ROOT = Path(__file__).resolve().parent
+if str(EXAMPLE_ROOT) not in sys.path:
+    sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
+from _example_config import load_simulation_config
 
 
-# Results. The concise signature contains the structural settings most useful
-# when browsing runs. sigma, xi, and all other values remain in run_config.json.
-RESULTS_ROOT = Path(os.environ.get("BUCEX_RESULTS_ROOT", "results"))
+# One JSON file is shared by examples 02, 03, 04, and 08. This keeps the
+# simulated truth identical across every inference engine.
+CONFIG, SETTINGS_PATH = load_simulation_config()
+SIMULATION = CONFIG["simulation"]
+FIGURES = CONFIG["figures"]
+
+RESULTS_ROOT = Path(CONFIG["output"]["results_root"])
 SCRIPT_NAME = Path(__file__).stem
 RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
-OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {"1", "true", "yes"}
+OVERWRITE = bool(CONFIG["output"]["overwrite"])
 
-# Canonical simulation design. These values are repeated explicitly in the
-# fitting examples 03, 04, and 08; release tests enforce exact parity.
-N_TIME = int(os.environ.get("BUCEX_N_TIME", "1000"))
-PERIOD = int(os.environ.get("BUCEX_PERIOD", "4"))
-SIGMA = float(os.environ.get("BUCEX_SIGMA", "1.50"))
-XI = float(os.environ.get("BUCEX_XI", "-0.30"))
-INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
-LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
-RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.02"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.00050"))
-LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.002"))
-DYNAMIC_SEASON_AMPLITUDE = float(
-    os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
-)
-FIXED_SEASON_AMPLITUDE = float(
-    os.environ.get("BUCEX_FIXED_SEASON_AMPLITUDE", "0.25")
-)
-SEASONAL_SD = float(os.environ.get("BUCEX_SEASONAL_SD", "0.05"))
-SIMULATION_SEED = int(os.environ.get("BUCEX_SIMULATION_SEED", "13081997"))
+N_TIME = int(SIMULATION["n_time"])
+PERIOD = int(SIMULATION["period"])
+SIGMA = float(SIMULATION["sigma"])
+XI = float(SIMULATION["xi"])
+INITIAL_LEVEL = float(SIMULATION["initial_level"])
+LINEAR_SLOPE = float(SIMULATION["linear_slope"])
+RANDOM_WALK_SD = float(SIMULATION["random_walk_sd"])
+LOCAL_LEVEL_SD = float(SIMULATION["local_level_sd"])
+LOCAL_SLOPE_SD = float(SIMULATION["local_slope_sd"])
+LOCAL_INITIAL_SLOPE = float(SIMULATION["local_initial_slope"])
+DYNAMIC_SEASON_AMPLITUDE = float(SIMULATION["dynamic_season_amplitude"])
+FIXED_SEASON_AMPLITUDE = float(SIMULATION["fixed_season_amplitude"])
+SEASONAL_SD = float(SIMULATION["seasonal_sd"])
+SIMULATION_SEED = int(SIMULATION["seed"])
 
-FIGURE_FORMATS = ("pdf", "png")
-FIGURE_DPI = 180
+FIGURE_FORMATS = tuple(FIGURES["formats"])
+FIGURE_DPI = int(FIGURES["dpi"])
 COLORS = {"navy": "#123B4A", "teal": "#1D7F7A", "grey": "#7A8589", "coral": "#D96C4F"}
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_s{SIMULATION_SEED}"
@@ -180,6 +182,7 @@ def main() -> None:
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
         "bucex_version": bx.__version__,
+        "settings_file": str(SETTINGS_PATH),
         "simulation": {
             "n_time": N_TIME,
             "period": PERIOD,

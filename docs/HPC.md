@@ -1,4 +1,4 @@
-# Running bucex 1.2.0 with PBS
+# Running bucex 1.2.1 with PBS
 
 Run every command below from the clean `bucex` repository root. Most fitting
 jobs reserve four cores and start one independent one-chain process per core.
@@ -35,7 +35,7 @@ This is the recommended example-08 workflow. The defaults submit six scenarios
 times four chains as 24 independent tasks, with all 24 eligible to run at once:
 
 ```bash
-cd /path/to/bucex-1.2.0
+cd /path/to/bucex-1.2.1
 export BUCEX_VENV_DIR="$HOME/venvs/bucex_env"
 bash bash_scripts/qsub_08_simulation_laplace_mh.sh
 ```

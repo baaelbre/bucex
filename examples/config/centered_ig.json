@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "simulation": {
+    "n_time": 1000,
+    "sigma": 1.5,
+    "xi": -0.3,
+    "initial_level": 25.0,
+    "random_walk_sd": 0.05,
+    "seed": 13081997
+  },
+  "priors": {
+    "initial_level": {"mean": 25.0, "sd": 3.2},
+    "level_variance": {"shape": 2.0, "scale": 0.0025},
+    "sigma_variance": {"shape": 2.0, "scale": 2.25},
+    "shape": {"mean": 0.0, "sd": 0.2, "bounds": [-0.5, 0.5]}
+  },
+  "mcmc": {
+    "draws": 1000,
+    "warmup": 1000,
+    "chains": 4,
+    "seed": 13081997
+  },
+  "inference": {
+    "engine": "laplace",
+    "pgas_particles": 256,
+    "laplace_mh_steps": 1
+  },
+  "figures": {
+    "formats": ["pdf", "png"],
+    "dpi": 180,
+    "predictive_draws": 500,
+    "forecast_horizon": 40,
+    "forecast_history": 200,
+    "max_acf_lag": 100
+  },
+  "runtime": {
+    "progress": true,
+    "chain_only": false
+  },
+  "output": {
+    "results_root": "results",
+    "overwrite": false
+  }
+}

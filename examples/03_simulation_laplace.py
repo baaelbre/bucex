@@ -1,11 +1,9 @@
 """Fit selected structural simulations with Laplace state updates.
 
-This is a standalone, sequential example: it declares the simulation models,
-declares the larger fitted model, constructs the priors, calls ``bx.fit``, and
-writes the posterior summaries without a workflow layer. Set
-``BUCEX_SCENARIO_KEYS`` to a platform-separated list of scenario keys to run a
-subset. Reusing the same run ID and settings appends another subset to the same
-output directory.
+The six truths, prior, and sampling controls come from
+``config/simulation.json``. The script keeps the model construction,
+``bx.fit`` call, and posterior outputs visible. Select a subset in the JSON or
+with ``BUCEX_SCENARIO_KEYS``; repeated subsets can share one run ID.
 """
 from __future__ import annotations
 
@@ -22,96 +20,78 @@ import pandas as pd
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 if (SOURCE_ROOT / "bucex").is_dir() and str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
+EXAMPLE_ROOT = Path(__file__).resolve().parent
+if str(EXAMPLE_ROOT) not in sys.path:
+    sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
+from _example_config import load_simulation_config
 
 
-# Results. Keep the folder name short: the simulation size, slab scales, and
-# sampling effort identify the run; run_config.json contains every setting.
-RESULTS_ROOT = Path(os.environ.get("BUCEX_RESULTS_ROOT", "results"))
+# Scientific settings live in one file shared by examples 02, 03, 04, and 08.
+CONFIG, SETTINGS_PATH = load_simulation_config()
+SIMULATION = CONFIG["simulation"]
+PRIOR_SETTINGS = CONFIG["priors"]
+MCMC_SETTINGS = CONFIG["mcmc"]
+INFERENCE = CONFIG["inference"]
+FIGURES = CONFIG["figures"]
+RUNTIME = CONFIG["runtime"]
+
+RESULTS_ROOT = Path(CONFIG["output"]["results_root"])
 SCRIPT_NAME = Path(__file__).stem
 RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime("%Y%m%d_%H%M%S")
-OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {"1", "true", "yes"}
+OVERWRITE = bool(CONFIG["output"]["overwrite"])
 
-# Canonical simulation design. It is repeated explicitly in examples 02, 04,
-# and 08; release tests enforce exact parity.
-N_TIME = int(os.environ.get("BUCEX_N_TIME", "1000"))
-PERIOD = int(os.environ.get("BUCEX_PERIOD", "4"))
-SIGMA = float(os.environ.get("BUCEX_SIGMA", "1.50"))
-XI = float(os.environ.get("BUCEX_XI", "-0.30"))
-INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
-LINEAR_SLOPE = float(os.environ.get("BUCEX_LINEAR_SLOPE", "0.006"))
-RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.02"))
-LOCAL_LEVEL_SD = float(os.environ.get("BUCEX_LOCAL_LEVEL_SD", "0.01"))
-LOCAL_SLOPE_SD = float(os.environ.get("BUCEX_LOCAL_SLOPE_SD", "0.0008"))
-LOCAL_INITIAL_SLOPE = float(os.environ.get("BUCEX_LOCAL_INITIAL_SLOPE", "0.003"))
-DYNAMIC_SEASON_AMPLITUDE = float(
-    os.environ.get("BUCEX_DYNAMIC_SEASON_AMPLITUDE", "0.25")
-)
-FIXED_SEASON_AMPLITUDE = float(
-    os.environ.get("BUCEX_FIXED_SEASON_AMPLITUDE", "0.25")
-)
-SEASONAL_SD = float(os.environ.get("BUCEX_SEASONAL_SD", "0.05"))
-SIMULATION_SEED = int(os.environ.get("BUCEX_SIMULATION_SEED", "13081997"))
+N_TIME = int(SIMULATION["n_time"])
+PERIOD = int(SIMULATION["period"])
+SIGMA = float(SIMULATION["sigma"])
+XI = float(SIMULATION["xi"])
+INITIAL_LEVEL = float(SIMULATION["initial_level"])
+LINEAR_SLOPE = float(SIMULATION["linear_slope"])
+RANDOM_WALK_SD = float(SIMULATION["random_walk_sd"])
+LOCAL_LEVEL_SD = float(SIMULATION["local_level_sd"])
+LOCAL_SLOPE_SD = float(SIMULATION["local_slope_sd"])
+LOCAL_INITIAL_SLOPE = float(SIMULATION["local_initial_slope"])
+DYNAMIC_SEASON_AMPLITUDE = float(SIMULATION["dynamic_season_amplitude"])
+FIXED_SEASON_AMPLITUDE = float(SIMULATION["fixed_season_amplitude"])
+SEASONAL_SD = float(SIMULATION["seasonal_sd"])
+SIMULATION_SEED = int(SIMULATION["seed"])
 
-# Prior hyperparameters. Slab SDs are calibrated to the simulated innovation
-# scales; the fixed-slope SD puts the 0.006 truth at one prior SD. Structural
-# probabilities are deliberately neutral because recovery is the experiment.
-ALPHA_PRIOR_SD = float(os.environ.get("BUCEX_ALPHA_PRIOR_SD", "3.2"))
-BETA_PRIOR_MEAN = float(os.environ.get("BUCEX_BETA_PRIOR_MEAN", "0.0"))
-BETA_PRIOR_SD = float(os.environ.get("BUCEX_BETA_PRIOR_SD", "0.01"))
-INITIAL_SEASON_PRIOR_SD = float(
-    os.environ.get("BUCEX_INITIAL_SEASON_PRIOR_SD", "0.5")
-)
-SIGMA2_PRIOR_A = float(os.environ.get("BUCEX_SIGMA2_PRIOR_A", "2.0"))
-SIGMA2_PRIOR_B = float(os.environ.get("BUCEX_SIGMA2_PRIOR_B", "2.25"))
-XI_PRIOR_BOUNDS = (-0.50, 0.50)
-XI_MAX_ABS = float(os.environ.get("BUCEX_XI_MAX_ABS", "0.50"))
-INNOVATION_SLAB_SD = {
-    "level": float(os.environ.get("BUCEX_LEVEL_SLAB_SD", "0.03")),
-    "trend": float(os.environ.get("BUCEX_TREND_SLAB_SD", "0.003")),
-    "season": float(os.environ.get("BUCEX_SEASON_SLAB_SD", "0.05")),
-}
-LEVEL_DYNAMIC_PROBABILITY = float(
-    os.environ.get("BUCEX_LEVEL_DYNAMIC_PROBABILITY", "0.50")
-)
-TREND_PROBABILITIES = tuple(
-    float(value)
-    for value in os.environ.get(
-        "BUCEX_TREND_PROBABILITIES", "0.333333333333,0.333333333333,0.333333333334"
-    ).split(",")
-)  # zero, fixed, dynamic
-SEASON_PROBABILITIES = tuple(
-    float(value)
-    for value in os.environ.get(
-        "BUCEX_SEASON_PROBABILITIES", "0.333333333333,0.333333333333,0.333333333334"
-    ).split(",")
-)  # zero, fixed, dynamic
+ALPHA_PRIOR_SD = float(PRIOR_SETTINGS["alpha_sd"])
+BETA_PRIOR_MEAN = float(PRIOR_SETTINGS["beta_mean"])
+BETA_PRIOR_SD = float(PRIOR_SETTINGS["beta_sd"])
+INITIAL_SEASON_PRIOR_SD = float(PRIOR_SETTINGS["seasonal_initial_sd"])
+SIGMA2_PRIOR_A = float(PRIOR_SETTINGS["sigma2"]["a"])
+SIGMA2_PRIOR_B = float(PRIOR_SETTINGS["sigma2"]["b"])
+XI_PRIOR_BOUNDS = tuple(PRIOR_SETTINGS["xi_bounds"])
+XI_MAX_ABS = float(PRIOR_SETTINGS["xi_max_abs"])
+INNOVATION_SLAB_SD = dict(PRIOR_SETTINGS["innovation_slab_sd"])
+LEVEL_DYNAMIC_PROBABILITY = float(PRIOR_SETTINGS["level_dynamic_probability"])
+TREND_PROBABILITIES = tuple(PRIOR_SETTINGS["trend_probabilities"])
+SEASON_PROBABILITIES = tuple(PRIOR_SETTINGS["season_probabilities"])
 
-# MCMC. One script run is one chain; use the qsub fan-out for four independent
-# chains. A thousand warmup and retained iterations is the release baseline.
-DRAWS = int(os.environ.get("BUCEX_DRAWS", "1000"))
-WARMUP = int(os.environ.get("BUCEX_WARMUP", "1000"))
-CHAINS = int(os.environ.get("BUCEX_CHAINS", "1"))
-SEED = int(os.environ.get("BUCEX_SEED", "13081997"))
-PROGRESS = os.environ.get("BUCEX_PROGRESS", "1").lower() not in {"0", "false", "no"}
-CHAIN_ONLY = os.environ.get("BUCEX_CHAIN_ONLY", "0").lower() in {"1", "true", "yes"}
+DRAWS = int(MCMC_SETTINGS["draws"])
+WARMUP = int(MCMC_SETTINGS["warmup"])
+CHAINS = int(MCMC_SETTINGS["chains"])
+SEED = int(MCMC_SETTINGS["seed"])
+PROGRESS = bool(RUNTIME["progress"])
+CHAIN_ONLY = bool(RUNTIME["chain_only"])
 COMBINE_RUNS = tuple(
     Path(value)
     for value in os.environ.get("BUCEX_COMBINE_RUNS", "").split(os.pathsep)
     if value
 )
 
-FIGURE_FORMATS = ("pdf", "png")
-FIGURE_DPI = 180
-DIAGNOSTIC_FIGURES = False
+FIGURE_FORMATS = tuple(FIGURES["formats"])
+FIGURE_DPI = int(FIGURES["dpi"])
+DIAGNOSTIC_FIGURES = bool(FIGURES["diagnostics"])
 PHASE_LABELS = tuple(f"phase {index + 1}" for index in range(PERIOD))
-PREDICTIVE_DRAWS = int(os.environ.get("BUCEX_PREDICTIVE_DRAWS", "500"))
-FOCUS_PHASE = int(os.environ.get("BUCEX_FOCUS_PHASE", "1"))
+PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
+FOCUS_PHASE = int(FIGURES["focus_phase"])
 if not 1 <= FOCUS_PHASE <= PERIOD:
     raise ValueError(f"BUCEX_FOCUS_PHASE must be between 1 and {PERIOD}.")
-FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", str(10 * PERIOD)))
-FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", str(20 * PERIOD)))
+FORECAST_HORIZON = int(FIGURES["forecast_horizon"])
+FORECAST_HISTORY = int(FIGURES["forecast_history"])
 
 RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_d{DRAWS}w{WARMUP}c{CHAINS}"
 OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
@@ -187,16 +167,13 @@ SCENARIOS = (
     },
 )
 
-# Optional subset selection. ``os.pathsep`` is ``;`` on Windows and ``:`` on
-# Linux/HPC systems. SCENARIOS deliberately remains the complete canonical
-# collection so examples 02, 03, 04, and 08 retain the same public contract.
+# Optional subset selection is part of the JSON configuration. The
+# BUCEX_SCENARIO_KEYS override remains available for HPC fan-out.
 SCENARIO_INDEX = {
     scenario["key"]: index for index, scenario in enumerate(SCENARIOS)
 }
 _requested_scenario_keys = tuple(
-    value.strip()
-    for value in os.environ.get("BUCEX_SCENARIO_KEYS", "").split(os.pathsep)
-    if value.strip()
+    str(value).strip() for value in SIMULATION["scenario_keys"] if str(value).strip()
 )
 if len(set(_requested_scenario_keys)) != len(_requested_scenario_keys):
     raise ValueError("BUCEX_SCENARIO_KEYS must not contain duplicates.")
@@ -210,10 +187,8 @@ if _unknown_scenario_keys:
         + ". Available keys: "
         + ", ".join(SCENARIO_INDEX)
     )
-ACTIVE_CASES = (
-    tuple(SCENARIOS[SCENARIO_INDEX[key]] for key in _requested_scenario_keys)
-    if _requested_scenario_keys
-    else SCENARIOS
+ACTIVE_CASES = tuple(
+    SCENARIOS[SCENARIO_INDEX[key]] for key in _requested_scenario_keys
 )
 
 # Fit one encompassing model to every scenario. SSVS decides whether each
@@ -258,6 +233,7 @@ def _merge_run_config(
         "run_signature",
         "output_directory",
         "bucex_version",
+        "settings_file",
         "engine",
         "simulation",
         "fit_model",
@@ -330,6 +306,7 @@ def main() -> None:
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
         "bucex_version": bx.__version__,
+        "settings_file": str(SETTINGS_PATH),
         "engine": "laplace",
         "simulation": {
             "n_time": N_TIME,
@@ -588,7 +565,7 @@ def main() -> None:
 
         figure, axis = laplace_fit.plot("predictor", credible_interval=0.90)
         axis.plot(np.arange(N_TIME), table["eta"], color="#123B4A", linestyle="--", linewidth=1.2, label="true predictor")
-        axis.set_title(f"{scenario['name']}: posterior latent predictor (Laplace)")
+        axis.set_title(f"{scenario['name']}: posterior latent predictor")
         axis.legend()
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"trajectory.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
@@ -607,7 +584,7 @@ def main() -> None:
             label="true predictor",
         )
         axis.set_title(
-            f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} trajectory (Laplace)"
+            f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} trajectory"
         )
         axis.legend()
         for extension in FIGURE_FORMATS:
@@ -621,7 +598,7 @@ def main() -> None:
         axis = predictive.plot(
             level=0.90,
             observed=laplace_fit.observed,
-            title=f"{scenario['name']}: posterior predictive check (Laplace)",
+            title=f"{scenario['name']}: posterior predictive check",
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -634,7 +611,7 @@ def main() -> None:
             history=laplace_fit.observed,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
-            title=f"{scenario['name']}: posterior predictive forecast (Laplace)",
+            title=f"{scenario['name']}: posterior predictive forecast",
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -649,7 +626,7 @@ def main() -> None:
             history=laplace_fit.observed,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
-            title=f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} forecast (Laplace)",
+            title=f"{scenario['name']}: {PHASE_LABELS[FOCUS_PHASE - 1]} forecast",
             ylabel="temperature / °C",
         )
         figure = axis.figure
@@ -668,7 +645,7 @@ def main() -> None:
             history=level_history,
             history_dates=np.arange(N_TIME),
             history_points=FORECAST_HISTORY,
-            title=f"{scenario['name']}: seasonally adjusted level forecast (Laplace)",
+            title=f"{scenario['name']}: seasonally adjusted level forecast",
             ylabel="latent level / °C",
         )
         figure = axis.figure
@@ -683,7 +660,7 @@ def main() -> None:
         figure, axis = laplace_fit.plot(
             "level", credible_interval=0.90, truth=table["level"].to_numpy()
         )
-        axis.set_title(f"{scenario['name']}: posterior latent level (Laplace)")
+        axis.set_title(f"{scenario['name']}: posterior latent level")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
@@ -694,7 +671,7 @@ def main() -> None:
             truth=table["level"].to_numpy(),
             show_observed=False,
         )
-        axis.set_title(f"{scenario['name']}: posterior latent level (Laplace)")
+        axis.set_title(f"{scenario['name']}: posterior latent level")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"level_no_observations.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
@@ -702,18 +679,20 @@ def main() -> None:
         figure, axis = laplace_fit.plot(
             "slope", credible_interval=0.90, truth=table["slope"].to_numpy()
         )
-        axis.set_title(f"{scenario['name']}: posterior latent slope (Laplace)")
+        axis.set_title(f"{scenario['name']}: posterior latent slope")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"slope.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
         figure, axis = laplace_fit.plot("component_probabilities")
-        axis.set_title(f"{scenario['name']}: structural selection (Laplace)")
+        axis.set_title(f"{scenario['name']}: structural selection")
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"selection.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
 
-        figure, _ = laplace_fit.plot("process_sds", truths=truth["parameter_truth"], title=f"{scenario['name']}: prior to posterior (Laplace)")
+        figure, _ = laplace_fit.plot(
+            "process_sds", truths=truth["parameter_truth"]
+        )
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"process_sd.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)

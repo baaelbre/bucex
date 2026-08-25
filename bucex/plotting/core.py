@@ -576,8 +576,10 @@ def plot_process_sds(
                 linestyle="--",
                 label="truth",
             )
-        axis.set_title(f"Process SD: {name}")
-        axis.set_xlabel("innovation standard deviation")
+        # Process-SD panels are used directly in papers and slides. Keep the
+        # process name on the axis instead of adding a redundant panel title.
+        axis.set_title("")
+        axis.set_xlabel(f"{name} innovation standard deviation")
         axis.set_ylabel("density")
         axis.legend()
     if title is not None:

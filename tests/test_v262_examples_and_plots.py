@@ -10,7 +10,7 @@ import bucex as bx
 
 
 def test_v110_version_and_workflow_removal():
-    assert bx.__version__ == "1.2.0"
+    assert bx.__version__ == "1.2.1"
     assert not hasattr(bx, "make_structural_scenarios")
     assert not hasattr(bx, "PresentationWorkflow")
 
@@ -237,9 +237,10 @@ def test_hpc_surface_matches_the_ten_examples():
     }
     assert {f"run_{stem}.sh" for stem in expected_stems} <= runners
     assert {f"submit_{stem}.pbs" for stem in expected_stems} <= submissions
-    assert "run_laplace_sensitivity_all.sh" in runners
-    assert "submit_laplace_sensitivity_fits.pbs" in submissions
-    assert "submit_laplace_sensitivity_combine.pbs" in submissions
+    assert not any("sensitivity" in name for name in runners)
+    assert not any("sensitivity" in name for name in submissions)
+    assert not (root / "examples" / "10_laplace_sensitivity_runner.py").exists()
+    assert not (root / "config" / "laplace_sensitivity_grid.sh").exists()
     assert not (submit_directory / "common.sh").exists()
     assert not (submit_directory / "submit_all.sh").exists()
     for stem in expected_stems:

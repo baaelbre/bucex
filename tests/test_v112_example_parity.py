@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 from pathlib import Path
 import re
@@ -137,23 +138,46 @@ def test_uccle_laplace_mh_is_method_matched_to_laplace(monkeypatch):
     assert laplace_mh.PRIOR_SETTINGS == laplace.PRIOR_SETTINGS
 
 
-def test_scientific_settings_are_explicit_in_each_fit_script():
-    for filename in (
+def test_scientific_settings_are_authoritative_json_files():
+    config_dir = ROOT / "examples" / "config"
+    simulation = json.loads((config_dir / "simulation.json").read_text())
+    uccle = json.loads((config_dir / "uccle.json").read_text())
+    centered = json.loads((config_dir / "centered_ig.json").read_text())
+    assert simulation["schema_version"] == 1
+    assert uccle["schema_version"] == 1
+    assert centered["schema_version"] == 1
+    assert simulation["priors"]["innovation_slab_sd"] == {
+        "level": 0.1,
+        "trend": 0.0008,
+        "season": 0.07,
+    }
+    assert uccle["priors"]["innovation_slab_sd"] == {
+        "level": 0.03,
+        "trend": 0.0001,
+        "season": 0.05,
+    }
+
+    simulation_scripts = (
+        "02_structural_simulations.py",
         "03_simulation_laplace.py",
         "04_simulation_pgas.py",
+        "08_simulation_laplace_mh.py",
+    )
+    uccle_scripts = (
         "05_uccle_laplace.py",
         "06_uccle_pgas.py",
-        "08_simulation_laplace_mh.py",
         "09_uccle_laplace_mh.py",
-    ):
+    )
+    for filename in simulation_scripts:
         source = (ROOT / "examples" / filename).read_text(encoding="utf-8")
-        assert "ALPHA_PRIOR_SD =" in source
-        assert "BETA_PRIOR_SD =" in source
-        assert "INNOVATION_SLAB_SD =" in source
-        assert "DRAWS =" in source
-        assert "WARMUP =" in source
-        assert "from example_settings" not in source
-        assert "import example_settings" not in source
+        assert "load_simulation_config" in source
+        assert 'SETTINGS_PATH' in source
+    for filename in uccle_scripts:
+        source = (ROOT / "examples" / filename).read_text(encoding="utf-8")
+        assert "load_uccle_config" in source
+        assert 'SETTINGS_PATH' in source
+    centered_source = (ROOT / "examples" / "07_centered_ig.py").read_text()
+    assert "load_centered_ig_config" in centered_source
 
     source = (ROOT / "examples" / "09_uccle_laplace_mh.py").read_text(
         encoding="utf-8"
@@ -162,6 +186,13 @@ def test_scientific_settings_are_explicit_in_each_fit_script():
         assert f'OUTPUT_DIR / "{directory}"' in source
     assert 'engine="laplace_mh"' in source
     assert "bx.Laplace(mh_steps=MH_STEPS)" in source
+
+
+def test_example_figure_titles_do_not_name_the_inference_engine():
+    forbidden = ("(Laplace)", "(Laplace-MH)", "(Laplace_MH)", "(PGAS)")
+    for path in sorted((ROOT / "examples").glob("[0-9][0-9]_*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert not any(label in source for label in forbidden), path
 
 
 def test_laplace_mh_runners_match_their_laplace_counterparts():

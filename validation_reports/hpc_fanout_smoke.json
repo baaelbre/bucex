@@ -1,0 +1,12 @@
+{
+  "array_workflow_recorded": true,
+  "bucex_version": "1.2.1",
+  "combined_chains": 2,
+  "draws_per_chain": 1,
+  "finalizer_complete": true,
+  "required_artifacts_present": true,
+  "run_directory": "/tmp/bucex_hpc_fanout_1.2.1/08_simulation_laplace_mh/fanout_smoke_4__n16p4_d1w1c2m1",
+  "seconds": 12.609587588000068,
+  "task_outputs_complete": true,
+  "task_processes": 2
+}

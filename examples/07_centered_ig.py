@@ -24,82 +24,76 @@ import pandas as pd
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 if (SOURCE_ROOT / "bucex").is_dir() and str(SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(SOURCE_ROOT))
+EXAMPLE_ROOT = Path(__file__).resolve().parent
+if str(EXAMPLE_ROOT) not in sys.path:
+    sys.path.insert(0, str(EXAMPLE_ROOT))
 
 import bucex as bx
+from _example_config import load_centered_ig_config
 
 
-# Results. The directory name stays short; run_config.json records every
-# simulation, prior, approximation, and MCMC setting.
-RESULTS_ROOT = Path(os.environ.get("BUCEX_RESULTS_ROOT", "results"))
+# This benchmark has its own compact, editable configuration file.
+CONFIG, SETTINGS_PATH = load_centered_ig_config()
+SIMULATION = CONFIG["simulation"]
+PRIOR_SETTINGS = CONFIG["priors"]
+MCMC_SETTINGS = CONFIG["mcmc"]
+INFERENCE = CONFIG["inference"]
+FIGURES = CONFIG["figures"]
+RUNTIME = CONFIG["runtime"]
+
+RESULTS_ROOT = Path(CONFIG["output"]["results_root"])
 SCRIPT_NAME = Path(__file__).stem
 RUN_TIMESTAMP = os.environ.get("BUCEX_RUN_ID") or datetime.now().strftime(
     "%Y%m%d_%H%M%S"
 )
-OVERWRITE = os.environ.get("BUCEX_OVERWRITE", "0").lower() in {
-    "1",
-    "true",
-    "yes",
-}
+OVERWRITE = bool(CONFIG["output"]["overwrite"])
 
 # Random-walk GEV truth. The process SD is deliberately small relative to the
 # GEV scale, which is the scientifically interesting slow-signal regime.
-N_TIME = int(os.environ.get("BUCEX_N_TIME", "1000"))
-SIGMA = float(os.environ.get("BUCEX_SIGMA", "1.50"))
-XI = float(os.environ.get("BUCEX_XI", "-0.30"))
-INITIAL_LEVEL = float(os.environ.get("BUCEX_INITIAL_LEVEL", "25.0"))
-RANDOM_WALK_SD = float(os.environ.get("BUCEX_RANDOM_WALK_SD", "0.05"))
-SIMULATION_SEED = int(os.environ.get("BUCEX_SIMULATION_SEED", "13081997"))
+N_TIME = int(SIMULATION["n_time"])
+SIGMA = float(SIMULATION["sigma"])
+XI = float(SIMULATION["xi"])
+INITIAL_LEVEL = float(SIMULATION["initial_level"])
+RANDOM_WALK_SD = float(SIMULATION["random_walk_sd"])
+SIMULATION_SEED = int(SIMULATION["seed"])
 
 # Initial-state prior. This is separate from the inverse-gamma prior on the
 # process variance q_level.
-INITIAL_LEVEL_PRIOR_MEAN = float(
-    os.environ.get("BUCEX_INITIAL_LEVEL_PRIOR_MEAN", "25.0")
-)
-INITIAL_LEVEL_PRIOR_SD = float(
-    os.environ.get("BUCEX_INITIAL_LEVEL_PRIOR_SD", "3.2")
-)
+INITIAL_LEVEL_PRIOR_MEAN = float(PRIOR_SETTINGS["initial_level"]["mean"])
+INITIAL_LEVEL_PRIOR_SD = float(PRIOR_SETTINGS["initial_level"]["sd"])
 
 # Inverse-gamma priors use shape/scale form: q ~ IG(a, b). If a > 1, the
 # prior mean is b / (a - 1), while its mode is b / (a + 1). Here the process
-# prior is calibrated to the simulation scale. Change these four numbers at
-# the top of the file for the sensitivity experiment; very small a and b
-# reproduce the traditional diffuse-IG specification.
-LEVEL_VARIANCE_IG_A = float(os.environ.get("BUCEX_LEVEL_IG_A", "2.0"))
-LEVEL_VARIANCE_IG_B = float(os.environ.get("BUCEX_LEVEL_IG_B", "0.0025"))
-SIGMA_VARIANCE_IG_A = float(os.environ.get("BUCEX_SIGMA_IG_A", "2.0"))
-SIGMA_VARIANCE_IG_B = float(os.environ.get("BUCEX_SIGMA_IG_B", "2.25"))
+# prior is calibrated to the simulation scale. Change the four values in
+# config/centered_ig.json to reproduce alternative IG specifications.
+LEVEL_VARIANCE_IG_A = float(PRIOR_SETTINGS["level_variance"]["shape"])
+LEVEL_VARIANCE_IG_B = float(PRIOR_SETTINGS["level_variance"]["scale"])
+SIGMA_VARIANCE_IG_A = float(PRIOR_SETTINGS["sigma_variance"]["shape"])
+SIGMA_VARIANCE_IG_B = float(PRIOR_SETTINGS["sigma_variance"]["scale"])
 
 # A weakly regularising, zero-centred shape prior avoids making the finite
 # support bounds the complete prior specification.
-XI_PRIOR_MEAN = float(os.environ.get("BUCEX_XI_PRIOR_MEAN", "0.0"))
-XI_PRIOR_SD = float(os.environ.get("BUCEX_XI_PRIOR_SD", "0.20"))
-XI_PRIOR_BOUNDS = (-0.50, 0.50)
+XI_PRIOR_MEAN = float(PRIOR_SETTINGS["shape"]["mean"])
+XI_PRIOR_SD = float(PRIOR_SETTINGS["shape"]["sd"])
+XI_PRIOR_BOUNDS = tuple(PRIOR_SETTINGS["shape"]["bounds"])
 
 # MCMC and state-update settings. Four independent chains are important here:
 # the purpose is to diagnose the centred/IG geometry, not only draw a smooth
 # path. Plain Laplace is the fast default; Laplace-MH and PGAS remain available
 # as exact validation engines without changing the model or priors.
-ENGINE = os.environ.get("BUCEX_ENGINE", "laplace").strip().lower()
+ENGINE = str(INFERENCE["engine"]).strip().lower()
 if ENGINE not in {"laplace", "laplace_mh", "pgas"}:
     raise ValueError(
         "BUCEX_ENGINE must be one of: laplace, laplace_mh, pgas."
     )
-DRAWS = int(os.environ.get("BUCEX_DRAWS", "1000"))
-WARMUP = int(os.environ.get("BUCEX_WARMUP", "1000"))
-CHAINS = int(os.environ.get("BUCEX_CHAINS", "4"))
-PARTICLES = int(os.environ.get("BUCEX_PARTICLES", "256"))
-LAPLACE_MH_STEPS = int(os.environ.get("BUCEX_LAPLACE_MH_STEPS", "1"))
-SEED = int(os.environ.get("BUCEX_SEED", "13081997"))
-PROGRESS = os.environ.get("BUCEX_PROGRESS", "1").lower() not in {
-    "0",
-    "false",
-    "no",
-}
-CHAIN_ONLY = os.environ.get("BUCEX_CHAIN_ONLY", "0").lower() in {
-    "1",
-    "true",
-    "yes",
-}
+DRAWS = int(MCMC_SETTINGS["draws"])
+WARMUP = int(MCMC_SETTINGS["warmup"])
+CHAINS = int(MCMC_SETTINGS["chains"])
+PARTICLES = int(INFERENCE["pgas_particles"])
+LAPLACE_MH_STEPS = int(INFERENCE["laplace_mh_steps"])
+SEED = int(MCMC_SETTINGS["seed"])
+PROGRESS = bool(RUNTIME["progress"])
+CHAIN_ONLY = bool(RUNTIME["chain_only"])
 COMBINE_RUNS = tuple(
     Path(value)
     for value in os.environ.get("BUCEX_COMBINE_RUNS", "").split(os.pathsep)
@@ -107,12 +101,12 @@ COMBINE_RUNS = tuple(
 )
 
 # Output settings.
-PREDICTIVE_DRAWS = int(os.environ.get("BUCEX_PREDICTIVE_DRAWS", "500"))
-FORECAST_HORIZON = int(os.environ.get("BUCEX_FORECAST_HORIZON", "40"))
-FORECAST_HISTORY = int(os.environ.get("BUCEX_FORECAST_HISTORY", "200"))
-MAX_ACF_LAG = int(os.environ.get("BUCEX_MAX_ACF_LAG", "100"))
-FIGURE_FORMATS = ("pdf", "png")
-FIGURE_DPI = 180
+PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
+FORECAST_HORIZON = int(FIGURES["forecast_horizon"])
+FORECAST_HISTORY = int(FIGURES["forecast_history"])
+MAX_ACF_LAG = int(FIGURES["max_acf_lag"])
+FIGURE_FORMATS = tuple(FIGURES["formats"])
+FIGURE_DPI = int(FIGURES["dpi"])
 
 ENGINE_SIGNATURE = {
     "laplace": "lap",
@@ -220,6 +214,7 @@ def main() -> None:
         "run_signature": RUN_SIGNATURE,
         "output_directory": str(OUTPUT_DIR),
         "bucex_version": bx.__version__,
+        "settings_file": str(SETTINGS_PATH),
         "model": MODEL.to_dict(),
         "simulation": {
             "n_time": N_TIME,
@@ -478,7 +473,6 @@ def main() -> None:
     figure, _ = fit.plot(
         "process_sds",
         truths={"sd.level": RANDOM_WALK_SD},
-        title="Random-walk innovation SD: prior to posterior",
     )
     for extension in FIGURE_FORMATS:
         figure.savefig(

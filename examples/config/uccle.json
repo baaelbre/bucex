@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "data": {
+    "data_dir": null,
+    "start": "1892-01-01",
+    "end": null,
+    "series": ["TXx", "TXn", "TNx", "TNn"],
+    "period": 12
+  },
+  "priors": {
+    "alpha_sd": 3.2,
+    "beta_mean": 0.0,
+    "beta_sd": 0.0015,
+    "seasonal_initial_sd": 2.25,
+    "sigma2": {"a": 2.0, "b": 2.0},
+    "xi_bounds": [-0.5, 0.5],
+    "xi_max_abs": 0.5,
+    "innovation_slab_sd": {
+      "level": 0.03,
+      "trend": 0.0001,
+      "season": 0.05
+    },
+    "level_dynamic_probability": 0.5,
+    "trend_probabilities": [0.0, 0.5, 0.5],
+    "season_probabilities": [0.0, 0.5, 0.5]
+  },
+  "mcmc": {
+    "draws": 1000,
+    "warmup": 1000,
+    "chains": 1,
+    "seed": 56000
+  },
+  "inference": {
+    "pgas_particles": 128,
+    "laplace_mh_steps": 1
+  },
+  "figures": {
+    "formats": ["pdf", "png"],
+    "dpi": 180,
+    "diagnostics": false,
+    "predictive_draws": 500,
+    "focus_month": 7,
+    "forecast_horizon": 120,
+    "forecast_history": 360
+  },
+  "runtime": {
+    "progress": true,
+    "chain_only": false
+  },
+  "output": {
+    "results_root": "results",
+    "overwrite": false
+  }
+}

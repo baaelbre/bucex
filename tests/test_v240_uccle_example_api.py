@@ -131,7 +131,8 @@ def test_v262_examples_are_standalone_public_api_scripts():
     centered_ig = sources["07_centered_ig.py"]
     assert "bx.LocalLevel(" in centered_ig
     assert "bx.InverseGammaVariance(" in centered_ig
-    assert 'os.environ.get("BUCEX_ENGINE", "laplace")' in centered_ig
+    assert "load_centered_ig_config" in centered_ig
+    assert 'ENGINE = str(INFERENCE["engine"])' in centered_ig
     assert "engine=ENGINE" in centered_ig
     assert '"laplace_mh", "pgas"' in centered_ig
     assert 'parameterization="centered"' in centered_ig

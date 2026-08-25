@@ -99,7 +99,7 @@ echo "n time/period  = ${N_TIME}/${PERIOD}"
 echo "MH steps       = ${MH_STEPS}"
 echo "shared run dir = ${SHARED_RUN_DIR}"
 echo "python         = ${PYTHON_BIN}"
-"${PYTHON_BIN}" -c 'import sys, bucex, matplotlib; print("executable", sys.executable); print("bucex", bucex.__version__); print("matplotlib", matplotlib.__version__); assert bucex.__version__ == "1.2.0"'
+"${PYTHON_BIN}" -c 'import sys, bucex, matplotlib; print("executable", sys.executable); print("bucex", bucex.__version__); print("matplotlib", matplotlib.__version__); assert bucex.__version__ == "1.2.1"'
 date
 hostname
 
