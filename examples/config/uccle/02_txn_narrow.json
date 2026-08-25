@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "data": {
+    "data_dir": null,
+    "start": "1892-01-01",
+    "end": null,
+    "series": ["TXn"],
+    "period": 12
+  },
+  "model": {
+    "observation_family": "gev",
+    "time_varying_parameter": "location",
+    "trend_component": "local_linear_trend",
+    "level_mode": "dynamic",
+    "trend_mode": "dynamic",
+    "seasonal_component": "dummy",
+    "seasonal_mode": "dynamic"
+  },
+  "priors": {
+    "alpha_mean": "transformed_series_median",
+    "alpha_sd": 3.2,
+    "beta_mean": 0.0,
+    "beta_sd": 0.0025,
+    "seasonal_initial_sd": 2.25,
+    "sigma2": {"a": 2.0, "b": 2.0},
+    "xi_bounds": [-0.5, 0.5],
+    "xi_max_abs": 0.5,
+    "innovation_slab_sd": {
+      "level": 0.01,
+      "trend": 0.000025,
+      "season": 0.01
+    },
+    "level_dynamic_probability": 0.5,
+    "trend_probabilities": [0.2, 0.4, 0.4],
+    "season_probabilities": [0.0, 0.5, 0.5]
+  },
+  "mcmc": {
+    "draws": 1000,
+    "warmup": 1000,
+    "chains": 4,
+    "seed": 56000
+  },
+  "inference": {
+    "parameterization": "fruehwirth_schnatter",
+    "asis": false,
+    "pgas_particles": 128,
+    "pgas_proposal": "guided",
+    "laplace_mh_steps": 1
+  },
+  "figures": {
+    "formats": ["pdf", "png"],
+    "dpi": 180,
+    "diagnostics": false,
+    "interval_probability": 0.9,
+    "predictive_draws": 500,
+    "focus_month": 7,
+    "forecast_horizon": 120,
+    "forecast_history": 360,
+    "titles": {}
+  },
+  "runtime": {
+    "progress": true,
+    "chain_only": false,
+    "combine_runs": []
+  },
+  "output": {
+    "results_root": "results",
+    "run_id": null,
+    "overwrite": false
+  }
+}
