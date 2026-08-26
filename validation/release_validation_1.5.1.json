@@ -1,0 +1,379 @@
+{
+  "bucex_version": "1.5.1",
+  "centered_inverse_gamma_gibbs": {
+    "backend": "state_space",
+    "conjugate_updates": [
+      "sd.level"
+    ],
+    "engine": "laplace",
+    "finite_log_posterior": true,
+    "finite_states": true,
+    "has_mh_acceptance": false,
+    "initial_parameters": [
+      "initial.level"
+    ],
+    "restored_iterations": 0,
+    "update_method": "inverse_gamma_gibbs"
+  },
+  "clean_release_surface": {
+    "current_example_smoke_name": true,
+    "no_historical_validation_results": true,
+    "pyproject_only_packaging": true
+  },
+  "configured_hpc_runner": {
+    "bash_runners": 13,
+    "collision_safe_ids": true,
+    "concurrent_processes": true,
+    "json_chain_copies": true,
+    "pbs_jobs": 13,
+    "public_fit_combination": true,
+    "runner_next_to_pbs": true,
+    "separate_hpc_removed": true,
+    "source_config_provenance": true
+  },
+  "disturbance_guided_pgas": {
+    "backend": "state_space",
+    "engine": "pgas",
+    "finite_log_posterior": true,
+    "finite_states": true,
+    "initial_parameters": [
+      "initial.level",
+      "initial.slope"
+    ],
+    "restored_iterations": 0
+  },
+  "documented_phi_reports": {
+    "configuration_guide": true,
+    "explicit_fitted_location": true,
+    "explicit_simulation_truth": true,
+    "full_report_controls": true,
+    "inline_documentation": true,
+    "standard_figures": true,
+    "standard_tables": true,
+    "strict_schema_2": true,
+    "twenty_configs": true
+  },
+  "fs_laplace_mh": {
+    "backend": "fruehwirth_schnatter",
+    "engine": "laplace_mh",
+    "finite_log_posterior": true,
+    "finite_states": true,
+    "initial_parameters": [
+      "initial.level",
+      "initial.seasonal",
+      "initial.slope"
+    ],
+    "restored_iterations": 0,
+    "state_acceptance": 1.0,
+    "support_rejections": 0.0,
+    "targets_exact_posterior": true
+  },
+  "gev_log_scale_models": {
+    "linear": {
+      "backend": "fruehwirth_schnatter",
+      "engine": "laplace_mh",
+      "finite_log_posterior": true,
+      "finite_states": true,
+      "forecast_phi_shape": [
+        2,
+        3
+      ],
+      "initial_parameters": [
+        "initial.level",
+        "initial.seasonal",
+        "initial.slope"
+      ],
+      "model_probabilities": null,
+      "phi_shape": [
+        2,
+        18
+      ],
+      "restored_iterations": 0,
+      "sigma_shape": [
+        2,
+        18
+      ],
+      "targets_exact_posterior": true
+    },
+    "rw": {
+      "backend": "fruehwirth_schnatter",
+      "engine": "laplace_mh",
+      "finite_log_posterior": true,
+      "finite_states": true,
+      "forecast_phi_shape": [
+        2,
+        3
+      ],
+      "initial_parameters": [
+        "initial.level",
+        "initial.seasonal",
+        "initial.slope"
+      ],
+      "model_probabilities": null,
+      "phi_shape": [
+        2,
+        18
+      ],
+      "restored_iterations": 0,
+      "sigma_shape": [
+        2,
+        18
+      ],
+      "targets_exact_posterior": true
+    },
+    "ssvs": {
+      "backend": "fruehwirth_schnatter",
+      "engine": "laplace_mh",
+      "finite_log_posterior": true,
+      "finite_states": true,
+      "forecast_phi_shape": [
+        2,
+        3
+      ],
+      "initial_parameters": [
+        "initial.level",
+        "initial.seasonal",
+        "initial.slope"
+      ],
+      "model_probabilities": {
+        "linear": 0.5,
+        "rw": 0.0,
+        "stationary": 0.5
+      },
+      "phi_shape": [
+        2,
+        18
+      ],
+      "restored_iterations": 0,
+      "sigma_shape": [
+        2,
+        18
+      ],
+      "targets_exact_posterior": true
+    },
+    "stationary": {
+      "backend": "fruehwirth_schnatter",
+      "engine": "laplace_mh",
+      "finite_log_posterior": true,
+      "finite_states": true,
+      "forecast_phi_shape": [
+        2,
+        3
+      ],
+      "initial_parameters": [
+        "initial.level",
+        "initial.seasonal",
+        "initial.slope"
+      ],
+      "model_probabilities": null,
+      "phi_shape": [
+        2,
+        18
+      ],
+      "restored_iterations": 0,
+      "sigma_shape": [
+        2,
+        18
+      ],
+      "targets_exact_posterior": true
+    }
+  },
+  "hierarchical_gaussian": {
+    "both": {
+      "backend": "hierarchical_state_space",
+      "engine": "ffbs",
+      "finite_log_posterior": true,
+      "finite_states": true,
+      "hierarchy_probability_rows": 8,
+      "hierarchy_slab_rows": 3,
+      "initial_parameters": [
+        "initial.channel.maximum.level",
+        "initial.channel.maximum.seasonal",
+        "initial.channel.maximum.slope",
+        "initial.channel.mean.level",
+        "initial.channel.mean.seasonal",
+        "initial.channel.mean.slope"
+      ],
+      "joint_structure_rows": 5,
+      "model_space": "componentwise",
+      "restored_iterations": 0,
+      "season_zero_probability": [
+        0.0,
+        0.0
+      ],
+      "sign_invariance_max_error": 0.0
+    },
+    "selection": {
+      "backend": "hierarchical_state_space",
+      "engine": "ffbs",
+      "finite_log_posterior": true,
+      "finite_states": true,
+      "hierarchy_probability_rows": 8,
+      "hierarchy_slab_rows": 3,
+      "initial_parameters": [
+        "initial.channel.maximum.level",
+        "initial.channel.maximum.seasonal",
+        "initial.channel.maximum.slope",
+        "initial.channel.mean.level",
+        "initial.channel.mean.seasonal",
+        "initial.channel.mean.slope"
+      ],
+      "joint_structure_rows": 6,
+      "model_space": "componentwise",
+      "restored_iterations": 0,
+      "season_zero_probability": [
+        0.0,
+        0.0
+      ],
+      "sign_invariance_max_error": 0.0
+    },
+    "slab": {
+      "backend": "hierarchical_state_space",
+      "engine": "ffbs",
+      "finite_log_posterior": true,
+      "finite_states": true,
+      "hierarchy_probability_rows": 8,
+      "hierarchy_slab_rows": 3,
+      "initial_parameters": [
+        "initial.channel.maximum.level",
+        "initial.channel.maximum.seasonal",
+        "initial.channel.maximum.slope",
+        "initial.channel.mean.level",
+        "initial.channel.mean.seasonal",
+        "initial.channel.mean.slope"
+      ],
+      "joint_structure_rows": 2,
+      "model_space": "componentwise",
+      "restored_iterations": 0,
+      "season_zero_probability": [
+        0.0,
+        0.0
+      ],
+      "sign_invariance_max_error": 0.0
+    }
+  },
+  "long_gaussian": {
+    "backend": "fruehwirth_schnatter",
+    "engine": "ffbs",
+    "finite_log_posterior": true,
+    "finite_states": true,
+    "initial_level_finite": true,
+    "initial_parameters": [
+      "initial.level",
+      "initial.seasonal",
+      "initial.slope"
+    ],
+    "initial_slope_finite": true,
+    "restored_iterations": 0,
+    "sign_invariance_max_error": 0.0
+  },
+  "mixed_guided_pgas": {
+    "backend": "hierarchical_state_space",
+    "engine": "pgas",
+    "external_warm_start": true,
+    "finite_log_posterior": true,
+    "finite_states": true,
+    "initial_parameters": [
+      "initial.channel.maximum.level",
+      "initial.channel.maximum.seasonal",
+      "initial.channel.maximum.slope",
+      "initial.channel.mean.level",
+      "initial.channel.mean.seasonal",
+      "initial.channel.mean.slope"
+    ],
+    "path_update_fraction_finite": true,
+    "restored_iterations": 0,
+    "targets_exact_posterior": true
+  },
+  "mixed_hierarchical_laplace": {
+    "backend": "hierarchical_state_space",
+    "engine": "laplace",
+    "finite_log_posterior": true,
+    "finite_states": true,
+    "initial_parameters": [
+      "initial.channel.maximum.level",
+      "initial.channel.maximum.seasonal",
+      "initial.channel.maximum.slope",
+      "initial.channel.mean.level",
+      "initial.channel.mean.seasonal",
+      "initial.channel.mean.slope"
+    ],
+    "restored_iterations": 0,
+    "targets_exact_posterior": false,
+    "warm_start_keys": [
+      "__warm_start__",
+      "channel.maximum.__centered_path",
+      "channel.maximum.initial.level",
+      "channel.maximum.initial.seasonal",
+      "channel.maximum.initial.slope",
+      "channel.maximum.s_level",
+      "channel.maximum.s_season",
+      "channel.maximum.s_trend",
+      "channel.maximum.sigma",
+      "channel.maximum.xi",
+      "channel.mean.__centered_path",
+      "channel.mean.initial.level",
+      "channel.mean.initial.seasonal",
+      "channel.mean.initial.slope",
+      "channel.mean.s_level",
+      "channel.mean.s_season",
+      "channel.mean.s_trend",
+      "channel.mean.sigma",
+      "hierarchy.prob.level",
+      "hierarchy.prob.season",
+      "hierarchy.prob.trend",
+      "hierarchy.slab_scale.level",
+      "hierarchy.slab_scale.season",
+      "hierarchy.slab_scale.trend"
+    ]
+  },
+  "negative_xi_fs_support_repair": {
+    "current_path_valid": true,
+    "finite_returned_path": true,
+    "initializer_deterministic": true,
+    "initializer_repaired": true,
+    "laplace_mh_exact_invariant": true,
+    "mode_converged": true,
+    "mode_objective_finite": true,
+    "singular_recursion_exact": true,
+    "zero_path_invalid": true
+  },
+  "optional_joint_trend_space": {
+    "backend": "hierarchical_state_space",
+    "engine": "ffbs",
+    "finite_log_posterior": true,
+    "finite_states": true,
+    "initial_parameters": [
+      "initial.channel.maximum.level",
+      "initial.channel.maximum.seasonal",
+      "initial.channel.maximum.slope",
+      "initial.channel.mean.level",
+      "initial.channel.mean.seasonal",
+      "initial.channel.mean.slope"
+    ],
+    "probability_sum": 1.0,
+    "restored_iterations": 0,
+    "rows": 4
+  },
+  "platform": "Linux-6.18.35-x86_64-with-glibc2.39",
+  "primary_six_series_uccle": {
+    "gaussian_ffbs": true,
+    "matching_runners": true,
+    "mean_series": true,
+    "primary_slabs": true,
+    "production_mcmc": true,
+    "public_gaussian_api": true,
+    "two_gaussian_configs": true
+  },
+  "python": "3.12.13",
+  "stationary_tail_comparisons": {
+    "constant_level": true,
+    "constant_predictor": true,
+    "explicit_stationary_config": true,
+    "matched_scale_draws": true,
+    "matched_shape_draws": true,
+    "no_obsolete_process_sd": true,
+    "static_model": true
+  },
+  "total_seconds": 1.548084153997479
+}

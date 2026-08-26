@@ -1,0 +1,86 @@
+{
+  "_comment": [
+    "Primary Uccle model for TXm: monthly mean daily maximum temperature.",
+    "All scientific, computational, figure, and output settings are editable here."
+  ],
+  "schema_version": 1,
+  "data": {
+    "_comment": "null data_dir uses the complete TXm series shipped with bucex.",
+    "data_dir": null,
+    "start": "1892-01-01",
+    "end": null,
+    "series": ["TXm"],
+    "period": 12
+  },
+  "model": {
+    "_comment": [
+      "The observation model is Gaussian because TXm is a monthly mean.",
+      "SSVS selects fixed/dynamic level, absent/fixed/dynamic slope, and fixed/dynamic seasonality."
+    ],
+    "observation_family": "gaussian",
+    "time_varying_parameter": "mean",
+    "trend_component": "local_linear_trend",
+    "level_mode": "dynamic",
+    "trend_mode": "dynamic",
+    "seasonal_component": "dummy",
+    "seasonal_mode": "dynamic"
+  },
+  "priors": {
+    "_comment": [
+      "The structural priors match the calibrated primary extreme-temperature analysis.",
+      "trend_probabilities and season_probabilities are ordered [zero, fixed, dynamic].",
+      "sigma2 is the Gaussian observation-variance prior in the IG(a,b) convention."
+    ],
+    "alpha_mean": "series_median",
+    "alpha_sd": 3.2,
+    "beta_mean": 0.0,
+    "beta_sd": 0.0025,
+    "seasonal_initial_sd": 2.25,
+    "sigma2": {"a": 2.0, "b": 2.0},
+    "innovation_slab_sd": {
+      "level": 0.02,
+      "trend": 0.00005,
+      "season": 0.02
+    },
+    "level_dynamic_probability": 0.5,
+    "trend_probabilities": [0.2, 0.4, 0.4],
+    "season_probabilities": [0.0, 0.5, 0.5]
+  },
+  "mcmc": {
+    "_comment": "draws are retained draws per chain after warmup.",
+    "draws": 1000,
+    "warmup": 1000,
+    "chains": 4,
+    "seed": 56200
+  },
+  "inference": {
+    "_comment": "Gaussian FFBS is exact; there are no particles or Laplace proposal settings.",
+    "engine": "ffbs",
+    "parameterization": "fruehwirth_schnatter",
+    "asis": false
+  },
+  "figures": {
+    "_comment": "Tables are always written. Titles are off unless supplied below.",
+    "formats": ["pdf", "png"],
+    "dpi": 180,
+    "diagnostics": false,
+    "interval_probability": 0.9,
+    "predictive_draws": 500,
+    "focus_month": 7,
+    "forecast_horizon": 120,
+    "forecast_history": 360,
+    "titles": {}
+  },
+  "runtime": {
+    "_comment": "The chain runner manages chain_only and combine_runs; normal users leave them unchanged.",
+    "progress": true,
+    "chain_only": false,
+    "combine_runs": []
+  },
+  "output": {
+    "_comment": "Leave run_id null for a collision-safe automatic directory.",
+    "results_root": "results",
+    "run_id": null,
+    "overwrite": false
+  }
+}
