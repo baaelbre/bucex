@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.3.2."""
+"""Fixed-seed numerical release validation for bucex 1.4.0."""
 from __future__ import annotations
 
 import argparse
@@ -67,8 +67,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.3.2":
-        raise RuntimeError(f"Expected bucex 1.3.2, found {bx.__version__}.")
+    if bx.__version__ != "1.4.0":
+        raise RuntimeError(f"Expected bucex 1.4.0, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -373,6 +373,41 @@ def run() -> dict[str, object]:
         ),
     }
 
+    phi_values = rng.gumbel(size=18)
+    phi_validation: dict[str, object] = {}
+    for offset, mode in enumerate(("stationary", "linear", "rw", "ssvs")):
+        phi_fit = bx.fit(
+            phi_values,
+            model=bx.Model(
+                bx.GEV(phi=mode),
+                (bx.LocalLinearTrend(), bx.DummySeasonal(4)),
+            ),
+            priors="ssvs",
+            engine="laplace_mh",
+            parameterization="fs",
+            laplace=bx.Laplace(max_iterations=12),
+            mcmc=bx.MCMC(
+                draws=2,
+                warmup=2,
+                chains=1,
+                seed=2430 + offset,
+            ),
+        )
+        forecast = phi_fit.forecast(3, draws=2, seed=2440 + offset)
+        phi_validation[mode] = {
+            **_finite_fit(phi_fit),
+            "targets_exact_posterior": bool(
+                phi_fit.plan.targets_exact_posterior
+            ),
+            "phi_shape": list(phi_fit.phi_draws().shape),
+            "sigma_shape": list(phi_fit.sigma_draws().shape),
+            "forecast_phi_shape": list(forecast.parameters["phi"].shape),
+            "model_probabilities": (
+                phi_fit.phi_model_probabilities() if mode == "ssvs" else None
+            ),
+        }
+    record["gev_log_scale_models"] = phi_validation
+
     centered_ig_model = bx.Model(
         bx.GEV(xi_bounds=(-0.5, 0.5)),
         [bx.LocalLevel(mode="dynamic", initial_mean=20.0, initial_sd=2.0)],
@@ -426,7 +461,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.3.2.json"),
+        default=Path("validation/release_validation_1.4.0.json"),
     )
     args = parser.parse_args()
     result = run()

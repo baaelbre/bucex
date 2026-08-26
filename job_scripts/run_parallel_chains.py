@@ -23,7 +23,7 @@ import sys
 import tempfile
 
 
-CHAIN_EXAMPLES = {"03", "04", "05", "06", "07", "08", "09"}
+CHAIN_EXAMPLES = {"03", "04", "05", "06", "07", "08", "09", "10", "11"}
 
 
 def _load(path: Path) -> dict:

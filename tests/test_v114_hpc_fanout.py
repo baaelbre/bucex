@@ -11,7 +11,7 @@ RUNNER = ROOT / "job_scripts" / "run_parallel_chains.py"
 
 
 def test_v132_parallel_runner_uses_json_chain_copies_and_public_combine_paths():
-    assert bx.__version__ == "1.3.2"
+    assert bx.__version__ == "1.4.0"
     source = RUNNER.read_text(encoding="utf-8")
     assert 'chain_config["mcmc"]["chains"] = 1' in source
     assert '["chain_only"] = True' in source
@@ -35,6 +35,8 @@ def test_v132_hpc_surface_has_one_runner_and_one_pbs_file_per_example():
         "07_centered_ig",
         "08_simulation_laplace_mh",
         "09_uccle_laplace_mh",
+        "10_simulation_phi",
+        "11_uccle_phi",
     }
     assert {
         path.stem.removeprefix("run_")

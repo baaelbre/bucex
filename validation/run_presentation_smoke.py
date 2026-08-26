@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Direct-API smoke validation for the ten bucex 1.3.2 examples."""
+"""Direct-API smoke validation for the bucex 1.4.0 examples."""
 from __future__ import annotations
 
 import argparse
@@ -22,8 +22,8 @@ import bucex as bx
 def run(work_dir: Path) -> dict[str, object]:
     started = time.perf_counter()
     scripts = sorted((SOURCE_ROOT / "examples").glob("[0-9][0-9]_*.py"))
-    if len(scripts) != 10:
-        raise RuntimeError(f"Expected ten examples, found {len(scripts)}.")
+    if len(scripts) != 12:
+        raise RuntimeError(f"Expected 12 examples, found {len(scripts)}.")
     for script in scripts:
         compile(script.read_text(encoding="utf-8"), str(script), "exec")
 
@@ -177,8 +177,8 @@ def run(work_dir: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.3.2"))
-    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.3.2.json"))
+    parser.add_argument("--work-dir", type=Path, default=Path("validation/smoke_artifacts_1.4.0"))
+    parser.add_argument("--output", type=Path, default=Path("validation/presentation_smoke_1.4.0.json"))
     args = parser.parse_args()
     result = run(args.work_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.3.2 has five software layers:
+Release 1.4.0 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -41,6 +41,18 @@ evidence for a scientific conclusion.
   `-0.30/0/+0.30`;
 - scale scenarios share their latent path and `xi=-0.30`, varying only
   `sigma=0.75/1.50/3.00`;
+- `GEV()` remains identical to `GEV(phi="stationary")`, while model
+  serialization preserves `linear`, `rw`, and `ssvs` declarations;
+- analytic GEV derivatives with respect to `phi=log(sigma)` agree with finite
+  differences for negative, zero, and positive shape;
+- stationary, linear, random-walk, and SSVS scale models complete exact
+  Laplace-MH smoke fits and expose uniform `phi_draws()`/`sigma_draws()` paths;
+- RW log-scale proposals receive an exact independence-MH correction under
+  Laplace-MH and PGAS, while ordinary Laplace remains explicitly approximate;
+- scale SSVS probabilities sum to one, indicators are stored, and scale-model
+  selection is separate from structural SSVS;
+- posterior predictive simulation uses the in-sample scale path; forecasts
+  hold, extend, propagate, or model-average scale according to `phi=`;
 - the six period-4 structural scenarios share scale/shape and cover stationary,
   linear-trend, random-walk, local-linear-trend, dynamic-seasonal, and
   fixed-seasonal truths;
@@ -58,14 +70,15 @@ evidence for a scientific conclusion.
   chain copy;
 - four calibrated one-series Uccle JSON files differ only by series and encode
   the final model, slab, structural-probability, and four-chain settings;
-- schema-2.6.2 archives round-trip and older supported archives remain readable;
-- the ten Python examples are self-contained calls to the public API;
+- schema-2.7.0 archives round-trip dynamic-scale paths and all older supported
+  archives remain readable;
+- the 12 Python examples are self-contained calls to the public API;
 - centered inverse-gamma process variances use their exact Gibbs full
   conditional and are labelled `inverse_gamma_gibbs` in diagnostics;
 - the centered/inverse-gamma benchmark defaults to approximate Laplace for
   speed, disables ASIS, and selects Laplace-MH or PGAS through
   `examples/config/centered_ig.json`;
-- the ten ordinary PBS jobs invoke those same examples, and every fitting
+- the 12 ordinary PBS jobs invoke those same examples, and every fitting
   workflow combines independent chains only after all chain processes or array
   tasks succeed;
 - dedicated level and slope figures keep observations off the slope scale;
@@ -87,6 +100,8 @@ evidence for a scientific conclusion.
 - prior predictive checks and defensible model odds/slab calibration;
 - simulation recovery for every advertised structural state;
 - sensitivity to record start, process slabs, shape bounds, and particle count;
+- sensitivity to stationary, linear, RW, and SSVS log scale plus their prior
+  hyperparameters;
 - model-averaged trajectories and risk summaries rather than hard-selected
   post-fit models;
 - archived config, version, seeds, manifest, fits, tables, and figures.

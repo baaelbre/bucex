@@ -30,7 +30,7 @@ class FitResult:
     dates: Array | None = None
     series_name: str | None = None
     transform_sign: Any = 1.0
-    schema_version: str = "2.6.2"
+    schema_version: str = "2.7.0"
     initial_values: dict[str, Any] = field(default_factory=dict)
     auxiliary_draws: dict[str, Array] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -262,6 +262,46 @@ class FitResult:
 
     def mu_draws(self, *, original_scale: bool = True) -> Array:
         return self.eta_draws(combine_chains=True, original_scale=original_scale)
+
+    def phi_draws(self, *, combine_chains: bool = True) -> Array:
+        """Posterior paths for ``phi_t = log(sigma_t)``.
+
+        Stationary fits are expanded to ``T`` columns, so downstream code can
+        compare stationary, linear, random-walk, and SSVS fits uniformly.
+        """
+
+        if self.is_multiseries_model:
+            raise ValueError("phi_draws is currently available for univariate GEV fits.")
+        if self.family != "gev":
+            raise ValueError("phi_draws is defined only for GEV fits.")
+        if "phi" in self.parameter_draws:
+            return self.parameter("phi", combine_chains=combine_chains)
+        sigma = self.parameter("sigma", combine_chains=combine_chains)
+        return np.repeat(np.log(sigma)[..., None], self.n_time, axis=-1)
+
+    def sigma_draws(self, *, combine_chains: bool = True) -> Array:
+        """Posterior observation-scale paths with shape ``(..., T)``."""
+
+        if self.is_multiseries_model:
+            raise ValueError("sigma_draws is currently available for univariate fits.")
+        if "sigma_path" in self.parameter_draws:
+            return self.parameter("sigma_path", combine_chains=combine_chains)
+        sigma = self.parameter("sigma", combine_chains=combine_chains)
+        return np.repeat(sigma[..., None], self.n_time, axis=-1)
+
+    def phi_model_probabilities(self) -> dict[str, float]:
+        """Posterior SSVS probabilities for stationary, linear, and RW scale."""
+
+        if (
+            str(getattr(self.model.observation, "phi", "stationary")) != "ssvs"
+            or "phi_model" not in self.parameter_draws
+        ):
+            raise ValueError("This fit did not use phi='ssvs'.")
+        values = np.asarray(self.parameter("phi_model"), dtype=int)
+        return {
+            name: float(np.mean(values == code))
+            for code, name in enumerate(("stationary", "linear", "rw"))
+        }
 
     @property
     def draws_states(self) -> Array:
@@ -691,7 +731,7 @@ class FitResult:
             "observation": self.model.observation,
             "sign": float(self.transform_sign),
             "eta": self.eta_draws(),
-            "sigma": self.parameter("sigma")[:, None],
+            "sigma": self.sigma_draws(),
             "xi": self.parameter("xi")[:, None] if self.family == "gev" else None,
         }
 
@@ -1138,6 +1178,27 @@ class FitResult:
             if "xi" in self.parameter_draws:
                 observation["xi"] = scalar("xi")
             observation["sigma2"] = float(observation["sigma"]) ** 2
+            if "phi" in self.parameter_draws:
+                phi_path = np.asarray(self.parameter_draws["phi"])[
+                    chain_index, draw_index
+                ].copy()
+                phi_intercept = scalar(
+                    "phi_intercept", float(np.mean(phi_path))
+                )
+                observation.update(
+                    phi_path=phi_path,
+                    phi_rw_path=np.r_[phi_intercept, phi_path],
+                    phi_intercept=phi_intercept,
+                    phi_slope=scalar("phi_slope"),
+                    phi_rw_variance=scalar("phi_rw_variance", 1e-8),
+                )
+                if "phi_model" in self.parameter_draws:
+                    code = int(
+                        np.asarray(self.parameter_draws["phi_model"])[
+                            chain_index, draw_index
+                        ]
+                    )
+                    observation["phi_mode"] = ("stationary", "linear", "rw")[code]
 
             output["initial.level"] = float(state["alpha0"])
             output["sd.level"] = abs(float(state["s_level"]))

@@ -1,10 +1,35 @@
 # Changelog
 
+## 1.4.0
+
+- Added `GEV(phi="linear")`, `GEV(phi="rw")`, and `GEV(phi="ssvs")`, with
+  stationary log scale remaining the default.
+- Added analytic GEV score and curvature calculations for
+  `phi_t = log(sigma_t)` and vector-valued observation scales.
+- Added a separate conditional log-scale kernel with exact-likelihood scalar
+  MH updates and an iterated-Laplace random-walk smoother.
+- Added exact independence-MH correction for RW log-scale paths under
+  Laplace-MH and PGAS; ordinary Laplace remains explicitly approximate.
+- Added three-model product-space SSVS over stationary, linear, and RW scale,
+  independently of the existing structural SSVS model space.
+- Added `PhiPrior`, `FitResult.phi_draws()`, `sigma_draws()`, and
+  `phi_model_probabilities()`.
+- Extended posterior prediction, forecasts, PIT, return levels, endpoints, and
+  conditional densities to use time-specific scale paths.
+- Advanced safe result archives to schema 2.7.0 while preserving readers for
+  every previously supported schema.
+- Added standalone simulation and Uccle log-scale examples, four simulation
+  JSONs, 16 series-by-scale Uccle JSONs, and matching Bash/PBS launchers.
+- Rewrote the model, JSON, HPC, inference, architecture, validation, and
+  release documentation for the new log-scale workflow.
+
 ## 1.3.2
 
 - Added four complete calibrated Uccle configurations, one each for TXx, TXn,
   TNx, and TNn, with the supported model structure and initial-level rule
   explicit in JSON.
+- Added four matching `*_narrow.json` Uccle sensitivity configurations that
+  change only the level, trend, and seasonal innovation slab scales.
 - Updated the all-series Uccle configuration to the calibrated zero-centred
   slope prior, physical innovation slabs, structural probabilities, and four-
   chain production profile.
@@ -20,6 +45,8 @@
 - Rewrote the configuration, Uccle, PBS, architecture, validation, release, and
   main documentation around the JSON-only settings contract and four-series
   parallel workflow.
+- Added an explicit 42-command PBS inventory covering every simulation,
+  primary Uccle, and narrow Uccle configuration with all three fit engines.
 
 ## 1.3.1
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -15,7 +16,7 @@ class Simulation:
     y: np.ndarray
     eta: np.ndarray
     states: np.ndarray
-    params: dict[str, float]
+    params: dict[str, Any]
     model: Model | MultiSeriesModel
     exog: object = None
 
@@ -27,11 +28,26 @@ class Simulation:
             else ()
         )
 
+    @property
+    def sigma(self) -> np.ndarray:
+        """Observation-scale path (stationary scales are expanded to length T)."""
+
+        if isinstance(self.model, MultiSeriesModel):
+            raise ValueError("Choose a channel-specific scale for multiseries simulations.")
+        values = np.asarray(self.params["sigma"], dtype=float)
+        return np.full(self.y.shape[0], float(values)) if values.ndim == 0 else values
+
+    @property
+    def phi(self) -> np.ndarray:
+        """The simulated log-scale path."""
+
+        return np.log(self.sigma)
+
 
 def simulate(
     model: Model | MultiSeriesModel,
     n_time: int,
-    params: dict[str, float],
+    params: dict[str, Any],
     *,
     exog=None,
     initial_state=None,
@@ -55,6 +71,17 @@ def simulate(
     missing.extend(name for name in required if name not in params)
     if missing:
         raise ValueError(f"Missing simulation parameters: {missing}")
+    sigma_path = None
+    if not isinstance(model, MultiSeriesModel):
+        sigma_values = np.asarray(params["sigma"], dtype=float)
+        if sigma_values.ndim == 0:
+            sigma_path = np.full(n_time, float(sigma_values), dtype=float)
+        elif sigma_values.shape == (n_time,):
+            sigma_path = sigma_values
+        else:
+            raise ValueError("Simulation sigma must be scalar or have length n_time.")
+        if np.any(~np.isfinite(sigma_path)) or np.any(sigma_path <= 0.0):
+            raise ValueError("Simulation sigma values must be finite and positive.")
     states = np.zeros((n_time + 1, compiled.state_dim))
     if initial_state is None:
         states[0] = np.zeros(compiled.state_dim)
@@ -81,7 +108,7 @@ def simulate(
             y[t - 1] = float(
                 model.observation.sample(
                     eta=eta[t - 1],
-                    sigma=float(params["sigma"]),
+                    sigma=float(sigma_path[t - 1]),
                     xi=params.get("xi"),
                     rng=rng,
                 )

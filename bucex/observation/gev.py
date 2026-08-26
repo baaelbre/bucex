@@ -15,10 +15,12 @@ class GEV:
     """GEV observations using the EVT shape convention ``xi``.
 
     SciPy uses ``c=-xi``.  Both legacy ``params={"sigma", "xi"}`` and
-    explicit keyword calls are accepted.
+    explicit keyword calls are accepted. ``phi`` describes the model for
+    ``phi_t = log(sigma_t)``.  The stationary model remains the default.
     """
 
     xi_bounds: tuple[float, float] = (-0.5, 0.5)
+    phi: str = "stationary"
     name: str = field(default="gev", init=False)
     spec: ObsSpec = field(default=ObsSpec("gev"), init=False, repr=False)
 
@@ -27,6 +29,19 @@ class GEV:
         if not lo < hi:
             raise ValueError("GEV xi_bounds must satisfy lower < upper.")
         object.__setattr__(self, "xi_bounds", (lo, hi))
+        mode = str(self.phi).lower().replace("-", "_").replace(" ", "_")
+        aliases = {
+            "constant": "stationary",
+            "fixed": "stationary",
+            "random_walk": "rw",
+            "randomwalk": "rw",
+            "selection": "ssvs",
+            "spike_slab": "ssvs",
+        }
+        mode = aliases.get(mode, mode)
+        if mode not in {"stationary", "linear", "rw", "ssvs"}:
+            raise ValueError("GEV phi must be 'stationary', 'linear', 'rw', or 'ssvs'.")
+        object.__setattr__(self, "phi", mode)
 
     @staticmethod
     def _parameters(params, sigma, xi):
@@ -39,7 +54,9 @@ class GEV:
         sigma, xi = self._parameters(params, sigma, xi)
         if np.any(np.asarray(sigma) <= 0.0):
             return np.full(
-                np.broadcast_shapes(np.shape(y), np.shape(eta), np.shape(xi)),
+                np.broadcast_shapes(
+                    np.shape(y), np.shape(eta), np.shape(sigma), np.shape(xi)
+                ),
                 -np.inf,
             )
         value = genextreme.logpdf(y, c=-np.asarray(xi), loc=eta, scale=sigma)
@@ -75,57 +92,129 @@ class GEV:
 
     def grad_eta(self, y: Any, eta: Any, params=None, *, sigma=None, xi=None):
         sigma, xi = self._parameters(params, sigma, xi)
-        y_arr, eta_arr = np.broadcast_arrays(
-            np.asarray(y, dtype=float), np.asarray(eta, dtype=float)
+        y_arr, eta_arr, sigma_arr, xi_arr = np.broadcast_arrays(
+            np.asarray(y, dtype=float),
+            np.asarray(eta, dtype=float),
+            np.asarray(sigma, dtype=float),
+            np.asarray(xi, dtype=float),
         )
-        if np.any(np.asarray(sigma) <= 0.0):
-            value = np.full(y_arr.shape, np.nan)
-        else:
-            z = (y_arr - eta_arr) / sigma
-            if abs(xi) < 1e-7:
-                value = (1.0 - np.exp(-z)) / sigma
-            else:
-                support = 1.0 + xi * z
-                value = np.full(y_arr.shape, np.nan)
-                ok = support > 0.0
-                t = support[ok]
-                value[ok] = ((1.0 + xi) / t - t ** (-1.0 / xi - 1.0)) / sigma
+        value = np.full(y_arr.shape, np.nan)
+        positive = sigma_arr > 0.0
+        z = np.zeros_like(y_arr)
+        z[positive] = (y_arr[positive] - eta_arr[positive]) / sigma_arr[positive]
+        gumbel = positive & (np.abs(xi_arr) < 1e-7)
+        value[gumbel] = (1.0 - np.exp(-z[gumbel])) / sigma_arr[gumbel]
+        general = positive & ~gumbel
+        support = 1.0 + xi_arr * z
+        ok = general & (support > 0.0)
+        t = support[ok]
+        shape = xi_arr[ok]
+        value[ok] = (
+            (1.0 + shape) / t - t ** (-1.0 / shape - 1.0)
+        ) / sigma_arr[ok]
         return float(value) if np.ndim(value) == 0 else value
 
     def hess_eta(self, y: Any, eta: Any, params=None, *, sigma=None, xi=None):
         sigma, xi = self._parameters(params, sigma, xi)
-        y_arr, eta_arr = np.broadcast_arrays(
-            np.asarray(y, dtype=float), np.asarray(eta, dtype=float)
+        y_arr, eta_arr, sigma_arr, xi_arr = np.broadcast_arrays(
+            np.asarray(y, dtype=float),
+            np.asarray(eta, dtype=float),
+            np.asarray(sigma, dtype=float),
+            np.asarray(xi, dtype=float),
         )
-        if np.any(np.asarray(sigma) <= 0.0):
-            value = np.full(y_arr.shape, np.nan)
-        else:
-            z = (y_arr - eta_arr) / sigma
-            if abs(xi) < 1e-7:
-                value = -np.exp(-z) / sigma**2
-            else:
-                support = 1.0 + xi * z
-                value = np.full(y_arr.shape, np.nan)
-                ok = support > 0.0
-                t = support[ok]
-                value[ok] = ((1.0 + xi) / sigma**2) * (
-                    xi / t**2 - t ** (-1.0 / xi - 2.0)
-                )
+        value = np.full(y_arr.shape, np.nan)
+        positive = sigma_arr > 0.0
+        z = np.zeros_like(y_arr)
+        z[positive] = (y_arr[positive] - eta_arr[positive]) / sigma_arr[positive]
+        gumbel = positive & (np.abs(xi_arr) < 1e-7)
+        value[gumbel] = -np.exp(-z[gumbel]) / sigma_arr[gumbel] ** 2
+        general = positive & ~gumbel
+        support = 1.0 + xi_arr * z
+        ok = general & (support > 0.0)
+        t = support[ok]
+        shape = xi_arr[ok]
+        value[ok] = ((1.0 + shape) / sigma_arr[ok] ** 2) * (
+            shape / t**2 - t ** (-1.0 / shape - 2.0)
+        )
+        return float(value) if np.ndim(value) == 0 else value
+
+    def grad_phi(self, y: Any, eta: Any, params=None, *, sigma=None, xi=None):
+        """Derivative of the log density with respect to ``phi=log(sigma)``."""
+
+        sigma, xi = self._parameters(params, sigma, xi)
+        y_arr, eta_arr, sigma_arr, xi_arr = np.broadcast_arrays(
+            np.asarray(y, dtype=float),
+            np.asarray(eta, dtype=float),
+            np.asarray(sigma, dtype=float),
+            np.asarray(xi, dtype=float),
+        )
+        value = np.full(y_arr.shape, np.nan)
+        positive = sigma_arr > 0.0
+        z = np.zeros_like(y_arr)
+        z[positive] = (y_arr[positive] - eta_arr[positive]) / sigma_arr[positive]
+        gumbel = positive & (np.abs(xi_arr) < 1e-7)
+        zg = z[gumbel]
+        value[gumbel] = -1.0 + zg * (1.0 - np.exp(-zg))
+        general = positive & ~gumbel
+        support = 1.0 + xi_arr * z
+        ok = general & (support > 0.0)
+        t = support[ok]
+        shape = xi_arr[ok]
+        zz = z[ok]
+        score = (1.0 + shape) / t - t ** (-1.0 / shape - 1.0)
+        value[ok] = -1.0 + zz * score
+        return float(value) if np.ndim(value) == 0 else value
+
+    def hess_phi(self, y: Any, eta: Any, params=None, *, sigma=None, xi=None):
+        """Second derivative of the log density with respect to log scale."""
+
+        sigma, xi = self._parameters(params, sigma, xi)
+        y_arr, eta_arr, sigma_arr, xi_arr = np.broadcast_arrays(
+            np.asarray(y, dtype=float),
+            np.asarray(eta, dtype=float),
+            np.asarray(sigma, dtype=float),
+            np.asarray(xi, dtype=float),
+        )
+        value = np.full(y_arr.shape, np.nan)
+        positive = sigma_arr > 0.0
+        z = np.zeros_like(y_arr)
+        z[positive] = (y_arr[positive] - eta_arr[positive]) / sigma_arr[positive]
+        gumbel = positive & (np.abs(xi_arr) < 1e-7)
+        zg = z[gumbel]
+        exp_term = np.exp(-zg)
+        value[gumbel] = -zg * (1.0 - exp_term) - zg**2 * exp_term
+        general = positive & ~gumbel
+        support = 1.0 + xi_arr * z
+        ok = general & (support > 0.0)
+        t = support[ok]
+        shape = xi_arr[ok]
+        zz = z[ok]
+        score = (1.0 + shape) / t - t ** (-1.0 / shape - 1.0)
+        score_derivative = (1.0 + shape) * (
+            -shape / t**2 + t ** (-1.0 / shape - 2.0)
+        )
+        value[ok] = -zz * score - zz**2 * score_derivative
         return float(value) if np.ndim(value) == 0 else value
 
     def support_ok(self, y: Any, eta: Any, params=None, *, sigma=None, xi=None) -> bool:
         sigma, xi = self._parameters(params, sigma, xi)
         if np.any(np.asarray(sigma) <= 0.0):
             return False
-        if abs(xi) < 1e-12:
-            return True
-        y_arr, eta_arr = np.broadcast_arrays(
-            np.asarray(y, dtype=float), np.asarray(eta, dtype=float)
+        y_arr, eta_arr, sigma_arr, xi_arr = np.broadcast_arrays(
+            np.asarray(y, dtype=float),
+            np.asarray(eta, dtype=float),
+            np.asarray(sigma, dtype=float),
+            np.asarray(xi, dtype=float),
         )
-        return bool(np.all(1.0 + xi * (y_arr - eta_arr) / sigma > 0.0))
+        support = 1.0 + xi_arr * (y_arr - eta_arr) / sigma_arr
+        return bool(np.all((np.abs(xi_arr) < 1e-12) | (support > 0.0)))
 
     def to_dict(self) -> dict[str, Any]:
-        return {"family": self.name, "xi_bounds": list(self.xi_bounds)}
+        return {
+            "family": self.name,
+            "xi_bounds": list(self.xi_bounds),
+            "phi": self.phi,
+        }
 
 
 GEVObs = GEV

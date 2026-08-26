@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: bucex
-Version: 1.3.2
+Version: 1.4.0
 Summary: Bayesian unobserved-component models for environmental extremes
 Author: Bastiaan AVV
 License-Expression: MIT
@@ -28,84 +28,50 @@ Requires-Dist: pytest>=7; extra == "dev"
 Requires-Dist: matplotlib>=3.6; extra == "dev"
 Dynamic: license-file
 
-# bucex 1.3.2
+# bucex 1.4.0
 
-`bucex` fits Bayesian unobserved-components models to Gaussian and generalized
-extreme-value observations. The package combines a declarative structural
-model API, componentwise SSVS, approximate Laplace state updates, exact
-Laplace independence-MH updates, and exact-density PGAS state updates.
+`bucex` fits Bayesian unobserved-component models to Gaussian and generalized
+extreme-value observations. Version 1.4.0 adds an optional time-varying GEV
+log scale while keeping the stationary model as the default.
 
-Version 1.3.2 makes the JSON/PBS workflow complete and collision-safe. Six
-simulation presets live under `examples/config/simulations/`; four calibrated
-single-series Uccle presets live under `examples/config/uccle/`. Every numbered
-example exposes `DEFAULT_CONFIG_FILE`, accepts `--config PATH`, and reads the
-file directly with `bx.load_config`. The PBS files allocate resources only;
-draws, warmup, chains, seeds, priors, model choices, and figure settings remain
-in JSON. Concurrent jobs receive IDs containing the configuration name and PBS
-job ID, so series or scenarios starting in the same second cannot share output
-directories. The release includes ten transparent analysis scripts:
+```python
+import bucex as bx
 
-1. the complete Uccle record from 1892 and the evolution of TXx;
-2. matched GEV shape and scale simulations;
-3. six explicit structural simulations;
-4. selection recovery with Laplace state updates;
-5. the same recovery experiment with Laplace-initialized PGAS;
-6. Laplace analysis of TXx, TXn, TNx, and TNn;
-7. PGAS analysis of the same four series;
-8. a centered random-walk GEV mixing benchmark with a fast Laplace default,
-   conjugate inverse-gamma process-variance updates, and exact validation
-   through Laplace-MH or PGAS;
-9. exact Laplace-MH fits for the same six structural simulations as item 4;
-10. exact Laplace-MH fits of Uccle TXx, TXn, TNx, and TNn under the same
-    model and calibrated priors as item 6.
-
-There is no presentation workflow layer. Every script constructs its models
-with `bx.Model`, `bx.LocalLinearTrend`, `bx.DummySeasonal`, and `bx.GEV`, then
-calls `bx.simulate`, `bx.fit`, `FitResult` summaries, and plotting methods
-directly.
-
-## Installation
-
-```bash
-python -m pip install ".[plot,test]"
-python -c "import bucex; print(bucex.__version__)"
+bx.GEV()                  # stationary phi_t = log(sigma)
+bx.GEV(phi="linear")     # linear trend in phi_t
+bx.GEV(phi="rw")         # random walk in phi_t
+bx.GEV(phi="ssvs")       # select stationary, linear, or RW
 ```
 
-## Model
+No new fitting entry point is needed. The model still goes through `bx.fit`,
+returns a `FitResult`, and uses the same prediction and persistence APIs.
 
-For a monthly block extreme,
+## Log-scale models
 
-\[
-Y_t\mid\eta_t,\sigma,\xi\sim
-\operatorname{GEV}(\eta_t,\sigma,\xi),
-\qquad \eta_t=\mu_t+\gamma_t,
-\]
+Write \(\phi_t=\log(\sigma_t)\), so \(\sigma_t=\exp(\phi_t)>0\). The four
+choices are:
 
-subject to \(1+\xi(Y_t-\eta_t)/\sigma>0\). A local-linear component is
+| `phi=` | Model | Interpretation |
+|---|---|---|
+| `"stationary"` | \(\phi_t=\phi_0\) | one scale for the full record; default |
+| `"linear"` | \(\phi_t=\phi_0+\delta b_t\) | smooth log-scale trend |
+| `"rw"` | \(\phi_t=\phi_{t-1}+u_t\) | locally changing log scale |
+| `"ssvs"` | model indicator over the three rows above | scale-model uncertainty |
 
-\[
-\mu_{t+1}=\mu_t+\beta_t+s_\mu z^\mu_{t+1},\qquad
-\beta_{t+1}=\beta_t+s_\beta z^\beta_{t+1},
-\]
+The centered basis \(b_t\) runs from \(-1/2\) to \(+1/2\). Consequently,
+`exp(phi_slope)` is the fitted end/start scale ratio for the linear model.
+For the random walk, \(u_t\sim N(0,q_\phi)\), and `phi_rw_sd` is
+\(\sqrt{q_\phi}\).
 
-and the dummy seasonal component may have innovation coefficient \(s_\gamma\).
-The Fruehwirth--Schnatter representation estimates signed coefficients and
-standard-normal non-centred states, keeping the important neighbourhood near
-zero accessible without an inverse-gamma process-variance prior.
+Scale selection is separate from structural SSVS for the location process.
+Using `bx.ssvs_gev_priors(...)` and `GEV(phi="ssvs")` therefore allows both:
 
-For a centered Gaussian state equation, an `InverseGammaVariance` process
-prior is conjugate conditional on the complete state trajectory. bucex detects
-this combination automatically and draws the process variance by Gibbs. No
-extra API flag is required. An inverse-gamma prior on the GEV observation scale
-is not conjugate and therefore retains its Metropolis--Hastings update.
+- SSVS over fixed/dynamic level, zero/fixed/dynamic slope, and
+  zero/fixed/dynamic seasonality;
+- SSVS over stationary, linear, and random-walk log scale.
 
-Componentwise SSVS assigns:
-
-- level: `fixed` or `dynamic`;
-- slope: `zero`, `fixed`, or `dynamic`;
-- seasonal cycle: `zero`, `fixed`, or `dynamic`.
-
-`sigma` and `xi` are inferred but constant through time in this release.
+See `docs/LOG_SCALE.md` for the model equations, priors, exactness statement,
+forecast behavior, and diagnostics.
 
 ## Direct API
 
@@ -116,7 +82,7 @@ import bucex as bx
 y = bx.load_uccle_series("TXx", start="1892-01-01")
 
 model = bx.Model(
-    bx.GEV(xi_bounds=(-0.5, 0.5)),
+    bx.GEV(phi="rw", xi_bounds=(-0.5, 0.5)),
     (
         bx.LocalLinearTrend(level_mode="dynamic", trend_mode="dynamic"),
         bx.DummySeasonal(period=12, mode="dynamic"),
@@ -126,270 +92,143 @@ model = bx.Model(
 priors = bx.ssvs_gev_priors(
     period=12,
     alpha_mean=float(np.median(y)),
-    alpha_sd=3.2,
-    beta_mean=0.0,
-    beta_sd=0.0025,
-    seasonal_initial_sd=2.25,
     sigma2_prior=bx.InverseGammaPrior(2.0, 2.0),
     xi_prior=bx.UniformPrior(-0.5, 0.5),
-    xi_max_abs=0.5,
-    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02},
-    level_dynamic_probability=0.5,
-    trend_probabilities=(0.2, 0.4, 0.4),
-    season_probabilities=(0.0, 0.5, 0.5),
+    innovation_slab_sd={"level": 0.01, "trend": 0.000025, "season": 0.01},
+    phi_prior=bx.PhiPrior(
+        linear=bx.NormalPrior(0.0, 0.35),
+        rw_variance=bx.InverseGammaPrior(2.5, 3.75e-5),
+        model_probabilities={"stationary": 0.50, "linear": 0.25, "rw": 0.25},
+    ),
 )
 
-laplace = bx.fit(
-    y,
-    model=model,
-    priors=priors,
-    engine="laplace",
-    parameterization="fruehwirth_schnatter",
-    asis=False,
-    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_000),
-)
-
-pgas = bx.fit(
-    y,
-    model=model,
-    priors=laplace.priors,
-    engine="pgas",
-    parameterization="fruehwirth_schnatter",
-    asis=False,
-    init=laplace,
-    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_000),
-    particles=bx.Particles(n=128, proposal="guided"),
-)
-
-laplace_mh = bx.fit(
+fit = bx.fit(
     y,
     model=model,
     priors=priors,
     engine="laplace_mh",
     parameterization="fruehwirth_schnatter",
-    asis=False,
-    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_000),
-    laplace=bx.Laplace(mh_steps=1),
+    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_100),
 )
 
-print(laplace_mh.diagnostics()["engine"])
-
-print(pgas.component_probabilities())
-print(pgas.diagnostics()["engine"])
-pgas.plot("level")
-pgas.plot("level", show_observed=False)
-pgas.plot(
-    "slope",
-    scale="decade",
-    unit="slope / °C per decade",
-    condition_on="dynamic",
-    show_fixed=True,
-)
-pgas.plot("season")
-
-replicated = pgas.posterior_predictive(draws=1_000, seed=26003)
-replicated.plot(observed=pgas.observed)
-
-forecast = pgas.forecast(120, draws=1_000, seed=26004)
-forecast.plot(
-    history=pgas.observed,
-    history_dates=pgas.dates,
-    history_points=360,
-)
-
-# July alone: no rapid month-to-month seasonal oscillation.
-forecast.plot(
-    phase=7,
-    phase_label="July",
-    history=pgas.observed,
-    history_dates=pgas.dates,
-    history_points=360,
-)
-
-# The latent level excludes seasonality and observation noise.
-forecast.plot(
-    target="level",
-    history=np.median(pgas.state_original("level"), axis=0),
-    history_dates=pgas.dates,
-    history_points=360,
-)
+phi = fit.phi_draws()       # shape: draws x time
+sigma = fit.sigma_draws()   # exp(phi), same shape
+forecast = fit.forecast(120, draws=1_000, seed=56_101)
 ```
 
-The standalone `level` and `slope` plots show the two trend components on their
-proper scales. `show_observed=False` removes seasonally adjusted observations
-from the level figure. Raw observations are never drawn on the slope axis;
-the slope plot can report change per decade and overlay the conditional fixed-
-slope posterior as dashed lines. The `season` plot overlays the seasonal
-effect \(\gamma_{ij}\), without the level, for every phase of the cycle.
-
-`FitResult.posterior_predictive()` generates replicated observations at the
-fitted time points. `FitResult.forecast()` propagates both latent states and
-observation uncertainty beyond the data. Their common plotting API supports
-observed checks, recent history, predictive intervals, and optional latent-
-predictor medians. `phase=` is one-based and filters both the forecast and
-supplied contiguous history. `target="level"` returns the latent level alone;
-the same choices are available in `Forecast.summary()`. Fitted trajectories
-accept `fit.plot("predictor", phase=7)` and `fit.plot("level", phase=7)`.
-
-## Laplace, Laplace-MH, and PGAS
-
-For GEV observations, `engine="laplace"` samples states from an iterated local
-pseudo-Gaussian approximation. It is useful for screening, debugging, and
-initialization, but is not labelled exact posterior inference.
-
-`engine="laplace_mh"` builds the same mode-matched Gaussian smoother
-deterministically from the observations and current static parameters, draws a
-complete trajectory by FFBS, and corrects it with independence
-Metropolis--Hastings. If (L) is the exact observation likelihood and
-\(\widetilde L\) is the Gaussian pseudo-likelihood, the log acceptance ratio is
-
-\[
-\bigl[\log L(x')-\log\widetilde L(x')\bigr]
--\bigl[\log L(x)-\log\widetilde L(x)\bigr].
-\]
-
-The exact and proposal state laws are the same, so their possibly singular
-transition densities cancel. Integrated-slope and dummy-seasonal lag
-coordinates are projected onto their exact affine recursion after Gaussian
-simulation. If the zero FS trajectory is outside finite GEV support, the mode
-search starts from a deterministic feasible trajectory that does not depend on
-the current chain state. GEV endpoint violations by Gaussian proposal draws are
-ordinary MH rejections; proposals are not truncated and never fall back to an
-atom at the mode. The returned plan is therefore labelled exact-invariant.
-Inspect state acceptance, support repairs and rejections, Laplace convergence,
-and ESS per second. `Laplace(mh_steps=...)` controls repeated full-path
-proposals at fixed parameters.
-
-`engine="pgas"` uses conditional sequential Monte Carlo with ancestor
-sampling and the exact GEV observation density. Fixed or excluded components
-make transitions singular; bucex evaluates transition feasibility and
-ancestor weights on the corresponding affine support.
-
-`init=laplace` transfers one coherent posterior draw: static parameters,
-structural indicators, signed innovation coefficients, and the complete state
-path. It changes initialization, not the PGAS invariant distribution. Inspect
-particle ESS, unique ancestors, path-update rates, reference-ancestor changes,
-structural switching, and GEV support diagnostics before trusting a run.
-
-The explicit classical benchmark in
-`examples/07_centered_ig.py` instead uses a random-walk level,
-`parameterization="centered"`, `asis=False`, and `InverseGammaVariance`
-priors. It uses approximate `laplace` by default for a fast mixing diagnostic
-and always exports traces, ACFs, ESS/R-hat, and process-variance summaries.
-Set `inference.engine` in `examples/config/centered_ig.json` to `laplace_mh`
-for exact Laplace-MH validation or to `pgas` for the exact particle benchmark.
-Its purpose is diagnostic
-comparison with the FS/non-centred specification, not to replace the latter as
-the default structural-selection model.
-
-## Ten standalone examples
-
-Run the examples from the repository root. Edit their JSON files or pass a
-copy with `--config`; there are no hidden scientific overrides:
-
-```bash
-python examples/00_uccle_record.py --config examples/config/record.json
-python examples/01_tail_simulations.py --config examples/config/tail.json
-python examples/02_structural_simulations.py --config examples/config/simulation.json
-python examples/03_simulation_laplace.py --config examples/config/simulation.json
-python examples/04_simulation_pgas.py --config examples/config/simulation.json
-python examples/05_uccle_laplace.py --config examples/config/uccle.json
-python examples/06_uccle_pgas.py --config examples/config/uccle.json
-python examples/07_centered_ig.py --config examples/config/centered_ig.json
-python examples/08_simulation_laplace_mh.py --config examples/config/simulation.json
-python examples/09_uccle_laplace_mh.py --config examples/config/uccle.json
-```
-
-Outputs are written below
-`results/<script>/<run-id>__<automatic-settings-signature>/`. The run ID is a
-timestamp for direct Python execution. Bash/PBS execution adds the selected
-configuration name and PBS job ID (or local process ID), preventing concurrent
-jobs from colliding. Set `output.run_id` only when a manually chosen ID is
-unique. Every run contains `run_config.json`; `output.results_root` and
-`output.overwrite` control its location and collision policy.
-
-Simulation fitting runs use `simulations/`, `fits/<scenario>/`,
-`tables/<scenario>/`, and `figures/<scenario>/`. Uccle fitting runs use
-`fits/<series>/`, `tables/<series>/`, and `figures/<series>/`. The Laplace,
-PGAS, and Laplace-MH examples share the same scientific settings and artifact
-names; only method-specific diagnostics and warm-start fits differ.
-
-Complete settings live in `examples/config/`, including the six files under
-`simulations/` and four files under `uccle/`. Use a selected file or an edited
-copy without changing Python:
-
-```bash
-python examples/03_simulation_laplace.py --config my_simulation.json
-```
-
-PBS jobs use the same file through `qsub -v CONFIG=path/to/config.json`. To run
-a pilot, copy the JSON and reduce `mcmc.draws`, `mcmc.warmup`, or particle
-counts there. The copied file is the complete reproducible specification.
-
-The simulations use period 4 and 1,000 observations for structural recovery.
-Every simulated time series has its own figure. Only each scenario's level,
-slope, and seasonal decomposition is shown as a three-panel figure. Shape and
-scale comparisons use a common vertical range within each group.
-
-The Uccle descriptive figures begin in 1892 and use robust local-linear LOESS
-rather than a rolling median. The analysis figures include the complete
-posterior predictor, paired latent-level figures with and without adjusted
-observations, slope trajectories in degrees per decade, structural
-probabilities, prior-to-posterior process SDs, GEV parameters, finite endpoints
-where applicable, posterior seasonality, posterior predictive checks, and
-ten-year forecasts by default. Each fit also saves a July-only trajectory and
-forecast plus a seasonally adjusted latent-level forecast. Change the calendar
-month with `figures.focus_month` in the selected Uccle JSON.
-
-## HPC
-
-Each example has a Bash runner and a matching PBS file. The PBS file requests
-resources and receives one JSON path; it does not redefine chains, draws,
-warmup, priors, or model settings:
-
-```bash
-qsub -N bx_txx_lap \
-  -v CONFIG=examples/config/uccle/01_txx.json \
-  job_scripts/submit_05_uccle_laplace.pbs
-```
-
-`job_scripts/run_parallel_chains.py` reads `mcmc.chains`, launches one process
-per chain up to the allocated worker count, and combines successful fits before
-creating final figures. Thus four Uccle PBS jobs can each run four parallel
-chains, for up to 16 concurrent processes when the scheduler grants all jobs.
-The ten numbered Bash files use the same logic interactively:
-
-```bash
-bash bash_scripts/run_05_uccle_laplace.sh examples/config/uccle/01_txx.json 4
-```
-
-Set `runtime.progress` to `true` in JSON. A one-chain local run prints progress
-to the terminal; parallel chains write separate files under `logs/`, which can
-be followed with `tail -f`. See `docs/HPC.md` and `docs/HPC_RUNNERS.md`.
-
-## Risk summaries
-
-A fitted GEV result retains upper/lower-tail orientation and provides
-time-varying endpoint, exceedance-probability, return-period, and return-level
-draws:
+Change only `phi="rw"` to `"linear"`, `"stationary"`, or `"ssvs"`. For an
+SSVS fit, inspect:
 
 ```python
-levels = pgas.return_level_draws(20)
-periods, years = pgas.return_period_draws(35.0, annual=True)
-endpoint = pgas.endpoint_draws(original_scale=True)
+fit.phi_model_probabilities()
+# {'stationary': ..., 'linear': ..., 'rw': ...}
 ```
 
-For monthly data, annual exceedance probabilities compose the twelve fitted
-monthly probabilities. These remain model-based, time-indexed posterior risk
-summaries, not stationary return levels.
+The stationary result also supports `phi_draws()` and `sigma_draws()`; its
+scalar scale is expanded over time so downstream comparisons need no special
+case. Posterior predictive and forecast results expose `parameters["phi"]`
+and `parameters["sigma_path"]` for every GEV scale model.
 
-## Validation
+## Inference
+
+`engine="laplace_mh"` is the recommended exact-invariant default for the new
+examples. The structural location path uses the existing iterated-Laplace
+smoother as a full-path independence proposal with an exact GEV
+Metropolis--Hastings correction.
+
+The random-walk log-scale path uses its own conditional iterated-Laplace
+smoother. With `laplace_mh` or `pgas`, its proposal is also corrected against
+the exact GEV density. With `engine="laplace"`, both uses of the Laplace
+approximation are intentionally approximate. Linear and stationary scale
+parameters use the exact GEV likelihood in ordinary MH updates. The
+`phi="ssvs"` implementation is a three-model product-space sampler with proper
+prior pseudo-priors.
+
+Time-varying `phi` currently requires the Fruehwirth--Schnatter
+parameterization and a univariate `Model`. Fit TXx, TXn, TNx, and TNn as
+separate jobs; dynamic scale is rejected for `MultiSeriesModel` rather than
+silently approximated.
+
+## JSON-first examples
+
+The two new scripts each contain one readable `main()` and load all scientific
+and computational settings directly from the selected JSON:
+
+- `examples/10_simulation_phi.py` for scale-model sensitivity simulations;
+- `examples/11_uccle_phi.py` for Uccle TXx, TXn, TNx, and TNn.
+
+The first executable line to edit in either script is `DEFAULT_CONFIG_FILE`.
+Command-line selection is usually more convenient:
 
 ```bash
+python examples/10_simulation_phi.py --config examples/config/phi/simulation_stationary.json
+python examples/10_simulation_phi.py --config examples/config/phi/simulation_linear.json
+python examples/10_simulation_phi.py --config examples/config/phi/simulation_rw.json
+python examples/10_simulation_phi.py --config examples/config/phi/simulation_ssvs.json
+
+python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_stationary.json
+```
+
+There are 16 Uccle JSONs: four series times four scale models. They live under
+`examples/config/phi/uccle/` and are ordinary, indented JSON files. Change
+priors, scale hyperparameters, draws, warmup, chains, seeds, Laplace controls,
+figures, and output paths there; neither the Python nor PBS layer overwrites
+them.
+
+The production profile is 1,000 retained draws after 1,000 warmup iterations
+for each of four independent chains. Use an edited copy with smaller values for
+a pilot.
+
+## PBS/HPC
+
+Submit one JSON per job from the repository root:
+
+```bash
+qsub -v CONFIG=examples/config/phi/simulation_rw.json \
+  job_scripts/submit_10_simulation_phi.pbs
+
+qsub -v CONFIG=examples/config/phi/uccle/01_txx_ssvs.json \
+  job_scripts/submit_11_uccle_phi.pbs
+```
+
+Submit every new simulation and Uccle configuration:
+
+```bash
+for config in examples/config/phi/simulation_*.json; do
+  qsub -v CONFIG="$config" job_scripts/submit_10_simulation_phi.pbs
+done
+
+for config in examples/config/phi/uccle/*.json; do
+  qsub -v CONFIG="$config" job_scripts/submit_11_uccle_phi.pbs
+done
+```
+
+Each JSON requests four chains. The runner starts those chains as four
+independent one-core processes and combines them only after all succeed. All
+four series, all four scale models, and their chains may run concurrently;
+actual concurrency is determined by PBS quotas. PBS controls walltime, cores,
+memory, and logs only. See `docs/HPC.md` for setup, monitoring, collision-safe
+run IDs, and the exact split/combine contract.
+
+There is no separate `hpc/` directory because it would duplicate project
+structure. Scheduler wrappers and the generic chain runner live together in
+`job_scripts/`; interactive wrappers live in `bash_scripts/`; the same example
+and JSON are used locally and on PBS.
+
+## Installation and validation
+
+```bash
+python -m pip install ".[plot,test]"
+python -c "import bucex; print(bucex.__version__)"
 python -m pytest
-python validation/run_release_validation.py
 python -m build
 ```
 
-See `docs/INFERENCE_MATRIX.md`, `docs/UCCLE.md`, and `docs/VALIDATION.md` for
-the detailed contracts.
+The printed version should be `1.4.0`. Safe result archives use schema 2.7.0
+and remain backward-readable for every previously supported schema.
+
+The broader package still includes Gaussian/GEV structural models, Laplace,
+Laplace-MH and PGAS state inference, prediction, risk summaries, plotting,
+Uccle loaders, hierarchical models, and the earlier numbered examples. See
+`docs/ARCHITECTURE.md`, `docs/INFERENCE_MATRIX.md`, `docs/UCCLE.md`, and
+`docs/VALIDATION.md`.

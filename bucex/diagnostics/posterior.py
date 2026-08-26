@@ -142,7 +142,7 @@ def posterior_pit(fit) -> Array:
             output[:, index] = np.nanmean(cdf, axis=0)
         return output
     eta = fit.eta_draws(original_scale=False)
-    sigma = fit.parameter("sigma")[:, None]
+    sigma = fit.sigma_draws()
     xi = fit.parameter("xi")[:, None] if fit.family == "gev" else None
     cdf = fit.model.observation.cdf(fit.y[None, :], eta, sigma=sigma, xi=xi)
     if float(fit.transform_sign) < 0.0:

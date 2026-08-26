@@ -1,7 +1,35 @@
-# Migration from the former 2.6.2 package to 1.3.2
+# Migration to bucex 1.4.0
 
 The general `Model`, `MultiSeriesModel`, `fit`, `FitResult`, prediction,
 diagnostic, plotting, Uccle-loader, and hierarchical APIs remain available.
+
+## From 1.3.2 to 1.4.0
+
+No change is required for an existing stationary GEV analysis:
+
+```python
+bx.GEV()
+```
+
+is still stationary and is equivalent to `bx.GEV(phi="stationary")`. To add a
+scale sensitivity fit, change only the observation declaration:
+
+```python
+bx.GEV(phi="linear")
+bx.GEV(phi="rw")
+bx.GEV(phi="ssvs")
+```
+
+Dynamic scale requires a univariate FS model. Existing multiseries fits remain
+stationary; an attempted dynamic declaration now fails explicitly. Prior
+profiles receive a default `PhiPrior`, so old prior construction remains
+valid. To customize scale priors with structural SSVS, pass
+`phi_prior=bx.PhiPrior(...)` to `ssvs_gev_priors`.
+
+Use `fit.phi_draws()` and `fit.sigma_draws()` instead of assuming that
+`fit.parameter("sigma")` is the full scale trajectory. The scalar `sigma`
+remains a stationary or reference-scale compatibility value. Forecast and
+risk APIs use the scale path automatically.
 
 ## Presentation workflow removal
 
@@ -28,9 +56,9 @@ laplace = bx.fit(y, model=model, priors=priors, engine="laplace", ...)
 pgas = bx.fit(y, model=model, priors=laplace.priors, engine="pgas", init=laplace, ...)
 ```
 
-The seven complete analysis examples and the centered/inverse-gamma diagnostic
-benchmark are in `examples/`; normal runners are in `bash_scripts/`, and
-matching PBS jobs are in `job_scripts/`.
+The complete analysis examples, centered/inverse-gamma benchmark, exact-engine
+comparisons, and new scale-sensitivity scripts are in `examples/`; normal
+runners are in `bash_scripts/`, and matching PBS jobs are in `job_scripts/`.
 
 ## Result paths
 
@@ -63,5 +91,6 @@ posterior predictive checks, and forecasts.
 
 The full-path Laplace-to-PGAS warm-start contract is unchanged. Compatibility
 checks cover family, period, transformed observations, and state dimensions.
-The persistence schema remains 2.6.2; loading remains checksum-verified and
-pickle-free, with readers for all versions previously supported by 2.6.2.
+The persistence schema is 2.7.0 so dynamic log-scale paths and model indicators
+round-trip. Loading remains checksum-verified and pickle-free, with readers for
+all versions previously supported by 2.6.2.

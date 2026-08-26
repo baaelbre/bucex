@@ -2078,6 +2078,29 @@ def _ncp_observation_logweights(
     return values
 
 
+def _observation_params_at(
+    params_obs: ParamDict,
+    time: int,
+    n_time: int,
+) -> ParamDict:
+    """Select time-varying observation parameters for one particle-filter step."""
+
+    output = dict(params_obs)
+    for name in ("sigma", "xi"):
+        if name not in output:
+            continue
+        values = np.asarray(output[name], dtype=float)
+        if values.ndim == 0:
+            output[name] = float(values)
+        elif values.shape == (int(n_time),):
+            output[name] = float(values[int(time)])
+        else:
+            raise ValueError(
+                f"Observation parameter {name!r} must be scalar or have length T."
+            )
+    return output
+
+
 def _ncp_guided_statistics(
     y_t: float,
     means: Array,
@@ -2240,6 +2263,7 @@ def ncp_pgas(
     reference_ancestors[0] = conditioned
 
     for t in range(1, Tn + 1):
+        params_at_t = _observation_params_at(params_obs, t - 1, Tn)
         previous_weights = weights[t - 1]
         parents = rng.choice(
             n_particles, size=conditioned, replace=True, p=previous_weights
@@ -2253,7 +2277,7 @@ def ncp_pgas(
             H,
             loading,
             model,
-            params_obs,
+            params_at_t,
             proposal,
             rng,
         )
@@ -2296,7 +2320,7 @@ def ncp_pgas(
             active,
             deterministic,
             model,
-            params_obs,
+            params_at_t,
             proposal,
         )
         unique[t] = int(np.unique(ancestors[t]).size)
@@ -2306,7 +2330,7 @@ def ncp_pgas(
             float(offset[t - 1]),
             H,
             model,
-            params_obs,
+            params_at_t,
         )
         incremental[:conditioned] += correction
         incremental[conditioned] += reference_correction
@@ -2453,9 +2477,13 @@ def _deterministic_feasible_ncp_path(
         raise FloatingPointError(
             "The deterministic Laplace initializer is outside observation support."
         )
-    sigma = float(params_obs["sigma"])
+    sigma = np.asarray(params_obs["sigma"], dtype=float)
+    if sigma.ndim == 0:
+        sigma = np.full(y.size, float(sigma), dtype=float)
+    elif sigma.shape != y.shape:
+        raise FloatingPointError("GEV sigma must be scalar or have length T.")
     xi = float(params_obs["xi"])
-    if not np.isfinite(sigma) or sigma <= 0.0 or not np.isfinite(xi):
+    if np.any(~np.isfinite(sigma)) or np.any(sigma <= 0.0) or not np.isfinite(xi):
         raise FloatingPointError("Invalid GEV sigma or xi at Laplace initialization.")
     if abs(xi) < 1e-12:
         raise FloatingPointError(
@@ -2466,8 +2494,8 @@ def _deterministic_feasible_ncp_path(
     if not 0.0 < minimum_support < 1.0:
         raise ValueError("minimum_support must lie strictly between zero and one.")
 
-    def support_value(observation: float, predictor: float) -> float:
-        return float(1.0 + xi * (observation - predictor) / sigma)
+    def support_value(time: int, observation: float, predictor: float) -> float:
+        return float(1.0 + xi * (observation - predictor) / sigma[int(time)])
 
     active, _, _ = _ncp_transition_structure(Q)
     immediate = np.asarray(H[active], dtype=float)
@@ -2482,7 +2510,7 @@ def _deterministic_feasible_ncp_path(
         for time in range(1, y.size + 1):
             state = G @ path[time - 1]
             predictor = float(offset[time - 1] + H @ state)
-            support = support_value(float(y[time - 1]), predictor)
+            support = support_value(time - 1, float(y[time - 1]), predictor)
             if not np.isfinite(support) or support < minimum_support:
                 state[innovation_index] += (
                     float(y[time - 1]) - predictor
@@ -2507,14 +2535,14 @@ def _deterministic_feasible_ncp_path(
         for time in range(1, y.size + 1):
             state = G @ path[time - 1]
             predictor = float(offset[time - 1] + H @ state)
-            support = support_value(float(y[time - 1]), predictor)
+            support = support_value(time - 1, float(y[time - 1]), predictor)
             if not np.isfinite(support) or support <= 0.0:
                 raise FloatingPointError(
                     "The deterministic first-lag FS predictor is outside GEV support."
                 )
             if time < y.size:
                 next_predictor = float(offset[time] + H @ (G @ state))
-                next_support = support_value(float(y[time]), next_predictor)
+                next_support = support_value(time, float(y[time]), next_predictor)
                 if not np.isfinite(next_support) or next_support < minimum_support:
                     state[innovation_index] += (
                         float(y[time]) - next_predictor
@@ -2583,8 +2611,9 @@ def build_ncp_laplace_approximation(
     if mode.shape != (Tn + 1, layout.ncp_state_dim):
         raise ValueError("initial_path has the wrong shape.")
     mode = _project_ncp_path_to_support(mode, G, Q)
+    sigma_values = np.asarray(params_obs["sigma"], dtype=float)
     shift_limit = float(
-        10.0 * float(params_obs["sigma"])
+        10.0 * float(np.max(sigma_values))
         if shift_limit is None
         else shift_limit
     )
@@ -2602,7 +2631,7 @@ def build_ncp_laplace_approximation(
     converged = False
     relative_change = np.inf
     pseudo_y = np.asarray(y, dtype=float).copy()
-    pseudo_variance = np.full(Tn, float(params_obs["sigma"]) ** 2)
+    pseudo_variance = np.broadcast_to(sigma_values, (Tn,)).astype(float) ** 2
     iteration = 0
 
     for iteration in range(1, int(max_iterations) + 1):

@@ -1313,7 +1313,7 @@ def sample_hierarchical_posterior(
         dates=None if dates is None else np.asarray(dates),
         series_name=compiled.model.name,
         transform_sign=compiled.model.transform_signs,
-        schema_version="2.6.2",
+        schema_version="2.7.0",
         initial_values={"chains": initial_by_chain},
         metadata={
             "bucex_version": __version__,

@@ -24,8 +24,10 @@ Y_t\mid\eta_t,\sigma,\xi\sim\operatorname{GEV}(\eta_t,\sigma,\xi),
 \]
 
 The level and slope form a local-linear trend, and `gamma_t` is a 12-month
-dummy seasonal component. Scale and shape remain static. The fitted maximum
-structure permits SSVS to distinguish:
+dummy seasonal component. Shape remains static. Scale is static in the
+original `config/uccle/*.json` analyses and selectable in the new
+`config/phi/uccle/*.json` sensitivity analyses. The fitted maximum structure
+permits SSVS to distinguish:
 
 - level: fixed or dynamic;
 - slope: absent, fixed, or dynamic;
@@ -35,6 +37,27 @@ The parameterization is Fruehwirth-Schnatter non-centred and ASIS is disabled.
 The initial level centre is the median of the internally transformed series.
 These choices are explicit under `model`, `priors`, and `inference` in every
 Uccle JSON.
+
+## Log-scale sensitivity
+
+Example 11 fits one of four models for
+\(\phi_t=\log(\sigma_t)\): stationary, linear, random walk, or three-way
+SSVS. There is one complete JSON for every series/model combination under
+`examples/config/phi/uccle/`, for 16 files in total. For example:
+
+```bash
+python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_stationary.json
+python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_linear.json
+python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_rw.json
+python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_ssvs.json
+```
+
+Replace `01_txx` with `02_txn`, `03_tnx`, or `04_tnn`. These files use the
+narrow structural innovation slabs `(0.01, 0.000025, 0.01)`. Their scale
+hyperparameters are grouped under `priors.phi` and can be edited directly.
+The linear coefficient is the whole-record change in log scale; the RW prior
+is on innovation variance; the three SSVS model probabilities are ordered
+stationary, linear, RW. See `LOG_SCALE.md`.
 
 ## Calibrated primary prior
 
@@ -106,7 +129,16 @@ For four parallel series jobs and their four parallel chains on PBS, see
 
 ## Minimum slab sensitivity
 
-Copy each primary JSON and change only `priors.innovation_slab_sd`:
+Ready-to-run narrower files are included alongside the primary files:
+
+| Series | Primary | Narrower |
+|---|---|---|
+| TXx | `uccle/01_txx.json` | `uccle/01_txx_narrow.json` |
+| TXn | `uccle/02_txn.json` | `uccle/02_txn_narrow.json` |
+| TNx | `uccle/03_tnx.json` | `uccle/03_tnx_narrow.json` |
+| TNn | `uccle/04_tnn.json` | `uccle/04_tnn_narrow.json` |
+
+The narrow files change only `priors.innovation_slab_sd`:
 
 | Setting | level | trend | season |
 |---|---:|---:|---:|
@@ -114,10 +146,10 @@ Copy each primary JSON and change only `priors.innovation_slab_sd`:
 | primary | 0.02 | 0.000050 | 0.02 |
 | wider | 0.04 | 0.000100 | 0.04 |
 
-Keep the data, model probabilities, shape bounds, MCMC settings, and all other
-fields identical. Compare posterior structural probabilities, model-averaged
-trajectories, process-scale posteriors, and scientifically important risk
-measures.
+Their data, model probabilities, shape bounds, MCMC settings, and all other
+fields are identical to the primary files. Compare posterior structural
+probabilities, model-averaged trajectories, process-scale posteriors, and
+scientifically important risk measures.
 
 ## What to report
 
@@ -126,9 +158,12 @@ measures.
 - model-averaged predictor, level, slope, and seasonal trajectories;
 - prior-to-posterior process-scale distributions;
 - observation scale, shape, and finite endpoints where applicable;
+- log-scale trajectories, linear end/start ratios, RW innovation scale, and
+  scale-model probabilities where applicable;
 - R-hat, ESS, Monte Carlo errors, and Laplace-MH state acceptance;
 - posterior predictive and forecast diagnostics;
-- sensitivity to calibrated slab widths and other defensible prior choices.
+- sensitivity to calibrated slab widths, scale evolution, and other
+  defensible prior choices.
 
 Risk summaries must retain their time index. A return level at time `t` is
 conditional on the fitted parameters at that time, not a timeless property of

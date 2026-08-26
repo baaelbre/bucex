@@ -82,6 +82,52 @@ class NormalPrior:
 
 
 @dataclass(frozen=True)
+class PhiPrior:
+    """Priors for the GEV log-scale process ``phi_t = log(sigma_t)``.
+
+    ``linear`` is the prior for the whole-record change in log scale: with the
+    centered time basis used by bucex, ``exp(linear)`` is the end/start scale
+    ratio. ``rw_variance`` is the innovation-variance prior for a random walk.
+    SSVS probabilities are ordered as stationary, linear, and random walk.
+    """
+
+    linear: NormalPrior = field(default_factory=lambda: NormalPrior(0.0, 0.35))
+    rw_variance: InverseGammaPrior = field(
+        default_factory=lambda: InverseGammaPrior(2.5, 3.75e-5)
+    )
+    model_probabilities: Sequence[float] | Mapping[str, float] = (
+        0.50,
+        0.25,
+        0.25,
+    )
+
+    def __post_init__(self) -> None:
+        if isinstance(self.model_probabilities, Mapping):
+            required = ("stationary", "linear", "rw")
+            if set(self.model_probabilities) != set(required):
+                raise ValueError(
+                    "PhiPrior.model_probabilities mapping must contain exactly "
+                    "stationary, linear, and rw."
+                )
+            probabilities = tuple(
+                float(self.model_probabilities[name]) for name in required
+            )
+        else:
+            probabilities = tuple(
+                float(value) for value in self.model_probabilities
+            )
+        if len(probabilities) != 3:
+            raise ValueError(
+                "PhiPrior.model_probabilities must contain stationary, linear, and rw."
+            )
+        if any(value < 0.0 for value in probabilities):
+            raise ValueError("PhiPrior.model_probabilities cannot be negative.")
+        if not np.isclose(sum(probabilities), 1.0, atol=1e-10, rtol=0.0):
+            raise ValueError("PhiPrior.model_probabilities must sum to one.")
+        object.__setattr__(self, "model_probabilities", probabilities)
+
+
+@dataclass(frozen=True)
 class DiagonalNormalPrior:
     """Independent Gaussian prior for a vector."""
 
@@ -688,6 +734,7 @@ class FSGEVPriors:
     alpha0: NormalPrior
     beta0: NormalPrior
     xi: XiPrior
+    phi: PhiPrior = field(default_factory=PhiPrior)
     sigma2: Optional[InverseGammaPrior] = None
     log_sigma: Optional[NormalPrior] = None
     s_level: Optional[NormalPrior] = None
@@ -704,6 +751,8 @@ class FSGEVPriors:
     def __post_init__(self) -> None:
         if self.sigma2 is None and self.log_sigma is None:
             raise ValueError("Provide sigma2=InverseGammaPrior(...) or log_sigma=NormalPrior(...).")
+        if not isinstance(self.phi, PhiPrior):
+            raise TypeError("FSGEVPriors.phi must be a PhiPrior.")
         if self.xi_max_abs <= 0.0:
             raise ValueError("FSGEVPriors.xi_max_abs must be > 0.")
         strategies = (
@@ -791,6 +840,7 @@ def manuscript_gev_priors(
     *,
     alpha_mean: float = 0.0,
     beta_mean: float = 0.0,
+    phi_prior: Optional[PhiPrior] = None,
 ) -> FSGEVPriors:
     """Return the prior profile used by the Uccle DGEV analysis."""
 
@@ -804,6 +854,7 @@ def manuscript_gev_priors(
             mean=np.zeros(k),
             sd=np.full(k, np.sqrt(5.0)),
         ),
+        phi=PhiPrior() if phi_prior is None else phi_prior,
         lasso=BayesianLassoPrior(
             a_lambda=1.0,
             b_lambda=1.0,
@@ -852,6 +903,7 @@ def normal_gev_priors(
     level_sd: float = 0.03,
     trend_sd: float = 0.0002,
     season_sd: float = 0.03,
+    phi_prior: Optional[PhiPrior] = None,
 ) -> FSGEVPriors:
     """Scale-aware DGEV priors for monthly structural temperature models."""
 
@@ -864,6 +916,7 @@ def normal_gev_priors(
         gamma0_season=DiagonalNormalPrior(
             mean=np.zeros(k), sd=np.full(k, np.sqrt(5.0))
         ),
+        phi=PhiPrior() if phi_prior is None else phi_prior,
         s_level=NormalPrior(0.0, level_sd),
         s_trend=NormalPrior(0.0, trend_sd),
         s_season=NormalPrior(0.0, season_sd),
@@ -954,6 +1007,7 @@ def ssvs_gev_priors(
     sigma2_prior: Optional[InverseGammaPrior] = None,
     xi_prior: Optional[XiPrior] = None,
     xi_max_abs: float = 0.5,
+    phi_prior: Optional[PhiPrior] = None,
     ssvs: Optional[SSVSPrior] = None,
     innovation_slab_sd: Optional[Mapping[str, float]] = None,
     level_dynamic_probability: Optional[float] = None,
@@ -987,6 +1041,7 @@ def ssvs_gev_priors(
         gamma0_season=DiagonalNormalPrior(
             mean=np.zeros(k), sd=np.full(k, seasonal_initial_sd)
         ),
+        phi=PhiPrior() if phi_prior is None else phi_prior,
         ssvs=resolved_ssvs,
         xi_max_abs=xi_max_abs,
     )
@@ -1040,6 +1095,7 @@ def regularized_gev_priors(
     beta_mean: float = 0.0,
     beta_sd: float = 0.005,
     coefficient_scale: Optional[Mapping[str, float]] = None,
+    phi_prior: Optional[PhiPrior] = None,
 ) -> FSGEVPriors:
     """Component-wise scale-aware lasso for monthly DGEV models."""
 
@@ -1057,6 +1113,7 @@ def regularized_gev_priors(
         gamma0_season=DiagonalNormalPrior(
             mean=np.zeros(k), sd=np.full(k, np.sqrt(5.0))
         ),
+        phi=PhiPrior() if phi_prior is None else phi_prior,
         lasso=ComponentwiseBayesianLassoPrior(
             coefficient_scale=scales,
             variance_mode="fixed",
@@ -1114,6 +1171,7 @@ def regularized_horseshoe_gev_priors(
     global_scale: float = 0.25,
     slab_scale: float = 2.0,
     slab_df: float = 4.0,
+    phi_prior: Optional[PhiPrior] = None,
 ) -> FSGEVPriors:
     """Scale-aware regularized horseshoe for monthly DGEV models."""
 
@@ -1131,6 +1189,7 @@ def regularized_horseshoe_gev_priors(
         gamma0_season=DiagonalNormalPrior(
             mean=np.zeros(k), sd=np.full(k, np.sqrt(5.0))
         ),
+        phi=PhiPrior() if phi_prior is None else phi_prior,
         horseshoe=RegularizedHorseshoePrior(
             coefficient_scale=scales,
             global_scale=global_scale,
@@ -1205,6 +1264,7 @@ def triple_gamma_gev_priors(
     regularized: bool = False,
     slab_scale: float = 2.0,
     slab_df: float = 4.0,
+    phi_prior: Optional[PhiPrior] = None,
 ) -> FSGEVPriors:
     """Paper-calibrated triple-gamma prior for a DGEV FS model."""
 
@@ -1222,6 +1282,7 @@ def triple_gamma_gev_priors(
         gamma0_season=DiagonalNormalPrior(
             mean=np.zeros(k), sd=np.full(k, np.sqrt(5.0))
         ),
+        phi=PhiPrior() if phi_prior is None else phi_prior,
         triple_gamma=TripleGammaPrior(
             coefficient_scale=scales,
             spike_shape=spike_shape,
@@ -1287,6 +1348,7 @@ def pc_gev_priors(
     beta_sd: float = 0.005,
     upper: Optional[Mapping[str, float]] = None,
     alpha: Union[float, Mapping[str, float]] = 0.05,
+    phi_prior: Optional[PhiPrior] = None,
 ) -> FSGEVPriors:
     """Interpretable PC shrinkage profile for the DGEV FS sampler."""
     k = period - 1
@@ -1303,6 +1365,7 @@ def pc_gev_priors(
         gamma0_season=DiagonalNormalPrior(
             mean=np.zeros(k), sd=np.full(k, np.sqrt(5.0))
         ),
+        phi=PhiPrior() if phi_prior is None else phi_prior,
         pc=PCInnovationPrior(upper=bounds, alpha=alpha),
     )
 

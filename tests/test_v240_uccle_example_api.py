@@ -56,7 +56,7 @@ def test_uccle_series_normalization_does_not_split_a_string():
         _normalize_series_names("T")
 
 
-def test_v110_example_surface_contains_ten_top_level_scripts():
+def test_v140_example_surface_contains_twelve_top_level_scripts():
     directory = Path(__file__).resolve().parents[1] / "examples"
     scripts = {
         path.name for path in directory.glob("*.py") if not path.name.startswith("_")
@@ -72,6 +72,8 @@ def test_v110_example_surface_contains_ten_top_level_scripts():
         "07_centered_ig.py",
         "08_simulation_laplace_mh.py",
         "09_uccle_laplace_mh.py",
+        "10_simulation_phi.py",
+        "11_uccle_phi.py",
     }
     assert not (directory / "presentation").exists()
 
@@ -98,7 +100,10 @@ def test_v262_examples_are_standalone_public_api_scripts():
         assert "BUCEX_" not in source
         assert "--config" in source
         assert "DEFAULT_CONFIG_FILE" in source
-        assert "CONFIG = bx.load_config(SETTINGS_PATH)" in source
+        assert (
+            "CONFIG = bx.load_config(SETTINGS_PATH)" in source
+            or "config = bx.load_config(settings_path)" in source
+        )
         assert "_example_config" not in source
 
     assert "bx.loess_smooth(" in sources["00_uccle_record.py"]
@@ -122,6 +127,12 @@ def test_v262_examples_are_standalone_public_api_scripts():
         assert '.plot("season"' in sources[name]
     assert 'engine="laplace_mh"' in sources["08_simulation_laplace_mh.py"]
     assert 'engine="laplace_mh"' in sources["09_uccle_laplace_mh.py"]
+    for name in ("10_simulation_phi.py", "11_uccle_phi.py"):
+        assert "bx.GEV(" in sources[name]
+        assert "phi=fit_phi" in sources[name]
+        assert "bx.PhiPrior(" in sources[name]
+        assert "bx.ssvs_gev_priors(" in sources[name]
+        assert "bx.fit(" in sources[name]
     # The Laplace-MH Uccle example deliberately mirrors example 05 and uses
     # the same explicit model and calibrated prior construction. The shorter
     # fit_uccle_series helper would silently restore package-default priors.

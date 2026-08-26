@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "data": {
+    "data_dir": null,
+    "start": "1892-01-01",
+    "end": null,
+    "series": [
+      "TNn"
+    ],
+    "period": 12
+  },
+  "model": {
+    "phi": "ssvs",
+    "time_varying_location": true,
+    "trend_component": "local_linear_trend",
+    "level_mode": "dynamic",
+    "trend_mode": "dynamic",
+    "seasonal_component": "dummy",
+    "seasonal_mode": "dynamic"
+  },
+  "priors": {
+    "alpha_mean": "transformed_series_median",
+    "alpha_sd": 3.2,
+    "beta_mean": 0,
+    "beta_sd": 0.0025,
+    "seasonal_initial_sd": 2.25,
+    "sigma2": {
+      "a": 2,
+      "b": 2
+    },
+    "xi_bounds": [
+      -0.5,
+      0.5
+    ],
+    "xi_max_abs": 0.5,
+    "innovation_slab_sd": {
+      "level": 0.01,
+      "trend": 0.000025,
+      "season": 0.01
+    },
+    "level_dynamic_probability": 0.5,
+    "trend_probabilities": [
+      0.2,
+      0.4,
+      0.4
+    ],
+    "season_probabilities": [
+      0,
+      0.5,
+      0.5
+    ],
+    "phi": {
+      "linear": {
+        "mean": 0,
+        "sd": 0.35
+      },
+      "rw_variance": {
+        "a": 2.5,
+        "b": 0.0000375
+      },
+      "model_probabilities": {
+        "stationary": 0.5,
+        "linear": 0.25,
+        "rw": 0.25
+      }
+    }
+  },
+  "mcmc": {
+    "draws": 1000,
+    "warmup": 1000,
+    "thin": 1,
+    "chains": 4,
+    "seed": 56115
+  },
+  "inference": {
+    "engine": "laplace_mh",
+    "parameterization": "fruehwirth_schnatter",
+    "asis": false,
+    "laplace": {
+      "max_iterations": 30,
+      "tolerance": 0.00001,
+      "curvature_floor": 0.000001,
+      "maximum_variance": 100000000,
+      "draw_attempts": 30,
+      "mh_steps": 1
+    },
+    "phi": {
+      "step_intercept": 0.04,
+      "step_linear": 0.05,
+      "laplace_max_iterations": 30,
+      "laplace_tolerance": 0.00001,
+      "curvature_floor": 0.00001,
+      "maximum_variance": 100000,
+      "shift_limit": 2,
+      "mh_steps": 1,
+      "draw_attempts": 30
+    }
+  },
+  "figures": {
+    "enabled": true,
+    "format": "png",
+    "dpi": 180,
+    "title": null,
+    "titles": {}
+  },
+  "runtime": {
+    "progress": true,
+    "chain_only": false,
+    "combine_runs": []
+  },
+  "output": {
+    "results_root": "results",
+    "run_id": null,
+    "overwrite": false
+  }
+}

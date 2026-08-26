@@ -53,6 +53,7 @@ from .model_space import (
     sample_structural_regression_exact,
     structural_model_log_prior,
 )
+from .phi import PHI_MODE_CODES, PhiKernel
 from ...priors.structural import FSGEVPriors, NormalPrior, UniformPrior
 from .utils import as_1d_observations
 
@@ -85,16 +86,12 @@ def _exact_gev_loglik(
 ) -> float:
     y = np.asarray(y, dtype=float).reshape(-1)
     mu = np.asarray(mu, dtype=float).reshape(-1)
-    ll = 0.0
-    for yt, mut in zip(y, mu):
-        try:
-            value = float(model.obs.logpdf(y=float(yt), eta=float(mut), params=params_obs))
-        except Exception:
-            return -np.inf
-        if not np.isfinite(value):
-            return -np.inf
-        ll += value
-    return float(ll)
+    try:
+        values = np.asarray(model.obs.logpdf(y=y, eta=mu, params=params_obs), dtype=float)
+        values = np.broadcast_to(values, y.shape)
+    except Exception:
+        return -np.inf
+    return float(np.sum(values)) if np.all(np.isfinite(values)) else -np.inf
 
 
 def _gev_support_ok(y: Array, mu: Array, model: StateSpaceModel, params_obs: ParamDict) -> bool:
@@ -112,22 +109,18 @@ def _laplace_pseudo_mu(
 ) -> tuple[Array, Array]:
     y = np.asarray(y, dtype=float).reshape(-1)
     mu = np.asarray(mu, dtype=float).reshape(-1)
-    z_star = np.zeros(y.size)
-    R_t = np.zeros(y.size)
-    for t in range(y.size):
-        try:
-            grad = float(model.obs.grad_eta(float(y[t]), float(mu[t]), params_obs))
-            hess = float(model.obs.hess_eta(float(y[t]), float(mu[t]), params_obs))
-        except Exception as exc:
-            raise ValueError("Could not construct a valid GEV Laplace approximation.") from exc
-        if not np.isfinite(grad) or abs(grad) > 1e6:
-            grad = 0.0
-        if not np.isfinite(hess) or hess >= -curvature_floor:
-            hess = -curvature_floor
-        info = max(-hess, curvature_floor)
-        shift = np.clip(grad / info, -shift_clip, shift_clip)
-        R_t[t] = np.clip(1.0 / info, 1e-12, 1e12)
-        z_star[t] = float(mu[t] + shift)
+    try:
+        gradient = np.asarray(model.obs.grad_eta(y, mu, params_obs), dtype=float)
+        hessian = np.asarray(model.obs.hess_eta(y, mu, params_obs), dtype=float)
+        gradient = np.broadcast_to(gradient, y.shape).astype(float, copy=True)
+        hessian = np.broadcast_to(hessian, y.shape).astype(float, copy=True)
+    except Exception as exc:
+        raise ValueError("Could not construct a valid GEV Laplace approximation.") from exc
+    gradient[~np.isfinite(gradient) | (np.abs(gradient) > 1e6)] = 0.0
+    hessian[~np.isfinite(hessian) | (hessian >= -curvature_floor)] = -curvature_floor
+    information = np.maximum(-hessian, curvature_floor)
+    R_t = np.clip(1.0 / information, 1e-12, 1e12)
+    z_star = mu + np.clip(gradient / information, -shift_clip, shift_clip)
     return z_star, R_t
 
 
@@ -160,12 +153,20 @@ class FSGEVKernel:
         self.layout: NCPLayout = infer_ncp_layout(model)
 
     def _log_sigma_prior(self, log_sigma: float) -> float:
+        """Stationary-scale prior used by the hierarchical GEV sampler."""
+
         if self.priors.sigma2 is not None:
             # sigma^2 ~ IG(a,b), transformed to log(sigma). Constants omitted.
             a, b = self.priors.sigma2.a, self.priors.sigma2.b
-            return float(-2.0 * a * log_sigma - b * np.exp(-2.0 * log_sigma))
+            return float(
+                -2.0 * a * log_sigma - b * np.exp(-2.0 * log_sigma)
+            )
         assert self.priors.log_sigma is not None
-        return _normal_logpdf(log_sigma, self.priors.log_sigma.mean, self.priors.log_sigma.sd)
+        return _normal_logpdf(
+            log_sigma,
+            self.priors.log_sigma.mean,
+            self.priors.log_sigma.sd,
+        )
 
     def _xi_prior(self, xi: float) -> float:
         prior = self.priors.xi
@@ -183,19 +184,32 @@ class FSGEVKernel:
         mu: Array,
         params_obs: ParamDict,
     ) -> tuple[ParamDict, bool]:
-        cur = float(np.log(float(params_obs["sigma"])))
-        prop = cur + float(self.rng.normal(scale=self.step_log_sigma))
-        cur_obs = dict(params_obs)
-        prop_obs = dict(params_obs)
-        prop_obs["sigma"] = float(np.exp(prop))
-        ll_cur = _exact_gev_loglik(y, mu, self.model, cur_obs)
-        ll_prop = _exact_gev_loglik(y, mu, self.model, prop_obs)
-        if not np.isfinite(ll_prop):
-            return cur_obs, False
-        log_acc = ll_prop + self._log_sigma_prior(prop) - ll_cur - self._log_sigma_prior(cur)
-        if np.log(self.rng.random()) < min(0.0, log_acc):
-            return prop_obs, True
-        return cur_obs, False
+        """Update the stationary scale for hierarchical compatibility."""
+
+        current = float(np.log(float(params_obs["sigma"])))
+        proposal = current + float(
+            self.rng.normal(scale=self.step_log_sigma)
+        )
+        current_obs = dict(params_obs)
+        proposal_obs = dict(params_obs)
+        proposal_obs["sigma"] = float(np.exp(proposal))
+        current_loglik = _exact_gev_loglik(
+            y, mu, self.model, current_obs
+        )
+        proposal_loglik = _exact_gev_loglik(
+            y, mu, self.model, proposal_obs
+        )
+        if not np.isfinite(proposal_loglik):
+            return current_obs, False
+        log_acceptance = (
+            proposal_loglik
+            + self._log_sigma_prior(proposal)
+            - current_loglik
+            - self._log_sigma_prior(current)
+        )
+        if np.log(self.rng.random()) < min(0.0, log_acceptance):
+            return proposal_obs, True
+        return current_obs, False
 
     def _mh_update_xi(
         self,
@@ -248,6 +262,9 @@ class FSGEVKernel:
         params_obs = dict(init_params_obs)
         if "sigma" not in params_obs or "xi" not in params_obs:
             raise KeyError("init_params_obs must contain both 'sigma' and 'xi'.")
+        phi_kernel = PhiKernel(self.model, self.priors, self.rng)
+        phi_state = phi_kernel.initialise(Tn, params_obs)
+        params_obs = phi_kernel.observation_parameters(phi_state, params_obs, Tn)
         tau, lambda2 = initialise_lasso(self.priors, self.layout)
         horseshoe_state = initialise_horseshoe(self.priors, self.layout)
         triple_gamma_state = initialise_triple_gamma(self.priors, self.layout)
@@ -310,6 +327,29 @@ class FSGEVKernel:
             "sigma2": np.zeros(n_keep),
             "xi": np.zeros(n_keep),
         }
+        dynamic_phi = phi_kernel.specification != "stationary"
+        if dynamic_phi:
+            draws_static.update(
+                phi=np.zeros((n_keep, Tn)),
+                sigma_path=np.zeros((n_keep, Tn)),
+            )
+            if phi_kernel.specification in {"linear", "rw", "ssvs"}:
+                draws_static["phi_intercept"] = np.zeros(n_keep)
+            if phi_kernel.specification in {"linear", "ssvs"}:
+                draws_static["phi_slope"] = np.zeros(n_keep)
+            if phi_kernel.specification in {"rw", "ssvs"}:
+                draws_static.update(
+                    phi_rw_sd=np.zeros(n_keep),
+                    phi_rw_variance=np.zeros(n_keep),
+                    phi_last=np.zeros(n_keep),
+                )
+            if phi_kernel.specification == "ssvs":
+                draws_static.update(
+                    phi_model=np.zeros(n_keep, dtype=np.int8),
+                    phi_stationary=np.zeros(n_keep, dtype=np.int8),
+                    phi_linear=np.zeros(n_keep, dtype=np.int8),
+                    phi_rw=np.zeros(n_keep, dtype=np.int8),
+                )
         if self.layout.has_beta:
             draws_static.update(beta0=np.zeros(n_keep), s_trend=np.zeros(n_keep), q_trend=np.zeros(n_keep))
         if self.layout.season_dim > 0:
@@ -353,6 +393,8 @@ class FSGEVKernel:
         logpost = np.full(n_keep, np.nan)
         G, Q = build_ncp_system(self.layout)
         accept_sigma = accept_xi = 0
+        phi_accepts: Counter[str] = Counter()
+        phi_attempts: Counter[str] = Counter()
         accept_laplace_mh = attempt_laplace_mh = 0
         accept_ssvs_model = accept_ssvs_model_change = propose_ssvs_model_change = 0
         keep_idx = 0
@@ -406,7 +448,19 @@ class FSGEVKernel:
             "ssvs_model_proposed_change": [],
             "ssvs_model_log_acceptance_ratio": [],
             "sign_invariance_error": [],
+            "phi_laplace_iterations": [],
+            "phi_laplace_converged": [],
+            "phi_laplace_relative_change": [],
+            "phi_laplace_mh_accepted": [],
+            "phi_laplace_mh_log_weight": [],
+            "phi_laplace_support_rejections": [],
+            "phi_model_switched": [],
+            "phi_probability_stationary": [],
+            "phi_probability_linear": [],
+            "phi_probability_rw": [],
         }
+
+        state_kwargs.setdefault("phi_step_intercept", self.step_log_sigma)
 
         for it in range(n_iter):
             window_iterations += 1
@@ -414,7 +468,7 @@ class FSGEVKernel:
                 z_path.copy(), dict(params_state), dict(params_obs), dict(tau),
                 copy_lasso_lambda2(lambda2), copy_horseshoe_state(horseshoe_state),
                 copy_triple_gamma_state(triple_gamma_state),
-                model_state, int(model_index)
+                model_state, int(model_index), phi_state.copy()
             )
             iteration_ok = False
             iteration_failures: Counter[str] = Counter()
@@ -431,6 +485,12 @@ class FSGEVKernel:
             successful_asis_outcomes: dict[str, bool] = {}
             successful_sign_switches: dict[str, bool] = {}
             successful_sign_invariance_error = np.nan
+            successful_phi_diagnostics = {
+                name: np.nan
+                for name in engine_diagnostics
+                if name.startswith("phi_")
+            }
+            successful_phi_accepts: dict[str, bool] = {}
 
             for attempt in range(max_state_tries):
                 work_state = dict(params_state)
@@ -786,8 +846,21 @@ class FSGEVKernel:
                             rng=self.rng,
                         )
 
-                    stage = "observation_parameter_update"
-                    cand_obs, acc_s = self._mh_update_log_sigma(y1, mu_exact, work_obs)
+                    stage = "phi_parameter_update"
+                    phi_update = phi_kernel.update(
+                        y1,
+                        mu_exact,
+                        phi_state,
+                        work_obs,
+                        state_method=state_method,
+                        options=state_kwargs,
+                    )
+                    cand_phi_state = phi_update.state
+                    cand_obs = phi_update.params_observation
+                    acc_s = bool(
+                        phi_update.accepted.get("phi_intercept_mh", False)
+                    )
+                    stage = "xi_parameter_update"
                     cand_obs, acc_x = self._mh_update_xi(y1, mu_exact, cand_obs)
                     stage = "support_after_observation_parameters"
                     if not _gev_support_ok(y1, mu_exact, self.model, cand_obs):
@@ -799,6 +872,7 @@ class FSGEVKernel:
                         continue
 
                     z_path, params_state, params_obs = cand_z, cand_state, cand_obs
+                    phi_state = cand_phi_state
                     tau, lambda2 = dict(cand_tau), copy_lasso_lambda2(cand_lambda2)
                     horseshoe_state = copy_horseshoe_state(cand_horseshoe)
                     triple_gamma_state = copy_triple_gamma_state(
@@ -807,6 +881,11 @@ class FSGEVKernel:
                     model_state, model_index = cand_model_state, int(cand_model_index)
                     accept_sigma += int(acc_s)
                     accept_xi += int(acc_x)
+                    successful_phi_accepts = dict(phi_update.accepted)
+                    successful_phi_diagnostics = dict(phi_update.diagnostics)
+                    for key, accepted in successful_phi_accepts.items():
+                        phi_attempts[key] += 1
+                        phi_accepts[key] += int(accepted)
                     successful_laplace_result = laplace_result
                     successful_laplace_mh_result = laplace_mh_result
                     successful_pgas_result = pgas_result
@@ -875,7 +954,8 @@ class FSGEVKernel:
             if not iteration_ok:
                 (
                     z_path, params_state, params_obs, tau, lambda2,
-                    horseshoe_state, triple_gamma_state, model_state, model_index
+                    horseshoe_state, triple_gamma_state, model_state, model_index,
+                    phi_state,
                 ) = last_good
                 restored_iterations += 1
                 window_restored += 1
@@ -999,6 +1079,8 @@ class FSGEVKernel:
             engine_diagnostics["sign_invariance_error"].append(
                 successful_sign_invariance_error
             )
+            for name, value in successful_phi_diagnostics.items():
+                engine_diagnostics[name].append(float(value))
             if iteration_ok:
                 for name, switched in successful_sign_switches.items():
                     sign_switch_counts[name] += int(switched)
@@ -1012,9 +1094,38 @@ class FSGEVKernel:
                 z_draws[keep_idx] = z_path
                 for key in ("alpha0", "s_level", "q_level"):
                     draws_static[key][keep_idx] = float(params_state[key])
-                draws_static["sigma"][keep_idx] = float(params_obs["sigma"])
-                draws_static["sigma2"][keep_idx] = float(params_obs["sigma"]) ** 2
+                phi_path = phi_state.path(Tn)
+                sigma_reference = float(np.exp(phi_state.reference()))
+                draws_static["sigma"][keep_idx] = sigma_reference
+                draws_static["sigma2"][keep_idx] = sigma_reference**2
                 draws_static["xi"][keep_idx] = float(params_obs["xi"])
+                if dynamic_phi:
+                    draws_static["phi"][keep_idx] = phi_path
+                    draws_static["sigma_path"][keep_idx] = np.exp(phi_path)
+                    if "phi_intercept" in draws_static:
+                        draws_static["phi_intercept"][keep_idx] = (
+                            phi_state.reference()
+                        )
+                    if "phi_slope" in draws_static:
+                        draws_static["phi_slope"][keep_idx] = (
+                            phi_state.linear_slope
+                        )
+                    if "phi_rw_sd" in draws_static:
+                        draws_static["phi_rw_sd"][keep_idx] = np.sqrt(
+                            phi_state.rw_variance
+                        )
+                        draws_static["phi_rw_variance"][keep_idx] = (
+                            phi_state.rw_variance
+                        )
+                        draws_static["phi_last"][keep_idx] = phi_path[-1]
+                    if phi_kernel.specification == "ssvs":
+                        draws_static["phi_model"][keep_idx] = PHI_MODE_CODES[
+                            phi_state.mode
+                        ]
+                        for name in ("stationary", "linear", "rw"):
+                            draws_static[f"phi_{name}"][keep_idx] = int(
+                                phi_state.mode == name
+                            )
                 if self.layout.has_beta:
                     for key in ("beta0", "s_trend", "q_trend"):
                         draws_static[key][keep_idx] = float(params_state[key])
@@ -1103,6 +1214,10 @@ class FSGEVKernel:
                         details.append(f"lambda2=({compact})")
                     else:
                         details.append(f"lambda2={lambda2:.3g}")
+                if dynamic_phi:
+                    details.append(
+                        f"phi={phi_state.mode} sigma_ref={np.exp(phi_state.reference()):.3g}"
+                    )
                 if self.priors.pc is not None:
                     compact = ",".join(
                         f"{key[0]}:{value:.2g}" for key, value in tau.items()
@@ -1190,8 +1305,16 @@ class FSGEVKernel:
             draws_states=draws_states,
             logpost=logpost,
             acceptance={
-                "sigma_mh": accept_sigma / max(n_iter, 1),
+                **(
+                    {"sigma_mh": accept_sigma / max(n_iter, 1)}
+                    if phi_kernel.specification == "stationary"
+                    else {}
+                ),
                 "xi_mh": accept_xi / max(n_iter, 1),
+                **{
+                    key: value / max(phi_attempts[key], 1)
+                    for key, value in phi_accepts.items()
+                },
                 **(
                     {
                         "state_laplace_mh": accept_laplace_mh
@@ -1260,6 +1383,15 @@ class FSGEVKernel:
                 "draws_states_ncp": z_draws,
                 "step_log_sigma": self.step_log_sigma,
                 "step_xi": self.step_xi,
+                "phi": phi_kernel.specification,
+                "phi_models": PHI_MODE_CODES,
+                "phi_exact_invariant": state_method in {"laplace_mh", "pgas"},
+                "phi_ssvs": phi_kernel.specification == "ssvs",
+                "phi_ssvs_basis": (
+                    "exact_product_space_with_prior_pseudopriors"
+                    if phi_kernel.specification == "ssvs"
+                    else None
+                ),
                 "bayesian_lasso": self.priors.lasso is not None,
                 "regularized_horseshoe": self.priors.horseshoe is not None,
                 "triple_gamma": self.priors.triple_gamma is not None,

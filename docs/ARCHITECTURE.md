@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.3.2 keeps one model compiler, one fitting entry point, and one result
+Release 1.4.0 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text
@@ -30,6 +30,24 @@ bucex/
 
 FS auxiliary paths and signed coefficients never replace the centered
 scientific state stored in `FitResult`.
+
+## Conditional GEV log scale
+
+`GEV(phi=...)` declares the log-scale model without changing `fit()`. The
+structural FS kernel owns the location state; `inference/fit/phi.py` owns the
+conditional process \(\phi_t=\log(\sigma_t)\). Its state has stable
+coordinates for stationary, linear, and random-walk models, so another scale
+model can be added behind the same declaration/result boundary.
+
+The random-walk scale update has its own iterated-Laplace/Kalman smoother. In
+exact engines it is an independence proposal with an exact-likelihood MH
+correction. Scale SSVS is a product-space update whose inactive coordinates
+use proper prior pseudo-priors. This is separate from structural SSVS for
+location innovations.
+
+`FitResult.phi_draws()` and `sigma_draws()` normalize all four modes to a
+draw-by-time path. Forecasting consumes the same result contract: stationary
+scale is held fixed, linear scale is extrapolated, and RW scale is propagated.
 
 In the general univariate sampler, the prior type and parameterization jointly
 select the process-scale update. `InverseGammaVariance` receives its conjugate
@@ -80,13 +98,14 @@ saved as a new draw.
 
 ## Analysis-script lifecycle
 
-The ten files under `examples/` declare models, priors, simulation truths,
+The 12 files under `examples/` declare models, priors, simulation truths,
 fit calls, summaries, and figures in one readable sequence. Their scientific,
 sampling, figure, and output choices come from the JSON files under
 `examples/config/`; there is no second environment-variable configuration
 layer. Seven examples form the COMPSTAT analysis, one exposes the
-centered/inverse-gamma random-walk benchmark, and the final two exercise exact
-Laplace-MH. Ten matching Bash/PBS pairs invoke those exact files.
+centered/inverse-gamma random-walk benchmark, two exercise exact Laplace-MH,
+and examples 10–11 isolate log-scale sensitivity for simulations and Uccle.
+Twelve matching Bash/PBS pairs invoke those exact files.
 
 For a multi-chain job, `job_scripts/run_parallel_chains.py` creates one
 temporary one-chain JSON per independent process, waits for all processes, and
@@ -103,11 +122,13 @@ not silently change the data, priors, or summaries.
 
 ## Persistence
 
-Schema 2.6.2 archives contain allowlisted JSON metadata plus compressed NumPy
+Schema 2.7.0 archives contain allowlisted JSON metadata plus compressed NumPy
 arrays, verify SHA-256 checksums, and load with `allow_pickle=False`. The model
 is recompiled from its stored declaration and observations. `warm_start()`
 exports one compatible univariate or multiseries draw without changing the
-next fit's target. Univariate FS exports include the complete centred path.
+next fit's target. Univariate FS exports include the complete centred location
+path and, where applicable, log-scale path and scale-model state. Readers for
+all previously supported archive schemas remain available.
 
 ## Extension rule
 

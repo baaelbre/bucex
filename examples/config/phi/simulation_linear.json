@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "simulation": {
+    "n_time": 500,
+    "period": 4,
+    "xi": -0.3,
+    "initial_level": 25.0,
+    "initial_slope": 0.002,
+    "seasonal_amplitude": 0.25,
+    "location_sd": {
+      "level": 0.02,
+      "slope": 0.0005,
+      "seasonal": 0.03
+    },
+    "phi": {
+      "mode": "stationary",
+      "reference_sigma": 1.5,
+      "linear_change": 0.35,
+      "rw_sd": 0.006
+    },
+    "seed": 13081997
+  },
+  "model": {
+    "phi": "linear"
+  },
+  "priors": {
+    "alpha_sd": 3.2,
+    "beta_mean": 0.0,
+    "beta_sd": 0.006,
+    "seasonal_initial_sd": 0.5,
+    "sigma2": {
+      "a": 2.0,
+      "b": 2.25
+    },
+    "xi_bounds": [
+      -0.5,
+      0.5
+    ],
+    "xi_max_abs": 0.5,
+    "innovation_slab_sd": {
+      "level": 0.1,
+      "trend": 0.0008,
+      "season": 0.07
+    },
+    "level_dynamic_probability": 0.5,
+    "trend_probabilities": [
+      0.333333333333,
+      0.333333333333,
+      0.333333333334
+    ],
+    "season_probabilities": [
+      0.0,
+      0.5,
+      0.5
+    ],
+    "phi": {
+      "linear": {
+        "mean": 0.0,
+        "sd": 0.35
+      },
+      "rw_variance": {
+        "a": 2.5,
+        "b": 0.0000375
+      },
+      "model_probabilities": {
+        "stationary": 0.5,
+        "linear": 0.25,
+        "rw": 0.25
+      }
+    }
+  },
+  "mcmc": {
+    "draws": 1000,
+    "warmup": 1000,
+    "thin": 1,
+    "chains": 4,
+    "seed": 140002
+  },
+  "inference": {
+    "engine": "laplace_mh",
+    "parameterization": "fruehwirth_schnatter",
+    "asis": false,
+    "laplace": {
+      "max_iterations": 30,
+      "tolerance": 0.00001,
+      "curvature_floor": 0.000001,
+      "maximum_variance": 100000000.0,
+      "draw_attempts": 30,
+      "mh_steps": 1
+    },
+    "phi": {
+      "step_intercept": 0.04,
+      "step_linear": 0.05,
+      "laplace_max_iterations": 30,
+      "laplace_tolerance": 0.00001,
+      "curvature_floor": 0.00001,
+      "maximum_variance": 100000.0,
+      "shift_limit": 2.0,
+      "mh_steps": 1,
+      "draw_attempts": 30
+    }
+  },
+  "figures": {
+    "enabled": true,
+    "format": "png",
+    "dpi": 180,
+    "title": null,
+    "titles": {}
+  },
+  "runtime": {
+    "progress": true,
+    "chain_only": false,
+    "combine_runs": []
+  },
+  "output": {
+    "results_root": "results",
+    "run_id": null,
+    "overwrite": false
+  }
+}

@@ -12,7 +12,7 @@ The Bash runner locates Python, sets single-threaded BLAS variables, and calls
 and memory and redirects the main log. Neither layer defines scientific or
 MCMC settings.
 
-For examples 03–09, `mcmc.chains > 1` activates process-level chain
+For examples 03–11, `mcmc.chains > 1` activates process-level chain
 parallelism. The runner:
 
 1. reads the selected source JSON;
@@ -24,9 +24,10 @@ parallelism. The runner:
 7. asks the same numbered example to combine the fits and create tables and
    figures.
 
-Temporary JSONs contain operational `_runner` provenance so each
-`run_config.json` records the original selected JSON rather than a temporary
-path. They are removed after the job. The source JSON is never modified.
+Temporary JSONs contain operational `_runner` provenance. Each
+`run_config.json` stores the exact effective settings, while fit metadata
+records the original selected JSON instead of the temporary path. Temporary
+copies are removed after the job. The source JSON is never modified.
 
 When `output.run_id` is null, an HPC run ID has the form:
 
@@ -49,3 +50,7 @@ Four separate Uccle submissions can run concurrently. Each submission selects
 one of `TXx`, `TXn`, `TNx`, or `TNn` and internally runs its four chains in
 parallel, for up to 16 simultaneous one-core processes when PBS grants all four
 jobs.
+
+Example 11 also separates the stationary, linear, RW, and SSVS scale models
+into independent JSON/job pairs. All 16 series-by-scale jobs are valid in
+parallel, for up to 64 one-core chain processes when scheduler policy permits.

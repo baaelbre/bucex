@@ -9,6 +9,7 @@ import numpy as np
 
 from ..diagnostics.calibration import pit_diagnostics
 from ..diagnostics.scores import evaluate_ensemble, log_predictive_score
+from ..inference.fit.phi import phi_future_basis
 
 
 Array = np.ndarray
@@ -217,7 +218,9 @@ class Forecast:
             observation_model = self.observation_model
             sign = float(self.transform_sign)
             eta = self.eta
-            sigma = self.parameters["sigma"][:, None]
+            sigma = self.parameters.get("sigma_path")
+            if sigma is None:
+                sigma = self.parameters["sigma"][:, None]
             xi = self.parameters["xi"][:, None]
         if float(return_period) <= 1.0:
             raise ValueError("return_period must exceed 1.")
@@ -259,7 +262,9 @@ class Forecast:
             observation_model = self.observation_model
             sign = float(self.transform_sign)
             eta_model = sign * self.eta
-            sigma = self.parameters["sigma"][:, None]
+            sigma = self.parameters.get("sigma_path")
+            if sigma is None:
+                sigma = self.parameters["sigma"][:, None]
             xi = self.parameters.get("xi")
             if xi is not None:
                 xi = np.asarray(xi, dtype=float)[:, None]
@@ -305,7 +310,9 @@ class Forecast:
             observation_model = self.observation_model
             sign = float(self.transform_sign)
             eta_model = sign * self.eta
-            sigma = self.parameters["sigma"][:, None]
+            sigma = self.parameters.get("sigma_path")
+            if sigma is None:
+                sigma = self.parameters["sigma"][:, None]
             xi = self.parameters.get("xi")
             if xi is not None:
                 xi = np.asarray(xi, dtype=float)[:, None]
@@ -690,11 +697,25 @@ def posterior_predictive(
     parameter_values = {
         name: fit.parameter(name)[indices] for name in required_parameters
     }
+    sigma_path = fit.sigma_draws()[indices]
+    if fit.family == "gev":
+        parameter_values["phi"] = fit.phi_draws()[indices]
+        parameter_values["sigma_path"] = sigma_path
+        for name in (
+            "phi_intercept",
+            "phi_slope",
+            "phi_rw_sd",
+            "phi_rw_variance",
+            "phi_last",
+            "phi_model",
+        ):
+            if name in fit.parameter_draws:
+                parameter_values[name] = fit.parameter(name)[indices]
     observations_model = np.zeros_like(eta_model)
     for draw in range(n_draws):
         observations_model[draw] = fit.model.observation.sample(
             eta=eta_model[draw],
-            sigma=float(parameter_values["sigma"][draw]),
+            sigma=sigma_path[draw],
             xi=(
                 float(parameter_values["xi"][draw])
                 if "xi" in parameter_values
@@ -817,6 +838,65 @@ def posterior_predict(
         name: fit.parameter(name)[indices]
         for name in required_parameters
     }
+    phi_mode = str(getattr(fit.model.observation, "phi", "stationary"))
+    if fit.family == "gev" and phi_mode == "stationary":
+        future_phi = np.repeat(
+            np.log(np.asarray(parameter_values["sigma"], dtype=float))[:, None],
+            horizon,
+            axis=1,
+        )
+        parameter_values["phi"] = future_phi
+        parameter_values["sigma_path"] = np.exp(future_phi)
+    elif fit.family == "gev":
+        needed = {
+            "linear": ("phi_intercept", "phi_slope"),
+            "rw": ("phi_last", "phi_rw_sd"),
+            "ssvs": (
+                "phi_model",
+                "phi_intercept",
+                "phi_slope",
+                "phi_last",
+                "phi_rw_sd",
+            ),
+        }[phi_mode]
+        missing_phi = [name for name in needed if name not in fit.parameter_draws]
+        if missing_phi:
+            raise ValueError(f"Fit is missing phi forecast parameters: {missing_phi}")
+        for name in needed:
+            parameter_values[name] = fit.parameter(name)[indices]
+
+        future_phi = np.zeros((n_draws, horizon), dtype=float)
+        basis = phi_future_basis(fit.n_time, horizon)
+        model_codes = (
+            np.asarray(parameter_values["phi_model"], dtype=int)
+            if phi_mode == "ssvs"
+            else np.full(
+                n_draws,
+                {"linear": 1, "rw": 2}[phi_mode],
+                dtype=int,
+            )
+        )
+        for draw in range(n_draws):
+            code = int(model_codes[draw])
+            if code == 0:
+                future_phi[draw] = float(parameter_values["phi_intercept"][draw])
+            elif code == 1:
+                future_phi[draw] = (
+                    float(parameter_values["phi_intercept"][draw])
+                    + float(parameter_values["phi_slope"][draw]) * basis
+                )
+            elif code == 2:
+                innovations = rng.normal(
+                    scale=float(parameter_values["phi_rw_sd"][draw]),
+                    size=horizon,
+                )
+                future_phi[draw] = float(parameter_values["phi_last"][draw]) + np.cumsum(
+                    innovations
+                )
+            else:
+                raise ValueError("phi_model draws must use codes 0, 1, or 2.")
+        parameter_values["phi"] = future_phi
+        parameter_values["sigma_path"] = np.exp(future_phi)
     design = fit.compiled.design(horizon, exog=exog_future)
     state_paths = np.zeros((n_draws, horizon, fit.compiled.state_dim))
     eta_model = np.zeros((n_draws, horizon))
@@ -824,7 +904,11 @@ def posterior_predict(
 
     for draw, posterior_index in enumerate(indices):
         state = flat_states[posterior_index, -1].copy()
-        params = {name: float(values[draw]) for name, values in parameter_values.items()}
+        params = {
+            name: float(values[draw])
+            for name, values in parameter_values.items()
+            if np.asarray(values).ndim == 1
+        }
         process_sd = fit.compiled.process_vector(params)
         for h in range(horizon):
             innovation = fit.compiled.loading @ (process_sd * rng.normal(size=fit.compiled.noise_dim))
@@ -835,7 +919,11 @@ def posterior_predict(
             observations_model[draw, h] = float(
                 fit.model.observation.sample(
                     eta=eta,
-                    sigma=params["sigma"],
+                    sigma=(
+                        float(parameter_values["sigma_path"][draw, h])
+                        if "sigma_path" in parameter_values
+                        else params["sigma"]
+                    ),
                     xi=params.get("xi"),
                     rng=rng,
                 )

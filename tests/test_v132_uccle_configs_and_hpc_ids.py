@@ -15,6 +15,12 @@ CONFIGS = (
     ("03_tnx.json", "TNx"),
     ("04_tnn.json", "TNn"),
 )
+NARROW_CONFIGS = (
+    ("01_txx_narrow.json", "01_txx.json", "TXx"),
+    ("02_txn_narrow.json", "02_txn.json", "TXn"),
+    ("03_tnx_narrow.json", "03_tnx.json", "TNx"),
+    ("04_tnn_narrow.json", "04_tnn.json", "TNn"),
+)
 
 
 @pytest.mark.parametrize(("filename", "series"), CONFIGS)
@@ -103,6 +109,33 @@ def test_uccle_presets_differ_only_by_selected_series():
             **deepcopy(configs[0]),
             "data": {**configs[0]["data"], "series": ["SERIES"]},
         }
+
+
+@pytest.mark.parametrize(
+    ("narrow_filename", "primary_filename", "series"), NARROW_CONFIGS
+)
+def test_narrow_uccle_presets_change_only_innovation_slab_scales(
+    narrow_filename: str,
+    primary_filename: str,
+    series: str,
+):
+    narrow = json.loads(
+        (CONFIG_DIR / narrow_filename).read_text(encoding="utf-8")
+    )
+    primary = json.loads(
+        (CONFIG_DIR / primary_filename).read_text(encoding="utf-8")
+    )
+
+    assert narrow["data"]["series"] == [series]
+    assert narrow["priors"]["innovation_slab_sd"] == {
+        "level": 0.01,
+        "trend": 0.000025,
+        "season": 0.01,
+    }
+    narrow["priors"]["innovation_slab_sd"] = deepcopy(
+        primary["priors"]["innovation_slab_sd"]
+    )
+    assert narrow == primary
 
 
 def test_all_uccle_fitting_examples_read_the_model_and_prior_from_json():

@@ -50,8 +50,9 @@ def make_gev_model(
     *,
     name: str | None = None,
     xi_bounds: tuple[float, float] = (-0.5, 0.5),
+    phi: str = "stationary",
 ) -> Model:
-    return Model(GEV(xi_bounds=xi_bounds), components, name=name)
+    return Model(GEV(xi_bounds=xi_bounds, phi=phi), components, name=name)
 
 
 def _default_model(family: str, period: int | None, trend: str = "local_linear") -> Model:
@@ -290,6 +291,16 @@ def _stack_fs_chains(
         "ssvs_model_proposed_change",
         "ssvs_model_log_acceptance_ratio",
         "sign_invariance_error",
+        "phi_laplace_iterations",
+        "phi_laplace_converged",
+        "phi_laplace_relative_change",
+        "phi_laplace_mh_accepted",
+        "phi_laplace_mh_log_weight",
+        "phi_laplace_support_rejections",
+        "phi_model_switched",
+        "phi_probability_stationary",
+        "phi_probability_linear",
+        "phi_probability_rw",
     }
     draw_metrics: dict[str, Array] = {}
     for name in sorted(metric_names):
@@ -381,6 +392,12 @@ def _stack_fs_chains(
             "structural_ssvs": bool(outputs[0].meta.get("structural_ssvs", False)),
             "model_selection_exact": outputs[0].meta.get("model_selection_exact"),
             "model_selection_basis": outputs[0].meta.get("model_selection_basis"),
+            "phi": outputs[0].meta.get("phi", "stationary"),
+            "phi_ssvs": bool(outputs[0].meta.get("phi_ssvs", False)),
+            "phi_ssvs_basis": outputs[0].meta.get("phi_ssvs_basis"),
+            "phi_exact_invariant": bool(
+                outputs[0].meta.get("phi_exact_invariant", False)
+            ),
             "pgas_exact_invariant": bool(outputs[0].meta.get("pgas_exact_invariant", False)),
             "laplace_mh_exact_invariant": bool(
                 outputs[0].meta.get("laplace_mh_exact_invariant", False)
@@ -511,6 +528,17 @@ def _fit_multiseries_model(
 
     if name is not None:
         model = replace(model, name=str(name))
+    dynamic_phi_channels = [
+        channel.name
+        for channel in model.channels
+        if str(getattr(channel.observation, "phi", "stationary")) != "stationary"
+    ]
+    if dynamic_phi_channels:
+        raise ValueError(
+            "Time-varying GEV log scale is currently fitted with separate "
+            "univariate models; dynamic phi was requested for channels "
+            f"{dynamic_phi_channels}."
+        )
     if dates is None:
         dates = multiseries_dates(y, model)
     y_original = as_multiseries_array(y, model)
@@ -844,6 +872,12 @@ def fit(
         parameterization=parameterization,
         asis=asis,
     )
+    phi_mode = str(getattr(model.observation, "phi", "stationary"))
+    if phi_mode != "stationary" and plan.parameterization != "fruehwirth_schnatter":
+        raise ValueError(
+            "A time-varying GEV log scale currently requires "
+            "parameterization='fruehwirth_schnatter' (alias 'fs')."
+        )
     resolved_priors = resolve_prior_spec(
         compiled,
         parameterization=plan.parameterization,

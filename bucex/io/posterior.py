@@ -24,9 +24,9 @@ from ..priors import structural as structural_priors
 
 
 FORMAT = "bucex-fit"
-SCHEMA_VERSION = "2.6.2"
+SCHEMA_VERSION = "2.7.0"
 SUPPORTED_SCHEMA_VERSIONS = {
-    "1.2", "2.0", "2.1", "2.3", "2.4", "2.4.1", "2.5.0", "2.6.0", "2.6.1", "2.6.2"
+    "1.2", "2.0", "2.1", "2.3", "2.4", "2.4.1", "2.5.0", "2.6.0", "2.6.1", "2.6.2", "2.7.0"
 }
 
 

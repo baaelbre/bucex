@@ -190,12 +190,15 @@ def structural_model(
     trend: str = "local_linear",
     period: int | None = None,
     xi_bounds: tuple[float, float] = (-0.5, 0.5),
+    phi: str = "stationary",
 ) -> Model:
     family_key = str(family).lower()
     if family_key == "gaussian":
+        if str(phi).lower() != "stationary":
+            raise ValueError("phi= is available only for GEV observations.")
         observation: Observation = Gaussian()
     elif family_key == "gev":
-        observation = GEV(xi_bounds=xi_bounds)
+        observation = GEV(xi_bounds=xi_bounds, phi=phi)
     else:
         raise ValueError("family must be 'gaussian' or 'gev'.")
     if trend == "local_level":

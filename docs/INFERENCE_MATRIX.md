@@ -18,6 +18,32 @@ Laplace screen can initialize an exact engine but cannot be relabelled exact.
 sampling because its shared hierarchical update has not yet been given the
 same exact correction.
 
+## GEV log-scale matrix
+
+The scale declaration is orthogonal to the structural location declaration:
+
+| `GEV(phi=...)` | Scale update | Exact with `laplace_mh`/`pgas` | Forecast |
+|---|---|---:|---|
+| `stationary` | scalar exact-likelihood MH | yes | constant |
+| `linear` | intercept/slope exact-likelihood MH | yes | continue centered basis |
+| `rw` | iterated-Laplace path proposal plus MH correction | yes | propagate RW |
+| `ssvs` | product space over all three models | yes | selected model per draw |
+
+With `engine="laplace"`, the fit remains approximate because structural and
+RW scale paths use uncorrected Laplace draws. Scale-model selection is labelled
+exact only when the enclosing engine is exact-invariant.
+
+Time-varying scale currently requires a univariate GEV `Model` and the FS
+parameterization. `MultiSeriesModel` and centered/disturbance requests fail at
+planning or fit validation; they are not silently reduced to stationary
+scale.
+
+The location and scale Laplace approximations are conditional, separate
+blocks. For the RW scale proposal, the random-walk transition measure cancels
+from the independence-MH ratio; the remaining weight corrects the exact GEV
+likelihood, its pseudo-likelihood, and the Gaussian approximation to the
+initial log-scale prior. See `LOG_SCALE.md`.
+
 ## Laplace-MH correction
 
 For fixed static parameters, let

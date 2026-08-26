@@ -93,8 +93,13 @@ def univariate_progress_parameters(
     """Current scientific parameters in the same order for Gaussian and GEV."""
 
     output: dict[str, Any] = {}
-    if "sigma" in params_observation:
-        output["sigma"] = params_observation["sigma"]
+    if "sigma_reference" in params_observation:
+        output["sigma_ref"] = params_observation["sigma_reference"]
+    elif "sigma" in params_observation:
+        sigma = np.asarray(params_observation["sigma"], dtype=float)
+        output["sigma"] = (
+            float(sigma) if sigma.ndim == 0 else float(np.exp(np.mean(np.log(sigma))))
+        )
     if "xi" in params_observation:
         output["xi"] = params_observation["xi"]
     for label, key in (
