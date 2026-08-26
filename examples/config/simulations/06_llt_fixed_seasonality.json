@@ -57,6 +57,12 @@
     "dpi": 180,
     "diagnostics": false,
     "interval_probability": 0.9,
+    "seasonal_patterns": {
+      "_comment": "Plot complete seasonal patterns for these one-based cycles; first and last are resolved from n_time and period.",
+      "years": [],
+      "cycles": ["first", "last"],
+      "show_interval": true
+    },
     "predictive_draws": 500,
     "focus_phase": 1,
     "forecast_horizon": 40,

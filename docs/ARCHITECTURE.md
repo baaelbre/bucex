@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.4.1 keeps one model compiler, one fitting entry point, and one result
+Release 1.5.2 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text
@@ -98,14 +98,15 @@ saved as a new draw.
 
 ## Analysis-script lifecycle
 
-The 12 files under `examples/` declare models, priors, simulation truths,
+The 13 files under `examples/` declare models, priors, simulation truths,
 fit calls, summaries, and figures in one readable sequence. Their scientific,
 sampling, figure, and output choices come from the JSON files under
 `examples/config/`; there is no second environment-variable configuration
 layer. Seven examples form the COMPSTAT analysis, one exposes the
 centered/inverse-gamma random-walk benchmark, two exercise exact Laplace-MH,
-and examples 10–11 isolate log-scale sensitivity for simulations and Uccle.
-Twelve matching Bash/PBS pairs invoke those exact files.
+examples 10–11 isolate log-scale sensitivity for simulations and Uccle, and
+example 12 provides exact Gaussian FFBS for Uccle TXm/TNm. Thirteen matching
+Bash/PBS pairs invoke those exact files.
 
 For a multi-chain job, `job_scripts/run_parallel_chains.py` creates one
 temporary one-chain JSON per independent process, waits for all processes, and

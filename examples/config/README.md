@@ -5,6 +5,14 @@ simulation choices, model structure, priors, MCMC controls, inference controls,
 figures, runtime behavior, and output policy. The numbered Python examples read
 these values directly with `bx.load_config`.
 
+## Tail comparison configuration
+
+`tail.json` drives example 01. Its single `simulation.location` block is
+stationary, and all six scenarios reuse that same constant predictor. The
+shape group changes only `tail_xi_values`; the scale group changes only
+`scale_sigma_values`. The paired seeds give matched probability draws within
+each group. No process-innovation SD is present or needed.
+
 ## Simulation configurations
 
 `simulation.json` selects all six structural truths. The `simulations/`
@@ -23,8 +31,13 @@ values remain explicit in each file.
 
 ## Uccle configurations
 
-`uccle.json` selects all four temperature-extreme series. For independent
-series jobs, use:
+The recommended primary analysis has six independent series jobs. Monthly
+means use exact Gaussian FFBS:
+
+- `uccle_gaussian/01_txm.json`;
+- `uccle_gaussian/02_tnm.json`.
+
+Monthly extremes use exact stationary-scale GEV Laplace-MH:
 
 - `uccle/01_txx.json`;
 - `uccle/02_txn.json`;
@@ -46,9 +59,14 @@ iterations, 1,000 retained draws, and four chains. The same file is accepted
 by examples 05, 06, and 09; the numbered example selects Laplace, PGAS, or
 Laplace-MH.
 
+The Gaussian files contain the same primary structural slabs and SSVS
+probabilities. They additionally contain a readable `sigma2` observation-
+variance prior and `inference.engine: "ffbs"`; they do not contain particles
+or Laplace proposal controls. Example 12 reads them.
+
 ## Log-scale configurations
 
-`phi/` contains the 1.4.1 sensitivity inputs for
+`phi/` contains the maintained sensitivity inputs for
 `phi_t = log(sigma_t)`:
 
 - `phi/simulation_stationary.json`;
@@ -65,10 +83,33 @@ files separately record the known data-generating location under
 
 All phi files contain valid `_comment` fields and retain the complete
 `priors.phi` block, so switching models never hides inactive hyperparameters.
+Their location innovation slabs equal the primary GEV values
+`(0.02, 0.00005, 0.02)`, so a scale comparison does not also change the
+location prior.
 Linear, RW-variance, and model-probability settings can be edited directly.
 Examples 10 and 11 read every scientific, computational, reporting, runtime,
 and output value from these JSONs. See [`phi/README.md`](phi/README.md) for a
 field-by-field guide, the location equations, and the complete output tree.
+
+## Seasonal-pattern figures
+
+Every fitted seasonal example reads this reporting block directly from JSON:
+
+```json
+"seasonal_patterns": {
+  "years": [1892, 2022],
+  "cycles": [],
+  "show_interval": true
+}
+```
+
+For Uccle, list any complete calendar years under `years`; the output compares
+the full January--December seasonal effect in those years. Use three or more
+years if desired, or `[]` to disable the figure. Simulations have no calendar
+dates and instead use readable selectors such as
+`"cycles": ["first", "middle", "last"]`. Do not fill both arrays. The
+pointwise band uses `figures.interval_probability`, and an optional title can
+be placed at `figures.titles.seasonal_patterns`.
 
 ## Selecting a JSON
 
@@ -84,6 +125,9 @@ python examples/05_uccle_laplace.py \
 
 python examples/11_uccle_phi.py \
   --config examples/config/phi/uccle/01_txx_ssvs.json
+
+python examples/12_uccle_gaussian.py \
+  --config examples/config/uccle_gaussian/01_txm.json
 ```
 
 For parallel local chains, use the matching Bash runner:
@@ -101,6 +145,9 @@ qsub -v CONFIG=examples/config/uccle/01_txx.json \
 
 qsub -v CONFIG=examples/config/phi/uccle/01_txx_ssvs.json \
   job_scripts/submit_11_uccle_phi.pbs
+
+qsub -v CONFIG=examples/config/uccle_gaussian/01_txm.json \
+  job_scripts/submit_12_uccle_gaussian.pbs
 ```
 
 There are no environment-variable overrides of scientific settings. The

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.4.1."""
+"""Fixed-seed numerical release validation for bucex 1.5.2."""
 
 from __future__ import annotations
 
@@ -67,8 +67,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.4.1":
-        raise RuntimeError(f"Expected bucex 1.4.1, found {bx.__version__}.")
+    if bx.__version__ != "1.5.2":
+        raise RuntimeError(f"Expected bucex 1.5.2, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -97,6 +97,25 @@ def run() -> dict[str, object]:
     }
     if not all(record["configured_hpc_runner"].values()):
         raise RuntimeError("The JSON-driven HPC runner contract is incomplete.")
+
+    validation_root = SOURCE_ROOT / "validation"
+    record["clean_release_surface"] = {
+        "pyproject_only_packaging": (
+            (SOURCE_ROOT / "pyproject.toml").is_file()
+            and not (SOURCE_ROOT / "setup.py").exists()
+            and not (SOURCE_ROOT / "setup.cfg").exists()
+        ),
+        "current_example_smoke_name": (
+            (validation_root / "run_example_smoke.py").is_file()
+            and not (validation_root / "run_presentation_smoke.py").exists()
+        ),
+        "no_historical_validation_results": not any(
+            "1.4." in path.name or "1.5.0" in path.name or "1.5.1" in path.name
+            for path in validation_root.glob("*.json")
+        ),
+    }
+    if not all(record["clean_release_surface"].values()):
+        raise RuntimeError("The clean 1.5.2 release surface is incomplete.")
 
     phi_root = SOURCE_ROOT / "examples" / "config" / "phi"
     phi_config_paths = sorted(phi_root.glob("simulation_*.json")) + sorted(
@@ -154,6 +173,127 @@ def run() -> dict[str, object]:
     }
     if not all(record["documented_phi_reports"].values()):
         raise RuntimeError("The documented phi report contract is incomplete.")
+
+    gaussian_config_paths = sorted(
+        (SOURCE_ROOT / "examples" / "config" / "uccle_gaussian").glob("*.json")
+    )
+    gaussian_configs = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in gaussian_config_paths
+    ]
+    primary_slabs = {"level": 0.02, "trend": 0.00005, "season": 0.02}
+    gaussian_source = (
+        SOURCE_ROOT / "examples" / "12_uccle_gaussian.py"
+    ).read_text(encoding="utf-8")
+    record["primary_six_series_uccle"] = {
+        "two_gaussian_configs": len(gaussian_configs) == 2,
+        "mean_series": {
+            tuple(config["data"]["series"])[0] for config in gaussian_configs
+        } == {"TXm", "TNm"},
+        "gaussian_ffbs": all(
+            config["model"]["observation_family"] == "gaussian"
+            and config["inference"]["engine"] == "ffbs"
+            for config in gaussian_configs
+        ),
+        "primary_slabs": all(
+            config["priors"]["innovation_slab_sd"] == primary_slabs
+            for config in gaussian_configs + phi_configs[4:]
+        ),
+        "production_mcmc": all(
+            config["mcmc"]["draws"] == 1000
+            and config["mcmc"]["warmup"] == 1000
+            and config["mcmc"]["chains"] == 4
+            for config in gaussian_configs
+        ),
+        "public_gaussian_api": (
+            "bx.Gaussian()" in gaussian_source
+            and "bx.ssvs_gaussian_priors(" in gaussian_source
+            and "engine=ENGINE" in gaussian_source
+        ),
+        "matching_runners": (
+            (SOURCE_ROOT / "bash_scripts" / "run_12_uccle_gaussian.sh").is_file()
+            and (SOURCE_ROOT / "job_scripts" / "submit_12_uccle_gaussian.pbs").is_file()
+        ),
+    }
+    if not all(record["primary_six_series_uccle"].values()):
+        raise RuntimeError("The primary six-series Uccle contract is incomplete.")
+
+    tail_config = json.loads(
+        (SOURCE_ROOT / "examples" / "config" / "tail.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    tail_settings = tail_config["simulation"]
+    tail_location = float(tail_settings["location"]["value"])
+    tail_model = bx.Model(bx.GEV(), (bx.LocalLevel(mode="static"),))
+    shape_parameters = [
+        {"sigma": float(tail_settings["tail_sigma"]), "xi": float(xi)}
+        for xi in tail_settings["tail_xi_values"]
+    ]
+    scale_parameters = [
+        {"sigma": float(sigma), "xi": float(tail_settings["scale_xi"])}
+        for sigma in tail_settings["scale_sigma_values"]
+    ]
+    shape_simulations = [
+        bx.simulate(
+            tail_model,
+            int(tail_settings["n_time"]),
+            parameters,
+            initial_state=[tail_location],
+            seed=int(tail_settings["tail_seed"]),
+        )
+        for parameters in shape_parameters
+    ]
+    scale_simulations = [
+        bx.simulate(
+            tail_model,
+            int(tail_settings["n_time"]),
+            parameters,
+            initial_state=[tail_location],
+            seed=int(tail_settings["scale_seed"]),
+        )
+        for parameters in scale_parameters
+    ]
+
+    def matched_probabilities(simulations, parameters) -> bool:
+        probabilities = [
+            tail_model.observation.cdf(
+                simulation.y,
+                simulation.eta,
+                sigma=values["sigma"],
+                xi=values["xi"],
+            )
+            for simulation, values in zip(simulations, parameters)
+        ]
+        return all(
+            np.allclose(values, probabilities[0], atol=1e-12, rtol=1e-12)
+            for values in probabilities[1:]
+        )
+
+    all_tail_simulations = shape_simulations + scale_simulations
+    record["stationary_tail_comparisons"] = {
+        "explicit_stationary_config": (
+            tail_settings["location"]["mode"] == "stationary"
+        ),
+        "no_obsolete_process_sd": "level_process_sd" not in tail_settings,
+        "static_model": tail_model.noise_names == (),
+        "constant_predictor": all(
+            np.allclose(simulation.eta, tail_location)
+            for simulation in all_tail_simulations
+        ),
+        "constant_level": all(
+            np.allclose(simulation.states[:, 0], tail_location)
+            for simulation in all_tail_simulations
+        ),
+        "matched_shape_draws": matched_probabilities(
+            shape_simulations, shape_parameters
+        ),
+        "matched_scale_draws": matched_probabilities(
+            scale_simulations, scale_parameters
+        ),
+    }
+    if not all(record["stationary_tail_comparisons"].values()):
+        raise RuntimeError("The stationary tail-comparison contract is incomplete.")
 
     # Regression for the 1.1.0--1.1.2 failure: the zero FS trajectory crosses
     # a negative-shape endpoint, while a valid trajectory exists through the
@@ -518,7 +658,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.4.1.json"),
+        default=Path("validation/release_validation_1.5.2.json"),
     )
     args = parser.parse_args()
     result = run()

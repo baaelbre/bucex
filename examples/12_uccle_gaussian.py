@@ -101,6 +101,15 @@ FIGURE_FORMATS = tuple(FIGURES["formats"])
 FIGURE_DPI = int(FIGURES["dpi"])
 DIAGNOSTIC_FIGURES = bool(FIGURES["diagnostics"])
 INTERVAL_PROBABILITY = float(FIGURES["interval_probability"])
+SEASONAL_PATTERN_SETTINGS = FIGURES.get("seasonal_patterns", {})
+SEASONAL_PATTERN_YEARS = tuple(
+    int(value) for value in SEASONAL_PATTERN_SETTINGS.get("years", ())
+)
+SEASONAL_PATTERN_SHOW_INTERVAL = bool(
+    SEASONAL_PATTERN_SETTINGS.get("show_interval", True)
+)
+if SEASONAL_PATTERN_SETTINGS.get("cycles"):
+    raise ValueError("Dated Uccle seasonal patterns use figures.seasonal_patterns.years.")
 PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
 FORECAST_HORIZON = int(FIGURES["forecast_horizon"])
 FORECAST_HISTORY = int(FIGURES["forecast_history"])
@@ -201,6 +210,11 @@ def main() -> None:
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
             "focus_month": FOCUS_MONTH,
+            "seasonal_patterns": {
+                "years": list(SEASONAL_PATTERN_YEARS),
+                "cycles": list(SEASONAL_PATTERN_SETTINGS.get("cycles", ())),
+                "show_interval": SEASONAL_PATTERN_SHOW_INTERVAL,
+            },
         },
         "chain_only": CHAIN_ONLY,
         "combined_chain_runs": [str(path) for path in COMBINE_RUNS],
@@ -491,6 +505,22 @@ def main() -> None:
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"season.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
+
+        if SEASONAL_PATTERN_YEARS:
+            figure, _ = fit.plot(
+                "seasonal_patterns",
+                years=SEASONAL_PATTERN_YEARS,
+                credible_interval=INTERVAL_PROBABILITY,
+                show_interval=SEASONAL_PATTERN_SHOW_INTERVAL,
+                title=bx.config_title(CONFIG, "seasonal_patterns"),
+            )
+            for extension in FIGURE_FORMATS:
+                figure.savefig(
+                    figure_dir / f"seasonal_patterns.{extension}",
+                    dpi=FIGURE_DPI,
+                    bbox_inches="tight",
+                )
+            plt.close(figure)
 
         if DIAGNOSTIC_FIGURES:
             for kind, filename in (("traces", "sd_traces"), ("acf", "acf")):

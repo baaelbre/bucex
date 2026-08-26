@@ -12,7 +12,7 @@ The Bash runner locates Python, sets single-threaded BLAS variables, and calls
 and memory and redirects the main log. Neither layer defines scientific or
 MCMC settings.
 
-For examples 03–11, `mcmc.chains > 1` activates process-level chain
+For examples 03–12, `mcmc.chains > 1` activates process-level chain
 parallelism. The runner:
 
 1. reads the selected source JSON;
@@ -46,10 +46,10 @@ written to:
 logs/<script>_<run-id>_chainXX.log
 ```
 
-Four separate Uccle submissions can run concurrently. Each submission selects
-one of `TXx`, `TXn`, `TNx`, or `TNn` and internally runs its four chains in
-parallel, for up to 16 simultaneous one-core processes when PBS grants all four
-jobs.
+Six primary Uccle submissions can run concurrently. Two select `TXm` or `TNm`
+for exact Gaussian FFBS; four select `TXx`, `TXn`, `TNx`, or `TNn` for exact
+stationary-scale GEV Laplace-MH. Each internally runs four chains in parallel,
+for up to 24 simultaneous one-core processes when PBS grants all six jobs.
 
 Example 11 also separates the stationary, linear, RW, and SSVS scale models
 into independent JSON/job pairs. All 16 series-by-scale jobs are valid in

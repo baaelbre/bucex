@@ -400,6 +400,17 @@ def main() -> None:
     figure_dir = output_dir / "figures" / case_key
     table_dir.mkdir(parents=True, exist_ok=True)
     interval_probability = float(figures["interval_probability"])
+    seasonal_pattern_settings = figures.get("seasonal_patterns", {})
+    seasonal_pattern_cycles = tuple(
+        seasonal_pattern_settings.get("cycles", ())
+    )
+    seasonal_pattern_show_interval = bool(
+        seasonal_pattern_settings.get("show_interval", True)
+    )
+    if seasonal_pattern_settings.get("years"):
+        raise ValueError(
+            "Simulation seasonal patterns use figures.seasonal_patterns.cycles."
+        )
     tail_probability = 0.5 * (1.0 - interval_probability)
     quantiles = [tail_probability, 0.5, 1.0 - tail_probability]
     diagnostics = fit.diagnostics()
@@ -736,6 +747,24 @@ def main() -> None:
             figure_dir / f"season.{extension}", dpi=dpi, bbox_inches="tight"
         )
     plt.close(figure)
+
+    if seasonal_pattern_cycles:
+        figure, _ = fit.plot(
+            "seasonal_patterns",
+            cycles=seasonal_pattern_cycles,
+            credible_interval=interval_probability,
+            labels=phase_labels,
+            show_interval=seasonal_pattern_show_interval,
+            truth=simulation_table["seasonal"].to_numpy(),
+            title=bx.config_title(config, "seasonal_patterns"),
+        )
+        for extension in formats:
+            figure.savefig(
+                figure_dir / f"seasonal_patterns.{extension}",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+        plt.close(figure)
 
     figure, axis = plt.subplots(figsize=(9, 4))
     axis.fill_between(

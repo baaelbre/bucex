@@ -1,46 +1,31 @@
-# Complete PBS submission commands
+# Complete Uccle PBS command catalog
 
-Run commands from the bucex 1.4.1 repository root. Each command submits one
-independent PBS job. The selected JSON owns draws, warmup, chain count, seed,
-priors, model, inference tuning, figures, and output policy.
+Run these commands from the bucex 1.5.2 repository root after installing the
+package environment. JSON owns every scientific and computational setting.
 
-## Log-scale simulations
-
-```bash
-qsub -v CONFIG=examples/config/phi/simulation_stationary.json job_scripts/submit_10_simulation_phi.pbs
-qsub -v CONFIG=examples/config/phi/simulation_linear.json job_scripts/submit_10_simulation_phi.pbs
-qsub -v CONFIG=examples/config/phi/simulation_rw.json job_scripts/submit_10_simulation_phi.pbs
-qsub -v CONFIG=examples/config/phi/simulation_ssvs.json job_scripts/submit_10_simulation_phi.pbs
-```
-
-## Uccle: stationary scale
+## Recommended primary analysis: all six series
 
 ```bash
-qsub -v CONFIG=examples/config/phi/uccle/01_txx_stationary.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/02_txn_stationary.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/03_tnx_stationary.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/04_tnn_stationary.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/uccle_gaussian/01_txm.json job_scripts/submit_12_uccle_gaussian.pbs
+qsub -v CONFIG=examples/config/uccle_gaussian/02_tnm.json job_scripts/submit_12_uccle_gaussian.pbs
+qsub -v CONFIG=examples/config/uccle/01_txx.json job_scripts/submit_09_uccle_laplace_mh.pbs
+qsub -v CONFIG=examples/config/uccle/02_txn.json job_scripts/submit_09_uccle_laplace_mh.pbs
+qsub -v CONFIG=examples/config/uccle/03_tnx.json job_scripts/submit_09_uccle_laplace_mh.pbs
+qsub -v CONFIG=examples/config/uccle/04_tnn.json job_scripts/submit_09_uccle_laplace_mh.pbs
 ```
 
-## Uccle: linear log scale
+Submit these together if the queue permits. TXm/TNm use exact Gaussian FFBS;
+the extremes use exact stationary-scale GEV Laplace-MH.
+
+## Optional descriptive record figures
 
 ```bash
-qsub -v CONFIG=examples/config/phi/uccle/01_txx_linear.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/02_txn_linear.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/03_tnx_linear.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/04_tnn_linear.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/record.json job_scripts/submit_00_uccle_record.pbs
 ```
 
-## Uccle: random-walk log scale
+This is descriptive and has no MCMC chains.
 
-```bash
-qsub -v CONFIG=examples/config/phi/uccle/01_txx_rw.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/02_txn_rw.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/03_tnx_rw.json job_scripts/submit_11_uccle_phi.pbs
-qsub -v CONFIG=examples/config/phi/uccle/04_tnn_rw.json job_scripts/submit_11_uccle_phi.pbs
-```
-
-## Uccle: scale-model SSVS
+## Optional GEV scale-model SSVS: all four extremes
 
 ```bash
 qsub -v CONFIG=examples/config/phi/uccle/01_txx_ssvs.json job_scripts/submit_11_uccle_phi.pbs
@@ -49,57 +34,66 @@ qsub -v CONFIG=examples/config/phi/uccle/03_tnx_ssvs.json job_scripts/submit_11_
 qsub -v CONFIG=examples/config/phi/uccle/04_tnn_ssvs.json job_scripts/submit_11_uccle_phi.pbs
 ```
 
-The 20 commands above may be submitted together. Every supplied JSON requests
-four chains, so full simultaneous execution would use 80 one-core chain
-processes: 16 for the four simulations and 64 for the Uccle fits. The code
-supports this; PBS quotas decide actual concurrency.
-
-## Compact equivalent
+## Optional forced linear log scale
 
 ```bash
-for config in examples/config/phi/simulation_*.json; do
-  qsub -v CONFIG="$config" job_scripts/submit_10_simulation_phi.pbs
-done
-
-for config in examples/config/phi/uccle/*.json; do
-  qsub -v CONFIG="$config" job_scripts/submit_11_uccle_phi.pbs
-done
+qsub -v CONFIG=examples/config/phi/uccle/01_txx_linear.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/02_txn_linear.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/03_tnx_linear.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/04_tnn_linear.json job_scripts/submit_11_uccle_phi.pbs
 ```
 
-## Earlier simulation engines
-
-The six original structural configurations can still be submitted under all
-three state engines:
+## Optional forced random-walk log scale
 
 ```bash
-for config in examples/config/simulations/*.json; do
-  qsub -v CONFIG="$config" job_scripts/submit_03_simulation_laplace.pbs
-  qsub -v CONFIG="$config" job_scripts/submit_04_simulation_pgas.pbs
-  qsub -v CONFIG="$config" job_scripts/submit_08_simulation_laplace_mh.pbs
-done
+qsub -v CONFIG=examples/config/phi/uccle/01_txx_rw.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/02_txn_rw.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/03_tnx_rw.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/04_tnn_rw.json job_scripts/submit_11_uccle_phi.pbs
 ```
 
-## Earlier Uccle engines and slab settings
+## Optional explicit stationary-scale sensitivity replicas
 
-This loop includes each primary and `*_narrow.json` configuration under
-Laplace, PGAS, and Laplace-MH:
+These go through the phi-aware example and are useful only when a directly
+matched scale-model comparison is required. They duplicate the primary scale
+assumption and are not additional primary analyses.
 
 ```bash
-for config in examples/config/uccle/*.json; do
+qsub -v CONFIG=examples/config/phi/uccle/01_txx_stationary.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/02_txn_stationary.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/03_tnx_stationary.json job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/phi/uccle/04_tnn_stationary.json job_scripts/submit_11_uccle_phi.pbs
+```
+
+## Optional approximate/particle engine comparisons
+
+The same four primary GEV JSONs can be passed to example 05 (approximate
+Laplace) or example 06 (PGAS). These are method comparisons; do not submit them
+for the recommended primary result unless needed.
+
+```bash
+for config in \
+  examples/config/uccle/01_txx.json \
+  examples/config/uccle/02_txn.json \
+  examples/config/uccle/03_tnx.json \
+  examples/config/uccle/04_tnn.json; do
   qsub -v CONFIG="$config" job_scripts/submit_05_uccle_laplace.pbs
   qsub -v CONFIG="$config" job_scripts/submit_06_uccle_pgas.pbs
+done
+```
+
+## Optional narrower location-slab sensitivity
+
+```bash
+for config in examples/config/uccle/*_narrow.json; do
   qsub -v CONFIG="$config" job_scripts/submit_09_uccle_laplace_mh.pbs
 done
 ```
 
 ## Custom virtual environment
 
-If the environment is not `$HOME/venvs/bucex_env`, pass it with the config:
-
 ```bash
-qsub \
-  -v CONFIG=examples/config/phi/uccle/01_txx_ssvs.json,BUCEX_VENV_DIR=/absolute/path/to/bucex_env \
-  job_scripts/submit_11_uccle_phi.pbs
+qsub -v CONFIG=examples/config/uccle_gaussian/01_txm.json,BUCEX_VENV_DIR=/absolute/path/to/bucex_env job_scripts/submit_12_uccle_gaussian.pbs
 ```
 
 ## Monitor and cancel
@@ -108,7 +102,7 @@ qsub \
 qstat -u "$USER"
 ```
 
-Only to cancel an actual submitted job, use its ID from `qstat`:
+Cancel only a specific ID obtained from `qstat`:
 
 ```bash
 qdel JOB_ID

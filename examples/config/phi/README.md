@@ -181,6 +181,11 @@ support bound and the uniform shape prior. `innovation_slab_sd` contains the
 slab scales for the location innovations. The three structural probability
 fields control location SSVS as described above.
 
+All 16 supplied Uccle phi files use the calibrated primary location slabs:
+level `0.02`, trend `0.00005`, and season `0.02`. Thus stationary, linear,
+RW, and scale-SSVS runs differ in their scale model rather than quietly using
+a different location prior.
+
 The scale-process hyperparameters are grouped under `priors.phi`:
 
 | Field | Meaning |
@@ -205,7 +210,11 @@ These are computational settings; they do not redefine the scientific model.
 Tables are always produced. `figures.enabled` turns figure creation on or off;
 `formats` can contain `png`, `pdf`, or both. The credible interval, number of
 posterior-predictive draws, focus phase/month, forecast horizon, and displayed
-history are all explicit in this block.
+history are all explicit in this block. `seasonal_patterns.years` selects
+complete Uccle years such as 1892 and 2022; simulation files instead use
+`seasonal_patterns.cycles`, including `first`, `middle`, and `last`.
+`show_interval` controls the pointwise band, whose probability is the existing
+`interval_probability`. An empty applicable list disables this extra figure.
 
 The parallel-chain runner temporarily changes only `runtime.chain_only`,
 `runtime.combine_runs`, one-chain execution, chain seed, and the collision-safe
@@ -234,7 +243,7 @@ results/10_simulation_phi/<run>/
     trajectory.* trajectory_phase_01.* posterior_predictive.*
     forecast.* forecast_phase_01.* forecast_level.*
     level.* level_no_observations.* slope.* selection.*
-    process_sd.* gev.* season.* phi.*
+    process_sd.* gev.* season.* seasonal_patterns.* phi.*
 ```
 
 Uccle uses the same core table and figure names under

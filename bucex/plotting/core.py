@@ -1215,6 +1215,202 @@ def plot_season(
     return figure, ax
 
 
+def plot_seasonal_patterns(
+    fit,
+    *,
+    years=None,
+    cycles=None,
+    credible_interval: float = 0.90,
+    labels=None,
+    show_interval: bool = True,
+    truth=None,
+    ax=None,
+    figsize=(9, 5),
+    title: str | None = None,
+):
+    """Compare complete posterior seasonal patterns at selected times.
+
+    Use ``years=`` for a fit with calendar dates and ``cycles=`` for an
+    undated simulation.  Years are calendar years.  Cycles are one-based and
+    may also be ``"first"``, ``"middle"``, or ``"last"``.  With neither
+    argument, the first and last complete year/cycle are selected.
+
+    The plotted values are the seasonal contribution only, on the original
+    response orientation.  Credible bands are pointwise.  ``truth=`` may be a
+    length-``fit.n_time`` seasonal path, which is useful for simulations.
+    """
+
+    import matplotlib.pyplot as plt
+
+    if fit.is_multiseries_model:
+        raise ValueError("Use a univariate FitResult for seasonal-pattern plots.")
+    period = fit.model.period
+    if period is None or int(period) < 2:
+        raise ValueError("The fitted model has no seasonal component.")
+    seasonal_name = next(
+        (name for name in fit.state_names if name.startswith("seasonal[")),
+        None,
+    )
+    if seasonal_name is None:
+        raise ValueError("The fit must contain a dummy-seasonal state.")
+    if years is not None and cycles is not None:
+        raise ValueError("Pass years= or cycles=, not both.")
+
+    period = int(period)
+    dates = None if fit.dates is None else np.asarray(fit.dates)
+    selections = []
+    phase_dates = None
+
+    if dates is not None:
+        if cycles is not None:
+            raise ValueError("A dated fit uses years= rather than cycles=.")
+        try:
+            import pandas as pd
+
+            date_index = pd.to_datetime(dates)
+        except (ImportError, TypeError, ValueError) as exc:
+            raise ValueError("fit.dates could not be interpreted as calendar dates.") from exc
+        available = []
+        for year in np.unique(date_index.year):
+            indices = np.flatnonzero(date_index.year == int(year))
+            if indices.size == period:
+                available.append((int(year), indices))
+        if not available:
+            raise ValueError("The fit contains no complete calendar year.")
+        requested = (
+            list(dict.fromkeys((available[0][0], available[-1][0])))
+            if years is None
+            else [int(value) for value in years]
+        )
+        if len(set(requested)) != len(requested):
+            raise ValueError("years must not contain duplicates.")
+        by_year = dict(available)
+        missing = [value for value in requested if value not in by_year]
+        if missing:
+            raise ValueError(
+                "Requested year(s) are absent or incomplete: "
+                f"{missing}. Complete years run from {available[0][0]} "
+                f"through {available[-1][0]}."
+            )
+        selections = [(str(year), by_year[year]) for year in requested]
+        phase_dates = date_index[selections[0][1]]
+    else:
+        if years is not None:
+            raise ValueError("An undated fit uses cycles= rather than years=.")
+        n_cycles = fit.n_time // period
+        if n_cycles < 1:
+            raise ValueError("The fit contains no complete seasonal cycle.")
+        requested = (
+            (["first"] if n_cycles == 1 else ["first", "last"])
+            if cycles is None
+            else list(cycles)
+        )
+        resolved = []
+        for value in requested:
+            if isinstance(value, str):
+                key = value.strip().lower()
+                if key == "first":
+                    cycle = 1
+                elif key == "middle":
+                    cycle = (n_cycles + 1) // 2
+                elif key == "last":
+                    cycle = n_cycles
+                else:
+                    raise ValueError(
+                        "Cycle names must be 'first', 'middle', or 'last'."
+                    )
+            else:
+                cycle = int(value)
+                if cycle != value:
+                    raise ValueError("cycles must contain integers or named selectors.")
+                if cycle < 0:
+                    cycle = n_cycles + cycle + 1
+            if not 1 <= cycle <= n_cycles:
+                raise ValueError(f"cycle {value!r} is outside 1 through {n_cycles}.")
+            resolved.append(cycle)
+        if len(set(resolved)) != len(resolved):
+            raise ValueError("cycles must select distinct complete cycles.")
+        selections = [
+            (
+                f"cycle {cycle}",
+                np.arange((cycle - 1) * period, cycle * period),
+            )
+            for cycle in resolved
+        ]
+
+    if not selections:
+        raise ValueError("Select at least one year or cycle.")
+    if labels is not None:
+        labels = tuple(str(value) for value in labels)
+        if len(labels) != period:
+            raise ValueError("labels must contain exactly model.period entries.")
+    elif phase_dates is not None:
+        labels = tuple(value.strftime("%b") for value in phase_dates)
+    else:
+        labels = tuple(f"phase {index + 1}" for index in range(period))
+
+    seasonal = np.asarray(fit.state_original(seasonal_name), dtype=float)
+    truth_values = None
+    if truth is not None:
+        truth_values = np.asarray(truth, dtype=float).reshape(-1)
+        if truth_values.size != fit.n_time:
+            raise ValueError("truth must contain one seasonal value per fitted time point.")
+
+    if ax is None:
+        figure, ax = plt.subplots(figsize=figsize)
+    else:
+        figure = ax.figure
+    horizontal = np.arange(period)
+    colours = plt.get_cmap("viridis")(
+        np.linspace(0.10, 0.85, max(len(selections), 2))
+    )[: len(selections)]
+    for (selection_label, selected), colour in zip(selections, colours):
+        lower, median, upper = _interval(
+            seasonal[:, selected], credible_interval
+        )
+        if show_interval:
+            ax.fill_between(
+                horizontal,
+                lower,
+                upper,
+                color=colour,
+                alpha=0.14,
+                linewidth=0.0,
+            )
+        posterior_label = (
+            f"{selection_label} posterior" if truth_values is not None else selection_label
+        )
+        ax.plot(
+            horizontal,
+            median,
+            color=colour,
+            marker="o",
+            linewidth=1.8,
+            markersize=3.5,
+            label=posterior_label,
+        )
+        if truth_values is not None:
+            ax.plot(
+                horizontal,
+                truth_values[selected],
+                color=colour,
+                linestyle="--",
+                linewidth=1.25,
+                label=f"{selection_label} truth",
+            )
+
+    if title is not None:
+        ax.set_title(str(title))
+    ax.axhline(0.0, color="0.45", linewidth=0.7)
+    ax.set_xticks(horizontal, labels)
+    ax.set_xlabel("month" if phase_dates is not None else "seasonal phase")
+    ax.set_ylabel("seasonal effect")
+    ax.grid(axis="y", alpha=0.35)
+    ax.legend(fontsize=8, loc="best")
+    figure.tight_layout()
+    return figure, ax
+
+
 def plot_endpoint(
     fit,
     *,
@@ -1464,6 +1660,8 @@ def plot_fit(fit, kind: str = "state", **kwargs):
         return finish(plot_level_slope(fit, **kwargs))
     if key in {"season", "seasonal", "seasonal_trajectories"}:
         return finish(plot_season(fit, **kwargs))
+    if key in {"seasonal_pattern", "seasonal_patterns", "season_patterns"}:
+        return finish(plot_seasonal_patterns(fit, **kwargs))
     if key == "endpoint":
         return finish(plot_endpoint(fit, **kwargs))
     if key in {"exceedance", "return_period"}:
@@ -1471,7 +1669,8 @@ def plot_fit(fit, kind: str = "state", **kwargs):
     if key in {"component_probabilities", "inclusion_probabilities"}:
         return finish(plot_component_probabilities(fit, **kwargs))
     raise ValueError(
-        "kind must be state, level, slope, level_slope, season, predictor, process_sd, "
+        "kind must be state, level, slope, level_slope, season, seasonal_patterns, "
+        "predictor, process_sd, "
         "parameter_density, traces, acf, endpoint, exceedance, return_period, or "
         "component_probabilities."
     )

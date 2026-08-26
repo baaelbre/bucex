@@ -135,6 +135,7 @@ def test_simulation_phi_writes_the_established_full_report(tmp_path: Path):
         "process_sd.png",
         "gev.png",
         "season.png",
+        "seasonal_patterns.png",
         "phi.png",
     } <= {path.name for path in figure_dir.iterdir()}
     assert (result / "fits/phi_linear/combined.bucex").is_file()
@@ -158,6 +159,7 @@ def test_uccle_phi_writes_the_established_full_report(tmp_path: Path):
         forecast_horizon=12,
         forecast_history=12,
     )
+    config["figures"]["seasonal_patterns"]["years"] = [1892, 1893]
     config["output"].update(
         results_root=str(tmp_path / "results"),
         run_id="v141_uccle_report",
@@ -196,6 +198,7 @@ def test_uccle_phi_writes_the_established_full_report(tmp_path: Path):
         "process_sd.png",
         "gev.png",
         "season.png",
+        "seasonal_patterns.png",
         "phi.png",
     } <= {path.name for path in figure_dir.iterdir()}
     assert (result / "fits/TXx/combined.bucex").is_file()

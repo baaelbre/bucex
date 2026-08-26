@@ -1,10 +1,11 @@
-# bucex 1.4.1 examples
+# bucex 1.5.2 examples
 
-The 12 numbered files are direct uses of the public `bucex` API. Examples 10
-and 11 are the focused log-scale additions:
+The 13 numbered files are direct uses of the public `bucex` API. Examples 10
+and 11 cover GEV log-scale sensitivity; example 12 completes the primary
+six-series Uccle analysis:
 
 1. `00_uccle_record.py` — Uccle record and LOESS summaries.
-2. `01_tail_simulations.py` — matched GEV shape/scale comparisons.
+2. `01_tail_simulations.py` — stationary matched GEV shape/scale comparisons.
 3. `02_structural_simulations.py` — six structural data-generating models.
 4. `03_simulation_laplace.py` — structural recovery with Laplace.
 5. `04_simulation_pgas.py` — structural recovery with PGAS.
@@ -15,13 +16,14 @@ and 11 are the focused log-scale additions:
 10. `09_uccle_laplace_mh.py` — exact Laplace-MH Uccle fits.
 11. `10_simulation_phi.py` — stationary/linear/RW/SSVS log-scale sensitivity.
 12. `11_uccle_phi.py` — the four scale models for each Uccle series.
+13. `12_uccle_gaussian.py` — exact Gaussian FFBS for Uccle TXm and TNm.
 
 ## Pick a JSON
 
 Every script exposes `DEFAULT_CONFIG_FILE` near the top and accepts
-`--config PATH`. Examples 10 and 11 have one `main()` and read the selected
-JSON directly; there is no configuration wrapper and no hidden scientific
-environment-variable layer.
+`--config PATH`. Examples 10, 11, and 12 have one `main()` and read the
+selected JSON directly; there is no configuration wrapper and no hidden
+scientific environment-variable layer.
 
 For an IDE run, edit one line:
 
@@ -34,6 +36,18 @@ For a terminal run, leave the file untouched:
 ```bash
 python examples/10_simulation_phi.py --config examples/config/phi/simulation_rw.json
 ```
+
+## Stationary tail comparisons
+
+Example 01 uses a constant location and matched probability draws. Only shape
+changes in the first group, and only scale changes in the second:
+
+```bash
+python examples/01_tail_simulations.py --config examples/config/tail.json
+```
+
+Edit `simulation.location.value` to move the common location. Its mode is
+deliberately fixed to `"stationary"`; there is no location process-SD setting.
 
 ## Simulation scale sensitivity
 
@@ -92,6 +106,55 @@ bash bash_scripts/run_10_simulation_phi.sh examples/config/phi/simulation_rw.jso
 bash bash_scripts/run_11_uccle_phi.sh examples/config/phi/uccle/01_txx_ssvs.json 4
 ```
 
+## Uccle monthly means
+
+TXm and TNm are monthly means rather than monthly extremes, so they use a
+Gaussian observation equation and exact FFBS. Their local-linear trend,
+dummy-seasonal structure, SSVS probabilities, and primary innovation slabs
+match the primary extreme-temperature analysis.
+
+```bash
+python examples/12_uccle_gaussian.py --config examples/config/uccle_gaussian/01_txm.json
+python examples/12_uccle_gaussian.py --config examples/config/uccle_gaussian/02_tnm.json
+
+bash bash_scripts/run_12_uccle_gaussian.sh examples/config/uccle_gaussian/01_txm.json 4
+```
+
+There are no particles or Laplace tuning fields in these two JSONs. Change
+priors, MCMC, figures, predictions, or output values directly in the selected
+file.
+
+## Seasonal patterns at selected years
+
+The fitting examples still write `season.*`, where each month is followed
+through the complete record. They now also write `seasonal_patterns.*`, with
+months on the horizontal axis and one line per selected year. Uccle JSONs use:
+
+```json
+"seasonal_patterns": {
+  "years": [1892, 2022],
+  "cycles": [],
+  "show_interval": true
+}
+```
+
+Edit `years` to any complete years in the fitted record; three or more years
+are allowed. Set `years` to `[]` to suppress the figure. Simulation JSONs use
+`"cycles": ["first", "last"]` instead. The bands use the probability in
+`figures.interval_probability`.
+
+To add the figure to an existing run without refitting, use the unnumbered
+reporting script:
+
+```bash
+python examples/replot_seasonal_patterns.py \
+  /path/to/first/completed-run /path/to/second/completed-run \
+  --years 1892 2022
+```
+
+It requires `fits/<series>/combined.bucex`; a lightweight `figures.zip` alone
+does not contain the posterior draws needed to construct a new figure.
+
 ## What to edit
 
 All scale hyperparameters are grouped under `priors.phi`:
@@ -128,6 +191,7 @@ Outputs are stored below:
 ```text
 results/10_simulation_phi/<run-id>__<signature>/
 results/11_uccle_phi/<run-id>__<signature>/
+results/12_uccle_gaussian/<run-id>__<signature>/
 ```
 
 Each run saves the exact effective `run_config.json`, one or more `.bucex`

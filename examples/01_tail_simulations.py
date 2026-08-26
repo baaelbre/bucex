@@ -1,7 +1,8 @@
-"""Simulate matched GEV series while changing only shape or scale.
+"""Simulate stationary matched GEV series while changing only shape or scale.
 
-The models are deliberately constructed in this file with the public bucex
-API. Run with ``python examples/01_tail_simulations.py``.
+Every scenario has the same constant location. Matched probability draws make
+shape or scale the only difference within each comparison. The model is
+constructed directly with the public bucex API.
 """
 from __future__ import annotations
 
@@ -49,10 +50,13 @@ OVERWRITE = bool(OUTPUT["overwrite"])
 
 # Simulation design.
 N_TIME = int(SIMULATION["n_time"])
-PERIOD = int(SIMULATION["period"])
 START_DATE = str(SIMULATION["start_date"])
-INITIAL_LEVEL = float(SIMULATION["initial_level"])
-LEVEL_PROCESS_SD = float(SIMULATION["level_process_sd"])
+FREQUENCY = str(SIMULATION["frequency"])
+LOCATION = SIMULATION["location"]
+LOCATION_MODE = str(LOCATION["mode"]).lower()
+LOCATION_VALUE = float(LOCATION["value"])
+if LOCATION_MODE != "stationary":
+    raise ValueError("Example 01 requires simulation.location.mode='stationary'.")
 
 TAIL_SIGMA = float(SIMULATION["tail_sigma"])
 TAIL_XI_VALUES = tuple(float(value) for value in SIMULATION["tail_xi_values"])
@@ -63,43 +67,50 @@ SCALE_XI = float(SIMULATION["scale_xi"])
 SCALE_SEED = int(SIMULATION["scale_seed"])
 
 # The theoretical density plots show this central probability range. Their
-# horizontal axis is y - mu, so the changing local-level path plays no role.
+# horizontal axis is y - mu; the shared location is constant at LOCATION_VALUE.
 DENSITY_PROBABILITY_RANGE = tuple(float(value) for value in DENSITY["probability_range"])
 DENSITY_GRID_POINTS = int(DENSITY["grid_points"])
 
 FIGURE_FORMATS = tuple(FIGURES["formats"])
 FIGURE_DPI = int(FIGURES["dpi"])
-COLORS = {"navy": "#123B4A", "teal": "#1D7F7A", "grey": "#7A8589"}
+FIGURE_TITLES = dict(FIGURES.get("titles", {}))
+COLORS = {"teal": "#1D7F7A", "grey": "#7A8589"}
 
-RUN_SIGNATURE = f"n{N_TIME}p{PERIOD}_s{TAIL_SEED}"
+RUN_SIGNATURE = f"n{N_TIME}_stationary_s{TAIL_SEED}-{SCALE_SEED}"
 OUTPUT_DIR = RESULTS_ROOT / SCRIPT_NAME / f"{RUN_TIMESTAMP}__{RUN_SIGNATURE}"
 
 
-# Each scenario is an ordinary bucex model plus its parameters and initial
-# state. No presentation-specific scenario builder is involved.
+# The one shared model makes the stationary location explicit. Scenario
+# dictionaries below change observation parameters only.
+STATIONARY_MODEL = bx.Model(
+    bx.GEV(xi_bounds=(-0.5, 0.5)),
+    (bx.LocalLevel(mode="static"),),
+    name="stationary-location GEV",
+)
+
 TAIL_SCENARIOS = (
     {
         "name": "bounded_tail",
         "title": r"bounded tail ($\xi=-0.30$)",
-        "model": bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (bx.LocalLevel(mode="dynamic"),), name="bounded tail"),
-        "params": {"sigma": TAIL_SIGMA, "xi": TAIL_XI_VALUES[0], "sd.level": LEVEL_PROCESS_SD},
-        "initial_state": np.array([INITIAL_LEVEL]),
+        "model": STATIONARY_MODEL,
+        "params": {"sigma": TAIL_SIGMA, "xi": TAIL_XI_VALUES[0]},
+        "initial_state": np.array([LOCATION_VALUE]),
         "seed": TAIL_SEED,
     },
     {
         "name": "gumbel_tail",
         "title": r"exponential tail ($\xi=0$)",
-        "model": bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (bx.LocalLevel(mode="dynamic"),), name="exponential tail"),
-        "params": {"sigma": TAIL_SIGMA, "xi": TAIL_XI_VALUES[1], "sd.level": LEVEL_PROCESS_SD},
-        "initial_state": np.array([INITIAL_LEVEL]),
+        "model": STATIONARY_MODEL,
+        "params": {"sigma": TAIL_SIGMA, "xi": TAIL_XI_VALUES[1]},
+        "initial_state": np.array([LOCATION_VALUE]),
         "seed": TAIL_SEED,
     },
     {
         "name": "heavy_tail",
         "title": r"heavy tail ($\xi=+0.30$)",
-        "model": bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (bx.LocalLevel(mode="dynamic"),), name="heavy tail"),
-        "params": {"sigma": TAIL_SIGMA, "xi": TAIL_XI_VALUES[2], "sd.level": LEVEL_PROCESS_SD},
-        "initial_state": np.array([INITIAL_LEVEL]),
+        "model": STATIONARY_MODEL,
+        "params": {"sigma": TAIL_SIGMA, "xi": TAIL_XI_VALUES[2]},
+        "initial_state": np.array([LOCATION_VALUE]),
         "seed": TAIL_SEED,
     },
 )
@@ -108,25 +119,25 @@ SCALE_SCENARIOS = (
     {
         "name": "low_scale",
         "title": r"low scale ($\sigma=0.75$)",
-        "model": bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (bx.LocalLevel(mode="dynamic"),), name="low scale"),
-        "params": {"sigma": SCALE_SIGMA_VALUES[0], "xi": SCALE_XI, "sd.level": LEVEL_PROCESS_SD},
-        "initial_state": np.array([INITIAL_LEVEL]),
+        "model": STATIONARY_MODEL,
+        "params": {"sigma": SCALE_SIGMA_VALUES[0], "xi": SCALE_XI},
+        "initial_state": np.array([LOCATION_VALUE]),
         "seed": SCALE_SEED,
     },
     {
         "name": "reference_scale",
         "title": r"reference scale ($\sigma=1.50$)",
-        "model": bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (bx.LocalLevel(mode="dynamic"),), name="reference scale"),
-        "params": {"sigma": SCALE_SIGMA_VALUES[1], "xi": SCALE_XI, "sd.level": LEVEL_PROCESS_SD},
-        "initial_state": np.array([INITIAL_LEVEL]),
+        "model": STATIONARY_MODEL,
+        "params": {"sigma": SCALE_SIGMA_VALUES[1], "xi": SCALE_XI},
+        "initial_state": np.array([LOCATION_VALUE]),
         "seed": SCALE_SEED,
     },
     {
         "name": "high_scale",
         "title": r"high scale ($\sigma=3.00$)",
-        "model": bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (bx.LocalLevel(mode="dynamic"),), name="high scale"),
-        "params": {"sigma": SCALE_SIGMA_VALUES[2], "xi": SCALE_XI, "sd.level": LEVEL_PROCESS_SD},
-        "initial_state": np.array([INITIAL_LEVEL]),
+        "model": STATIONARY_MODEL,
+        "params": {"sigma": SCALE_SIGMA_VALUES[2], "xi": SCALE_XI},
+        "initial_state": np.array([LOCATION_VALUE]),
         "seed": SCALE_SEED,
     },
 )
@@ -134,7 +145,7 @@ SCALE_SCENARIOS = (
 
 def main() -> None:
     plt.rcParams.update({"axes.spines.top": False, "axes.spines.right": False, "axes.titleweight": "bold", "legend.frameon": False})
-    dates = pd.date_range(START_DATE, periods=N_TIME, freq="QS")
+    dates = pd.date_range(START_DATE, periods=N_TIME, freq=FREQUENCY)
     grouped_tables: dict[str, dict[str, pd.DataFrame]] = {"shape": {}, "scale": {}}
     grouped_scenarios = {"shape": TAIL_SCENARIOS, "scale": SCALE_SCENARIOS}
 
@@ -155,10 +166,9 @@ def main() -> None:
         "settings_file": str(SETTINGS_FILE),
         "simulation": {
             "n_time": N_TIME,
-            "period": PERIOD,
             "start_date": START_DATE,
-            "initial_level": INITIAL_LEVEL,
-            "level_process_sd": LEVEL_PROCESS_SD,
+            "frequency": FREQUENCY,
+            "location": {"mode": LOCATION_MODE, "value": LOCATION_VALUE},
             "tail_sigma": TAIL_SIGMA,
             "tail_xi_values": list(TAIL_XI_VALUES),
             "tail_seed": TAIL_SEED,
@@ -171,7 +181,11 @@ def main() -> None:
             "grid_points": DENSITY_GRID_POINTS,
             "relative_to_location": True,
         },
-        "figures": {"formats": list(FIGURE_FORMATS), "dpi": FIGURE_DPI},
+        "figures": {
+            "formats": list(FIGURE_FORMATS),
+            "dpi": FIGURE_DPI,
+            "titles": FIGURE_TITLES,
+        },
     })
     bx.save_config(run_config, config_path)
 
@@ -204,7 +218,6 @@ def main() -> None:
             truth = {
                 "name": scenario["name"],
                 "n_time": N_TIME,
-                "period": PERIOD,
                 "model": scenario["model"].to_dict(),
                 "params": scenario["params"],
                 "initial_state": scenario["initial_state"].tolist(),

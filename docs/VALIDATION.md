@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.4.1 has five software layers:
+Release 1.5.2 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -11,7 +11,7 @@ Release 1.4.1 has five software layers:
 ```bash
 python -m pytest
 python validation/run_release_validation.py
-python validation/run_presentation_smoke.py
+python validation/run_example_smoke.py
 python -m build
 ```
 
@@ -22,6 +22,8 @@ evidence for a scientific conclusion.
 
 - `import bucex as bx` exposes the documented modelling, inference, result,
   simulation, data, and plotting APIs;
+- packaging is declared only in `pyproject.toml`, current validation files use
+  release-neutral names, and historical generated validation JSONs are absent;
 - Laplace plans remain explicitly approximate; Laplace-MH and PGAS plans are
   exact-invariant;
 - quadratic-observation Laplace-MH proposals accept with constant correction
@@ -37,9 +39,11 @@ evidence for a scientific conclusion.
   conditioned predecessor available;
 - the reference-ancestor change metric is stored, summarized, and exported;
 - lower-tail Uccle fits round-trip observations in their original orientation;
-- tail scenarios share their latent path and vary only shape over
+- every tail/scale demonstration has an exactly constant predictor and no
+  process-innovation parameter;
+- tail scenarios use matched probability draws and vary only shape over
   `-0.30/0/+0.30`;
-- scale scenarios share their latent path and `xi=-0.30`, varying only
+- scale scenarios use matched probability draws and `xi=-0.30`, varying only
   `sigma=0.75/1.50/3.00`;
 - `GEV()` remains identical to `GEV(phi="stationary")`, while model
   serialization preserves `linear`, `rw`, and `ssvs` declarations;
@@ -65,6 +69,11 @@ evidence for a scientific conclusion.
   the exact Laplace-MH state engine and its diagnostics;
 - examples 10 and 11 preserve those established core report tables, figures,
   and fit-directory layout while adding phi paths and scale-model summaries;
+- example 12 uses only the public Gaussian/SSVS/FFBS API and preserves the
+  established Uccle table, figure, prediction, and fit-directory layout;
+- selected-year and selected-cycle seasonal-pattern plots recover the correct
+  posterior seasonal slices, preserve original lower-tail orientation, and
+  reject incomplete or mismatched selectors;
 - timestamped paths and overwrite behavior are declared in each selected JSON
   configuration;
 - independently saved chains combine only when model, prior, plan, data, and
@@ -74,17 +83,18 @@ evidence for a scientific conclusion.
 - automatic run IDs distinguish simultaneous configurations and PBS jobs, and
   every manifest records the original selected JSON rather than a temporary
   chain copy;
-- four calibrated one-series Uccle JSON files differ only by series and encode
-  the final model, slab, structural-probability, and four-chain settings;
+- four calibrated one-series GEV JSONs and two Gaussian mean JSONs encode the
+  primary six-series model, slabs, structural probabilities, and four-chain
+  settings;
 - schema-2.7.0 archives round-trip dynamic-scale paths and all older supported
   archives remain readable;
-- the 12 Python examples are self-contained calls to the public API;
+- the 13 Python examples are self-contained calls to the public API;
 - centered inverse-gamma process variances use their exact Gibbs full
   conditional and are labelled `inverse_gamma_gibbs` in diagnostics;
 - the centered/inverse-gamma benchmark defaults to approximate Laplace for
   speed, disables ASIS, and selects Laplace-MH or PGAS through
   `examples/config/centered_ig.json`;
-- the 12 ordinary PBS jobs invoke those same examples, and every fitting
+- the 13 ordinary PBS jobs invoke those same examples, and every fitting
   workflow combines independent chains only after all chain processes or array
   tasks succeed;
 - dedicated level and slope figures keep observations off the slope scale;

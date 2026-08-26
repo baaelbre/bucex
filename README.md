@@ -1,10 +1,11 @@
-# bucex 1.4.1
+# bucex 1.5.2
 
 `bucex` fits Bayesian unobserved-component models to Gaussian and generalized
-extreme-value observations. Version 1.4.1 provides an optional time-varying GEV
-log scale while keeping the stationary model as the default. This patch makes
-the phi JSONs self-documenting, exposes the location structure in those files,
-and restores the complete established tables-and-figures report.
+extreme-value observations. Version 1.5.2 keeps the JSON-first primary
+analysis for all six Uccle temperature series: exact Gaussian FFBS for monthly
+means TXm/TNm and exact stationary-scale GEV Laplace-MH for monthly extremes
+TXx/TXn/TNx/TNn. Optional linear, random-walk, and SSVS GEV log-scale models
+remain available as sensitivity analyses.
 
 ```python
 import bucex as bx
@@ -17,6 +18,27 @@ bx.GEV(phi="ssvs")       # select stationary, linear, or RW
 
 No new fitting entry point is needed. The model still goes through `bx.fit`,
 returns a `FitResult`, and uses the same prediction and persistence APIs.
+
+## Stationary tail demonstrations
+
+Example 01 compares `xi = -0.30, 0, +0.30` at common scale and
+`sigma = 0.75, 1.50, 3.00` at common shape. Its location is now exactly
+stationary: `mu_t = 25` for every observation. Within each comparison the
+probability draws are matched, so only the advertised tail parameter changes.
+The complete design is editable in `examples/config/tail.json`.
+
+## Primary Uccle analysis
+
+| Series | Model | Production example | JSON directory |
+|---|---|---|---|
+| TXm, TNm | Gaussian structural SSVS, exact FFBS | `12_uccle_gaussian.py` | `config/uccle_gaussian/` |
+| TXx, TXn, TNx, TNn | stationary-scale GEV structural SSVS, exact Laplace-MH | `09_uccle_laplace_mh.py` | `config/uccle/` |
+
+All six production files use the calibrated primary innovation slabs
+`(level=0.02, trend=0.00005, season=0.02)`, 1,000 warmup iterations, 1,000
+retained draws per chain, and four chains. Every value is editable in its
+ordinary commented JSON. See `docs/UCCLE.md` for the model and
+`docs/HPC.md` for the six submission commands.
 
 ## Log-scale models
 
@@ -66,7 +88,7 @@ priors = bx.ssvs_gev_priors(
     alpha_mean=float(np.median(y)),
     sigma2_prior=bx.InverseGammaPrior(2.0, 2.0),
     xi_prior=bx.UniformPrior(-0.5, 0.5),
-    innovation_slab_sd={"level": 0.01, "trend": 0.000025, "season": 0.01},
+    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02},
     phi_prior=bx.PhiPrior(
         linear=bx.NormalPrior(0.0, 0.35),
         rw_variance=bx.InverseGammaPrior(2.5, 3.75e-5),
@@ -86,6 +108,13 @@ fit = bx.fit(
 phi = fit.phi_draws()       # shape: draws x time
 sigma = fit.sigma_draws()   # exp(phi), same shape
 forecast = fit.forecast(120, draws=1_000, seed=56_101)
+
+# Compare the complete monthly seasonal pattern at two points in the record.
+figure, axis = fit.plot(
+    "seasonal_patterns",
+    years=[1892, 2022],
+    credible_interval=0.90,
+)
 ```
 
 Change only `phi="rw"` to `"linear"`, `"stationary"`, or `"ssvs"`. For an
@@ -123,13 +152,14 @@ silently approximated.
 
 ## JSON-first examples
 
-The two new scripts each contain one readable `main()` and load all scientific
-and computational settings directly from the selected JSON:
+The three focused scripts each contain one readable `main()` and load all
+scientific and computational settings directly from the selected JSON:
 
 - `examples/10_simulation_phi.py` for scale-model sensitivity simulations;
-- `examples/11_uccle_phi.py` for Uccle TXx, TXn, TNx, and TNn.
+- `examples/11_uccle_phi.py` for Uccle TXx, TXn, TNx, and TNn;
+- `examples/12_uccle_gaussian.py` for primary Uccle TXm and TNm fits.
 
-The first executable line to edit in either script is `DEFAULT_CONFIG_FILE`.
+The first executable line to edit in any script is `DEFAULT_CONFIG_FILE`.
 Command-line selection is usually more convenient:
 
 ```bash
@@ -139,6 +169,7 @@ python examples/10_simulation_phi.py --config examples/config/phi/simulation_rw.
 python examples/10_simulation_phi.py --config examples/config/phi/simulation_ssvs.json
 
 python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_stationary.json
+python examples/12_uccle_gaussian.py --config examples/config/uccle_gaussian/01_txm.json
 ```
 
 There are 16 Uccle JSONs: four series times four scale models. They live under
@@ -151,11 +182,14 @@ chains, seeds, Laplace controls, figures, and output paths there; neither the
 Python nor PBS layer overwrites them. See
 `examples/config/phi/README.md` for a field-by-field guide.
 
-Examples 10 and 11 write the same core report as the earlier simulation and
-Uccle fitting examples: parameter and MCMC diagnostics, location trajectories,
+Examples 10, 11, and 12 write the same core report as the earlier simulation
+and Uccle fitting examples: parameter and MCMC diagnostics, location trajectories,
 structural selection, posterior predictive checks, forecasts, latent-state
-figures, process scales, and GEV summaries. The phi path and scale-model tables
-and figures are additions, not replacements.
+figures, process scales, and observation-parameter summaries. The phi path and
+scale-model tables and figures are additions, not replacements. Every fitted
+seasonal model also retains the longitudinal `season.*` figure and can add a
+`seasonal_patterns.*` comparison for the years or simulation cycles selected
+under `figures.seasonal_patterns` in JSON.
 
 The production profile is 1,000 retained draws after 1,000 warmup iterations
 for each of four independent chains. Use an edited copy with smaller values for
@@ -163,14 +197,22 @@ a pilot.
 
 ## PBS/HPC
 
-Submit one JSON per job from the repository root:
+Submit one JSON per job from the repository root. The six primary Uccle jobs
+are:
 
 ```bash
-qsub -v CONFIG=examples/config/phi/simulation_rw.json \
-  job_scripts/submit_10_simulation_phi.pbs
+qsub -v CONFIG=examples/config/uccle_gaussian/01_txm.json job_scripts/submit_12_uccle_gaussian.pbs
+qsub -v CONFIG=examples/config/uccle_gaussian/02_tnm.json job_scripts/submit_12_uccle_gaussian.pbs
+qsub -v CONFIG=examples/config/uccle/01_txx.json job_scripts/submit_09_uccle_laplace_mh.pbs
+qsub -v CONFIG=examples/config/uccle/02_txn.json job_scripts/submit_09_uccle_laplace_mh.pbs
+qsub -v CONFIG=examples/config/uccle/03_tnx.json job_scripts/submit_09_uccle_laplace_mh.pbs
+qsub -v CONFIG=examples/config/uccle/04_tnn.json job_scripts/submit_09_uccle_laplace_mh.pbs
+```
 
-qsub -v CONFIG=examples/config/phi/uccle/01_txx_ssvs.json \
-  job_scripts/submit_11_uccle_phi.pbs
+For optional scale sensitivity:
+
+```bash
+qsub -v CONFIG=examples/config/phi/uccle/01_txx_ssvs.json job_scripts/submit_11_uccle_phi.pbs
 ```
 
 Submit every new simulation and Uccle configuration:
@@ -206,7 +248,7 @@ python -m pytest
 python -m build
 ```
 
-The printed version should be `1.4.1`. Safe result archives use schema 2.7.0
+The printed version should be `1.5.2`. Safe result archives use schema 2.7.0
 and remain backward-readable for every previously supported schema.
 
 The broader package still includes Gaussian/GEV structural models, Laplace,

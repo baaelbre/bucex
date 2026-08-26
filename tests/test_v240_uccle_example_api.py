@@ -56,7 +56,7 @@ def test_uccle_series_normalization_does_not_split_a_string():
         _normalize_series_names("T")
 
 
-def test_v140_example_surface_contains_twelve_top_level_scripts():
+def test_v150_example_surface_contains_thirteen_top_level_scripts():
     directory = Path(__file__).resolve().parents[1] / "examples"
     scripts = {
         path.name for path in directory.glob("*.py") if not path.name.startswith("_")
@@ -74,6 +74,7 @@ def test_v140_example_surface_contains_twelve_top_level_scripts():
         "09_uccle_laplace_mh.py",
         "10_simulation_phi.py",
         "11_uccle_phi.py",
+        "12_uccle_gaussian.py",
     }
     assert not (directory / "presentation").exists()
 
@@ -110,6 +111,9 @@ def test_v262_examples_are_standalone_public_api_scripts():
     assert 'EXAMPLE_ROOT / "config" / "record.json"' in sources["00_uccle_record.py"]
     assert "common_ylim" in sources["01_tail_simulations.py"]
     assert "axis.set_ylim(*common_ylim)" in sources["01_tail_simulations.py"]
+    assert 'bx.LocalLevel(mode="static")' in sources["01_tail_simulations.py"]
+    assert 'bx.LocalLevel(mode="dynamic")' not in sources["01_tail_simulations.py"]
+    assert '"sd.level"' not in sources["01_tail_simulations.py"]
     for name in ("01_tail_simulations.py", "02_structural_simulations.py"):
         assert "bx.Model(" in sources[name]
         assert "bx.simulate(" in sources[name]
@@ -133,6 +137,13 @@ def test_v262_examples_are_standalone_public_api_scripts():
         assert "bx.PhiPrior(" in sources[name]
         assert "bx.ssvs_gev_priors(" in sources[name]
         assert "bx.fit(" in sources[name]
+    gaussian = sources["12_uccle_gaussian.py"]
+    assert "bx.Gaussian(" in gaussian
+    assert "bx.ssvs_gaussian_priors(" in gaussian
+    assert 'ENGINE = str(INFERENCE["engine"])' in gaussian
+    assert "engine=ENGINE" in gaussian
+    assert "def main()" in gaussian
+    assert gaussian.count("\ndef ") == 1
     # The Laplace-MH Uccle example deliberately mirrors example 05 and uses
     # the same explicit model and calibrated prior construction. The shorter
     # fit_uccle_series helper would silently restore package-default priors.

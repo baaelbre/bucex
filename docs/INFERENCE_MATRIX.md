@@ -12,6 +12,10 @@
 | `MultiSeriesModel` | mixed/GEV | `laplace` | hierarchical Laplace updates | approximate |
 | `MultiSeriesModel` | mixed/GEV | `pgas` | channel PGAS in hierarchical Gibbs | exact-invariant |
 
+The recommended Uccle mapping follows this contract: example 12 uses Gaussian
+FFBS for TXm/TNm, while example 09 uses exact-invariant Laplace-MH for the four
+GEV extremes.
+
 `InferencePlan` stores this contract in every fit and exported result. A
 Laplace screen can initialize an exact engine but cannot be relabelled exact.
 `laplace_mh` is currently univariate; a `MultiSeriesModel` rejects it before

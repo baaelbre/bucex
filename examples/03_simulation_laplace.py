@@ -94,6 +94,13 @@ FIGURE_FORMATS = tuple(FIGURES["formats"])
 FIGURE_DPI = int(FIGURES["dpi"])
 DIAGNOSTIC_FIGURES = bool(FIGURES["diagnostics"])
 INTERVAL_PROBABILITY = float(FIGURES["interval_probability"])
+SEASONAL_PATTERN_SETTINGS = FIGURES.get("seasonal_patterns", {})
+SEASONAL_PATTERN_CYCLES = tuple(SEASONAL_PATTERN_SETTINGS.get("cycles", ()))
+SEASONAL_PATTERN_SHOW_INTERVAL = bool(
+    SEASONAL_PATTERN_SETTINGS.get("show_interval", True)
+)
+if SEASONAL_PATTERN_SETTINGS.get("years"):
+    raise ValueError("Simulation seasonal patterns use figures.seasonal_patterns.cycles.")
 PHASE_LABELS = tuple(f"phase {index + 1}" for index in range(PERIOD))
 PREDICTIVE_DRAWS = int(FIGURES["predictive_draws"])
 FOCUS_PHASE = int(FIGURES["focus_phase"])
@@ -374,6 +381,11 @@ def main() -> None:
             "forecast_horizon": FORECAST_HORIZON,
             "forecast_history": FORECAST_HISTORY,
             "focus_phase": FOCUS_PHASE,
+            "seasonal_patterns": {
+                "years": list(SEASONAL_PATTERN_SETTINGS.get("years", ())),
+                "cycles": list(SEASONAL_PATTERN_CYCLES),
+                "show_interval": SEASONAL_PATTERN_SHOW_INTERVAL,
+            },
         },
         "chain_only": CHAIN_ONLY,
         "combined_chain_runs": [str(path) for path in COMBINE_RUNS],
@@ -727,6 +739,24 @@ def main() -> None:
         for extension in FIGURE_FORMATS:
             figure.savefig(figure_dir / f"season.{extension}", dpi=FIGURE_DPI, bbox_inches="tight")
         plt.close(figure)
+
+        if SEASONAL_PATTERN_CYCLES:
+            figure, _ = laplace_fit.plot(
+                "seasonal_patterns",
+                cycles=SEASONAL_PATTERN_CYCLES,
+                credible_interval=INTERVAL_PROBABILITY,
+                labels=PHASE_LABELS,
+                show_interval=SEASONAL_PATTERN_SHOW_INTERVAL,
+                truth=table["seasonal"].to_numpy(),
+                title=bx.config_title(CONFIG, "seasonal_patterns"),
+            )
+            for extension in FIGURE_FORMATS:
+                figure.savefig(
+                    figure_dir / f"seasonal_patterns.{extension}",
+                    dpi=FIGURE_DPI,
+                    bbox_inches="tight",
+                )
+            plt.close(figure)
 
         if DIAGNOSTIC_FIGURES:
             for kind, filename in (("traces", "sd_traces"), ("acf", "acf")):

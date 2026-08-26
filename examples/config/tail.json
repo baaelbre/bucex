@@ -1,11 +1,18 @@
 {
+  "_comment": [
+    "Stationary GEV tail comparisons for example 01.",
+    "Within each group, scenarios use the same constant location and matched probability draws; only xi or sigma changes."
+  ],
   "schema_version": 1,
   "simulation": {
     "n_time": 800,
-    "period": 4,
     "start_date": "1901-01-01",
-    "initial_level": 25.0,
-    "level_process_sd": 0.08,
+    "frequency": "QS",
+    "location": {
+      "_comment": "The tail demonstration is deliberately stationary: mu_t equals this value at every time point.",
+      "mode": "stationary",
+      "value": 25.0
+    },
     "tail_sigma": 1.5,
     "tail_xi_values": [-0.3, 0.0, 0.3],
     "tail_seed": 2601,
@@ -14,6 +21,7 @@
     "scale_seed": 2602
   },
   "density": {
+    "_comment": "The density x-axis is y minus the constant location.",
     "probability_range": [0.001, 0.995],
     "grid_points": 900
   },
@@ -21,6 +29,7 @@
     "formats": ["pdf", "png"],
     "dpi": 180,
     "titles": {
+      "_comment": "Leave null for title-free figures or supply a string.",
       "time_series": null,
       "shape_density": null,
       "scale_density": null

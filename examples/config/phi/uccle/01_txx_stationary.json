@@ -54,9 +54,9 @@
     ],
     "xi_max_abs": 0.5,
     "innovation_slab_sd": {
-      "level": 0.01,
-      "trend": 0.000025,
-      "season": 0.01
+      "level": 0.02,
+      "trend": 0.00005,
+      "season": 0.02
     },
     "level_dynamic_probability": 0.5,
     "trend_probabilities": [
@@ -135,6 +135,12 @@
     "dpi": 180,
     "diagnostics": false,
     "interval_probability": 0.9,
+    "seasonal_patterns": {
+      "_comment": "Plot the complete monthly seasonal pattern in each listed calendar year; use [] to disable this figure.",
+      "years": [1892, 2022],
+      "cycles": [],
+      "show_interval": true
+    },
     "predictive_draws": 500,
     "focus_month": 7,
     "forecast_horizon": 120,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Direct-API smoke validation for the bucex 1.5.1 examples."""
+"""Direct-API smoke validation for the bucex 1.5.2 examples."""
 from __future__ import annotations
 
 import argparse
@@ -127,6 +127,13 @@ def run(work_dir: Path) -> dict[str, object]:
     figure, axis = pgas.plot("season", labels=("1", "2", "3", "4"))
     figure.savefig(work_dir / "season.png", dpi=72)
     plt.close(figure)
+    pattern_figure, pattern_axis = pgas.plot(
+        "seasonal_patterns",
+        cycles=("first", "last"),
+        labels=("1", "2", "3", "4"),
+    )
+    pattern_figure.savefig(work_dir / "seasonal_patterns.png", dpi=72)
+    plt.close(pattern_figure)
     level_figure, _ = pgas.plot("level")
     level_figure.savefig(work_dir / "level.png", dpi=72)
     plt.close(level_figure)
@@ -169,6 +176,7 @@ def run(work_dir: Path) -> dict[str, object]:
         ],
         "centered_ig_engine_diagnostics": centered_ig.diagnostics()["engine"],
         "season_lines": len(axis.lines),
+        "seasonal_pattern_lines": len(pattern_axis.lines),
         "slope_ylabel": slope_axis.get_ylabel(),
         "loess_max_error_without_outlier": float(np.max(np.abs(np.delete(loess - (2.0 + 0.2 * x), 20)))),
         "total_seconds": time.perf_counter() - started,
@@ -177,8 +185,8 @@ def run(work_dir: Path) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--work-dir", type=Path, default=Path("validation/example_smoke_artifacts_1.5.1"))
-    parser.add_argument("--output", type=Path, default=Path("validation/example_smoke_1.5.1.json"))
+    parser.add_argument("--work-dir", type=Path, default=Path("validation/example_smoke_artifacts_1.5.2"))
+    parser.add_argument("--output", type=Path, default=Path("validation/example_smoke_1.5.2.json"))
     args = parser.parse_args()
     result = run(args.work_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)

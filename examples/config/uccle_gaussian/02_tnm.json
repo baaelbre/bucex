@@ -65,6 +65,12 @@
     "dpi": 180,
     "diagnostics": false,
     "interval_probability": 0.9,
+    "seasonal_patterns": {
+      "_comment": "Plot the complete monthly seasonal pattern in each listed calendar year; use [] to disable this figure.",
+      "years": [1892, 2022],
+      "cycles": [],
+      "show_interval": true
+    },
     "predictive_draws": 500,
     "focus_month": 7,
     "forecast_horizon": 120,

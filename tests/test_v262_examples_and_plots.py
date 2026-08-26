@@ -5,12 +5,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.collections import PathCollection
 import numpy as np
+from scipy.stats import genextreme
 
 import bucex as bx
 
 
 def test_v110_version_and_workflow_removal():
-    assert bx.__version__ == "1.4.1"
+    assert bx.__version__ == "1.5.2"
     assert not hasattr(bx, "make_structural_scenarios")
     assert not hasattr(bx, "PresentationWorkflow")
 
@@ -27,23 +28,46 @@ def test_loess_smooth_is_robust_and_preserves_missing_positions():
     assert abs(smooth[40] - truth[40]) < 0.5
 
 
-def test_matched_gev_models_keep_the_same_latent_path():
+def test_tail_comparisons_are_stationary_and_probability_matched():
     models = [
-        bx.Model(bx.GEV(), (bx.LocalLevel(mode="dynamic"),), name=f"xi={xi}")
+        bx.Model(bx.GEV(), (bx.LocalLevel(mode="static"),), name=f"xi={xi}")
         for xi in (-0.3, 0.0, 0.3)
     ]
     simulations = [
         bx.simulate(
             model,
             48,
-            {"sigma": 1.5, "xi": xi, "sd.level": 0.08},
+            {"sigma": 1.5, "xi": xi},
             initial_state=[25.0],
             seed=2601,
         )
         for model, xi in zip(models, (-0.3, 0.0, 0.3))
     ]
-    for simulation in simulations[1:]:
-        np.testing.assert_allclose(simulation.eta, simulations[0].eta)
+    for simulation in simulations:
+        np.testing.assert_allclose(simulation.eta, 25.0)
+        np.testing.assert_allclose(simulation.states[:, 0], 25.0)
+        assert simulation.model.noise_names == ()
+
+    probabilities = [
+        genextreme.cdf(simulation.y, c=-xi, loc=25.0, scale=1.5)
+        for simulation, xi in zip(simulations, (-0.3, 0.0, 0.3))
+    ]
+    for probability in probabilities[1:]:
+        np.testing.assert_allclose(probability, probabilities[0], atol=1e-12)
+
+
+def test_tail_json_has_no_random_walk_location_setting():
+    root = Path(__file__).resolve().parents[1]
+    config = bx.load_config(root / "examples" / "config" / "tail.json")
+    assert config["simulation"]["location"]["mode"] == "stationary"
+    assert config["simulation"]["location"]["value"] == 25.0
+    assert config["simulation"]["frequency"] == "QS"
+    assert "level_process_sd" not in config["simulation"]
+
+    source = (root / "examples" / "01_tail_simulations.py").read_text()
+    assert 'bx.LocalLevel(mode="static")' in source
+    assert 'bx.LocalLevel(mode="dynamic")' not in source
+    assert '"sd.level"' not in source
 
 
 def test_phase_specific_season_plot_uses_only_the_seasonal_effect():

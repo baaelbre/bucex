@@ -1,5 +1,57 @@
 # Changelog
 
+## 1.5.2
+
+- Added `plot_seasonal_patterns()` and
+  `fit.plot("seasonal_patterns", years=... | cycles=...)` for direct comparison
+  of complete seasonal cycles at selected times.
+- Added pointwise credible bands, simulation-truth overlays, automatic month
+  labels, original-orientation handling for lower tails, and readable
+  `first`/`middle`/`last` simulation-cycle selectors.
+- Kept the established longitudinal `season.*` output unchanged and added
+  `seasonal_patterns.*` across Laplace, PGAS, Laplace-MH, log-scale, Gaussian,
+  simulation, and Uccle fitting examples.
+- Added a documented `figures.seasonal_patterns` JSON block to all maintained
+  seasonal configurations; Uccle defaults to 1892 versus 2022 and simulations
+  to the first versus last complete cycle.
+- Added `examples/replot_seasonal_patterns.py` to create the new figure from
+  completed `combined.bucex` results without refitting.
+- Preserved archive schema 2.7.0 and compatibility with custom 1.5.1 JSONs.
+
+## 1.5.1
+
+- Made all example-01 tail and scale comparisons genuinely stationary by
+  replacing the random-walk location with one shared static local level.
+- Kept the comparisons paired: scenarios within a group use the same constant
+  predictor and matched probability draws, changing only `xi` or `sigma`.
+- Replaced the obsolete `level_process_sd`, `initial_level`, and unused
+  seasonal-period tail fields with a documented stationary `location` block
+  and explicit date `frequency` in `tail.json`.
+- Added release regression checks for constant predictor paths, matched random
+  numbers, and the absence of a process-variance parameter in tail outputs.
+- Removed generated build/cache/log directories, historical validation JSONs,
+  and redundant legacy setuptools shims from the clean source release.
+- Renamed the still-relevant direct example smoke validator from the stale
+  `run_presentation_smoke.py` name to `run_example_smoke.py`.
+- Updated release, migration, example, configuration, and validation
+  documentation. The public modelling and Uccle APIs are unchanged.
+
+## 1.5.0
+
+- Added `examples/12_uccle_gaussian.py` and complete, commented TXm/TNm JSON
+  inputs for exact Gaussian FFBS with structural SSVS.
+- Added matching local and PBS wrappers; the generic process runner now fans
+  out and combines example 12 chains exactly as requested by its JSON.
+- Completed the primary six-series Uccle specification: Gaussian TXm/TNm and
+  stationary-scale GEV TXx/TXn/TNx/TNn, all using calibrated primary location
+  slabs `(0.02, 0.00005, 0.02)`.
+- Changed the 16 optional phi-sensitivity inputs to those same primary location
+  slabs, so scale sensitivity changes only the scale model.
+- Rewrote the Uccle, HPC, configuration, migration, and release documentation
+  around the six production jobs and optional sensitivity catalog.
+- Added configuration, data, runner, and report-surface regression coverage for
+  the mean-temperature analyses.
+
 ## 1.4.1
 
 - Added valid `_comment` annotations to all 20 phi JSON configurations and a

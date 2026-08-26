@@ -148,6 +148,17 @@ def main() -> None:
     bx.save_config(config, output_dir / "run_config.json")
 
     interval_probability = float(figures["interval_probability"])
+    seasonal_pattern_settings = figures.get("seasonal_patterns", {})
+    seasonal_pattern_years = tuple(
+        int(value) for value in seasonal_pattern_settings.get("years", ())
+    )
+    seasonal_pattern_show_interval = bool(
+        seasonal_pattern_settings.get("show_interval", True)
+    )
+    if seasonal_pattern_settings.get("cycles"):
+        raise ValueError(
+            "Dated Uccle seasonal patterns use figures.seasonal_patterns.years."
+        )
     tail_probability = 0.5 * (1.0 - interval_probability)
     quantiles = [tail_probability, 0.5, 1.0 - tail_probability]
     predictive_draws = int(figures["predictive_draws"])
@@ -638,6 +649,22 @@ def main() -> None:
                 bbox_inches="tight",
             )
         plt.close(figure)
+
+        if seasonal_pattern_years:
+            figure, _ = fit.plot(
+                "seasonal_patterns",
+                years=seasonal_pattern_years,
+                credible_interval=interval_probability,
+                show_interval=seasonal_pattern_show_interval,
+                title=bx.config_title(config, "seasonal_patterns"),
+            )
+            for extension in formats:
+                figure.savefig(
+                    figure_dir / f"seasonal_patterns.{extension}",
+                    dpi=dpi,
+                    bbox_inches="tight",
+                )
+            plt.close(figure)
 
         try:
             figure, _ = fit.plot(

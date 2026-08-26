@@ -17,6 +17,7 @@ from .core import (
     plot_process_sd_traces,
     plot_risk,
     plot_season,
+    plot_seasonal_patterns,
     plot_slope,
     plot_state,
 )
@@ -38,6 +39,7 @@ __all__ = [
     "plot_endpoint",
     "plot_risk",
     "plot_season",
+    "plot_seasonal_patterns",
     "plot_component_probabilities",
     "plot_bulk_tail",
     "plot_collection",
