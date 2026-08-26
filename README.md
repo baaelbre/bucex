@@ -1,8 +1,10 @@
-# bucex 1.4.0
+# bucex 1.4.1
 
 `bucex` fits Bayesian unobserved-component models to Gaussian and generalized
-extreme-value observations. Version 1.4.0 adds an optional time-varying GEV
-log scale while keeping the stationary model as the default.
+extreme-value observations. Version 1.4.1 provides an optional time-varying GEV
+log scale while keeping the stationary model as the default. This patch makes
+the phi JSONs self-documenting, exposes the location structure in those files,
+and restores the complete established tables-and-figures report.
 
 ```python
 import bucex as bx
@@ -140,10 +142,20 @@ python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_statio
 ```
 
 There are 16 Uccle JSONs: four series times four scale models. They live under
-`examples/config/phi/uccle/` and are ordinary, indented JSON files. Change
-priors, scale hyperparameters, draws, warmup, chains, seeds, Laplace controls,
-figures, and output paths there; neither the Python nor PBS layer overwrites
-them.
+`examples/config/phi/uccle/` and are ordinary, indented JSON files. Valid
+`_comment` fields explain the settings in place. In simulation files,
+`simulation.location` records the data-generating location truth and
+`model.location` records the fitted structural-SSVS location model; this is
+separate from `model.phi`. Change priors, scale hyperparameters, draws, warmup,
+chains, seeds, Laplace controls, figures, and output paths there; neither the
+Python nor PBS layer overwrites them. See
+`examples/config/phi/README.md` for a field-by-field guide.
+
+Examples 10 and 11 write the same core report as the earlier simulation and
+Uccle fitting examples: parameter and MCMC diagnostics, location trajectories,
+structural selection, posterior predictive checks, forecasts, latent-state
+figures, process scales, and GEV summaries. The phi path and scale-model tables
+and figures are additions, not replacements.
 
 The production profile is 1,000 retained draws after 1,000 warmup iterations
 for each of four independent chains. Use an edited copy with smaller values for
@@ -194,7 +206,7 @@ python -m pytest
 python -m build
 ```
 
-The printed version should be `1.4.0`. Safe result archives use schema 2.7.0
+The printed version should be `1.4.1`. Safe result archives use schema 2.7.0
 and remain backward-readable for every previously supported schema.
 
 The broader package still includes Gaussian/GEV structural models, Laplace,

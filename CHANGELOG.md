@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.4.1
+
+- Added valid `_comment` annotations to all 20 phi JSON configurations and a
+  field-by-field phi configuration guide.
+- Made the simulated location truth explicit under `simulation.location` and
+  the fitted structural-SSVS location declaration explicit under
+  `model.location`.
+- Clarified the independent truth-versus-fit roles of `simulation.phi` and
+  `model.phi`, including the stationary-truth sensitivity design of the four
+  supplied simulation files.
+- Moved every report control into JSON: formats, interval probability,
+  posterior-predictive draws, focus phase/month, forecast horizon/history, and
+  optional MCMC diagnostics.
+- Restored the established full simulation and Uccle tables/figures in
+  examples 10 and 11, with phi/sigma paths and scale-model probabilities added
+  to rather than replacing the earlier outputs.
+- Restored the established `fits/<case-or-series>/combined.bucex`,
+  `tables/<case-or-series>/`, and `figures/<case-or-series>/` result layout and
+  kept parallel-chain combination compatible with it.
+- Kept the public GEV, fit, prior, prediction, result, and archive APIs
+  unchanged; safe archives remain at schema 2.7.0.
+
 ## 1.4.0
 
 - Added `GEV(phi="linear")`, `GEV(phi="rw")`, and `GEV(phi="ssvs")`, with

@@ -128,6 +128,13 @@ In JSON the same settings are deliberately grouped and readable:
 }
 ```
 
+The complete runnable files also make location structure explicit. In a
+simulation file, `simulation.location` is the data-generating truth and
+`model.location` is the fitted structural-SSVS declaration. `simulation.phi`
+and `model.phi` play the corresponding truth-versus-fit roles for scale. The
+`_comment` keys are valid JSON documentation and are ignored by the examples.
+See `../examples/config/phi/README.md` for the equations and every field.
+
 ## Conditional scale inference
 
 The log-scale implementation is a dedicated conditional kernel, separate from
@@ -179,6 +186,11 @@ expose `parameters["phi"]` and `parameters["sigma_path"]`.
 
 Endpoint, return-level, exceedance, PIT, and conditional-density calculations
 use the corresponding scale path rather than a scalar reference scale.
+
+Examples 10 and 11 retain the standard simulation/Uccle report contract:
+parameter and algorithm diagnostics, predictor and latent-state tables,
+structural selection, posterior prediction, forecasts, and the matching
+figures. `phi.csv`, `phi_models.csv`, and `phi.*` are additional outputs.
 
 ## Diagnostics and interpretation
 

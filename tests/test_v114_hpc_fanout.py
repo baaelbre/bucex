@@ -11,7 +11,7 @@ RUNNER = ROOT / "job_scripts" / "run_parallel_chains.py"
 
 
 def test_v132_parallel_runner_uses_json_chain_copies_and_public_combine_paths():
-    assert bx.__version__ == "1.4.0"
+    assert bx.__version__ == "1.4.1"
     source = RUNNER.read_text(encoding="utf-8")
     assert 'chain_config["mcmc"]["chains"] = 1' in source
     assert '["chain_only"] = True' in source

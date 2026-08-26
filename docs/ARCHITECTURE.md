@@ -1,6 +1,6 @@
 # Architecture
 
-Release 1.4.0 keeps one model compiler, one fitting entry point, and one result
+Release 1.4.1 keeps one model compiler, one fitting entry point, and one result
 type. Analysis scripts compose these public APIs directly.
 
 ```text

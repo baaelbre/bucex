@@ -1,6 +1,6 @@
 # Release and scientific validation
 
-Release 1.4.0 has five software layers:
+Release 1.4.1 has five software layers:
 
 1. unit/integration tests for models, priors, engines, results, and archives;
 2. fixed-seed numerical regression in `validation/run_release_validation.py`;
@@ -51,6 +51,10 @@ evidence for a scientific conclusion.
   Laplace-MH and PGAS, while ordinary Laplace remains explicitly approximate;
 - scale SSVS probabilities sum to one, indicators are stored, and scale-model
   selection is separate from structural SSVS;
+- every phi JSON remains strict JSON, carries ignored `_comment` annotations,
+  and declares the fitted location structure under `model.location`;
+- simulation phi JSONs separately declare the data-generating location under
+  `simulation.location`, so location truth is not hidden in Python;
 - posterior predictive simulation uses the in-sample scale path; forecasts
   hold, extend, propagate, or model-average scale according to `phi=`;
 - the six period-4 structural scenarios share scale/shape and cover stationary,
@@ -59,6 +63,8 @@ evidence for a scientific conclusion.
 - examples 08 and 09 match examples 03 and 05 respectively in scientific
   settings, priors, MCMC defaults, output tables, and figures, changing only
   the exact Laplace-MH state engine and its diagnostics;
+- examples 10 and 11 preserve those established core report tables, figures,
+  and fit-directory layout while adding phi paths and scale-model summaries;
 - timestamped paths and overwrite behavior are declared in each selected JSON
   configuration;
 - independently saved chains combine only when model, prior, plan, data, and

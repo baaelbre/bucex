@@ -1,6 +1,11 @@
 {
-  "schema_version": 1,
+  "_comment": [
+    "Complete settings for examples/11_uccle_phi.py.",
+    "Keys named _comment are documentation and are ignored by the example."
+  ],
+  "schema_version": 2,
   "data": {
+    "_comment": "Uccle series and date window. null data_dir uses the data shipped with bucex.",
     "data_dir": null,
     "start": "1892-01-01",
     "end": null,
@@ -10,15 +15,30 @@
     "period": 12
   },
   "model": {
-    "phi": "ssvs",
-    "time_varying_location": true,
-    "trend_component": "local_linear_trend",
-    "level_mode": "dynamic",
-    "trend_mode": "dynamic",
-    "seasonal_component": "dummy",
-    "seasonal_mode": "dynamic"
+    "_comment": [
+      "Fitted model. Location structure and log-scale structure are separate choices.",
+      "model.phi is stationary, linear, rw, or ssvs."
+    ],
+    "observation_family": "gev",
+    "location": {
+      "_comment": [
+        "The fitted location uses structural SSVS.",
+        "These dynamic components form the full candidate envelope; priors below select zero/fixed/dynamic level, trend, and season states."
+      ],
+      "structure": "ssvs",
+      "trend_component": "local_linear_trend",
+      "level_mode": "dynamic",
+      "trend_mode": "dynamic",
+      "seasonal_component": "dummy",
+      "seasonal_mode": "dynamic"
+    },
+    "phi": "ssvs"
   },
   "priors": {
+    "_comment": [
+      "Location, GEV, and log-scale priors used for fitting.",
+      "trend_probabilities and season_probabilities are ordered [zero, fixed, dynamic]."
+    ],
     "alpha_mean": "transformed_series_median",
     "alpha_sd": 3.2,
     "beta_mean": 0,
@@ -50,6 +70,11 @@
       0.5
     ],
     "phi": {
+      "_comment": [
+        "linear is the prior for the whole-record log-scale change.",
+        "rw_variance uses the inverse-gamma IG(a,b) convention.",
+        "model_probabilities are used only when model.phi is ssvs."
+      ],
       "linear": {
         "mean": 0,
         "sd": 0.35
@@ -66,6 +91,7 @@
     }
   },
   "mcmc": {
+    "_comment": "Computational settings. draws are retained draws per chain after warmup.",
     "draws": 1000,
     "warmup": 1000,
     "thin": 1,
@@ -73,10 +99,12 @@
     "seed": 56103
   },
   "inference": {
+    "_comment": "Sampler and numerical settings; these do not change the scientific model.",
     "engine": "laplace_mh",
     "parameterization": "fruehwirth_schnatter",
     "asis": false,
     "laplace": {
+      "_comment": "Location-state Laplace proposal controls.",
       "max_iterations": 30,
       "tolerance": 0.00001,
       "curvature_floor": 0.000001,
@@ -85,6 +113,7 @@
       "mh_steps": 1
     },
     "phi": {
+      "_comment": "Log-scale proposal and smoother controls.",
       "step_intercept": 0.04,
       "step_linear": 0.05,
       "laplace_max_iterations": 30,
@@ -97,18 +126,29 @@
     }
   },
   "figures": {
+    "_comment": "Tables are always written. enabled controls figures; formats can contain png, pdf, or both.",
     "enabled": true,
-    "format": "png",
+    "formats": [
+      "pdf",
+      "png"
+    ],
     "dpi": 180,
-    "title": null,
+    "diagnostics": false,
+    "interval_probability": 0.9,
+    "predictive_draws": 500,
+    "focus_month": 7,
+    "forecast_horizon": 120,
+    "forecast_history": 360,
     "titles": {}
   },
   "runtime": {
+    "_comment": "The chain runner manages chain_only and combine_runs; normal users leave them unchanged.",
     "progress": true,
     "chain_only": false,
     "combine_runs": []
   },
   "output": {
+    "_comment": "Leave run_id null for a unique automatic directory; overwrite=false protects completed runs.",
     "results_root": "results",
     "run_id": null,
     "overwrite": false

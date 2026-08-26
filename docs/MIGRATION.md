@@ -1,7 +1,29 @@
-# Migration to bucex 1.4.0
+# Migration to bucex 1.4.1
 
 The general `Model`, `MultiSeriesModel`, `fit`, `FitResult`, prediction,
 diagnostic, plotting, Uccle-loader, and hierarchical APIs remain available.
+
+## From 1.4.0 to 1.4.1
+
+No Python API change is required. The patch changes the focused phi example
+configuration schema and their report output only.
+
+Use the supplied schema-2 JSONs as the new templates. The fitted location
+fields that were flat or implicit in 1.4.0 now live under `model.location`.
+For simulations, the data-generating location settings now live under
+`simulation.location`. Report controls formerly fixed by the short scripts are
+explicit under `figures`.
+
+The fit archive paths in examples 10 and 11 now follow the same established
+layout as the other fitting examples:
+
+```text
+fits/<case-or-series>/combined.bucex
+```
+
+The generic parallel-chain runner uses these paths automatically. Existing
+1.4.0 result archives remain readable, but do not mix old and new per-chain
+result directories in one combine operation.
 
 ## From 1.3.2 to 1.4.0
 

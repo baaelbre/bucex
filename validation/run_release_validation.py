@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Fixed-seed numerical release validation for bucex 1.4.0."""
+"""Fixed-seed numerical release validation for bucex 1.4.1."""
+
 from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import platform
 import sys
 import time
+from pathlib import Path
 
 import numpy as np
-
 
 SOURCE_ROOT = Path(__file__).resolve().parents[1]
 if str(SOURCE_ROOT) not in sys.path:
@@ -67,8 +67,8 @@ def _finite_fit(fit: bx.FitResult) -> dict[str, object]:
 
 def run() -> dict[str, object]:
     started = time.perf_counter()
-    if bx.__version__ != "1.4.0":
-        raise RuntimeError(f"Expected bucex 1.4.0, found {bx.__version__}.")
+    if bx.__version__ != "1.4.1":
+        raise RuntimeError(f"Expected bucex 1.4.1, found {bx.__version__}.")
     default_hierarchy = bx.HierarchicalPrior()
     if default_hierarchy.model_space != "componentwise":
         raise RuntimeError("The hierarchy must default to componentwise SSVS.")
@@ -97,6 +97,63 @@ def run() -> dict[str, object]:
     }
     if not all(record["configured_hpc_runner"].values()):
         raise RuntimeError("The JSON-driven HPC runner contract is incomplete.")
+
+    phi_root = SOURCE_ROOT / "examples" / "config" / "phi"
+    phi_config_paths = sorted(phi_root.glob("simulation_*.json")) + sorted(
+        (phi_root / "uccle").glob("*.json")
+    )
+    phi_configs = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in phi_config_paths
+    ]
+    phi_sources = [
+        (SOURCE_ROOT / "examples" / filename).read_text(encoding="utf-8")
+        for filename in ("10_simulation_phi.py", "11_uccle_phi.py")
+    ]
+    record["documented_phi_reports"] = {
+        "twenty_configs": len(phi_configs) == 20,
+        "strict_schema_2": all(
+            config.get("schema_version") == 2 for config in phi_configs
+        ),
+        "inline_documentation": all(
+            bool(config.get("_comment")) for config in phi_configs
+        ),
+        "explicit_fitted_location": all(
+            config.get("model", {}).get("location", {}).get("structure")
+            == "ssvs"
+            for config in phi_configs
+        ),
+        "explicit_simulation_truth": all(
+            "location" in config.get("simulation", {})
+            for config in phi_configs
+            if "simulation" in config
+        ),
+        "full_report_controls": all(
+            {
+                "formats",
+                "interval_probability",
+                "predictive_draws",
+                "forecast_horizon",
+                "forecast_history",
+            }
+            <= set(config.get("figures", {}))
+            for config in phi_configs
+        ),
+        "standard_tables": all(
+            'table_dir / "parameters.csv"' in source
+            and 'table_dir / "posterior_predictive.csv"' in source
+            and 'table_dir / "phi.csv"' in source
+            for source in phi_sources
+        ),
+        "standard_figures": all(
+            'figure_dir / f"trajectory.{extension}"' in source
+            and 'figure_dir / f"phi.{extension}"' in source
+            for source in phi_sources
+        ),
+        "configuration_guide": (phi_root / "README.md").is_file(),
+    }
+    if not all(record["documented_phi_reports"].values()):
+        raise RuntimeError("The documented phi report contract is incomplete.")
 
     # Regression for the 1.1.0--1.1.2 failure: the zero FS trajectory crosses
     # a negative-shape endpoint, while a valid trajectory exists through the
@@ -461,7 +518,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("validation/release_validation_1.4.0.json"),
+        default=Path("validation/release_validation_1.4.1.json"),
     )
     args = parser.parse_args()
     result = run()

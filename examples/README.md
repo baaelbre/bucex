@@ -1,4 +1,4 @@
-# bucex 1.4.0 examples
+# bucex 1.4.1 examples
 
 The 12 numbered files are direct uses of the public `bucex` API. Examples 10
 and 11 are the focused log-scale additions:
@@ -51,6 +51,14 @@ To simulate a changing scale as well, edit `simulation.phi.mode` in a copy of
 the JSON to `"linear"` or `"rw"`. The same object contains
 `linear_change`, `rw_sd`, and `reference_sigma`; all three remain visible even
 when inactive so switching experiments is easy.
+
+The two location structures are explicit too. `simulation.location` is the
+data-generating truth; `model.location` is the fitted structural-SSVS model.
+In particular, the `linear` in `simulation_linear.json` refers to
+`model.phi`, while its supplied `simulation.phi.mode` remains `stationary`.
+Every phi JSON contains valid `_comment` fields. Read
+[`config/phi/README.md`](config/phi/README.md) for the equations and a complete
+field guide.
 
 ## Uccle scale sensitivity
 
@@ -105,6 +113,8 @@ All scale hyperparameters are grouped under `priors.phi`:
   of a dynamic model.
 - `inference.phi` contains proposal and Laplace-smoother tuning only.
 - `mcmc` contains draws, warmup, thinning, chain count, and seed.
+- `figures` contains the interval, predictive draws, forecast horizon, focus
+  phase/month, output formats, and optional diagnostics.
 
 The production JSONs use 1,000 retained draws, 1,000 warmup iterations, and
 four chains. The PBS scripts never replace these values. The chain runner
@@ -121,10 +131,14 @@ results/11_uccle_phi/<run-id>__<signature>/
 ```
 
 Each run saves the exact effective `run_config.json`, one or more `.bucex`
-fits, log-scale summaries, and optional figures. Automatic Bash/PBS run IDs
-contain the source configuration name plus process or PBS job ID, so parallel
-series and model jobs do not collide. Leave `output.run_id` as `null` unless
-you deliberately provide a unique name.
+fits, and the established full report: parameter and MCMC diagnostics,
+location trajectories, structural selection, posterior predictive checks,
+forecasts, latent states, process scales, and GEV figures. Phi paths, scale
+paths, and scale-model probabilities are additional tables and figures rather
+than replacements for the older outputs. Automatic Bash/PBS run IDs contain
+the source configuration name plus process or PBS job ID, so parallel series
+and model jobs do not collide. Leave `output.run_id` as `null` unless you
+deliberately provide a unique name.
 
 See `../docs/HPC.md` for PBS commands and `../docs/LOG_SCALE.md` for the model
 and inference details.

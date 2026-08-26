@@ -1,78 +1,73 @@
-# bucex 1.4.0 release notes
+# bucex 1.4.1 release notes
 
-Version 1.4.0 adds optional linear, random-walk, and SSVS evolution for the GEV
-log scale \(\phi_t=\log(\sigma_t)\). Stationary scale remains the default and
-existing `GEV()` calls retain their previous model.
-
-## Clean model API
-
-The complete public choice is:
+Version 1.4.1 is a documentation and example-output maintenance release for
+the time-varying GEV log-scale API introduced in 1.4.0. The modelling and fit
+API remains unchanged:
 
 ```python
-bx.GEV()
+bx.GEV()                  # stationary phi=log(sigma), still the default
 bx.GEV(phi="linear")
 bx.GEV(phi="rw")
 bx.GEV(phi="ssvs")
 ```
 
-No additional fit function or scale-component class is required. Model JSON
-serialization records `phi`, and invalid choices fail at construction.
-Time-varying scale currently uses univariate FS GEV inference; unsupported
-multiseries or parameterization combinations fail explicitly.
+## Self-documenting JSONs
 
-## Scale priors and SSVS
+All four simulation and 16 Uccle phi configurations now contain valid
+`_comment` fields. Ordinary `//` comments are not legal JSON; `_comment` keeps
+the files readable by standard tools and is ignored by the examples.
 
-`PhiPrior` groups:
+The location model is no longer implicit in example 10. Simulation files
+separate:
 
-- a normal prior for the whole-record linear log-scale change;
-- an inverse-gamma prior for RW innovation variance;
-- stationary/linear/RW model probabilities.
+- `simulation.location`: the known data-generating location structure;
+- `model.location`: the fitted local-linear-trend plus dummy-seasonal
+  structural-SSVS model;
+- `simulation.phi`: the data-generating log-scale process;
+- `model.phi`: the stationary, linear, RW, or SSVS scale model being fitted.
 
-`ssvs_gev_priors(phi_prior=...)` exposes these settings without changing the
-existing structural SSVS controls. `phi="ssvs"` uses an exact product-space
-model update in exact engines, so scale-model selection and location-structure
-selection can coexist.
+This also clarifies that the supplied `simulation_linear.json` fits a linear
+scale model to the same stationary-scale truth used by the other three files.
+It is a sensitivity fit, not a declaration of linear simulation truth.
 
-## Conditional inference
+`examples/config/phi/README.md` gives the location equations, SSVS probability
+ordering, every field's role, edit examples, and the complete output tree.
 
-The new scale kernel is separate from the structural location kernel. It uses
-analytic GEV derivatives with respect to log scale. Linear and stationary
-coefficients use the exact likelihood. The RW path uses an iterated-Laplace
-Kalman smoother; under Laplace-MH or PGAS it is an independence proposal with
-an exact-density MH correction. Ordinary Laplace remains explicitly
-approximate.
+## Full report parity
 
-## Results and prediction
+Examples 10 and 11 again produce the established simulation and Uccle output
+set instead of only a fit archive and phi plot. Their tables include:
 
-`FitResult.phi_draws()` and `sigma_draws()` provide uniform time paths for all
-four models. Dynamic fits retain mode-specific scalar parameters and schema
-2.7.0 archives. Posterior predictive checks use fitted scale paths. Forecasts
-keep stationary scale fixed, continue the linear basis, propagate RW
-innovations, or use each SSVS draw's selected model. Risk summaries and PIT
-calculations use time-specific scale.
+- parameter summaries and MCMC diagnostics;
+- location trajectories and structural selection/model switching;
+- posterior predictive checks and full/focused/level forecasts;
+- phi and sigma paths and scale-model probabilities;
+- a reproducibility summary and the effective JSON.
 
-## JSON examples and PBS
+Their figures include predictor trajectories, posterior prediction, forecasts,
+level and slope, structural selection, process scales, GEV parameters,
+seasonality, and optional MCMC diagnostics. Uccle also retains the endpoint
+figure when finite. `phi.*` is an additional figure in each report.
 
-Two standalone scripts were added:
+The result paths match the established layout:
 
-- `examples/10_simulation_phi.py`;
-- `examples/11_uccle_phi.py`.
+```text
+fits/<case-or-series>/combined.bucex
+tables/<case-or-series>/...
+figures/<case-or-series>/...
+```
 
-Four simulation JSONs and 16 Uccle JSONs make stationary, linear, RW, and SSVS
-fits directly editable. Every hyperparameter and computational control is in
-JSON. The defaults are 1,000 retained draws, 1,000 warmup iterations, and four
-chains.
-
-Matching Bash and PBS files use the generic process-level chain runner. Each
-series/model job and every chain can be scheduled independently, with
-collision-safe run IDs containing the source config name and PBS job ID. The
-PBS files allocate resources only; they do not override JSON settings.
+All report controls—formats, interval probability, predictive draws, focus
+phase/month, forecast horizon/history, and diagnostics—are explicit in JSON.
 
 ## Compatibility
 
+- The public GEV, prior, fit, result, prediction, and archive APIs are
+  unchanged from 1.4.0.
 - `GEV()` remains stationary.
-- Existing stationary GEV fits and prior profiles continue to work.
-- Archive schema advances to 2.7.0; all previously supported schemas remain
+- Archive schema remains 2.7.0 and all previously supported archives remain
   readable.
-- Dynamic scale is intentionally not enabled for `MultiSeriesModel` in this
-  release.
+- Existing 1.4.0 phi JSONs are superseded by the documented schema-2 example
+  files; the scientific defaults are unchanged.
+- PBS continues to allocate resources only. It does not overwrite JSON draws,
+  warmup, priors, model settings, or report settings.

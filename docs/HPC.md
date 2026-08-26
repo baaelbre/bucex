@@ -1,4 +1,4 @@
-# Running bucex 1.4.0 with PBS
+# Running bucex 1.4.1 with PBS
 
 ## One source of settings
 
@@ -34,7 +34,7 @@ python -m pip install -e ".[plot]"
 python -c "import bucex, matplotlib; print(bucex.__version__)"
 ```
 
-The version should be `1.4.0`. The Bash runner defaults to
+The version should be `1.4.1`. The Bash runner defaults to
 `$HOME/venvs/bucex_env`. If the environment is elsewhere:
 
 ```bash

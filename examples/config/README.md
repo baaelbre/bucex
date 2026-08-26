@@ -48,7 +48,7 @@ Laplace-MH.
 
 ## Log-scale configurations
 
-`phi/` contains the 1.4.0 sensitivity inputs for
+`phi/` contains the 1.4.1 sensitivity inputs for
 `phi_t = log(sigma_t)`:
 
 - `phi/simulation_stationary.json`;
@@ -57,11 +57,18 @@ Laplace-MH.
 - `phi/simulation_ssvs.json`;
 - `phi/uccle/*.json`: four scale models for each of TXx, TXn, TNx, and TNn.
 
-The fitted choice is the single readable field `model.phi`. All four files
-retain the complete `priors.phi` block, so switching models never hides the
-inactive hyperparameters. Linear, RW-variance, and model-probability settings
-can be edited directly. Examples 10 and 11 read every scientific,
-computational, figure, runtime, and output value from these JSONs.
+The fitted scale choice is the single readable field `model.phi`. The fitted
+location choice is now equally explicit under `model.location`: these examples
+use structural SSVS over a local-linear trend and dummy seasonality. Simulation
+files separately record the known data-generating location under
+`simulation.location`, so truth and fitted model cannot be confused.
+
+All phi files contain valid `_comment` fields and retain the complete
+`priors.phi` block, so switching models never hides inactive hyperparameters.
+Linear, RW-variance, and model-probability settings can be edited directly.
+Examples 10 and 11 read every scientific, computational, reporting, runtime,
+and output value from these JSONs. See [`phi/README.md`](phi/README.md) for a
+field-by-field guide, the location equations, and the complete output tree.
 
 ## Selecting a JSON
 

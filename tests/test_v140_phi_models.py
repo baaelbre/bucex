@@ -33,7 +33,7 @@ def _sample() -> np.ndarray:
 
 
 def test_v140_public_phi_api_defaults_aliases_and_roundtrips():
-    assert bx.__version__ == "1.4.0"
+    assert bx.__version__ == "1.4.1"
     assert bx.GEV().phi == "stationary"
     assert bx.GEV(phi="linear").phi == "linear"
     assert bx.GEV(phi="random_walk").phi == "rw"
@@ -188,16 +188,30 @@ def test_v140_json_examples_are_complete_and_hpc_parallelizable():
 
     for path in (*simulation_files, *uccle_files):
         config = json.loads(path.read_text(encoding="utf-8"))
+        assert config["schema_version"] == 2
+        assert config["_comment"]
         assert config["model"]["phi"] == path.stem.rsplit("_", 1)[-1]
+        assert config["model"]["location"] == {
+            "_comment": [
+                "The fitted location uses structural SSVS.",
+                "These dynamic components form the full candidate envelope; priors below select zero/fixed/dynamic level, trend, and season states.",
+            ],
+            "structure": "ssvs",
+            "trend_component": "local_linear_trend",
+            "level_mode": "dynamic",
+            "trend_mode": "dynamic",
+            "seasonal_component": "dummy",
+            "seasonal_mode": "dynamic",
+        }
         assert config["mcmc"]["draws"] == 1000
         assert config["mcmc"]["warmup"] == 1000
         assert config["mcmc"]["chains"] == 4
-        assert set(config["priors"]["phi"]) == {
+        assert set(config["priors"]["phi"]) - {"_comment"} == {
             "linear",
             "rw_variance",
             "model_probabilities",
         }
-        assert set(config["inference"]["phi"]) == {
+        assert set(config["inference"]["phi"]) - {"_comment"} == {
             "step_intercept",
             "step_linear",
             "laplace_max_iterations",
@@ -208,6 +222,17 @@ def test_v140_json_examples_are_complete_and_hpc_parallelizable():
             "mh_steps",
             "draw_attempts",
         }
+        assert config["figures"]["formats"] == ["pdf", "png"]
+        assert config["figures"]["interval_probability"] == pytest.approx(0.9)
+
+    for path in simulation_files:
+        config = json.loads(path.read_text(encoding="utf-8"))
+        assert config["simulation"]["location"]["trend_component"] == (
+            "local_linear_trend"
+        )
+        assert config["simulation"]["location"]["level_mode"] == "dynamic"
+        assert config["simulation"]["location"]["trend_mode"] == "dynamic"
+        assert config["simulation"]["location"]["seasonal_mode"] == "dynamic"
 
     runner = (ROOT / "job_scripts" / "run_parallel_chains.py").read_text(
         encoding="utf-8"

@@ -1,6 +1,6 @@
 # Complete PBS submission commands
 
-Run commands from the bucex 1.4.0 repository root. Each command submits one
+Run commands from the bucex 1.4.1 repository root. Each command submits one
 independent PBS job. The selected JSON owns draws, warmup, chain count, seed,
 priors, model, inference tuning, figures, and output policy.
 

@@ -10,7 +10,7 @@ import bucex as bx
 
 
 def test_v110_version_and_workflow_removal():
-    assert bx.__version__ == "1.4.0"
+    assert bx.__version__ == "1.4.1"
     assert not hasattr(bx, "make_structural_scenarios")
     assert not hasattr(bx, "PresentationWorkflow")
 
