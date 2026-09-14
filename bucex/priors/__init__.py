@@ -9,6 +9,7 @@ from .hierarchical import (
     HierarchicalPriors,
     resolve_hierarchical_priors,
 )
+from .joint import JointPriors, default_joint_priors, resolve_joint_priors
 from .process import (
     ExponentialSD,
     FixedSD,
@@ -64,6 +65,9 @@ from .structural import (
 
 __all__ = [
     "Priors",
+    "JointPriors",
+    "default_joint_priors",
+    "resolve_joint_priors",
     "HierarchicalPrior",
     "HierarchicalPriors",
     "resolve_hierarchical_priors",

@@ -20,6 +20,7 @@ results/
 logs/
 validation_reports/
 *.bucex
+!tests/fixtures/*.bucex
 *.pdf
 *.log
 *.o[0-9]*

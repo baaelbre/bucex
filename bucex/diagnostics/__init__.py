@@ -1,8 +1,20 @@
 """Posterior, predictive and calibration diagnostics."""
 from .calibration import PITResult, empirical_coverage, pit_diagnostics
+from .contrasts import summarize_draws
 from .cv import LFOResult, leave_future_out, rolling_origin_splits
+from .experiments import (
+    annual_aggregation_check,
+    compare_innovation_priors,
+    draw_structural_prior,
+    forecast_uncertainty,
+    innovation_prior_variant,
+    prior_predictive_targets,
+    recovery_metrics,
+    scientific_summary,
+)
 from .posterior import ess_bulk, fit_diagnostics, posterior_pit, rhat
 from .residuals import one_step_ahead_residuals
+from .ordering import OrderingResult, ordering_diagnostics, compound_event_probability
 from .scores import (
     crps_ensemble,
     evaluate_ensemble,
@@ -14,6 +26,8 @@ from .scores import (
 )
 
 __all__ = [
+    "OrderingResult", "ordering_diagnostics", "compound_event_probability",
+    "summarize_draws",
     "rhat",
     "ess_bulk",
     "posterior_pit",
@@ -32,4 +46,12 @@ __all__ = [
     "rolling_origin_splits",
     "LFOResult",
     "leave_future_out",
+    "annual_aggregation_check",
+    "compare_innovation_priors",
+    "draw_structural_prior",
+    "forecast_uncertainty",
+    "innovation_prior_variant",
+    "prior_predictive_targets",
+    "recovery_metrics",
+    "scientific_summary",
 ]

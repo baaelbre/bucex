@@ -20,8 +20,10 @@ provide a held-out matrix with shape `(horizon, n_channels)` to `score()`.
 
 ## Seasonal and latent-level views
 
-For a univariate seasonal model, `phase` is one-based and follows the fitted
-model cycle. It filters both summaries and plots:
+For a dated monthly model with period 12, `phase` is the calendar month
+(`phase=7` means July), including records that start outside January. For undated
+or other-period models, `phase` follows the one-based fitted model cycle. It
+filters both summaries and plots:
 
 ```python
 july = forecast.summary(phase=7)
@@ -36,8 +38,7 @@ forecast.plot(
 
 The supplied history must be contiguous and end immediately before the
 forecast; the plot then retains the matching historical phase automatically.
-If the fit does not start in January, convert a calendar month to the model
-phase with `(month - first_month) % period + 1`, as the Uccle examples do.
+Do not manually offset calendar-month phases for dated monthly fits.
 
 Use `target="level"` to exclude seasonality and future observation noise:
 

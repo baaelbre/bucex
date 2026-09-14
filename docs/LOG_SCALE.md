@@ -51,7 +51,7 @@ Forecasts continue the same time basis beyond the record.
 
 \[
 \phi_0\sim p(\phi_0),\qquad
-\phi_t=\phi_{t-1}+u_t,qquad
+\phi_t=\phi_{t-1}+u_t,\qquad
 u_t\sim N(0,q_\phi).
 \]
 
@@ -128,12 +128,17 @@ In JSON the same settings are deliberately grouped and readable:
 }
 ```
 
-The complete runnable files also make location structure explicit. In a
-simulation file, `simulation.location` is the data-generating truth and
-`model.location` is the fitted structural-SSVS declaration. `simulation.phi`
-and `model.phi` play the corresponding truth-versus-fit roles for scale. The
-`_comment` keys are valid JSON documentation and are ignored by the examples.
-See `../examples/config/phi/README.md` for the equations and every field.
+For Uccle, the independent runner selects the observation declaration directly:
+
+```bash
+python -m research.serra.run --config research/serra/config/independent_full.json --series TXx --phi linear
+python -m research.serra.run --config research/serra/config/independent_full.json --series TXx --phi rw
+python -m research.serra.run --config research/serra/config/independent_full.json --series TXx --phi ssvs
+```
+
+The `priors.phi` configuration sets the linear, random-walk and model-selection
+priors. The runner exports `scale.csv`, `scale.pdf` and `scale_models.json`.
+The first two are posterior scale paths, not location or prediction intervals.
 
 ## Conditional scale inference
 
@@ -147,7 +152,7 @@ density with respect to \(\phi\), constructs an iterated local Gaussian
 approximation, and samples a complete path with a one-dimensional Kalman
 smoother.
 
-For `engine="laplace_mh"` and `engine="pgas"`, that Gaussian path is an
+For `engine="laplace_mh"`, that Gaussian path is an
 independence proposal. Its acceptance weight includes the exact GEV likelihood
 and the correction between the true initial-scale prior and its Gaussian
 proposal approximation. The random-walk transition law is common to target
@@ -187,10 +192,8 @@ expose `parameters["phi"]` and `parameters["sigma_path"]`.
 Endpoint, return-level, exceedance, PIT, and conditional-density calculations
 use the corresponding scale path rather than a scalar reference scale.
 
-Examples 10 and 11 retain the standard simulation/Uccle report contract:
-parameter and algorithm diagnostics, predictor and latent-state tables,
-structural selection, posterior prediction, forecasts, and the matching
-figures. `phi.csv`, `phi_models.csv`, and `phi.*` are additional outputs.
+The independent report retains parameter and algorithm diagnostics, predictor
+and state figures, structural selection, scale paths, risks and forecasts.
 
 ## Diagnostics and interpretation
 
@@ -215,5 +218,5 @@ is adequate.
 Time-varying log scale is supported for univariate GEV models under the
 Fruehwirth--Schnatter parameterization. It is not yet enabled inside
 `MultiSeriesModel`; requests fail early with a clear error. The four Uccle
-series are therefore fitted independently in `examples/11_uccle_phi.py`,
+series can therefore be fitted independently through the general univariate API,
 which also makes their jobs and chains naturally parallel on PBS.

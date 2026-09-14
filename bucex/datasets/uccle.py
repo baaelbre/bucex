@@ -3,21 +3,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Iterable, Iterator, Mapping
 
 import numpy as np
 import pandas as pd
 
 from ..api.fit import fit
-from ..components import DummySeasonal, LocalLinearTrend
+from ..components import DummySeasonal, LocalLevel, LocalLinearTrend
 from ..core.fit import FitResult
-from ..inference.config import Laplace, MCMC, Particles
+from ..inference.config import Laplace, MCMC
 from ..models.multiseries import Channel, MultiSeriesModel
+from ..models.shared import Departures, Shared
+from ..models.structural import Model
 from ..observation import GEV, Gaussian
 from ..priors.hierarchical import HierarchicalPrior, HierarchicalPriors
+from ..priors.joint import JointPriors
 
 
 UCCLE_SERIES = ("TXm", "TNm", "TXx", "TXn", "TNx", "TNn")
+# Necessary physical inequalities for summaries of the same complete blocks.
+# They diagnose joint predictive incompatibility; they do not constrain likelihoods.
+UCCLE_ORDER_CONSTRAINTS = (
+    ("TXn", "TXm"), ("TXm", "TXx"),
+    ("TNn", "TNm"), ("TNm", "TNx"),
+    ("TNn", "TXn"), ("TNm", "TXm"), ("TNx", "TXx"),
+)
 UCCLE_INFO = {
     "TXm": {"family": "gaussian", "tail": "max", "description": "monthly mean daily maximum temperature"},
     "TNm": {"family": "gaussian", "tail": "max", "description": "monthly mean daily minimum temperature"},
@@ -106,8 +116,8 @@ def load_uccle_series(
         result = result.loc[pd.Timestamp(start) :]
     if end is not None:
         result = result.loc[: pd.Timestamp(end)]
-    if result.size < 24:
-        raise ValueError("At least 24 monthly observations are required.")
+    if result.empty:
+        raise ValueError("The requested date range contains no observations.")
     return result
 
 
@@ -121,10 +131,13 @@ def load_uccle_multiseries(
     """Load aligned summaries in the requested channel order."""
 
     selected = _normalize_series_names(series)
-    if len(selected) < 2:
-        raise ValueError("A hierarchical analysis requires at least two series.")
+    if not selected:
+        raise ValueError("Select at least one Uccle series.")
+    values = [load_uccle_series(name, data_dir, start=start, end=end) for name in selected]
+    if any(not item.index.equals(values[0].index) for item in values[1:]):
+        raise ValueError("Uccle channels must have the same dates; choose an explicit common range.")
     frame = pd.concat(
-        [load_uccle_series(name, data_dir, start=start, end=end) for name in selected],
+        values,
         axis=1,
         join="inner",
     )
@@ -265,10 +278,97 @@ def fit_uccle_hierarchical(
     return fit(values, resolved_model, priors=resolved_priors, **options)
 
 
+def make_uccle_shared_model(
+    *,
+    series: Iterable[str] | str = UCCLE_SERIES,
+    seasonal: bool = True,
+    period: int = 12,
+    departures: str | None = "trend",
+    weights: Mapping[str, float] | None = None,
+    baseline_means: Mapping[str, float] | None = None,
+    copula=None,
+) -> MultiSeriesModel:
+    """Construct a common warming trajectory with constrained departures.
+
+    This is a short application of the general ``Channel``, ``Shared`` and
+    ``Departures`` grammar. Every channel retains its own static intercept and
+    fixed seasonal cycle. Unit loadings keep effects in degrees Celsius; the
+    weighted sum of departures is zero at each time. ``departures='rw'`` uses
+    simpler random-walk deviations, and ``None`` omits them entirely.
+
+    Initial levels of the common trend and departures are pinned at zero.
+    Initial slope SDs are 0.005 and 0.002 degrees per model step, respectively;
+    the bundled observations are monthly. Initial intercept and seasonal SDs
+    are 10 degrees. For other priors, construct the general model directly.
+    """
+    selected = _normalize_series_names(series)
+    if len(selected) < 2:
+        raise ValueError("A shared model requires at least two series.")
+    if departures not in {None, "rw", "trend"}:
+        raise ValueError("departures must be 'trend', 'rw', or None.")
+    if weights is not None and departures is None:
+        raise ValueError("weights require a departure component.")
+    if baseline_means is not None and set(baseline_means) != set(selected):
+        raise ValueError("baseline_means must name every selected channel exactly once.")
+    channels = []
+    for name in selected:
+        info = UCCLE_INFO[name]
+        components = [LocalLevel(mode="static", initial_mean=None if baseline_means is None else float(baseline_means[name]), initial_sd=10.0)]
+        if seasonal:
+            components.append(DummySeasonal(period=period, mode="static", initial_sd=10.0))
+        channels.append(Channel(name, Gaussian() if info["family"] == "gaussian" else GEV(), tuple(components),
+                                tail="lower" if info["tail"] == "min" else None, description=info["description"]))
+    shared = [Shared("warming", LocalLinearTrend(initial_level=0.0, initial_level_sd=0.0, initial_slope_sd=0.005))]
+    if departures is not None:
+        component = (LocalLevel(initial_mean=0.0, initial_sd=0.0) if departures == "rw"
+                     else LocalLinearTrend(initial_level=0.0, initial_level_sd=0.0, initial_slope_sd=0.002))
+        shared.append(Departures("departure", component, weights=weights))
+    return MultiSeriesModel(channels=tuple(channels), shared=tuple(shared), copula=copula,
+                            name="Uccle common warming and departures",
+                            description="Unit-loading common trend, weighted sum-to-zero departures, separate fixed seasonal cycles.")
+
+
+def fit_uccle_shared(
+    data_dir: str | Path | None = None,
+    *,
+    model: MultiSeriesModel | None = None,
+    series: Iterable[str] | str = UCCLE_SERIES,
+    priors: JointPriors | None = None,
+    seasonal: bool = True,
+    departures: str | None = "trend",
+    weights: Mapping[str, float] | None = None,
+    copula=None,
+    start: str | None = "1892-01-01",
+    end: str | None = None,
+    **kwargs,
+) -> FitResult:
+    """Fit the shared model through the ordinary ``fit(data, model, ...)`` API.
+
+    Pass explicit ``JointPriors`` for a scientific analysis: ``priors=None``
+    uses the same recorded data-adaptive convenience calibration as ``fit``.
+    When constructing a model here, intercept-prior centers are the observed
+    channel medians; pass your own model to supply data-independent centers.
+    """
+    selected = model.channel_names if model is not None else _normalize_series_names(series)
+    values = load_uccle_multiseries(data_dir, series=selected, start=start, end=end)
+    resolved_model = model or make_uccle_shared_model(
+        series=selected, seasonal=seasonal, departures=departures, weights=weights,
+        baseline_means={name: float(values[name].median()) for name in selected}, copula=copula,
+    )
+    if not getattr(resolved_model, "shared", ()):
+        raise ValueError("fit_uccle_shared requires a model containing shared states.")
+    options = dict(kwargs)
+    options.setdefault("engine", "auto")
+    options.setdefault("parameterization", "centered")
+    options.setdefault("asis", False)
+    return fit(values, resolved_model, priors=priors, **options)
+
+
 def fit_uccle_series(
     series: str,
     data_dir: str | Path | None = None,
     *,
+    model: Model | None = None,
     priors: object = "normal",
     mcmc: MCMC | None = None,
     engine: str = "auto",
@@ -276,18 +376,27 @@ def fit_uccle_series(
     asis: bool = True,
     start: str | None = "1980-01-01",
     end: str | None = None,
-    particles: Particles | None = None,
     laplace: Laplace | None = None,
     **kwargs,
 ) -> FitResult:
-    """Fit one summary with the same structural grammar used by the hierarchy."""
+    """Fit one summary using an ordinary declarative structural model.
+
+    The default contains a local linear trend and monthly dummy seasonality.
+    Supplying ``model=`` exposes the general component and observation API;
+    this helper only loads the series and sets its tail orientation and dates.
+    """
 
     values = load_uccle_series(series, data_dir, start=start, end=end)
     info = UCCLE_INFO[series]
+    resolved_model = model or Model(
+        observation=Gaussian() if info["family"] == "gaussian" else GEV(),
+        components=(LocalLinearTrend(), DummySeasonal(period=12)),
+        name=series,
+    )
     return fit(
-        values.to_numpy(), family=info["family"], period=12, priors=priors,
+        values.to_numpy(), resolved_model, priors=priors,
         engine=engine, parameterization=parameterization, asis=asis,
-        mcmc=MCMC() if mcmc is None else mcmc, particles=particles, laplace=laplace,
+        mcmc=MCMC() if mcmc is None else mcmc, laplace=laplace,
         dates=values.index.to_numpy(), name=series, tail=info["tail"], **kwargs,
     )
 
@@ -337,6 +446,7 @@ def fit_uccle_all(
 __all__ = [
     "UCCLE_INFO", "UCCLE_SERIES", "UccleFitCollection", "derive_uccle_monthly",
     "fit_uccle_all", "fit_uccle_hierarchical", "fit_uccle_series",
+    "fit_uccle_shared", "make_uccle_shared_model",
     "load_uccle_daily", "load_uccle_multiseries", "load_uccle_series",
     "make_uccle_hierarchical_model", "validate_uccle_data",
 ]

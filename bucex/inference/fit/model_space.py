@@ -591,9 +591,9 @@ def sample_structural_regression_exact(
     proposal_uniform_weight: float = 0.05,
     elliptical_slice_max_steps: int = 10_000,
 ) -> ExactStructuralSelectionResult:
-    """Exact PGAS-compatible SSVS update using Laplace-informed proposals.
+    """Exact SSVS update using Laplace-informed independence proposals.
 
-    Conditional on a PGAS state path, the GEV regression block is
+    Conditional on a latent state path, the GEV regression block is
     non-Gaussian.  Gaussian model enumeration is therefore not exact.  This
     kernel instead uses each model's Gaussian pseudo-posterior only as an
     independence proposal and corrects it with a trans-dimensional

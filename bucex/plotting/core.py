@@ -251,7 +251,10 @@ def _phase_indices(fit, phase: int | None):
     selected_phase = int(phase)
     if selected_phase != phase or not 1 <= selected_phase <= int(period):
         raise ValueError(f"phase must be an integer from 1 to {period}.")
-    return np.arange(selected_phase - 1, fit.n_time, int(period))
+    from ..core.calendar import seasonal_phases
+
+    phases = seasonal_phases(period, fit.n_time, fit.dates)
+    return np.flatnonzero(phases == selected_phase)
 
 
 def _structural_prior_samples(fit, name: str, size: int, rng) -> np.ndarray:
@@ -1418,6 +1421,7 @@ def plot_endpoint(
     ax=None,
     color="C3",
     title: str | None = None,
+    channel: str | None = None,
 ):
     import matplotlib.pyplot as plt
 
@@ -1425,7 +1429,7 @@ def plot_endpoint(
         figure, ax = plt.subplots(figsize=(9, 4))
     else:
         figure = ax.figure
-    values = np.asarray(fit.endpoint_draws(original_scale=True), dtype=float)
+    values = np.asarray(fit.endpoint_draws(original_scale=True, channel=channel), dtype=float)
     values[~np.isfinite(values)] = np.nan
     if np.all(np.isnan(values)):
         raise ValueError("No posterior draw has a finite GEV endpoint.")
@@ -1449,6 +1453,9 @@ def plot_risk(
     max_return_period: float | None = None,
     ax=None,
     color="C3",
+    channel: str | None = None,
+    title: str | None = None,
+    include_partial: bool = False,
 ):
     import matplotlib.pyplot as plt
 
@@ -1458,17 +1465,15 @@ def plot_risk(
         figure = ax.figure
     if kind == "exceedance":
         values, labels = fit.exceedance_probability_draws(
-            threshold, annual=annual, return_labels=True
+            threshold, annual=annual, return_labels=True, channel=channel, include_partial=include_partial
         )
-        title = fit.event_label(threshold)
         ylabel = "annual event probability" if annual else "event probability"
     elif kind == "return_period":
         values, labels = fit.return_period_draws(
-            threshold, annual=annual, return_labels=True
+            threshold, annual=annual, return_labels=True, channel=channel, include_partial=include_partial
         )
         if max_return_period is not None:
             values = np.minimum(values, float(max_return_period))
-        title = f"Return period for {fit.event_label(threshold)[2:-1]}"
         ylabel = "years" if annual else "observation intervals"
         ax.set_yscale("log")
     else:
@@ -1476,7 +1481,8 @@ def plot_risk(
     lower, median, upper = _interval(values, credible_interval)
     ax.fill_between(labels, lower, upper, color=color, alpha=0.2)
     ax.plot(labels, median, color=color)
-    ax.set_title(title)
+    if title is not None:
+        ax.set_title(str(title))
     ax.set_ylabel(ylabel)
     return figure, ax
 
@@ -1618,7 +1624,24 @@ def plot_fit(fit, kind: str = "state", **kwargs):
 
     key = str(kind).lower().replace("-", "_")
     if getattr(fit, "is_multiseries_model", False):
-        if key in {"state", "channel", "channel_predictor", "fit"}:
+        if key in {"copula", "copula_correlation"}:
+            from .dependence import plot_copula
+
+            return finish(plot_copula(fit, **kwargs))
+        if key in {"shared", "factor", "departures", "departure"}:
+            from .shared import plot_shared, plot_departures
+
+            return finish((plot_shared if key in {"shared", "factor"} else plot_departures)(fit, **kwargs))
+        if key in {"level", "slope", "season", "seasonal"}:
+            from .shared import plot_channel_component
+
+            kwargs.setdefault("channel", fit.channel_names[0])
+            return finish(plot_channel_component(fit, component=key, **kwargs))
+        if key == "endpoint":
+            return finish(plot_endpoint(fit, **kwargs))
+        if key in {"exceedance", "return_period"}:
+            return finish(plot_risk(fit, kind=key, **kwargs))
+        if key in {"state", "channel", "channel_predictor", "fit", "predictor", "eta"}:
             if "channel" not in kwargs:
                 kwargs["channel"] = fit.channel_names[0]
             return finish(plot_channel_predictor(fit, **kwargs))
@@ -1638,7 +1661,8 @@ def plot_fit(fit, kind: str = "state", **kwargs):
             return finish(plot_trend_models(fit, **kwargs))
         raise ValueError(
             "Multiseries kind must be channel, process_sd, parameter_density, "
-            "traces, acf, component_probabilities, hierarchy, or trend_models."
+            "traces, acf, level, slope, seasonal, shared, departures, endpoint, "
+            "exceedance, return_period, component_probabilities, hierarchy, copula, or trend_models."
         )
     if key in {"process_sd", "process_sds", "prior_posterior_sd"}:
         return finish(plot_process_sds(fit, **kwargs))

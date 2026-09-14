@@ -1,0 +1,88 @@
+{
+  "_comment": "Full configs are starting run budgets; smoke confirms execution only. All summaries are MONTHLY in this source release.",
+  "analysis": "shared",
+  "data": {
+    "series": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
+    ],
+    "start": "1892-01-01",
+    "end": "2022-12-01"
+  },
+  "model": {
+    "period": 12,
+    "phi": "stationary",
+    "seasonal": "static"
+  },
+  "priors": {
+    "baseline_sd": 3.2,
+    "initial_slope_sd": 0.0025,
+    "departure_initial_slope_sd": 0.0015,
+    "seasonal_initial_sd": 2.25,
+    "observation_variance": [
+      2,
+      2
+    ],
+    "xi_bounds": [
+      -0.5,
+      0.5
+    ],
+    "shared_process_sd": {
+      "shared.warming.level": 0.02,
+      "shared.warming.slope": 5e-05,
+      "departure.departure.level": 0.01,
+      "departure.departure.slope": 2.5e-05
+    },
+    "innovation_slab_sd": {
+      "level": 0.02,
+      "trend": 5e-05,
+      "season": 0.02
+    }
+  },
+  "mcmc": {
+    "draws": 1000,
+    "warmup": 1000,
+    "chains": 4,
+    "seed": 56100
+  },
+  "seed": 56101,
+  "output": "results/serra",
+  "forecast_horizon": 120,
+  "credible_interval": 0.9,
+  "risks": {
+    "TXm": 25,
+    "TNm": 18,
+    "TXx": 35,
+    "TXn": 0,
+    "TNx": 25,
+    "TNn": -10
+  },
+  "validation": {
+    "initial": 1188,
+    "horizon": 12,
+    "step": 120,
+    "save_fits": false
+  },
+  "inference": {
+    "laplace": {
+      "max_iterations": 30,
+      "tolerance": 1e-05,
+      "mh_steps": 1
+    },
+    "shared_sampler": {
+      "elliptical_slice_steps": 1,
+      "maximum_slice_evaluations": 200
+    }
+  },
+  "figures": {
+    "font.size": 12,
+    "axes.labelsize": 12,
+    "xtick.labelsize": 11,
+    "ytick.labelsize": 11
+  },
+  "predictive_check_draws": 400
+}

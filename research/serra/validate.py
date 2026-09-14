@@ -1,0 +1,102 @@
+"""Expanding-window forecasts with calibration at 90%, 95% and 99%."""
+import gc
+from pathlib import Path
+import numpy as np
+import pandas as pd
+import bucex as bx
+from research.serra.run import arguments
+from research.serra.report import new_run, scientific_targets
+from research.serra.models import channel, marginal_prior, joint_model, fit_options
+
+
+def calibration(forecast, observed, *, channel=None):
+    """Keep every held-out interval and quantile event, not only averages."""
+    index = forecast.channel_names.index(channel) if forecast.is_multiseries_forecast else None
+    samples = forecast.observations[:, :, index] if index is not None else forecast.observations
+    observed = np.asarray(observed)
+    base = dict(time=forecast.dates, horizon=np.arange(1, forecast.horizon + 1), observed=observed)
+    rows = []
+    for level in (0.90, 0.95, 0.99):
+        lower, upper = np.quantile(samples, [(1 - level) / 2, (1 + level) / 2], axis=0)
+        rows.append(pd.DataFrame({**base, "kind": "central_interval", "nominal": level,
+            "lower": lower, "upper": upper, "width": upper - lower,
+            "covered": (observed >= lower) & (observed <= upper)}))
+    for probability in (0.005, 0.01, 0.025, 0.05, 0.10, 0.90, 0.95, 0.975, 0.99, 0.995):
+        quantile = np.quantile(samples, probability, axis=0)
+        rows.append(pd.DataFrame({**base, "kind": "cdf_quantile", "nominal": probability,
+            "quantile": quantile, "covered": observed <= quantile}))
+    return pd.concat(rows, ignore_index=True)
+
+
+def validate(config):
+    data = bx.load_uccle_multiseries(**config["data"])
+    settings = config["validation"]
+    initial = data.iloc[:settings["initial"]]
+    directory = new_run(config["output"], f"validation_{config['analysis']}")
+    bx.save_config(config, directory / "config.json")
+    analyses = []
+    # Freeze data-centred priors using only the first training prefix.
+    if config["analysis"] == "independent":
+        for name in data:
+            item = channel(name, initial, config)
+            analyses.append((name, data[[name]], bx.Model(item.observation, item.components),
+                             marginal_prior(item, initial, config), item.tail))
+    else:
+        model, prior = joint_model(initial, config)
+        analyses.append(("joint", data, model, prior, None))
+    splits = tuple(bx.rolling_origin_splits(len(data), **{k: settings[k] for k in ("initial", "horizon", "step")}))
+    if not splits:
+        raise ValueError("No complete held-out fold fits inside the supplied record.")
+    for label, values, model, prior, tail in analyses:
+        target = directory / label
+        target.mkdir()
+        scores, pits, coverages, joint_scores = [], [], [], []
+        for fold, (train, test) in enumerate(splits):
+            print(f"{label}: fold {fold + 1}/{len(splits)}, training {train.stop} blocks", flush=True)
+            training = values.iloc[:train.stop]
+            if label != "joint":
+                training = training.iloc[:, 0]
+            fit = bx.fit(training, model, priors=prior,
+                         **fit_options(config, family=model.family, tail=tail))
+            forecast = fit.forecast(len(test), dates=values.index[list(test)],
+                draws=settings.get("draws", config.get("forecast_draws")), seed=config["seed"] + fold)
+            fit.diagnostics()["parameters"].to_csv(target / f"mcmc_{train.stop}.csv")
+            fit.contrast_diagnostics(scientific_targets(fit)).to_csv(target / f"targets_{train.stop}.csv")
+            if settings.get("save_fits", False):
+                fit.save(target / f"fit_{train.stop}.bucex")
+            for name in values:
+                observed = values[name].iloc[list(test)].to_numpy()
+                kwargs = {"channel": name} if label == "joint" else {}
+                score = forecast.score(observed, thresholds=[config["risks"][name]],
+                                       quantiles=(0.90, 0.95, 0.99), aggregate=False, **kwargs)
+                scores.append(score.assign(origin=train.stop, channel=name,
+                    time=forecast.dates[score["time_index"].to_numpy(dtype=int)]))
+                pits.append(pd.DataFrame({"origin": train.stop, "channel": name,
+                    "time": forecast.dates, "horizon": np.arange(1, len(test) + 1),
+                    "pit": forecast.pit(observed, **kwargs)}))
+                coverages.append(calibration(forecast, observed, **kwargs).assign(origin=train.stop, channel=name))
+            if label == "joint":
+                observed = values.iloc[list(test)].to_numpy()
+                joint_scores.append(pd.DataFrame({"origin": train.stop, "time": forecast.dates,
+                    "score": forecast.joint_log_score(observed)}))
+                constraints = [pair for pair in bx.UCCLE_ORDER_CONSTRAINTS if set(pair) <= set(values)]
+                if constraints:
+                    forecast.ordering_diagnostics(constraints, observed=observed).by_time.to_csv(
+                        target / f"ordering_{train.stop}.csv", index=False)
+            del fit, forecast  # Retain compact scores, not every full state posterior.
+            gc.collect()
+        score_table, coverage_table = pd.concat(scores), pd.concat(coverages)
+        score_table.to_csv(target / "scores.csv", index=False)
+        pd.concat(pits).to_csv(target / "held_out_pit.csv", index=False)
+        coverage_table.to_csv(target / "coverage_by_case.csv", index=False)
+        score_table.groupby(["channel", "score", "setting"], dropna=False)["value"].agg(
+            mean="mean", n="size").to_csv(target / "score_summary.csv")
+        coverage_table.groupby(["channel", "kind", "nominal"])["covered"].agg(
+            empirical="mean", n="size").to_csv(target / "coverage_summary.csv")
+        if joint_scores:
+            pd.concat(joint_scores).to_csv(target / "joint_log_scores.csv", index=False)
+    return directory
+
+
+if __name__ == "__main__":
+    print(validate(arguments(__doc__)))

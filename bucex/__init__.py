@@ -11,6 +11,7 @@ from . import api as _api
 from . import components as _components
 from . import core as _core
 from . import datasets as _datasets
+from . import dependence as _dependence
 from . import diagnostics as _diagnostics
 from . import inference as _inference
 from . import io as _io
@@ -23,6 +24,7 @@ from .api import *
 from .components import *
 from .core import *
 from .datasets import *
+from .dependence import *
 from .diagnostics import *
 from .inference import *
 from .io import *
@@ -46,6 +48,7 @@ __all__ = sorted(
         *(_components.__all__),
         *(_core.__all__),
         *(_datasets.__all__),
+        *(_dependence.__all__),
         *(_diagnostics.__all__),
         *(_inference.__all__),
         *(_io.__all__),

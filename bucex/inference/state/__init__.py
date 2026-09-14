@@ -10,7 +10,6 @@ from .laplace import (
     laplace_log_correction,
     laplace_mh,
 )
-from .particle import PGASResult, ParticleFilterResult, particle_filter, pgas
 
 __all__ = [
     "KalmanResult",
@@ -18,8 +17,6 @@ __all__ = [
     "LaplaceApproximation",
     "LaplaceDraw",
     "LaplaceMHResult",
-    "ParticleFilterResult",
-    "PGASResult",
     "kalman_filter",
     "kalman_smoother",
     "ffbs",
@@ -28,6 +25,4 @@ __all__ = [
     "iterated_laplace",
     "laplace_log_correction",
     "laplace_mh",
-    "particle_filter",
-    "pgas",
 ]

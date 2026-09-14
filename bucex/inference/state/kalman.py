@@ -51,9 +51,18 @@ def _observation_variance(value: float | Array, n_time: int, n_channels: int) ->
             )
     elif out.ndim == 2 and out.shape == (n_time, n_channels):
         out = out.copy()
+    elif out.ndim == 3 and out.shape == (n_time, n_channels, n_channels):
+        if not np.all(np.isfinite(out)) or not np.allclose(out, out.swapaxes(-1, -2), atol=1e-12, rtol=1e-10):
+            raise ValueError("Full observation covariances must be finite and symmetric.")
+        out = 0.5 * (out + out.swapaxes(-1, -2))
+        try:
+            np.linalg.cholesky(out)
+        except np.linalg.LinAlgError as error:
+            raise ValueError("Full observation covariances must be positive definite.") from error
+        return out
     else:
         raise ValueError(
-            "observation_variance must be scalar, a vector, or shape (T, channels)."
+            "observation_variance must be scalar, a vector, shape (T, channels), or full covariance shape (T, channels, channels)."
         )
     if np.any(out <= 0.0) or not np.all(np.isfinite(out)):
         raise ValueError("All observation variances must be positive and finite.")
@@ -128,7 +137,8 @@ def kalman_filter(
             continue
         ht = h_matrix[t - 1, observed]
         v = y_matrix[t - 1, observed] - ht @ a
-        observation_cov = np.diag(variance[t - 1, observed])
+        observation_cov = (variance[t - 1][np.ix_(observed, observed)] if variance.ndim == 3
+                           else np.diag(variance[t - 1, observed]))
         s = symmetrize(ht @ p @ ht.T + observation_cov)
         try:
             chol = np.linalg.cholesky(s)
@@ -152,7 +162,8 @@ def kalman_filter(
         )
 
     stored_design = h_matrix[:, 0] if scalar_observation else h_matrix
-    stored_variance = variance[:, 0] if scalar_observation else variance
+    stored_variance = ((variance[:, 0, 0] if variance.ndim == 3 else variance[:, 0])
+                       if scalar_observation else variance)
     stored_innovations = innovations[:, 0] if scalar_observation else innovations
     stored_innovation_variance = (
         innovation_variance[:, 0, 0] if scalar_observation else innovation_variance

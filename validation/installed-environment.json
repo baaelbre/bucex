@@ -1,0 +1,10 @@
+{
+  "bucex_version": "1.6.1",
+  "imported_from_installed_wheel": true,
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "scipy": "1.17.0",
+  "pandas": "2.2.3",
+  "pytest": "9.1.1",
+  "source_package_files_match_installed": true
+}

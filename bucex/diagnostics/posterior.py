@@ -186,13 +186,13 @@ def fit_diagnostics(fit):
     engine: dict[str, float] = {}
     if fit.plan.engine in {"laplace", "laplace_mh"}:
         engine = {
-            "convergence_rate": _finite_mean(metrics["laplace_converged"]),
-            "median_iterations": _finite_median(metrics["laplace_iterations"]),
+            "convergence_rate": _finite_mean(metrics.get("laplace_converged", [])),
+            "median_iterations": _finite_median(metrics.get("laplace_iterations", [])),
             "median_relative_change": _finite_median(
-                metrics["laplace_relative_change"]
+                metrics.get("laplace_relative_change", [])
             ),
             "mean_support_rejections": _finite_mean(
-                metrics["laplace_support_rejections"]
+                metrics.get("laplace_support_rejections", [])
             ),
         }
         support_repair_rate = _finite_mean(
@@ -204,6 +204,8 @@ def fit_diagnostics(fit):
             engine["initial_support_repair_rate"] = support_repair_rate
         if fit.plan.engine == "laplace_mh":
             engine.update(
+                # Retained compatibility name: this measures only the joint
+                # Laplace-MH proposal, not the separate elliptical-slice steps.
                 state_acceptance=_finite_mean(
                     metrics.get("laplace_mh_acceptance", np.asarray([]))
                 ),
@@ -218,47 +220,15 @@ def fit_diagnostics(fit):
                     )
                 ),
             )
-    elif fit.plan.engine == "pgas":
-        engine = {
-            "median_min_particle_ess": _finite_median(
-                metrics["particle_min_ess"]
-            ),
-            "mean_unique_ancestors": _finite_mean(
-                metrics["particle_mean_unique_ancestors"]
-            ),
-            "path_change_rate": _finite_mean(
-                metrics["particle_path_changed"]
-            ),
-            "mean_path_update_fraction": _finite_mean(
-                metrics.get(
-                    "particle_path_update_fraction",
-                    metrics.get("particle_changed_fraction", np.asarray([])),
-                )
-            ),
-            "reference_ancestor_change_rate": _finite_mean(
-                metrics.get(
-                    "particle_reference_ancestor_change_fraction",
-                    np.asarray([]),
-                )
-            ),
-        }
-        if bool(fit.metadata.get("structural_ssvs", False)):
-            engine.update(
-                ssvs_model_move_acceptance=_finite_mean(
-                    metrics.get("ssvs_model_move_accepted", np.asarray([]))
-                ),
-                ssvs_proposed_change_rate=_finite_mean(
-                    metrics.get("ssvs_model_proposed_change", np.asarray([]))
-                ),
-                ssvs_median_log_acceptance_ratio=_finite_median(
-                    metrics.get(
-                        "ssvs_model_log_acceptance_ratio", np.asarray([])
-                    )
-                ),
-                ssvs_mean_elliptical_slice_steps=_finite_mean(
-                    metrics.get("fs_elliptical_slice_steps", np.asarray([]))
-                ),
-            )
+            engine["joint_state_mh_acceptance"] = engine["state_acceptance"]
+            if "state_ess_evaluations" in metrics:
+                for label, metric in (
+                    ("elliptical_slice_mean_likelihood_evaluations", "state_ess_evaluations"),
+                    ("elliptical_slice_mean_blocks_moved", "state_ess_blocks_moved"),
+                    ("elliptical_slice_mean_stochastic_blocks", "state_ess_stochastic_blocks"),
+                    ("elliptical_slice_mean_absolute_angle", "state_ess_mean_absolute_angle"),
+                ):
+                    engine[label] = _finite_mean(metrics.get(metric, []))
     return {
         "parameters": table,
         "engine": engine,

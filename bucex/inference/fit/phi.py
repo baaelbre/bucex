@@ -795,7 +795,7 @@ class PhiKernel:
     ) -> PhiUpdate:
         """Update the active scale model and return observation-ready sigma."""
 
-        exact = str(state_method) in {"laplace_mh", "pgas"}
+        exact = str(state_method) == "laplace_mh"
         output = state.copy()
         accepted: dict[str, bool] = {}
         diagnostics = {

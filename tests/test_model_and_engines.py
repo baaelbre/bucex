@@ -7,9 +7,7 @@ from scipy.stats import multivariate_normal
 
 import bucex as bx
 from bucex.core.numerics import gaussian_support, psd_eigh
-from bucex.core.numerics import normalize_logweights
-from bucex.inference.fit.fs_utils import _strict_normalize_logweights
-from bucex.inference.state.laplace import observation_log_likelihood
+from bucex.inference.state.laplace import laplace_mh, observation_log_likelihood
 
 
 def test_model_compiler_and_named_regression_design():
@@ -114,7 +112,7 @@ def test_kalman_likelihood_matches_joint_normal():
     assert result.log_likelihood == pytest.approx(exact, abs=1e-9)
 
 
-def test_iterated_laplace_and_singular_pgas_paths_are_valid():
+def test_laplace_mh_paths_respect_singular_transition_support():
     model = bx.Model(bx.GEV(), [bx.LocalLinearTrend(), bx.DummySeasonal(4)])
     params = {
         "sd.level": 0.05,
@@ -137,12 +135,11 @@ def test_iterated_laplace_and_singular_pgas_paths_are_valid():
             simulation.y, compiled.eta(laplace.path), compiled, params
         )
     )
-    result = bx.pgas(
+    result = laplace_mh(
         simulation.y,
         compiled,
         params,
         laplace.path,
-        particles=bx.Particles(n=24),
         rng=np.random.default_rng(12),
     )
     assert result.exact_invariant
@@ -169,17 +166,7 @@ def test_psd_and_tiny_positive_process_variance_are_not_conflated():
     assert support.active_variances.size == 3
 
 
-def test_particle_normalization_keeps_underflow_sized_log_weights():
-    # exp(-1000) is zero in float64, but a log weight at -1000 is still a
-    # mathematically valid ancestor when all alternatives are impossible.
-    values = np.asarray([-1000.0, -np.inf, -np.inf])
-    weights, normalizer = normalize_logweights(values)
-    np.testing.assert_allclose(weights, [1.0, 0.0, 0.0])
-    assert normalizer == pytest.approx(-1000.0)
-    fs_weights, fs_log_weights, fs_normalizer = _strict_normalize_logweights(values)
-    np.testing.assert_allclose(fs_weights, weights)
-    assert fs_log_weights[0] == pytest.approx(0.0)
-    assert fs_normalizer == pytest.approx(-1000.0)
+
 
 
 def test_convenience_priors_are_local_scale_not_record_length_calibrated():

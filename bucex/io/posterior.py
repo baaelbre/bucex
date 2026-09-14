@@ -21,12 +21,13 @@ from ..models.structural import Model
 from ..priors import hierarchical as hierarchical_priors
 from ..priors import process as process_priors
 from ..priors import structural as structural_priors
+from ..priors import joint as joint_priors
 
 
 FORMAT = "bucex-fit"
-SCHEMA_VERSION = "2.7.0"
+SCHEMA_VERSION = "2.9.0"
 SUPPORTED_SCHEMA_VERSIONS = {
-    "1.2", "2.0", "2.1", "2.3", "2.4", "2.4.1", "2.5.0", "2.6.0", "2.6.1", "2.6.2", "2.7.0"
+    "1.2", "2.0", "2.1", "2.3", "2.4", "2.4.1", "2.5.0", "2.6.0", "2.6.1", "2.6.2", "2.7.0", "2.8.0", "2.9.0"
 }
 
 
@@ -36,6 +37,7 @@ def _prior_classes() -> dict[str, type]:
         process_priors,
         structural_priors,
         hierarchical_priors,
+        joint_priors,
     ):
         for name in dir(module):
             candidate = getattr(module, name)

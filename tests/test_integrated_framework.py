@@ -23,12 +23,12 @@ def test_plan_separates_parameterization_engine_and_asis():
     plan = bx.plan(
         model,
         _sample("gev"),
-        engine="pgas",
+        engine="laplace_mh",
         parameterization="fs",
         asis=True,
     )
     assert plan.parameterization == "fruehwirth_schnatter"
-    assert plan.engine == "pgas"
+    assert plan.engine == "laplace_mh"
     assert plan.interweaves_with == "centered"
     assert plan.targets_exact_posterior
     with pytest.raises(ValueError, match="incompatible"):
@@ -58,7 +58,7 @@ def test_gaussian_parameterizations_share_one_result_contract(parameterization, 
     assert fit.plan.parameterization == parameterization
 
 
-@pytest.mark.parametrize("engine,exact", [("laplace", False), ("pgas", True)])
+@pytest.mark.parametrize("engine,exact", [("laplace", False), ("laplace_mh", True)])
 def test_gev_engines_share_one_result_contract(engine, exact):
     fit = bx.fit(
         _sample("gev"),
@@ -68,7 +68,6 @@ def test_gev_engines_share_one_result_contract(engine, exact):
         parameterization="fruehwirth_schnatter",
         engine=engine,
         mcmc=QUICK,
-        particles=bx.Particles(n=16),
         laplace=bx.Laplace(max_iterations=6),
     )
     assert type(fit) is bx.FitResult

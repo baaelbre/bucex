@@ -1,0 +1,51 @@
+{
+  "bucex_version": "1.6.1",
+  "kind": "execution smoke only; not convergence or coverage evidence",
+  "runs": [
+    {
+      "command": "python -m research.serra.run --config research/serra/config/independent_smoke.json --series TXx --phi linear",
+      "exit_code": 0,
+      "report": "results/serra/uccle_independent_20260913T182339_045247Z/TXx",
+      "warmup": 4,
+      "draws": 4,
+      "chains": 1,
+      "checked_outputs": [
+        "fit.bucex",
+        "scale.csv",
+        "scale.pdf",
+        "scale_models.json",
+        "scientific_targets.csv",
+        "series_risk.csv",
+        "forecast.csv"
+      ],
+      "scale_model": {
+        "declared_mode": "linear"
+      }
+    },
+    {
+      "command": "python -m research.serra.run --config research/serra/config/independent_smoke.json --series TNn --phi ssvs",
+      "exit_code": 0,
+      "report": "results/serra/uccle_independent_20260913T182339_104631Z/TNn",
+      "warmup": 4,
+      "draws": 4,
+      "chains": 1,
+      "checked_outputs": [
+        "fit.bucex",
+        "scale.csv",
+        "scale.pdf",
+        "scale_models.json",
+        "scientific_targets.csv",
+        "series_risk.csv",
+        "forecast.csv"
+      ],
+      "scale_model": {
+        "declared_mode": "ssvs",
+        "posterior_probabilities": {
+          "stationary": 1.0,
+          "linear": 0.0,
+          "rw": 0.0
+        }
+      }
+    }
+  ]
+}

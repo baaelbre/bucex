@@ -1,5 +1,5 @@
 """Inference configuration, planning and state-update kernels."""
-from .config import GibbsConfig, HierarchicalSampler, Laplace, MCMC, Particles
+from .config import GibbsConfig, HierarchicalSampler, Laplace, MCMC, SharedSampler
 from .plan import InferencePlan, inference_plan
 from .state import (
     build_laplace_approximation,
@@ -10,16 +10,14 @@ from .state import (
     kalman_smoother,
     laplace_log_correction,
     laplace_mh,
-    particle_filter,
-    pgas,
 )
 
 __all__ = [
     "MCMC",
     "GibbsConfig",
     "Laplace",
-    "Particles",
     "HierarchicalSampler",
+    "SharedSampler",
     "InferencePlan",
     "inference_plan",
     "kalman_filter",
@@ -30,6 +28,4 @@ __all__ = [
     "iterated_laplace",
     "laplace_log_correction",
     "laplace_mh",
-    "particle_filter",
-    "pgas",
 ]

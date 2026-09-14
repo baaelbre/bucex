@@ -10,13 +10,14 @@ import numpy as np
 from ..inference.plan import InferencePlan
 from ..models.compiler import CompiledModel
 from ..models.structural import Model
+from .shared_results import SharedResultMethods
 
 
 Array = np.ndarray
 
 
 @dataclass
-class FitResult:
+class FitResult(SharedResultMethods):
     model: Any
     compiled: Any
     priors: Any
@@ -30,7 +31,7 @@ class FitResult:
     dates: Array | None = None
     series_name: str | None = None
     transform_sign: Any = 1.0
-    schema_version: str = "2.7.0"
+    schema_version: str = "2.9.0"
     initial_values: dict[str, Any] = field(default_factory=dict)
     auxiliary_draws: dict[str, Array] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -123,11 +124,12 @@ class FitResult:
 
     @property
     def config(self) -> dict[str, Any]:
-        """Stored MCMC, particle, and Laplace configuration."""
+        """Stored MCMC/Laplace settings, including legacy archive configuration."""
 
         return {
-            key: self.sampler_diagnostics.get(key, {})
-            for key in ("mcmc", "particles", "laplace")
+            key: self.sampler_diagnostics[key]
+            for key in ("mcmc", "particles", "laplace", "shared_sampler")
+            if key in self.sampler_diagnostics
         }
 
     @property
@@ -174,6 +176,17 @@ class FitResult:
             raise KeyError(f"Unknown parameter '{name}'. Available: {sorted(self.parameter_draws)}")
         values = np.asarray(self.parameter_draws[name])
         return values.reshape((-1,) + values.shape[2:]) if combine_chains else values
+
+    def log_likelihood_draws(self, *, combine_chains: bool = True) -> Array:
+        """Stored observation log likelihood, distinct from the log posterior.
+
+        Available for joint samplers which retain this quantity explicitly.
+        It excludes priors and must not be interpreted as model evidence.
+        """
+        if "log_likelihood" not in self.auxiliary_draws:
+            raise ValueError("This fit did not retain observation log-likelihood draws.")
+        values = np.asarray(self.auxiliary_draws["log_likelihood"], dtype=float)
+        return values.reshape(-1) if combine_chains else values
 
     def state(self, name: str, *, combine_chains: bool = True, include_initial: bool = False) -> Array:
         if name not in self.state_names:
@@ -756,22 +769,10 @@ class FitResult:
     def time(self) -> Array:
         return np.arange(1, self.n_time + 1) if self.dates is None else np.asarray(self.dates)
 
-    def _annual_groups(self) -> tuple[list[Array], Array]:
-        if self.dates is not None:
-            try:
-                import pandas as pd
+    def _annual_groups(self, *, include_partial: bool = False) -> tuple[list[Array], Array]:
+        from .calendar import annual_groups
 
-                years = np.asarray(pd.to_datetime(self.dates).year)
-                unique = np.unique(years)
-                return [np.flatnonzero(years == year) for year in unique], unique
-            except Exception:
-                pass
-        period = int(self.model.period or 1)
-        groups = [
-            np.arange(start, min(start + period, self.n_time))
-            for start in range(0, self.n_time, period)
-        ]
-        return groups, np.arange(1, len(groups) + 1)
+        return annual_groups(self.n_time, self.dates, period=self.model.period, include_partial=include_partial)
 
     def exceedance_probability_draws(
         self,
@@ -780,7 +781,16 @@ class FitResult:
         annual: bool = False,
         return_labels: bool = True,
         channel: str | None = None,
+        include_partial: bool = False,
     ) -> Array | tuple[Array, Array]:
+        """Conditional event probabilities, optionally aggregated within years.
+
+        Annual probabilities use complete years by default. Setting
+        ``include_partial=True`` includes probabilities over the observed part
+        of incomplete years; those are shorter-window risks, not annual risks.
+        The annual product assumes conditional independence across time given
+        each posterior latent trajectory and observation parameters.
+        """
         context = self._observation_context(channel)
         threshold_model = context["sign"] * float(threshold)
         cdf = context["observation"].cdf(
@@ -792,7 +802,7 @@ class FitResult:
         probability = np.clip(1.0 - cdf, 0.0, 1.0)
         labels = self.time
         if annual:
-            groups, labels = self._annual_groups()
+            groups, labels = self._annual_groups(include_partial=include_partial)
             probability = np.column_stack(
                 [1.0 - np.prod(1.0 - probability[:, group], axis=1) for group in groups]
             )
@@ -807,11 +817,12 @@ class FitResult:
         return_labels: bool = True,
         min_probability: float | None = None,
         channel: str | None = None,
+        include_partial: bool = False,
     ) -> Array | tuple[Array, Array]:
         if min_probability is not None:
             minimum_probability = float(min_probability)
         probability, labels = self.exceedance_probability_draws(
-            threshold, annual=annual, return_labels=True, channel=channel
+            threshold, annual=annual, return_labels=True, channel=channel, include_partial=include_partial
         )
         values = 1.0 / np.maximum(probability, float(minimum_probability))
         return (values, labels) if return_labels else values
@@ -848,6 +859,7 @@ class FitResult:
         end_year: int,
         *,
         scale: str | float = "decade",
+        combine_chains: bool = True,
     ) -> Array:
         """Finite-change rate of the latent level between calendar years."""
 
@@ -864,7 +876,7 @@ class FitResult:
             raise ValueError(
                 f"Requested years are unavailable; fitted range is {years.min()}-{years.max()}."
             )
-        level = self.state_original("level")
+        level = self.component_draws("level")
         annual_rate = (
             np.mean(level[:, end], axis=1) - np.mean(level[:, start], axis=1)
         ) / float(end_year - start_year)
@@ -883,7 +895,8 @@ class FitResult:
             if key not in multipliers:
                 raise ValueError("scale must be year, decade, century, or a numeric multiplier.")
             multiplier = multipliers[key]
-        return multiplier * annual_rate
+        values = multiplier * annual_rate
+        return values if combine_chains else values.reshape(self.n_chains, self.draws_per_chain)
 
     def channel_rate_draws(
         self,
@@ -892,17 +905,42 @@ class FitResult:
         end_year: int,
         *,
         scale: str | float = "decade",
+        target: str = "predictor",
+        name: str | None = None,
+        combine_chains: bool = True,
     ) -> Array:
-        """Finite-change rate of a channel's full latent predictor."""
+        """Finite-change rate of a channel predictor or scientific component.
+
+        ``target='level'`` excludes seasonal changes. ``shared`` and
+        ``departure`` select contributions from the optional ``name`` group.
+        The historical default, ``predictor``, retains its original meaning.
+        """
 
         if not self.is_multiseries_model:
             raise ValueError("channel_rate_draws is available only for multiseries models.")
-        return self._calendar_rate(
-            self.channel_eta_draws(channel, original_scale=True),
+        if target == "predictor":
+            values = self.channel_eta_draws(channel, original_scale=True)
+        elif target == "level":
+            values = self.channel_component_draws(channel, "level")
+        elif target in {"shared", "departure"}:
+            from .shared_results import group_design
+
+            group = name or ("warming" if target == "shared" else "departure")
+            if not self.is_shared_model or self.compiled.group_kinds.get(group) != target:
+                raise ValueError(f"No {target} group named {group!r} is present.")
+            values = self._component_projection(
+                group_design(self.compiled, group, "level", channel=channel),
+                combine_chains=True, include_initial=False,
+            )
+        else:
+            raise ValueError("target must be 'predictor', 'level', 'shared', or 'departure'.")
+        result = self._calendar_rate(
+            values,
             start_year,
             end_year,
             scale=scale,
         )
+        return result if combine_chains else result.reshape(self.n_chains, self.draws_per_chain)
 
     def channel_rate_summary(
         self,
@@ -912,6 +950,8 @@ class FitResult:
         *,
         scale: str | float = "decade",
         credible_interval: float = 0.90,
+        target: str = "predictor",
+        name: str | None = None,
     ) -> dict[str, float | int | str]:
         """Summarize a channel's complete-predictor finite-change rate.
 
@@ -935,7 +975,7 @@ class FitResult:
         years = np.asarray(pd.to_datetime(self.dates).year, dtype=int)
         start = int(years.min()) if start_year is None else int(start_year)
         end = int(years.max()) if end_year is None else int(end_year)
-        values = self.channel_rate_draws(channel, start, end, scale=scale)
+        values = self.channel_rate_draws(channel, start, end, scale=scale, target=target, name=name)
         summary = self.posterior_summary(
             values, credible_interval=credible_interval
         )
@@ -944,6 +984,7 @@ class FitResult:
             "start_year": start,
             "end_year": end,
             "scale": scale,
+            "target": target,
             "lower": float(summary["lower"]),
             "median": float(summary["median"]),
             "upper": float(summary["upper"]),
@@ -1068,10 +1109,66 @@ class FitResult:
 
         return posterior_predictive(self, **kwargs)
 
+    def copula_correlation_draws(self, *, combine_chains: bool = True) -> Array:
+        """Residual Gaussian-copula correlations in original response orientation.
+
+        These describe latent normal scores conditional on the state paths.
+        They are not correlations of observed temperatures, nor tail-dependence
+        coefficients. A Gaussian copula has zero asymptotic tail dependence
+        whenever the correlation matrix is nonsingular.
+        """
+        copula = getattr(self.model, "copula", None)
+        if copula is None:
+            raise ValueError("This fit has no residual copula.")
+        if "copula_correlation" in self.auxiliary_draws:
+            result = np.asarray(self.auxiliary_draws["copula_correlation"], dtype=float)
+        else:
+            result = np.empty((self.n_chains, self.draws_per_chain, len(self.channel_names), len(self.channel_names)))
+            for chain in range(self.n_chains):
+                for draw in range(self.draws_per_chain):
+                    parameters = {name: float(np.asarray(values)[chain, draw])
+                                  for name, values in self.parameter_draws.items()
+                                  if np.asarray(values)[chain, draw].ndim == 0}
+                    result[chain, draw] = copula.correlation_matrix(parameters, self.channel_names)
+        return result.reshape((-1,) + result.shape[2:]) if combine_chains else result
+
+    def copula_summary(self, *, credible_interval: float = 0.90):
+        """Posterior intervals and chain diagnostics for pairwise residual R."""
+        from ..diagnostics.contrasts import summarize_draws
+
+        correlation = self.copula_correlation_draws(combine_chains=False)
+        pairs = {f"rho.{left}.{right}": correlation[..., i, j]
+                 for i, left in enumerate(self.channel_names)
+                 for j, right in enumerate(self.channel_names) if i > j}
+        return summarize_draws(pairs, credible_interval=credible_interval)
+
+    def ordering_diagnostics(self, constraints, *, draws=None, seed=None, tolerance=0.0):
+        """Check original-scale observed and replicated ordering without alteration."""
+        if not self.is_multiseries_model:
+            raise ValueError("Ordering diagnostics require a multiseries fit.")
+        prediction = self.posterior_predictive(draws=draws, seed=seed)
+        return prediction.ordering_diagnostics(constraints, observed=self.observed, tolerance=tolerance)
+
     def diagnostics(self):
         from ..diagnostics.posterior import fit_diagnostics
 
         return fit_diagnostics(self)
+
+    def contrast_diagnostics(self, draws: Mapping[str, Array], *, credible_interval: float = 0.90):
+        """Convergence and posterior summaries for named scientific quantities.
+
+        Supply one ``(chains, draws)`` array per contrast, retaining original
+        chain membership with ``combine_chains=False`` when obtaining paths
+        or warming rates. Constant and nonfinite quantities are flagged.
+        """
+        from ..diagnostics.contrasts import summarize_draws
+
+        if not isinstance(draws, Mapping):
+            raise TypeError("draws must map contrast names to (chains, draws) arrays.")
+        for name, values in draws.items():
+            if np.asarray(values).shape != (self.n_chains, self.draws_per_chain):
+                raise ValueError(f"Contrast {name!r} must preserve this fit's shape {(self.n_chains, self.draws_per_chain)}.")
+        return summarize_draws(draws, credible_interval=credible_interval)
 
     def plot(self, kind: str = "state", *, type: str | None = None, **kwargs):
         from ..plotting import plot_fit
@@ -1089,18 +1186,17 @@ class FitResult:
         With no indices, the finite draw with the largest stored log posterior
         is selected.  Passing both ``chain=`` and ``draw=`` selects a specific
         zero-based draw.  The returned mapping can be supplied directly as
-        ``init=`` in a compatible multiseries fit.  In particular, this makes
-        the intended exploratory-Laplace-to-exact-PGAS workflow explicit.
+        ``init=`` in a compatible fit, including refinement of an exploratory
+        Laplace fit using the exact Laplace-MH sampler.
 
         For a univariate fit, the export contains scientific parameters, the
         signed FS coefficients, and the centred latent path.  This makes
-        ``fit(..., engine="pgas", init=laplace_fit)`` a genuine path warm
+        ``fit(..., engine="laplace_mh", init=laplace_fit)`` a genuine path warm
         start rather than merely a reuse of static posterior means.
 
-        For a multiseries fit, the export additionally contains shared
-        structural probabilities and shared slab scales.  In both cases the
-        target sampler converts centred paths back to its non-centred state
-        using the exported signed innovation scales.
+        Hierarchical fits additionally export structural probabilities and
+        slab scales. Shared-state fits export the complete centered state
+        path and named scientific parameters, retaining every group state.
         """
 
         if (chain is None) != (draw is None):
@@ -1130,6 +1226,14 @@ class FitResult:
                 "draw": draw_index,
             }
         }
+        if self.is_shared_model:
+            output["state_path"] = self.state_draws[chain_index, draw_index].copy()
+            output["parameters"] = {
+                name: float(np.asarray(values)[chain_index, draw_index])
+                for name, values in self.parameter_draws.items()
+                if np.asarray(values)[chain_index, draw_index].ndim == 0
+            }
+            return output
         if not self.is_multiseries_model:
             def scalar(name: str, default: float = 0.0) -> float:
                 if name not in self.parameter_draws:

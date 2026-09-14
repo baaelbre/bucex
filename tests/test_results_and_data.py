@@ -147,12 +147,13 @@ def test_rank_diagnostics_detect_a_shifted_chain():
 
 
 def test_bundled_uccle_data_and_short_minimum_workflow():
-    table = bx.validate_uccle_data("data", check_daily=True)
+    source_data = Path(__file__).resolve().parents[1] / "data"
+    table = bx.validate_uccle_data(source_data, check_daily=True)
     assert tuple(table.index) == bx.UCCLE_SERIES
     np.testing.assert_allclose(table["daily_max_abs_difference"], 0.0, atol=1e-12)
     fit = bx.fit_uccle_series(
         "TXn",
-        data_dir="data",
+        data_dir=source_data,
         start="2000-01-01",
         end="2001-12-01",
         priors="normal",

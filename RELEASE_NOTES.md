@@ -1,66 +1,24 @@
-# bucex 1.5.2 release notes
+# bucex 1.6.1
 
-Version 1.5.2 is a reporting release. The scientific models, priors, MCMC
-kernels, production settings, and archive schema from 1.5.1 are unchanged.
+This release consolidates research workflows and extends residual dependence
+while keeping the six independent analyses usable on their own.
 
-## Seasonal patterns at selected times
+- Every active research script is under `research/serra/`; redundant conference
+  trees, old result evidence, duplicate examples and particle kernels are removed.
+- One concise runner supports individually selected Uccle summaries, mixed
+  FS hierarchies, shared warming/departures, and optional Gaussian copulas.
+- Mixed hierarchies retain exact Laplace–MH. Joint copula likelihoods enter
+  state and parameter updates, predictive simulation, and joint scoring.
+- Copula state proposals use the full joint Hessian and correlated Gaussian
+  pseudo-observations; an ineffective marginal-only proposal was replaced
+  after a six-series Uccle pilot exposed poor movement.
+- Prior sensitivity, shape recovery across -0.5 to 0.5, endpoint diagnostics,
+  forecast uncertainty and held-out calibration have configured workflows.
+- Original-scale predictive ordering checks report incompatibility without
+  sorting or censoring draws. A copula does not enforce physical ordering.
+- Shared state, conditional residual dependence and observation uncertainty
+  remain distinct; each series keeps its own seasonal component.
 
-The established `season.*` figure answers: how does the seasonal effect for
-each month evolve over the record? The new `seasonal_patterns.*` figure turns
-that view around and answers: what does the complete seasonal pattern look
-like at selected points in the record?
-
-```python
-fit.plot("seasonal_patterns", years=[1892, 2022])
-fit.plot("seasonal_patterns", cycles=["first", "last"])
-```
-
-Calendar fits put months on the horizontal axis and draw one posterior-median
-line per requested complete year. Undated simulations use one-based cycles or
-the readable selectors `first`, `middle`, and `last`. Pointwise credible bands
-are optional, and simulations may overlay the known seasonal truth. Lower-tail
-fits are displayed in their original temperature orientation.
-
-## JSON and example integration
-
-Every maintained seasonal configuration now contains:
-
-```json
-"seasonal_patterns": {
-  "years": [1892, 2022],
-  "cycles": [],
-  "show_interval": true
-}
-```
-
-Uccle configurations default to 1892 versus 2022. Simulation configurations
-use empty `years` and `cycles: ["first", "last"]`. An empty applicable list
-suppresses the new figure. The band probability remains the existing
-`figures.interval_probability` value.
-
-Examples 03, 04, 05, 06, 08, 09, 10, 11, and 12 write the new figure while
-retaining all previous tables and figures. This covers simulation and Uccle
-fits under Laplace, PGAS, Laplace-MH, dynamic log-scale models, and exact
-Gaussian FFBS.
-
-## Replot completed fits
-
-`examples/replot_seasonal_patterns.py` adds the figure to completed runs in a
-few seconds without rerunning MCMC. It discovers
-`fits/<series>/combined.bucex`, reconstructs the selected posterior seasonal
-patterns, and writes the result beside the existing figures. The script
-defaults to the requested TNx and TXx run names and to years 1892 and 2022.
-
-A lightweight transfer containing only `figures.zip` is insufficient because
-it does not contain posterior draws; execute the script against the complete
-result directories on the HPC.
-
-## Compatibility
-
-- `fit.plot("season")` is unchanged.
-- Custom 1.5.1 JSONs without `figures.seasonal_patterns` remain valid and
-  simply omit the new output.
-- Public fitting, prediction, persistence, risk, and log-scale APIs are
-  unchanged.
-- Safe result archives remain at schema 2.7.0 and earlier supported archives
-  remain readable.
+Read `docs/VALIDATION.md` for executed checks and limitations, and
+`docs/REVIEWER_MATRIX.md` for reviewer requirements. Available study scripts
+are not a claim that full scientific experiments have already been completed.

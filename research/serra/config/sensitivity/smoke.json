@@ -1,0 +1,209 @@
+{
+  "_comment": "Full configs are starting run budgets; smoke confirms execution only. All summaries are MONTHLY in this source release.",
+  "analysis": "independent",
+  "data": {
+    "series": [
+      "TXx"
+    ],
+    "start": "2020-01-01",
+    "end": "2022-12-01"
+  },
+  "model": {
+    "period": 12,
+    "phi": "stationary",
+    "seasonal": "dynamic"
+  },
+  "priors": {
+    "baseline_sd": 3.2,
+    "initial_slope_sd": 0.0025,
+    "seasonal_initial_sd": 2.25,
+    "observation_variance": [
+      2,
+      2
+    ],
+    "xi_bounds": [
+      -0.5,
+      0.5
+    ],
+    "innovation_slab_sd": {
+      "level": 0.02,
+      "trend": 5e-05,
+      "season": 0.02
+    },
+    "phi": {
+      "linear": {
+        "mean": 0.0,
+        "sd": 0.35
+      },
+      "rw_variance": {
+        "a": 2.5,
+        "b": 3.75e-05
+      },
+      "model_probabilities": {
+        "stationary": 0.5,
+        "linear": 0.25,
+        "rw": 0.25
+      }
+    }
+  },
+  "mcmc": {
+    "draws": 4,
+    "warmup": 4,
+    "chains": 1,
+    "seed": 56100
+  },
+  "seed": 56101,
+  "output": "results/serra",
+  "forecast_horizon": 12,
+  "credible_interval": 0.9,
+  "risks": {
+    "TXm": 25,
+    "TNm": 18,
+    "TXx": 35,
+    "TXn": 0,
+    "TNx": 25,
+    "TNn": -10
+  },
+  "validation": {
+    "initial": 24,
+    "horizon": 12,
+    "step": 12,
+    "save_fits": false
+  },
+  "inference": {
+    "laplace": {
+      "max_iterations": 30,
+      "tolerance": 1e-05,
+      "mh_steps": 1
+    }
+  },
+  "figures": false,
+  "predictive_check_draws": 12,
+  "prior_draws": 200,
+  "prior_predictive_draws": 8,
+  "save_fits": true,
+  "continue_on_error": false,
+  "variants": [
+    {
+      "name": "ssvs_baseline"
+    },
+    {
+      "name": "ssvs_level_x0.5",
+      "multipliers": {
+        "level": 0.5
+      }
+    },
+    {
+      "name": "ssvs_level_x2",
+      "multipliers": {
+        "level": 2.0
+      }
+    },
+    {
+      "name": "ssvs_trend_x0.5",
+      "multipliers": {
+        "trend": 0.5
+      }
+    },
+    {
+      "name": "ssvs_trend_x2",
+      "multipliers": {
+        "trend": 2.0
+      }
+    },
+    {
+      "name": "ssvs_season_x0.5",
+      "multipliers": {
+        "season": 0.5
+      }
+    },
+    {
+      "name": "ssvs_season_x2",
+      "multipliers": {
+        "season": 2.0
+      }
+    },
+    {
+      "name": "ssvs_joint_x0.5",
+      "multipliers": {
+        "level": 0.5,
+        "trend": 0.5,
+        "season": 0.5
+      }
+    },
+    {
+      "name": "ssvs_joint_x2",
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0,
+        "season": 2.0
+      }
+    },
+    {
+      "name": "manuscript_original",
+      "profile": "manuscript_original"
+    },
+    {
+      "name": "manuscript_lasso_matched_static",
+      "profile": "manuscript_lasso"
+    },
+    {
+      "name": "component_lasso",
+      "profile": "component_lasso",
+      "lasso_shape": 2
+    },
+    {
+      "name": "manuscript_lambda_a0.5_b1",
+      "profile": "manuscript_lasso",
+      "lasso_shape": 0.5,
+      "lasso_rate": 1
+    },
+    {
+      "name": "manuscript_lambda_a2_b1",
+      "profile": "manuscript_lasso",
+      "lasso_shape": 2,
+      "lasso_rate": 1
+    },
+    {
+      "name": "manuscript_lambda_a1_b0.5",
+      "profile": "manuscript_lasso",
+      "lasso_shape": 1,
+      "lasso_rate": 0.5
+    },
+    {
+      "name": "manuscript_lambda_a1_b2",
+      "profile": "manuscript_lasso",
+      "lasso_shape": 1,
+      "lasso_rate": 2
+    },
+    {
+      "name": "xi_-0.75_0.5",
+      "xi_bounds": [
+        -0.75,
+        0.5
+      ]
+    },
+    {
+      "name": "xi_-1_0.5",
+      "xi_bounds": [
+        -1,
+        0.5
+      ]
+    },
+    {
+      "name": "xi_-0.5_0.75",
+      "xi_bounds": [
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "name": "initial_slope_x0.5",
+      "initial_slope_multiplier": 0.5
+    },
+    {
+      "name": "initial_slope_x2",
+      "initial_slope_multiplier": 2
+    }
+  ]
+}

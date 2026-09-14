@@ -276,29 +276,6 @@ class CompiledMultiSeriesModel:
             total += float(np.sum(values))
         return total
 
-    def observation_logweights(
-        self,
-        y_t: Array,
-        particles: Array,
-        design_t: Array,
-        params: Mapping[str, float],
-    ) -> Array:
-        values = np.asarray(y_t, dtype=float).reshape(len(self.channel_names))
-        eta = np.asarray(particles, dtype=float) @ np.asarray(design_t, dtype=float).T
-        output = np.zeros(eta.shape[0], dtype=float)
-        for index, channel in enumerate(self.model.channels):
-            if not np.isfinite(values[index]):
-                continue
-            contribution = channel.observation.logpdf(
-                values[index],
-                eta[:, index],
-                sigma=float(params[f"sigma.{channel.name}"]),
-                xi=params.get(f"xi.{channel.name}"),
-            )
-            output += np.where(np.isfinite(contribution), contribution, -np.inf)
-        output[~np.isfinite(output)] = -np.inf
-        return output
-
     def observation_derivatives(
         self, y: Array, eta: Array, params: Mapping[str, float]
     ) -> tuple[Array, Array]:
@@ -404,6 +381,9 @@ def compile_multiseries_model(
 
     if not isinstance(model, MultiSeriesModel):
         raise TypeError("model must be a MultiSeriesModel.")
+    if model.requires_joint_inference:
+        from .shared_compiler import compile_shared_model
+        return compile_shared_model(model, y, exog=exog)
     y_array = as_multiseries_array(y, model)
     n_time, _ = y_array.shape
     xreg = _multiseries_exog(exog, model, n_time)

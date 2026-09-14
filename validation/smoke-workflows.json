@@ -1,0 +1,141 @@
+[
+  {
+    "name": "fit_independent",
+    "command": [
+      "research.serra.run",
+      "--config",
+      "research/serra/config/independent_smoke.json"
+    ],
+    "exit_code": 0,
+    "seconds": 6.744,
+    "output_directories": [
+      "results/serra/uccle_independent_20260913T182359_355283Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration."
+  },
+  {
+    "name": "fit_hierarchical",
+    "command": [
+      "research.serra.run",
+      "--config",
+      "research/serra/config/hierarchical_smoke.json"
+    ],
+    "exit_code": 0,
+    "seconds": 6.074,
+    "output_directories": [
+      "results/serra/uccle_hierarchical_20260913T182143_971559Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration."
+  },
+  {
+    "name": "fit_shared",
+    "command": [
+      "research.serra.run",
+      "--config",
+      "research/serra/config/shared_smoke.json"
+    ],
+    "exit_code": 0,
+    "seconds": 9.743,
+    "output_directories": [
+      "results/serra/uccle_shared_20260913T182147_397832Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration."
+  },
+  {
+    "name": "fit_joint",
+    "command": [
+      "research.serra.run",
+      "--config",
+      "research/serra/config/joint_smoke.json"
+    ],
+    "exit_code": 0,
+    "seconds": 14.332,
+    "output_directories": [
+      "results/serra/uccle_joint_20260913T183625_514267Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration.",
+    "proposal": "copula_joint_laplace",
+    "correlation_pair_labels_preserved": true
+  },
+  {
+    "name": "fit_joint_copula",
+    "command": [
+      "research.serra.run",
+      "--config",
+      "research/serra/config/joint_smoke.json",
+      "--copula"
+    ],
+    "exit_code": 0,
+    "seconds": 16.689,
+    "output_directories": [
+      "results/serra/uccle_copula_20260913T183625_464739Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration.",
+    "proposal": "copula_joint_laplace",
+    "correlation_pair_labels_preserved": true
+  },
+  {
+    "name": "fit_shared_copula",
+    "command": [
+      "research.serra.run",
+      "--config",
+      "research/serra/config/shared_smoke.json",
+      "--copula"
+    ],
+    "exit_code": 0,
+    "seconds": 18.11,
+    "output_directories": [
+      "results/serra/uccle_shared_copula_20260913T183640_004549Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration.",
+    "proposal": "copula_joint_laplace",
+    "correlation_pair_labels_preserved": true
+  },
+  {
+    "name": "validate_copula",
+    "command": [
+      "research.serra.validate",
+      "--config",
+      "research/serra/config/joint_smoke.json",
+      "--copula"
+    ],
+    "exit_code": 0,
+    "seconds": 9.303,
+    "output_directories": [
+      "results/serra/validation_copula_20260913T183642_162681Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration.",
+    "proposal": "copula_joint_laplace"
+  },
+  {
+    "name": "validate_independent",
+    "command": [
+      "research.serra.validate",
+      "--config",
+      "research/serra/config/independent_smoke.json"
+    ],
+    "exit_code": 0,
+    "seconds": 2.372,
+    "output_directories": [
+      "results/serra/validation_independent_20260913T182210_801180Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration."
+  },
+  {
+    "name": "tutorials",
+    "command": [
+      "research.serra.tutorials",
+      "--kind",
+      "all"
+    ],
+    "exit_code": 0,
+    "seconds": 5.581,
+    "output_directories": [
+      "results/serra/gaussian_20260913T182359_212578Z",
+      "results/serra/gev_20260913T182359_987734Z",
+      "results/serra/hierarchical_20260913T182400_846979Z",
+      "results/serra/shared_20260913T182402_458548Z"
+    ],
+    "interpretation": "Execution check only; 4 retained MCMC draws do not establish convergence or calibration."
+  }
+]

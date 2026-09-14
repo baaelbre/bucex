@@ -15,8 +15,7 @@ from ..state.laplace import (
     laplace_mh,
     observation_log_likelihood,
 )
-from ..config import Laplace, MCMC, Particles
-from ..state.particle import pgas
+from ..config import Laplace, MCMC
 from ..plan import InferencePlan
 from ...priors.process import (
     FixedSD,
@@ -396,13 +395,17 @@ def sample_posterior(
     plan: InferencePlan,
     *,
     mcmc: MCMC,
-    particles: Particles,
     laplace: Laplace,
     dates: Array | None = None,
     series_name: str | None = None,
     transform_sign: float = 1.0,
     initial_parameters: dict[str, float] | None = None,
 ) -> FitResult:
+    if plan.engine not in {"ffbs", "laplace", "laplace_mh"}:
+        raise ValueError(
+            "Supported engines are FFBS, Laplace and Laplace-MH; "
+            "PGAS was retired in BUCEX 1.6."
+        )
     y = np.asarray(y, dtype=float).reshape(-1)
     chains = int(mcmc.chains)
     draws = int(mcmc.draws)
@@ -454,11 +457,6 @@ def sample_posterior(
         "laplace_mh_mean_log_acceptance_ratio",
         "laplace_mh_log_weight",
         "laplace_mh_support_rejections",
-        "particle_min_ess",
-        "particle_mean_unique_ancestors",
-        "particle_path_changed",
-        "particle_path_update_fraction",
-        "particle_changed_fraction",
     ]
     draw_metrics = {name: np.full((chains, draws), np.nan) for name in metric_names}
     mh_parameter_names = [
@@ -557,16 +555,6 @@ def sample_posterior(
                     ),
                     laplace_mh_log_weight=state.log_weight,
                     laplace_mh_support_rejections=state.proposal_support_failures,
-                )
-            elif plan.engine == "pgas":
-                state = pgas(y, compiled, params, path, particles=particles, rng=rng)
-                path = state.path
-                last_metrics.update(
-                    particle_min_ess=float(np.min(state.ess[1:])),
-                    particle_mean_unique_ancestors=float(np.mean(state.unique_ancestors[1:])),
-                    particle_path_changed=float(state.path_changed),
-                    particle_path_update_fraction=state.path_update_fraction,
-                    particle_changed_fraction=state.path_update_fraction,
                 )
             else:
                 raise RuntimeError(f"Unhandled engine '{plan.engine}'.")
@@ -727,7 +715,6 @@ def sample_posterior(
                             params,
                         ),
                         metrics=last_metrics,
-                        particles=particles.n if plan.engine == "pgas" else None,
                     ),
                     flush=True,
                 )
@@ -744,7 +731,6 @@ def sample_posterior(
         "final_proposal_steps": {name: np.asarray(values) for name, values in final_steps.items()},
         "draw_metrics": draw_metrics,
         "mcmc": asdict(mcmc),
-        "particles": asdict(particles),
         "laplace": asdict(laplace),
         "update_methods": dict(update_methods),
         "plan_warnings": list(plan.warnings),
@@ -779,7 +765,6 @@ def sample_posterior(
             "restored_fraction_by_chain": [0.0] * chains,
             "attempt_failure_counts": {},
             "restore_failure_counts": {},
-            "pgas_exact_invariant": plan.engine == "pgas",
             "laplace_mh_exact_invariant": plan.engine == "laplace_mh",
             "parameter_update_methods": dict(update_methods),
             "conjugate_process_variance_updates": sorted(

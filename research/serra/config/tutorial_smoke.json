@@ -1,0 +1,16 @@
+{
+  "_comment": "Smoke verifies execution only; study settings are an initial run budget, not a convergence guarantee.",
+  "n_time": 36,
+  "seed": 56100,
+  "mcmc": {
+    "draws": 4,
+    "warmup": 4,
+    "chains": 1,
+    "seed": 56101
+  },
+  "output": "results/serra",
+  "shared_sampler": {
+    "elliptical_slice_steps": 1,
+    "maximum_slice_evaluations": 200
+  }
+}

@@ -1,258 +1,119 @@
-# bucex 1.5.2
+# bucex 1.6.1
 
-`bucex` fits Bayesian unobserved-component models to Gaussian and generalized
-extreme-value observations. Version 1.5.2 keeps the JSON-first primary
-analysis for all six Uccle temperature series: exact Gaussian FFBS for monthly
-means TXm/TNm and exact stationary-scale GEV Laplace-MH for monthly extremes
-TXx/TXn/TNx/TNn. Optional linear, random-walk, and SSVS GEV log-scale models
-remain available as sensitivity analyses.
-
-```python
-import bucex as bx
-
-bx.GEV()                  # stationary phi_t = log(sigma)
-bx.GEV(phi="linear")     # linear trend in phi_t
-bx.GEV(phi="rw")         # random walk in phi_t
-bx.GEV(phi="ssvs")       # select stationary, linear, or RW
-```
-
-No new fitting entry point is needed. The model still goes through `bx.fit`,
-returns a `FitResult`, and uses the same prediction and persistence APIs.
-
-## Stationary tail demonstrations
-
-Example 01 compares `xi = -0.30, 0, +0.30` at common scale and
-`sigma = 0.75, 1.50, 3.00` at common shape. Its location is now exactly
-stationary: `mu_t = 25` for every observation. Within each comparison the
-probability draws are matched, so only the advertised tail parameter changes.
-The complete design is editable in `examples/config/tail.json`.
-
-## Primary Uccle analysis
-
-| Series | Model | Production example | JSON directory |
-|---|---|---|---|
-| TXm, TNm | Gaussian structural SSVS, exact FFBS | `12_uccle_gaussian.py` | `config/uccle_gaussian/` |
-| TXx, TXn, TNx, TNn | stationary-scale GEV structural SSVS, exact Laplace-MH | `09_uccle_laplace_mh.py` | `config/uccle/` |
-
-All six production files use the calibrated primary innovation slabs
-`(level=0.02, trend=0.00005, season=0.02)`, 1,000 warmup iterations, 1,000
-retained draws per chain, and four chains. Every value is editable in its
-ordinary commented JSON. See `docs/UCCLE.md` for the model and
-`docs/HPC.md` for the six submission commands.
-
-## Log-scale models
-
-Write \(\phi_t=\log(\sigma_t)\), so \(\sigma_t=\exp(\phi_t)>0\). The four
-choices are:
-
-| `phi=` | Model | Interpretation |
-|---|---|---|
-| `"stationary"` | \(\phi_t=\phi_0\) | one scale for the full record; default |
-| `"linear"` | \(\phi_t=\phi_0+\delta b_t\) | smooth log-scale trend |
-| `"rw"` | \(\phi_t=\phi_{t-1}+u_t\) | locally changing log scale |
-| `"ssvs"` | model indicator over the three rows above | scale-model uncertainty |
-
-The centered basis \(b_t\) runs from \(-1/2\) to \(+1/2\). Consequently,
-`exp(phi_slope)` is the fitted end/start scale ratio for the linear model.
-For the random walk, \(u_t\sim N(0,q_\phi)\), and `phi_rw_sd` is
-\(\sqrt{q_\phi}\).
-
-Scale selection is separate from structural SSVS for the location process.
-Using `bx.ssvs_gev_priors(...)` and `GEV(phi="ssvs")` therefore allows both:
-
-- SSVS over fixed/dynamic level, zero/fixed/dynamic slope, and
-  zero/fixed/dynamic seasonality;
-- SSVS over stationary, linear, and random-walk log scale.
-
-See `docs/LOG_SCALE.md` for the model equations, priors, exactness statement,
-forecast behavior, and diagnostics.
-
-## Direct API
-
-```python
-import numpy as np
-import bucex as bx
-
-y = bx.load_uccle_series("TXx", start="1892-01-01")
-
-model = bx.Model(
-    bx.GEV(phi="rw", xi_bounds=(-0.5, 0.5)),
-    (
-        bx.LocalLinearTrend(level_mode="dynamic", trend_mode="dynamic"),
-        bx.DummySeasonal(period=12, mode="dynamic"),
-    ),
-)
-
-priors = bx.ssvs_gev_priors(
-    period=12,
-    alpha_mean=float(np.median(y)),
-    sigma2_prior=bx.InverseGammaPrior(2.0, 2.0),
-    xi_prior=bx.UniformPrior(-0.5, 0.5),
-    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02},
-    phi_prior=bx.PhiPrior(
-        linear=bx.NormalPrior(0.0, 0.35),
-        rw_variance=bx.InverseGammaPrior(2.5, 3.75e-5),
-        model_probabilities={"stationary": 0.50, "linear": 0.25, "rw": 0.25},
-    ),
-)
-
-fit = bx.fit(
-    y,
-    model=model,
-    priors=priors,
-    engine="laplace_mh",
-    parameterization="fruehwirth_schnatter",
-    mcmc=bx.MCMC(draws=1_000, warmup=1_000, chains=4, seed=56_100),
-)
-
-phi = fit.phi_draws()       # shape: draws x time
-sigma = fit.sigma_draws()   # exp(phi), same shape
-forecast = fit.forecast(120, draws=1_000, seed=56_101)
-
-# Compare the complete monthly seasonal pattern at two points in the record.
-figure, axis = fit.plot(
-    "seasonal_patterns",
-    years=[1892, 2022],
-    credible_interval=0.90,
-)
-```
-
-Change only `phi="rw"` to `"linear"`, `"stationary"`, or `"ssvs"`. For an
-SSVS fit, inspect:
-
-```python
-fit.phi_model_probabilities()
-# {'stationary': ..., 'linear': ..., 'rw': ...}
-```
-
-The stationary result also supports `phi_draws()` and `sigma_draws()`; its
-scalar scale is expanded over time so downstream comparisons need no special
-case. Posterior predictive and forecast results expose `parameters["phi"]`
-and `parameters["sigma_path"]` for every GEV scale model.
-
-## Inference
-
-`engine="laplace_mh"` is the recommended exact-invariant default for the new
-examples. The structural location path uses the existing iterated-Laplace
-smoother as a full-path independence proposal with an exact GEV
-Metropolis--Hastings correction.
-
-The random-walk log-scale path uses its own conditional iterated-Laplace
-smoother. With `laplace_mh` or `pgas`, its proposal is also corrected against
-the exact GEV density. With `engine="laplace"`, both uses of the Laplace
-approximation are intentionally approximate. Linear and stationary scale
-parameters use the exact GEV likelihood in ordinary MH updates. The
-`phi="ssvs"` implementation is a three-model product-space sampler with proper
-prior pseudo-priors.
-
-Time-varying `phi` currently requires the Fruehwirth--Schnatter
-parameterization and a univariate `Model`. Fit TXx, TXn, TNx, and TNn as
-separate jobs; dynamic scale is rejected for `MultiSeriesModel` rather than
-silently approximated.
-
-## JSON-first examples
-
-The three focused scripts each contain one readable `main()` and load all
-scientific and computational settings directly from the selected JSON:
-
-- `examples/10_simulation_phi.py` for scale-model sensitivity simulations;
-- `examples/11_uccle_phi.py` for Uccle TXx, TXn, TNx, and TNn;
-- `examples/12_uccle_gaussian.py` for primary Uccle TXm and TNm fits.
-
-The first executable line to edit in any script is `DEFAULT_CONFIG_FILE`.
-Command-line selection is usually more convenient:
+Bayesian unobserved-component state-space models for Gaussian means and GEV
+extremes. A model is a response distribution plus readable components; the same
+API fits, diagnoses, forecasts and computes risks. Mixed hierarchies use exact
+Laplace–MH state updates. Shared components and an optional Gaussian residual
+copula extend the joint model. The six independent Uccle analyses remain a
+complete, separate route to the SERRA revision.
 
 ```bash
-python examples/10_simulation_phi.py --config examples/config/phi/simulation_stationary.json
-python examples/10_simulation_phi.py --config examples/config/phi/simulation_linear.json
-python examples/10_simulation_phi.py --config examples/config/phi/simulation_rw.json
-python examples/10_simulation_phi.py --config examples/config/phi/simulation_ssvs.json
-
-python examples/11_uccle_phi.py --config examples/config/phi/uccle/01_txx_stationary.json
-python examples/12_uccle_gaussian.py --config examples/config/uccle_gaussian/01_txm.json
-```
-
-There are 16 Uccle JSONs: four series times four scale models. They live under
-`examples/config/phi/uccle/` and are ordinary, indented JSON files. Valid
-`_comment` fields explain the settings in place. In simulation files,
-`simulation.location` records the data-generating location truth and
-`model.location` records the fitted structural-SSVS location model; this is
-separate from `model.phi`. Change priors, scale hyperparameters, draws, warmup,
-chains, seeds, Laplace controls, figures, and output paths there; neither the
-Python nor PBS layer overwrites them. See
-`examples/config/phi/README.md` for a field-by-field guide.
-
-Examples 10, 11, and 12 write the same core report as the earlier simulation
-and Uccle fitting examples: parameter and MCMC diagnostics, location trajectories,
-structural selection, posterior predictive checks, forecasts, latent-state
-figures, process scales, and observation-parameter summaries. The phi path and
-scale-model tables and figures are additions, not replacements. Every fitted
-seasonal model also retains the longitudinal `season.*` figure and can add a
-`seasonal_patterns.*` comparison for the years or simulation cycles selected
-under `figures.seasonal_patterns` in JSON.
-
-The production profile is 1,000 retained draws after 1,000 warmup iterations
-for each of four independent chains. Use an edited copy with smaller values for
-a pilot.
-
-## PBS/HPC
-
-Submit one JSON per job from the repository root. The six primary Uccle jobs
-are:
-
-```bash
-qsub -v CONFIG=examples/config/uccle_gaussian/01_txm.json job_scripts/submit_12_uccle_gaussian.pbs
-qsub -v CONFIG=examples/config/uccle_gaussian/02_tnm.json job_scripts/submit_12_uccle_gaussian.pbs
-qsub -v CONFIG=examples/config/uccle/01_txx.json job_scripts/submit_09_uccle_laplace_mh.pbs
-qsub -v CONFIG=examples/config/uccle/02_txn.json job_scripts/submit_09_uccle_laplace_mh.pbs
-qsub -v CONFIG=examples/config/uccle/03_tnx.json job_scripts/submit_09_uccle_laplace_mh.pbs
-qsub -v CONFIG=examples/config/uccle/04_tnn.json job_scripts/submit_09_uccle_laplace_mh.pbs
-```
-
-For optional scale sensitivity:
-
-```bash
-qsub -v CONFIG=examples/config/phi/uccle/01_txx_ssvs.json job_scripts/submit_11_uccle_phi.pbs
-```
-
-Submit every new simulation and Uccle configuration:
-
-```bash
-for config in examples/config/phi/simulation_*.json; do
-  qsub -v CONFIG="$config" job_scripts/submit_10_simulation_phi.pbs
-done
-
-for config in examples/config/phi/uccle/*.json; do
-  qsub -v CONFIG="$config" job_scripts/submit_11_uccle_phi.pbs
-done
-```
-
-Each JSON requests four chains. The runner starts those chains as four
-independent one-core processes and combines them only after all succeed. All
-four series, all four scale models, and their chains may run concurrently;
-actual concurrency is determined by PBS quotas. PBS controls walltime, cores,
-memory, and logs only. See `docs/HPC.md` for setup, monitoring, collision-safe
-run IDs, and the exact split/combine contract.
-
-There is no separate `hpc/` directory because it would duplicate project
-structure. Scheduler wrappers and the generic chain runner live together in
-`job_scripts/`; interactive wrappers live in `bash_scripts/`; the same example
-and JSON are used locally and on PBS.
-
-## Installation and validation
-
-```bash
-python -m pip install ".[plot,test]"
-python -c "import bucex; print(bucex.__version__)"
+python -m pip install -e ".[plot,test]"
 python -m pytest
-python -m build
+python -m research.serra.tutorials --kind all
 ```
 
-The printed version should be `1.5.2`. Safe result archives use schema 2.7.0
-and remain backward-readable for every previously supported schema.
+Run these commands from the extracted directory containing `pyproject.toml`.
+`bucex/` is the installable package; `research/serra/` contains every active
+research script and configuration. There are no conference directories or
+particle inference kernels. The default tutorials are execution checks with
+four saved draws, not scientific analyses.
 
-The broader package still includes Gaussian/GEV structural models, Laplace,
-Laplace-MH and PGAS state inference, prediction, risk summaries, plotting,
-Uccle loaders, hierarchical models, and the earlier numbered examples. See
-`docs/ARCHITECTURE.md`, `docs/INFERENCE_MATRIX.md`, `docs/UCCLE.md`, and
-`docs/VALIDATION.md`.
+## Build a model through the public API
+
+```python
+import bucex as bx
+
+model = bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (
+    bx.LocalLinearTrend(),
+    bx.DummySeasonal(period=12),
+))
+prior = bx.ssvs_gev_priors(period=12,
+    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02})
+fit = bx.fit(y, model, priors=prior, engine="laplace_mh",
+             parameterization="fs", mcmc=bx.MCMC(draws=1000, warmup=1000, chains=4))
+fit.diagnostics()
+fit.plot("level")
+fit.exceedance_probability_draws(35)
+fit.forecast(12).summary()
+fit.save("fit.bucex")
+```
+
+Here `y` is your aligned series. Gaussian models use `bx.Gaussian()` and exact
+FFBS. Each Uccle minimum is fitted with `tail="lower"`; the result API restores
+original Celsius orientation automatically.
+
+## Start with the six independent analyses
+
+The same short runner and one configuration replace six nearly identical
+scripts. These jobs can be run separately; none depends on a successful joint
+or factor fit.
+
+```bash
+python -m research.serra.run --config research/serra/config/independent_full.json --series TXm
+python -m research.serra.run --config research/serra/config/independent_full.json --series TNm
+python -m research.serra.run --config research/serra/config/independent_full.json --series TXx
+python -m research.serra.run --config research/serra/config/independent_full.json --series TXn
+python -m research.serra.run --config research/serra/config/independent_full.json --series TNx
+python -m research.serra.run --config research/serra/config/independent_full.json --series TNn
+```
+
+Omit `--series` to fit all six sequentially. Use `independent_smoke.json` first
+to check execution. All six supplied summaries are **monthly**, with period 12.
+For an independent extreme series, append `--phi linear`, `--phi rw`, or
+`--phi ssvs` to assess changing log scale. Priors and numerical controls live
+in JSON; the copied configuration records command-line overrides.
+
+## Optional joint analyses
+
+```bash
+python -m research.serra.run --config research/serra/config/hierarchical_smoke.json
+python -m research.serra.run --config research/serra/config/shared_smoke.json
+python -m research.serra.run --config research/serra/config/joint_smoke.json
+python -m research.serra.run --config research/serra/config/joint_smoke.json --copula
+python -m research.serra.run --config research/serra/config/shared_smoke.json --copula
+```
+
+Replace `_smoke` with `_full` for the full 1892–2022 record and initial study
+budgets. Hierarchical analysis pools selection information while retaining
+separate trajectories. Shared analysis estimates a common warming component
+with unit loadings and constrained departures; each series has its own
+seasonal cycle. `--copula` adds contemporaneous residual dependence. To make
+the private-trend dependence comparison controlled, `joint` fixes the copula
+correlation to identity; `joint --copula` estimates it with the same priors.
+
+A Gaussian copula does **not** enforce minimum ≤ mean ≤ maximum, and does not
+provide nonzero asymptotic tail dependence. The package reports physical
+ordering violations on unaltered predictive draws. See
+[dependence and ordering](docs/COPULA_AND_ORDERING.md) before interpreting
+compound probabilities.
+
+The copula passes independent numerical reference tests, but the six-series
+mixed Uccle pilot still mixes poorly. Treat this joint analysis as experimental;
+use the independent route as the primary revision workflow until adequate
+joint-model convergence has been demonstrated.
+
+## Assess the revision
+
+```bash
+python -m research.serra.validate --config research/serra/config/independent_full.json --series TXx
+python -m research.serra.validate --config research/serra/config/shared_full.json
+```
+
+Held-out validation saves PITs, proper scores, central 90/95/99% coverage,
+both-tail quantile coverage, and diagnostics for every refit. It releases each
+fit before the next origin. Results appear in fresh timestamped directories
+under `results/serra/`; no run overwrites an earlier fit.
+
+Read [research/serra/README.md](research/serra/README.md) for sensitivity,
+shape-recovery, endpoint and forecast experiments; [the reviewer matrix](docs/REVIEWER_MATRIX.md)
+maps each comment to evidence still needed. [Validation](docs/VALIDATION.md)
+distinguishes tests and pilots from completed scientific studies.
+
+The supplied MCMC budgets are starting points. Assess common-warming and
+channel-change mixing, prior sensitivity, recovery and held-out calibration
+before using results in a manuscript. Shared/coupled full-record fits remain
+computationally demanding; successful tests do not certify scientific coverage.
+The executed short recovery pilot still has poorly mixed risk and trend
+contrasts. Its diagnostics are retained in `validation/`; publication requires
+longer, diagnostically adequate runs and more independent replications.

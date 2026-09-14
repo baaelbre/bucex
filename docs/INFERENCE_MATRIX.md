@@ -1,197 +1,26 @@
-# Inference matrix
+# Inference in 1.6.1
 
-## Posterior contract
+| Model | Maintained exact-target route | Structural prior |
+|---|---|---|
+| Univariate Gaussian | FFBS | FS shrinkage/selection or supported generic priors |
+| Univariate GEV | Laplace–MH | FS shrinkage/selection or supported generic priors |
+| Gaussian hierarchy | FFBS | Pooled selection or slab scales |
+| Mixed/GEV hierarchy | Laplace–MH | Pooled selection or slab scales |
+| Gaussian shared components, independent residuals | FFBS | Continuous `JointPriors` |
+| Mixed shared components | Laplace–MH plus Gaussian-prior block slice sweeps | Continuous `JointPriors` |
+| Gaussian residual copula, optional shared states | Exact copula-corrected state and parameter updates | Continuous `JointPriors`, LKJ correlation prior |
 
-| Model | Family | Engine | State update | Contract |
-|---|---|---|---|---|
-| `Model` | Gaussian | `ffbs` | Gaussian FFBS | exact |
-| `Model` | GEV | `laplace` | iterated pseudo-Gaussian FFBS | approximate |
-| `Model` | GEV | `laplace_mh` | full-path Laplace independence MH | exact-invariant |
-| `Model` | GEV | `pgas` | conditional SMC with ancestor sampling | exact-invariant |
-| `MultiSeriesModel` | all Gaussian | `ffbs` | channel FFBS in hierarchical Gibbs | exact |
-| `MultiSeriesModel` | mixed/GEV | `laplace` | hierarchical Laplace updates | approximate |
-| `MultiSeriesModel` | mixed/GEV | `pgas` | channel PGAS in hierarchical Gibbs | exact-invariant |
+Particle inference is retired. The optional univariate `engine="laplace"`
+remains explicitly approximate. Research mixed-model scripts select
+`engine="laplace_mh"`. Exact invariant targets are not evidence that a finite
+chain has converged; inspect scientific contrasts as well as static parameters.
 
-The recommended Uccle mapping follows this contract: example 12 uses Gaussian
-FFBS for TXm/TNm, while example 09 uses exact-invariant Laplace-MH for the four
-GEV extremes.
+`bx.plan(model, ...)` and `fit.plan` record supported inference combinations.
+Dynamic GEV log scale (`stationary`, `linear`, `rw`, `ssvs`) remains a univariate
+FS capability. Joint models require stationary marginal scales. Shared/copula
+models do not currently support hierarchical SSVS or estimated factor loadings.
 
-`InferencePlan` stores this contract in every fit and exported result. A
-Laplace screen can initialize an exact engine but cannot be relabelled exact.
-`laplace_mh` is currently univariate; a `MultiSeriesModel` rejects it before
-sampling because its shared hierarchical update has not yet been given the
-same exact correction.
-
-## GEV log-scale matrix
-
-The scale declaration is orthogonal to the structural location declaration:
-
-| `GEV(phi=...)` | Scale update | Exact with `laplace_mh`/`pgas` | Forecast |
-|---|---|---:|---|
-| `stationary` | scalar exact-likelihood MH | yes | constant |
-| `linear` | intercept/slope exact-likelihood MH | yes | continue centered basis |
-| `rw` | iterated-Laplace path proposal plus MH correction | yes | propagate RW |
-| `ssvs` | product space over all three models | yes | selected model per draw |
-
-With `engine="laplace"`, the fit remains approximate because structural and
-RW scale paths use uncorrected Laplace draws. Scale-model selection is labelled
-exact only when the enclosing engine is exact-invariant.
-
-Time-varying scale currently requires a univariate GEV `Model` and the FS
-parameterization. `MultiSeriesModel` and centered/disturbance requests fail at
-planning or fit validation; they are not silently reduced to stationary
-scale.
-
-The location and scale Laplace approximations are conditional, separate
-blocks. For the RW scale proposal, the random-walk transition measure cancels
-from the independence-MH ratio; the remaining weight corrects the exact GEV
-likelihood, its pseudo-likelihood, and the Gaussian approximation to the
-initial log-scale prior. See `LOG_SCALE.md`.
-
-## Laplace-MH correction
-
-For fixed static parameters, let
-
-\[
-\pi(dx)\propto p(dx)L(x),\qquad
-q(dx)\propto p(dx)\widetilde L(x),
-\]
-
-where `q` is the Gaussian smoother defined by the final iterated-Laplace
-pseudo-observations. The state measure `p(dx)` is identical in the target and
-proposal, so the independence-MH weight is simply
-
-\[
-\log w(x)=\log L(x)-\log\widetilde L(x).
-\]
-
-This remains valid when `p(dx)` is supported on a lower-dimensional affine
-subspace. Proposal construction is deterministic in data and static
-parameters; the current path is never used as the finite-iteration mode start.
-If the zero FS path crosses a finite endpoint, a deterministic feasible path
-is constructed from active innovations before the mode iteration begins. With
-an integrated slope and no contemporaneously loaded innovation, the repair is
-made one step ahead so its accumulation coordinate remains deterministic. An
-invalid draw from the resulting Gaussian proposal has `log w=-inf` and is
-rejected.
-
-## Parameterizations
-
-| Parameterization | Univariate | Hierarchical | Role |
-|---|---:|---:|---|
-| centered | yes | no | scientific states with direct innovations |
-| disturbance | yes | no | standardized disturbances |
-| FS/noncentred | eligible models | required | signed scales and unit paths; supports SSVS |
-
-ASIS is available for valid univariate combinations and disabled in the
-hierarchical structural sampler.
-
-For a centered Gaussian state transition with
-`InverseGammaVariance(shape=a, scale=b)`, bucex automatically uses
-
-\[
-q_j\mid x \sim \operatorname{IG}\left(
-a+T/2,\ b+\tfrac12\sum_{t=1}^{T}e_{j,t}^2
-\right).
-\]
-
-This conjugacy concerns the process variance conditional on the latent path.
-It does not make the GEV observation scale conjugate. In disturbance/FS form,
-the process scale enters the predictor and continues to use its appropriate
-nonconjugate update.
-
-`examples/07_centered_ig.py` is an intentional benchmark, not
-the recommended SSVS default. It combines `parameterization="centered"`,
-`asis=False`, a fast approximate-Laplace default, and
-`InverseGammaVariance` priors on
-
-\[
-q_\mu=s_\mu^2 \quad\text{and}\quad \sigma^2.
-\]
-
-The process variance uses its conjugate Gibbs update. The run always saves
-parameter traces, the trace of \(q_\mu\), ACFs, ESS, R-hat, and engine
-diagnostics. Set `inference.engine` in
-`examples/config/centered_ig.json` to `laplace_mh` for exact Laplace-MH
-validation or to `pgas` for the exact particle benchmark.
-
-## Structural spaces
-
-The default hierarchical `model_space="componentwise"` uses fixed/dynamic
-level, zero/fixed/dynamic slope, and fixed/dynamic season. The componentwise
-univariate SSVS prior also permits zero seasonality. The optional
-`model_space="joint_trend"` groups level/slope innovations into deterministic
-linear, RW1-with-drift, RW2, and local-linear classes. Constant draws have
-undefined R-hat and ESS; they are labelled as such.
-
-## Singular FS transitions and exact state updates
-
-Fixed or absent components make the state transition covariance singular. A
-full-dimensional Gaussian transition density is then not defined. PGAS instead
-evaluates whether a proposed conditioned transition lies on the affine support
-generated by the active innovations and computes weights in those innovation
-coordinates. If optional ancestors are off-support, they receive zero weight;
-the validated conditioned predecessor remains available. This preserves the
-conditional SMC path without inventing variance in deterministic directions.
-
-This is why ancestor support, not only particle count, matters when combining
-FS noncentring, exact point masses, and PGAS.
-
-Laplace-MH avoids evaluating a singular transition density altogether because
-the state law cancels from its ratio. The Gaussian draw is projected onto the
-declared deterministic recursion to remove roundoff variance in integrated
-slope and seasonal-lag coordinates. This projection realizes the intended
-degenerate Gaussian law; it does not add process noise.
-
-Support-aware weights solve the singular-density calculation, not the broader
-mixing problem of a highly degenerate state-space model. The current kernel
-uses standard one-step ancestor sampling. It does not implement a multi-step
-bridge or backward simulator. Therefore also inspect
-`reference_ancestor_change_rate`: values near zero mean that the conditioned
-lineage is rarely reattached to another ancestor.
-
-## Vectorization and concurrency
-
-Vectorized:
-
-- GEV observation weights across particles;
-- complete-path likelihood and Laplace pseudo-data calculations where their
-  algebra is elementwise;
-- posterior summaries and forecast scoring;
-- independent channel updates may be threaded through `channel_workers`.
-
-Intrinsically sequential:
-
-- filtering/resampling through time;
-- ancestor tracing;
-- MCMC iterations and adaptation;
-- dependency between hierarchical Gibbs blocks.
-
-It is therefore inaccurate to say that everything is vectorized. The expensive
-inner likelihood arrays are vectorized, while state-space and MCMC recursions
-retain their required order. Independent chains are the safest HPC unit.
-
-## PGAS checks
-
-- minimum particle ESS and its lower tail;
-- unique ancestors;
-- path-change rate and path-update fraction;
-- reference-ancestor change rate;
-- GEV support rejections and margins;
-- numerical failures, which abort exact sampling before a draw is recorded;
-- agreement after increasing particles;
-- parameter and allocation R-hat/ESS/switching across independent chains.
-
-High particle ESS does not prove MCMC convergence, and healthy MCMC diagnostics
-do not prove predictive adequacy. Use leave-future-out scoring for the latter.
-
-## Laplace-MH checks
-
-- full-trajectory state acceptance (reported per draw and by chain);
-- proposal support-rejection rate;
-- deterministic initializer support-repair rate;
-- iterated-Laplace convergence, iterations, and relative change;
-- zero restored iterations (any unrecoverable exact-state failure aborts);
-- parameter R-hat/ESS and state summaries across independent chains;
-- stability after changing `Laplace(mh_steps=...)`;
-- ESS per second relative to PGAS on the same model and record.
+The `joint` research baseline uses a fixed identity Gaussian copula. Estimating
+its correlation via `--copula` retains the same private components, prior
+scales and centered sampler. This is the controlled residual-dependence
+comparison; comparing it to independent FS-SSVS changes additional assumptions.

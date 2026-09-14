@@ -21,7 +21,7 @@ from ...models.multiseries_compiler import CompiledMultiSeriesModel
 from ...models.structural import Model
 from ...priors.hierarchical import HierarchicalPriors
 from ...priors.structural import FSGaussianPriors, FSGEVPriors
-from ..config import HierarchicalSampler, Laplace, MCMC, Particles
+from ..config import HierarchicalSampler, Laplace, MCMC
 from ..plan import InferencePlan
 from ._progress import (
     compact_group,
@@ -45,7 +45,7 @@ from .fs_utils import (
     map_ncp_to_centered,
     measurement_vector,
     mu_from_ncp,
-    ncp_pgas,
+    ncp_laplace_mh,
     random_sign_switches,
     theta_vector_from_params,
 )
@@ -440,36 +440,40 @@ def _gaussian_step(
     return log_likelihood, metrics
 
 
-def _gev_step(
+def _gev_laplace_mh_step(
     state: _ChannelState,
     prior: FSGEVPriors,
-    particles: Particles,
     laplace: Laplace,
     rng: np.random.Generator,
 ) -> tuple[float, dict[str, float], bool, bool, bool]:
+    """Exact conditional trajectory, structural-selection and observation updates.
+
+    A support-invalid MH proposal is an ordinary rejection inside the path
+    kernel. A numerical exception is not a posterior transition and aborts the
+    run; silently restoring a partly updated channel would invalidate the Gibbs
+    sweep.
+    """
+
     assert state.gev_kernel is not None
     state.gev_kernel.priors = prior
     state.gev_kernel.rng = rng
-    last = (
-        state.z_path.copy(),
-        dict(state.params_state),
-        dict(state.params_obs),
-        state.model_state,
-        state.model_index,
-    )
+    previous_model_index = state.model_index
     try:
-        pgas_result = ncp_pgas(
+        path_result = ncp_laplace_mh(
             state.y,
             state.model,
             state.params_state,
             state.params_obs,
             state.layout,
             state.z_path,
-            n_particles=int(particles.n),
-            proposal=str(particles.proposal),
             rng=rng,
+            mh_steps=int(laplace.mh_steps),
+            max_iterations=int(laplace.max_iterations),
+            tolerance=float(laplace.tolerance),
+            curvature_floor=float(laplace.curvature_floor),
+            maximum_variance=float(laplace.maximum_variance),
         )
-        state.z_path = pgas_result.z_path
+        state.z_path = path_result.z_path
         X, theta_names, tbar = design_matrix_ncp(
             state.z_path, state.layout, center_time=True
         )
@@ -523,42 +527,28 @@ def _gev_step(
         if not np.isfinite(log_likelihood):
             raise ValueError("GEV observation update left the finite support.")
         metrics = {
-            "particle_min_ess": float(np.min(pgas_result.ess[1:])),
-            "particle_mean_unique_ancestors": float(
-                np.mean(pgas_result.unique_ancestors[1:])
-            ),
-            "particle_path_changed": float(pgas_result.path_changed),
-            "particle_path_update_fraction": float(
-                pgas_result.path_update_fraction
-            ),
-            # Kept in the serialized diagnostics for 2.4 compatibility.
-            "particle_changed_fraction": float(
-                pgas_result.path_update_fraction
-            ),
+            "laplace_iterations": float(path_result.approximation.iterations),
+            "laplace_converged": float(path_result.approximation.converged),
+            "laplace_relative_change": float(path_result.approximation.relative_change),
+            "laplace_mh_acceptance": float(path_result.acceptance_rate),
+            "laplace_mh_log_weight": float(path_result.log_weight),
+            "laplace_support_rejections": float(path_result.proposal_support_failures),
+            "state_mh_accepted_steps": float(path_result.accepted_steps),
+            "state_mh_attempts": float(path_result.attempts),
             "ssvs_model_move_accepted": float(selection.move_accepted),
             "ssvs_model_proposed_change": float(
-                selection.proposed_index != last[4]
+                selection.proposed_index != previous_model_index
             ),
             "sign_error": sign_error,
             **{f"sign_{name}": float(value) for name, value in switches.items()},
         }
         return float(log_likelihood), metrics, bool(accepted_sigma), bool(accepted_xi), False
-    except (FloatingPointError, ValueError, np.linalg.LinAlgError):
-        (
-            state.z_path,
-            state.params_state,
-            state.params_obs,
-            state.model_state,
-            state.model_index,
-        ) = last
-        mu = mu_from_ncp(state.z_path, state.params_state, state.layout)
-        return (
-            float(_exact_gev_loglik(state.y, mu, state.model, state.params_obs)),
-            {},
-            False,
-            False,
-            True,
-        )
+    except (FloatingPointError, ValueError, np.linalg.LinAlgError) as error:
+        raise RuntimeError(
+            f"Exact hierarchical Laplace-MH failed for channel '{state.name}'; "
+            "sampling was aborted before storing a possibly invalid draw. "
+            "Inspect the initialization, prior scales and Laplace diagnostics."
+        ) from error
 
 
 def _gev_laplace_step(
@@ -674,7 +664,7 @@ def _laplace_initialize_channel(
     laplace: Laplace,
     rng: np.random.Generator,
 ) -> dict[str, Any]:
-    """Create a support-valid GEV starting path without changing the PGAS target."""
+    """Create a support-valid GEV starting path before posterior sampling."""
 
     if state.family != "gev":
         return {"channel": state.name, "used": False, "reason": "gaussian"}
@@ -714,7 +704,6 @@ def _channel_step(
     state: _ChannelState,
     prior: FSGaussianPriors | FSGEVPriors,
     engine: str,
-    particles: Particles,
     laplace: Laplace,
     rng: np.random.Generator,
 ) -> tuple[float, dict[str, float], bool, bool, bool]:
@@ -725,7 +714,9 @@ def _channel_step(
         return log_likelihood, metrics, False, False, False
     if engine == "laplace":
         return _gev_laplace_step(state, prior, laplace, rng)
-    return _gev_step(state, prior, particles, laplace, rng)
+    if engine == "laplace_mh":
+        return _gev_laplace_mh_step(state, prior, laplace, rng)
+    raise ValueError(f"Unsupported hierarchical GEV engine: {engine!r}.")
 
 
 def _parameter_storage(
@@ -939,7 +930,6 @@ def sample_hierarchical_posterior(
     plan: InferencePlan,
     *,
     mcmc: MCMC,
-    particles: Particles,
     laplace: Laplace,
     sampler: HierarchicalSampler,
     dates: Array | None = None,
@@ -947,7 +937,7 @@ def sample_hierarchical_posterior(
 ) -> FitResult:
     """Run joint hierarchical inference for Gaussian and/or GEV channels.
 
-    Gaussian FFBS and non-Gaussian PGAS target the exact posterior. The
+    Gaussian FFBS and non-Gaussian Laplace-MH target the exact posterior. The
     hierarchical Laplace engine is an explicitly exploratory approximation.
     """
 
@@ -960,8 +950,8 @@ def sample_hierarchical_posterior(
         )
     if plan.parameterization != "fruehwirth_schnatter":
         raise ValueError("Hierarchical inference requires parameterization='fs'.")
-    if plan.engine not in {"ffbs", "laplace", "pgas"}:
-        raise ValueError("Hierarchical inference supports FFBS, Laplace, or PGAS.")
+    if plan.engine not in {"ffbs", "laplace", "laplace_mh"}:
+        raise ValueError("Hierarchical inference supports FFBS, Laplace, or Laplace-MH.")
     if plan.asis:
         raise ValueError("ASIS is not combined with the joint hierarchy sampler.")
 
@@ -972,7 +962,10 @@ def sample_hierarchical_posterior(
     state_draws = np.zeros(
         (mcmc.chains, mcmc.draws, values.shape[0] + 1, compiled.state_dim)
     )
-    log_posterior = np.zeros((mcmc.chains, mcmc.draws))
+    # The complete hierarchy density is not evaluated. Keep the compatibility
+    # field explicitly unavailable and expose the evaluated likelihood by name.
+    log_posterior = np.full((mcmc.chains, mcmc.draws), np.nan)
+    log_likelihood = np.zeros((mcmc.chains, mcmc.draws))
     template_rng = np.random.default_rng(seed_sequences[0])
     template_states = [
         _initial_channel_state(
@@ -994,11 +987,8 @@ def sample_hierarchical_posterior(
         "laplace_converged",
         "laplace_relative_change",
         "laplace_support_rejections",
-        "particle_min_ess",
-        "particle_mean_unique_ancestors",
-        "particle_path_changed",
-        "particle_path_update_fraction",
-        "particle_changed_fraction",
+        "laplace_mh_acceptance",
+        "laplace_mh_log_weight",
         "ssvs_model_move_accepted",
         "ssvs_model_proposed_change",
         "sign_invariance_error",
@@ -1018,6 +1008,11 @@ def sample_hierarchical_posterior(
             if channel.family == "gev"
         }
     )
+    if plan.engine == "laplace_mh":
+        acceptance.update({
+            f"state_laplace_mh.{channel.name}": np.zeros(mcmc.chains)
+            for channel in compiled.model.channels if channel.family == "gev"
+        })
     sign_counts = {
         component: np.zeros(mcmc.chains, dtype=int) for component in _COMPONENTS
     }
@@ -1043,7 +1038,7 @@ def sample_hierarchical_posterior(
             priors.hierarchy, initial_parameters
         )
         initialization: list[dict[str, Any]] = []
-        if plan.engine == "pgas" and sampler.initializer == "laplace":
+        if plan.engine == "laplace_mh" and sampler.initializer == "laplace":
             initializer_seeds = rng.integers(
                 0, np.iinfo(np.int64).max, size=len(states), dtype=np.int64
             )
@@ -1096,7 +1091,6 @@ def sample_hierarchical_posterior(
                         states[index],
                         current_priors[index],
                         plan.engine,
-                        particles,
                         laplace,
                         np.random.default_rng(int(child_seeds[index])),
                     )
@@ -1117,7 +1111,19 @@ def sample_hierarchical_posterior(
                         attempts[f"xi.{item.name}"] += 1
                         accept_counts[f"sigma.{item.name}"] += int(acc_sigma)
                         accept_counts[f"xi.{item.name}"] += int(acc_xi)
+                        if was_restored and plan.targets_exact_posterior:
+                            raise RuntimeError(
+                                f"Exact hierarchical update failed for channel '{item.name}'; "
+                                "sampling was aborted before storing a draw."
+                            )
                         restored += int(was_restored)
+                        if plan.engine == "laplace_mh":
+                            attempts[f"state_laplace_mh.{item.name}"] += int(
+                                metrics["state_mh_attempts"]
+                            )
+                            accept_counts[f"state_laplace_mh.{item.name}"] += int(
+                                metrics["state_mh_accepted_steps"]
+                            )
                     total_loglik += float(ll)
                     iteration_metrics.append(metrics)
                     for component in _COMPONENTS:
@@ -1138,7 +1144,7 @@ def sample_hierarchical_posterior(
                     _store_parameters(
                         parameter_draws, states, probabilities, slab, chain, saved
                     )
-                    log_posterior[chain, saved] = total_loglik
+                    log_likelihood[chain, saved] = total_loglik
                     for metric in metric_names:
                         current = [
                             entry[metric]
@@ -1146,9 +1152,7 @@ def sample_hierarchical_posterior(
                             if metric in entry
                         ]
                         if current:
-                            if metric == "particle_min_ess":
-                                value = float(np.min(current))
-                            elif metric == "sign_invariance_error":
+                            if metric == "sign_invariance_error":
                                 value = float(np.max(current))
                             else:
                                 value = float(np.mean(current))
@@ -1203,36 +1207,7 @@ def sample_hierarchical_posterior(
                             }
                         )
                     progress_metrics: dict[str, float] = {}
-                    if plan.engine == "pgas":
-                        gev_metrics = [
-                            entry
-                            for entry in iteration_metrics
-                            if "particle_min_ess" in entry
-                        ]
-                        if gev_metrics:
-                            progress_metrics = {
-                                "particle_min_ess": min(
-                                    entry["particle_min_ess"]
-                                    for entry in gev_metrics
-                                ),
-                                "particle_mean_unique_ancestors": float(
-                                    np.mean(
-                                        [
-                                            entry["particle_mean_unique_ancestors"]
-                                            for entry in gev_metrics
-                                        ]
-                                    )
-                                ),
-                                "particle_path_update_fraction": float(
-                                    np.mean(
-                                        [
-                                            entry["particle_path_update_fraction"]
-                                            for entry in gev_metrics
-                                        ]
-                                    )
-                                ),
-                            }
-                    elif plan.engine == "laplace":
+                    if plan.engine in {"laplace", "laplace_mh"}:
                         laplace_metrics = [
                             entry
                             for entry in iteration_metrics
@@ -1271,9 +1246,6 @@ def sample_hierarchical_posterior(
                             elapsed=perf_counter() - started,
                             parameters=current_params,
                             metrics=progress_metrics,
-                            particles=(
-                                particles.n if plan.engine == "pgas" else None
-                            ),
                             details=(f"restored={restored}",) if restored else (),
                         ),
                         flush=True,
@@ -1295,12 +1267,12 @@ def sample_hierarchical_posterior(
         state_draws=state_draws,
         parameter_draws=parameter_draws,
         log_posterior=log_posterior,
+        auxiliary_draws={"log_likelihood": log_likelihood},
         plan=plan,
         sampler_diagnostics={
             "acceptance": acceptance,
             "draw_metrics": draw_metrics,
             "mcmc": asdict(mcmc),
-            "particles": asdict(particles),
             "laplace": asdict(laplace),
             "hierarchical_sampler": asdict(sampler),
             "chain_seeds": [int(sequence.generate_state(1)[0]) for sequence in seed_sequences],
@@ -1313,7 +1285,6 @@ def sample_hierarchical_posterior(
         dates=None if dates is None else np.asarray(dates),
         series_name=compiled.model.name,
         transform_sign=compiled.model.transform_signs,
-        schema_version="2.7.0",
         initial_values={"chains": initial_by_chain},
         metadata={
             "bucex_version": __version__,
@@ -1335,10 +1306,12 @@ def sample_hierarchical_posterior(
             "sign_switch_invariance_checked": True,
             "restored_iterations": int(sum(restored_by_chain)),
             "restored_iterations_by_chain": restored_by_chain,
-            "pgas_exact_invariant": bool(plan.engine == "pgas"),
+            "laplace_mh_exact_invariant": bool(plan.engine == "laplace_mh"),
+            "log_posterior_available": False,
+            "log_likelihood_available": True,
             "hierarchical_laplace_approximation": bool(plan.engine == "laplace"),
-            "pgas_initializer": (
-                sampler.initializer if plan.engine == "pgas" else None
+            "path_initializer": (
+                sampler.initializer if plan.engine == "laplace_mh" else None
             ),
             "channel_workers": int(sampler.channel_workers),
             "external_warm_start": bool(

@@ -96,21 +96,24 @@ class Laplace:
 
 
 @dataclass(frozen=True)
-class Particles:
-    n: int = 256
-    ess_threshold: float = 0.5
-    resampling: str = "systematic"
-    proposal: str = "guided"
+class SharedSampler:
+    """Additional exact state updates for mixed shared-component models.
+
+    After each joint Laplace-MH update, ``elliptical_slice_steps`` full block
+    sweeps refresh the Gaussian-prior state paths using exact likelihoods.
+    Set zero for an explicit sampler ablation. Gaussian FFBS models need no
+    supplementary slice sweeps. Exceeding the evaluation limit aborts the fit.
+    """
+
+    elliptical_slice_steps: int = 1
+    maximum_slice_evaluations: int = 200
 
     def __post_init__(self) -> None:
-        if int(self.n) < 2:
-            raise ValueError("Particles.n must be at least 2.")
-        if not 0.0 < float(self.ess_threshold) <= 1.0:
-            raise ValueError("ess_threshold must lie in (0, 1].")
-        if self.resampling not in {"systematic", "multinomial"}:
-            raise ValueError("resampling must be systematic or multinomial.")
-        if self.proposal not in {"bootstrap", "guided"}:
-            raise ValueError("proposal must be bootstrap or guided.")
+        for name, lower in (("elliptical_slice_steps", 0), ("maximum_slice_evaluations", 1)):
+            value = getattr(self, name)
+            if isinstance(value, bool) or int(value) != value or int(value) < lower:
+                raise ValueError(f"{name} must be an integer >= {lower}.")
+            object.__setattr__(self, name, int(value))
 
 
 @dataclass(frozen=True)
@@ -118,8 +121,8 @@ class HierarchicalSampler:
     """Execution controls for a multi-series hierarchical sampler.
 
     ``initializer='laplace'`` obtains a fast approximate path for every GEV
-    channel before exact PGAS starts. It changes only the chain starting point,
-    not the PGAS target. ``channel_workers`` optionally updates conditionally
+    channel before exact Laplace-MH starts. It changes only the chain starting
+    point. ``channel_workers`` optionally updates conditionally
     independent channels in parallel within each hierarchical Gibbs sweep.
     """
 

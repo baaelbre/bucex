@@ -1,4 +1,6 @@
 """Plots for the unified fit and forecast objects."""
+from .dependence import plot_copula, plot_ordering
+from .shared import plot_shared, plot_departures, plot_channel_component
 from .core import (
     loess_smooth,
     plot,
@@ -23,6 +25,7 @@ from .core import (
 )
 
 __all__ = [
+    "plot_copula", "plot_ordering", "plot_shared", "plot_departures", "plot_channel_component",
     "loess_smooth",
     "plot",
     "plot_fit",

@@ -180,39 +180,6 @@ def singular_normal_logpdf(
     return float(factored_singular_normal_logpdf(value, mean, factor))
 
 
-def logsumexp(values: Array) -> float:
-    values = np.asarray(values, dtype=float)
-    finite = np.isfinite(values)
-    if not np.any(finite):
-        return -np.inf
-    maximum = float(np.max(values[finite]))
-    return float(maximum + np.log(np.sum(np.exp(values[finite] - maximum))))
-
-
-def normalize_logweights(log_weights: Array) -> tuple[Array, float]:
-    log_weights = np.asarray(log_weights, dtype=float)
-    normalizer = logsumexp(log_weights)
-    if not np.isfinite(normalizer):
-        raise FloatingPointError("All particle weights are zero.")
-    weights = np.exp(log_weights - normalizer)
-    weights /= weights.sum()
-    return weights, normalizer
-
-
-def effective_sample_size(weights: Array) -> float:
-    weights = np.asarray(weights, dtype=float)
-    return float(1.0 / np.sum(weights**2))
-
-
-def systematic_resample(weights: Array, rng: np.random.Generator, size: int | None = None) -> Array:
-    weights = np.asarray(weights, dtype=float)
-    n = weights.size if size is None else int(size)
-    positions = (rng.random() + np.arange(n)) / n
-    cdf = np.cumsum(weights)
-    cdf[-1] = 1.0
-    return np.searchsorted(cdf, positions, side="right").astype(int)
-
-
 def bounded_to_real(value: float, lower: float, upper: float) -> float:
     probability = (float(value) - float(lower)) / (float(upper) - float(lower))
     probability = np.clip(probability, 1e-12, 1.0 - 1e-12)

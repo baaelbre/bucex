@@ -1,7 +1,7 @@
 """Posterior predictive simulation and forecast summaries."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -10,9 +10,36 @@ import numpy as np
 from ..diagnostics.calibration import pit_diagnostics
 from ..diagnostics.scores import evaluate_ensemble, log_predictive_score
 from ..inference.fit.phi import phi_future_basis
+from ..core.shared_results import channel_design, group_design, univariate_design
+from ..core.calendar import seasonal_phases
 
 
 Array = np.ndarray
+
+
+def _component_designs(fit, n_time: int) -> dict[str, Array]:
+    """Retain scientific decompositions in joint forecast objects."""
+    if not fit.is_multiseries_model:
+        return {f"univariate.{component}": univariate_design(fit.compiled, component, fit.transform_sign)
+                for component in ("level", "slope", "seasonal")}
+    designs = {
+        f"channel.{channel}.{component}": channel_design(fit.compiled, channel, component, n_time)
+        for channel in fit.channel_names
+        for component in ("level", "slope", "seasonal")
+    }
+    if getattr(fit.compiled, "is_shared", False):
+        for name, kind in fit.compiled.group_kinds.items():
+            for component in ("level", "slope", "seasonal"):
+                try:
+                    if kind == "shared":
+                        designs[f"shared.{name}.{component}"] = group_design(fit.compiled, name, component)
+                    else:
+                        for channel in fit.channel_names:
+                            designs[f"departure.{name}.{channel}.{component}"] = group_design(fit.compiled, name, component, channel=channel)
+                except ValueError:
+                    # A local-level process, for example, has no slope.
+                    continue
+    return designs
 
 
 def _future_dates(dates: Array | None, horizon: int) -> Array:
@@ -52,6 +79,9 @@ class Forecast:
     state_names: tuple[str, ...] = ()
     period: int | None = None
     phases: Array | None = None
+    component_designs: dict[str, Array] = field(default_factory=dict)
+    copula: Any = None
+    channels: tuple[Any, ...] = ()
 
     @property
     def is_multiseries_forecast(self) -> bool:
@@ -87,7 +117,7 @@ class Forecast:
         phases = (
             np.asarray(self.phases, dtype=int).reshape(-1)
             if self.phases is not None
-            else np.arange(self.horizon, dtype=int) % int(self.period) + 1
+            else seasonal_phases(self.period, self.horizon, self.dates)
         )
         if phases.size != self.horizon:
             raise ValueError("Forecast phases must have length equal to horizon.")
@@ -98,26 +128,48 @@ class Forecast:
             )
         return indices
 
-    def component_draws(self, name: str) -> Array:
+    def component_draws(self, name: str, *, channel: str | None = None) -> Array:
         """Return one latent state component on the response orientation.
 
-        Component forecasts are currently defined for univariate models.  In
-        particular, ``component_draws("level")`` is the seasonally adjusted
+        In particular, ``component_draws("level", channel=...)`` is the seasonally adjusted
         structural trajectory: it excludes both the seasonal state and future
         observation noise.
         """
 
         if self.is_multiseries_forecast:
-            raise ValueError(
-                "Latent component forecasts are currently available only for "
-                "univariate models."
-            )
+            self._channel_index(channel)
+            key = f"channel.{channel}.{'seasonal' if name == 'season' else name}"
+            return self._project_component(key)
+        if channel is not None:
+            raise ValueError("channel= is only valid for a multiseries forecast.")
+        key = f"univariate.{'seasonal' if name == 'season' else name}"
+        if key in self.component_designs:
+            return self._project_component(key)
+        if name in {"season", "seasonal"}:
+            name = "seasonal[1]"
         if name not in self.state_names:
             raise KeyError(
                 f"Unknown forecast state '{name}'. Available: {self.state_names}"
             )
         values = np.asarray(self.states[..., self.state_names.index(name)], dtype=float)
         return float(self.transform_sign) * values
+
+    def _project_component(self, key: str) -> Array:
+        if key not in self.component_designs:
+            raise KeyError(f"Unknown forecast component {key!r}; choose from {tuple(self.component_designs)}.")
+        design = np.asarray(self.component_designs[key])
+        if design.ndim == 1:
+            return np.einsum("dtm,m->dt", self.states, design)
+        return np.einsum("dtm,tm->dt", self.states, design)
+
+    def shared_draws(self, name: str = "warming", *, component: str = "level") -> Array:
+        """Future shared trajectory before its fixed channel loadings."""
+        return self._project_component(f"shared.{name}.{component}")
+
+    def departure_draws(self, channel: str, *, name: str = "departure", component: str = "level") -> Array:
+        """Future constrained departure on the original response scale."""
+        self._channel_index(channel)
+        return self._project_component(f"departure.{name}.{channel}.{component}")
 
     def _target_draws(self, target: str, *, channel: str | None) -> Array:
         key = str(target).lower().replace("-", "_")
@@ -132,7 +184,7 @@ class Forecast:
             index = self._channel_index(channel)
             return self.eta[:, :, index] if self.is_multiseries_forecast else self.eta
         if key in {"level", "latent_level", "seasonally_adjusted"}:
-            return self.component_draws("level")
+            return self.component_draws("level", channel=channel)
         raise ValueError(
             "target must be 'observations', 'predictor', or 'level'."
         )
@@ -276,6 +328,73 @@ class Forecast:
         )
         return np.asarray(values, dtype=float)
 
+    def joint_conditional_log_density(self, observed: Array) -> Array:
+        """Joint density per posterior draw and time, before mixture averaging.
+
+        Marginal densities and the residual copula are evaluated at the same
+        state/parameter draw. Even conditional independence generally does not
+        justify multiplying posterior-averaged marginal predictive densities.
+        Missing margins (NaN) are marginalized using the corresponding copula
+        submatrix; a completely unobserved time block cannot be scored.
+        """
+        if not self.is_multiseries_forecast:
+            return self.conditional_log_density(observed)
+        values = np.asarray(observed, dtype=float)
+        if values.shape != (self.horizon, len(self.channel_names)):
+            raise ValueError("observed must have shape (horizon, channels).")
+        if np.any(np.isinf(values)) or np.any(np.all(np.isnan(values), axis=1)):
+            raise ValueError("Each time must have at least one observed finite channel; NaN marks missing margins.")
+        result = sum(np.where(np.isnan(values[:, index])[None, :], 0.0,
+                              self.conditional_log_density(values[:, index], channel=name))
+                     for index, name in enumerate(self.channel_names))
+        if self.copula is not None:
+            from ..dependence.gaussian import normal_scores, gaussian_copula_logpdf
+
+            if not self.channels:
+                raise ValueError("Copula density evaluation requires the original channel specifications.")
+            signs = np.asarray(self.transform_sign, dtype=float)
+            for draw in range(self.n_draws):
+                params = {name: float(array[draw]) for name, array in self.parameters.items()
+                          if np.asarray(array[draw]).ndim == 0}
+                # Density is zero if any marginal lies outside its support.
+                finite = np.isfinite(result[draw])
+                if not np.any(finite):
+                    continue
+                z = normal_scores(values[finite] * signs[None, :],
+                                  self.eta[draw, finite] * signs[None, :],
+                                  self.channels, params)
+                correlation = self.copula.correlation_matrix(params, self.channel_names)
+                result[draw, finite] += gaussian_copula_logpdf(z, correlation)
+        return np.asarray(result)
+
+    def joint_log_score(self, observed: Array) -> Array:
+        """Negative log joint posterior-predictive density at each time block."""
+        return log_predictive_score(self.joint_conditional_log_density(observed))
+
+    def ordering_diagnostics(self, constraints, *, observed=None, tolerance=0.0):
+        """Quantify incompatible replicated outcomes without sorting or rejection."""
+        from ..diagnostics.ordering import ordering_diagnostics
+
+        if not self.is_multiseries_forecast:
+            raise ValueError("Ordering diagnostics require a multiseries forecast.")
+        return ordering_diagnostics(self.observations, channel_names=self.channel_names,
+                                    constraints=constraints, observed=observed,
+                                    dates=self.dates, tolerance=tolerance)
+
+    def compound_probability(self, events, *, operation="all") -> Array:
+        """Probability of simultaneous channel threshold events at each time.
+
+        Uses unchanged joint predictive draws, preserving copula, shared-state
+        and parameter dependence. This Monte Carlo average is not a credible
+        interval for a conditional probability.
+        """
+        from ..diagnostics.ordering import compound_event_probability
+
+        if not self.is_multiseries_forecast:
+            raise ValueError("Compound probabilities require a multiseries forecast.")
+        return compound_event_probability(self.observations, channel_names=self.channel_names,
+                                          events=events, operation=operation)
+
     def log_score(
         self,
         observed: Array,
@@ -288,8 +407,8 @@ class Forecast:
             self.conditional_log_density(observed, channel=channel)
         )
 
-    def pit(self, observed: Array, *, channel: str | None = None) -> Array:
-        """Posterior-predictive PIT for held-out observations."""
+    def conditional_cdf(self, observed: Array, *, channel: str | None = None) -> Array:
+        """Original-scale marginal CDF for each posterior draw and time block."""
 
         index = self._channel_index(channel)
         observed_array = np.asarray(observed, dtype=float).reshape(-1)
@@ -327,7 +446,11 @@ class Forecast:
         # continuous Gaussian/GEV families used here.
         if sign < 0.0:
             cdf = 1.0 - cdf
-        return np.mean(cdf, axis=0)
+        return cdf
+
+    def pit(self, observed: Array, *, channel: str | None = None) -> Array:
+        """Posterior-predictive marginal PIT for held-out observations."""
+        return np.mean(self.conditional_cdf(observed, channel=channel), axis=0)
 
     def pit_diagnostics(
         self,
@@ -427,7 +550,7 @@ class Forecast:
 
         ``target="level"`` plots the seasonally adjusted latent level without
         observation noise. ``phase=`` retains one one-based seasonal phase,
-        for example ``phase=7`` for July when a monthly fit starts in January.
+        for example ``phase=7`` for July in a dated monthly annual cycle.
         """
 
         import matplotlib.pyplot as plt
@@ -681,13 +804,12 @@ def posterior_predictive(
             observation_model=fit.model.observations,
             transform_sign=signs,
             channel_names=fit.channel_names,
+            copula=getattr(fit.model, "copula", None),
+            channels=tuple(fit.model.channels),
             state_names=fit.state_names,
+            component_designs=_component_designs(fit, fit.n_time),
             period=fit.model.period,
-            phases=(
-                np.arange(fit.n_time, dtype=int) % int(fit.model.period) + 1
-                if fit.model.period is not None
-                else None
-            ),
+            phases=seasonal_phases(fit.model.period, fit.n_time, resolved_dates),
         )
 
     required_parameters = ("sigma",) + (("xi",) if fit.family == "gev" else ())
@@ -735,12 +857,9 @@ def posterior_predictive(
         observation_model=fit.model.observation,
         transform_sign=sign,
         state_names=fit.state_names,
+        component_designs=_component_designs(fit, fit.n_time),
         period=fit.model.period,
-        phases=(
-            np.arange(fit.n_time, dtype=int) % int(fit.model.period) + 1
-            if fit.model.period is not None
-            else None
-        ),
+        phases=seasonal_phases(fit.model.period, fit.n_time, resolved_dates),
     )
 
 
@@ -756,6 +875,16 @@ def posterior_predict(
     horizon = int(horizon)
     if horizon < 1:
         raise ValueError("horizon must be positive.")
+    requires_exog = (
+        any(channel.n_exog for channel in fit.model.channels)
+        if fit.is_multiseries_model else bool(fit.model.n_exog)
+    )
+    if requires_exog and exog_future is None:
+        raise ValueError(
+            "exog_future is required when forecasting a regression model; "
+            "supply future covariates explicitly, even when the forecast "
+            "horizon equals the training length."
+        )
     rng = np.random.default_rng(seed)
     total = fit.n_draws
     n_draws = total if draws is None else int(draws)
@@ -816,15 +945,12 @@ def posterior_predict(
             observation_model=fit.model.observations,
             transform_sign=signs,
             channel_names=fit.channel_names,
+            copula=getattr(fit.model, "copula", None),
+            channels=tuple(fit.model.channels),
             state_names=fit.state_names,
+            component_designs=_component_designs(fit, horizon),
             period=fit.model.period,
-            phases=(
-                np.arange(fit.n_time, fit.n_time + horizon, dtype=int)
-                % int(fit.model.period)
-                + 1
-                if fit.model.period is not None
-                else None
-            ),
+            phases=seasonal_phases(fit.model.period, horizon, resolved_dates, start_index=fit.n_time),
         )
     required_parameters = [
         *(f"sd.{name}" for name in fit.compiled.noise_names),
@@ -950,12 +1076,7 @@ def posterior_predict(
         observation_model=fit.model.observation,
         transform_sign=sign,
         state_names=fit.state_names,
+        component_designs=_component_designs(fit, horizon),
         period=fit.model.period,
-        phases=(
-            np.arange(fit.n_time, fit.n_time + horizon, dtype=int)
-            % int(fit.model.period)
-            + 1
-            if fit.model.period is not None
-            else None
-        ),
+        phases=seasonal_phases(fit.model.period, horizon, resolved_dates, start_index=fit.n_time),
     )

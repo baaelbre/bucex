@@ -123,6 +123,44 @@ def joint_state_log_density(
     )
 
 
+def _multivariate_pseudo_data(y, eta, gradient, hessian, *, curvature_floor, maximum_variance, shift_limit):
+    """Full observation curvature, stabilized without changing its exact score.
+
+    Missing margins use their observed Hessian submatrix. Unobserved pseudo
+    coordinates remain NaN, with an independent unit covariance placeholder.
+    """
+    if float(shift_limit) <= 0.0:
+        raise ValueError("shift_limit must be positive.")
+    gradient, hessian = np.asarray(gradient, float), np.asarray(hessian, float)
+    if gradient.shape != y.shape or hessian.shape != (*y.shape, y.shape[-1]):
+        raise ValueError("Joint observation derivatives require shapes (T,K) and (T,K,K).")
+    pseudo = np.full_like(y, np.nan)
+    covariance = np.broadcast_to(np.eye(y.shape[1]), (len(y), y.shape[1], y.shape[1])).copy()
+    floor = max(float(curvature_floor), 1.0 / float(maximum_variance))
+    for t in range(len(y)):
+        observed = np.flatnonzero(np.isfinite(y[t]))
+        if not observed.size:
+            continue
+        score = gradient[t, observed]
+        curvature = hessian[t][np.ix_(observed, observed)]
+        if np.any(~np.isfinite(score)) or np.any(~np.isfinite(curvature)):
+            raise FloatingPointError("Invalid joint derivatives at the Laplace expansion point.")
+        eigenvalues, eigenvectors = np.linalg.eigh(-0.5 * (curvature + curvature.T))
+        information = np.maximum(eigenvalues, floor)
+        variance = (eigenvectors / information[None, :]) @ eigenvectors.T
+        shift = variance @ score
+        size = float(np.linalg.norm(shift))
+        if size > shift_limit:
+            # Inflate the information matrix; clipping shift alone would alter
+            # the likelihood score and could stall the deterministic mode search.
+            scale = size / shift_limit
+            variance /= scale
+            shift /= scale
+        covariance[t][np.ix_(observed, observed)] = 0.5 * (variance + variance.T)
+        pseudo[t, observed] = eta[t, observed] + shift
+    return pseudo, covariance
+
+
 def _pseudo_data(
     y: Array,
     eta: Array,
@@ -141,6 +179,9 @@ def _pseudo_data(
         return pseudo_y, pseudo_variance
     if hasattr(compiled, "observation_derivatives"):
         all_grad, all_hess = compiled.observation_derivatives(y, eta, params)
+        if np.ndim(all_hess) == 3:
+            return _multivariate_pseudo_data(y, eta, all_grad, all_hess,
+                curvature_floor=curvature_floor, maximum_variance=maximum_variance, shift_limit=shift_limit)
         grad = np.asarray(all_grad[mask], dtype=float)
         hess = np.asarray(all_hess[mask], dtype=float)
     else:
@@ -155,9 +196,16 @@ def _pseudo_data(
         )
     if np.any(~np.isfinite(grad)) or np.any(~np.isfinite(hess)):
         raise FloatingPointError("Invalid GEV derivatives at the Laplace expansion point.")
+    if float(shift_limit) <= 0.0:
+        raise ValueError("shift_limit must be positive.")
+    # Stabilize curvature while retaining the exact likelihood score. Clipping
+    # grad / information independently changes that score and can produce a
+    # downhill direction even arbitrarily close to the expansion point.
     information = np.maximum(-hess, float(curvature_floor))
-    variance = np.minimum(1.0 / information, float(maximum_variance))
-    shift = np.clip(grad / information, -float(shift_limit), float(shift_limit))
+    information = np.maximum(information, 1.0 / float(maximum_variance))
+    information = np.maximum(information, np.abs(grad) / float(shift_limit))
+    variance = 1.0 / information
+    shift = grad / information
     pseudo_y[mask] = eta[mask] + shift
     pseudo_variance[mask] = variance
     return pseudo_y, pseudo_variance
@@ -182,7 +230,7 @@ def build_laplace_approximation(
     :func:`laplace_mh`.  Supplying an initial path remains useful for the fast,
     approximate :func:`iterated_laplace` update.
     """
-    if bool(getattr(compiled, "all_gaussian", compiled.family == "gaussian")):
+    if bool(getattr(compiled, "all_gaussian", compiled.family == "gaussian")) and getattr(getattr(compiled, "model", None), "copula", None) is None:
         raise ValueError("The iterated Laplace backend requires at least one non-Gaussian channel.")
     y = np.asarray(y, dtype=float)
     if hasattr(compiled, "channel_names"):
@@ -208,6 +256,26 @@ def build_laplace_approximation(
         else max(float(params["sigma"]) ** 2, 1e-8)
     )
 
+    def proposal_objective(path):
+        # Marginal models and copula models both use their complete likelihood:
+        # the joint Hessian and the line-search objective must describe the same
+        # density. MH still corrects every Gaussian approximation error.
+        return joint_state_log_density(y, path, compiled, params)
+
+    if bool(getattr(compiled, "all_gaussian", False)) and getattr(compiled, "has_copula", False):
+        # Gaussian margins with a Gaussian copula are exactly multivariate
+        # Gaussian. Use their covariance directly, without curvature floors or
+        # artificial Newton-step limits that would alter this exact proposal.
+        correlation = compiled.model.copula.correlation_matrix(params, compiled.channel_names)
+        scales = np.asarray([params[f"sigma.{name}"] for name in compiled.channel_names])
+        covariance = correlation * scales[:, None] * scales[None, :]
+        covariance = np.broadcast_to(covariance, (compiled.n_time, *covariance.shape)).copy()
+        filtered = kalman_filter(y, compiled, params, observation_variance=covariance)
+        mode = compiled.project_path(kalman_smoother(filtered, compiled).mean, params)
+        return LaplaceApproximation(mode_path=mode, pseudo_y=y.copy(), pseudo_variance=covariance,
+            converged=True, iterations=1, relative_change=0.0,
+            objective=proposal_objective(mode), filter=filtered)
+
     if initial_path is None:
         initial_filter = kalman_filter(
             y,
@@ -223,7 +291,7 @@ def build_laplace_approximation(
         if mode_path.shape != (compiled.n_time + 1, compiled.state_dim):
             raise ValueError("initial_path has the wrong shape.")
 
-    current_objective = joint_state_log_density(y, mode_path, compiled, params)
+    current_objective = proposal_objective(mode_path)
     if not np.isfinite(current_objective):
         # A Gaussian warm start can cross a finite GEV endpoint. Use the data as
         # pseudo observations once to obtain a support-compatible location.
@@ -234,7 +302,12 @@ def build_laplace_approximation(
             observation_variance=initial_variance,
         )
         mode_path = compiled.project_path(kalman_smoother(fallback, compiled).mean, params)
-        current_objective = joint_state_log_density(y, mode_path, compiled, params)
+        current_objective = proposal_objective(mode_path)
+    if not np.isfinite(current_objective) and hasattr(compiled, "support_feasible_path"):
+        # A deterministic function of data and static parameters preserves the
+        # independence proposal. It must never depend on the current MCMC path.
+        mode_path = compiled.support_feasible_path(y, mode_path, params)
+        current_objective = proposal_objective(mode_path)
     if not np.isfinite(current_objective):
         raise FloatingPointError("Could not initialize the GEV Laplace mode inside the support.")
 
@@ -269,14 +342,19 @@ def build_laplace_approximation(
         proposal = mode_path
         while step >= 2.0**-12:
             proposal = mode_path + step * (candidate - mode_path)
-            candidate_objective = joint_state_log_density(y, proposal, compiled, params)
+            candidate_objective = proposal_objective(proposal)
             if np.isfinite(candidate_objective) and candidate_objective >= current_objective - 1e-8:
                 accepted = True
                 break
             step *= 0.5
         if not accepted:
-            relative_change = 0.0
-            converged = True
+            # A stalled line search does not establish convergence. Only a
+            # genuinely small proposed predictor step meets our stopping rule.
+            candidate_eta = compiled.eta(candidate, params=params)
+            relative_change = float(
+                np.max(np.abs(candidate_eta - eta)) / (1.0 + np.max(np.abs(eta)))
+            )
+            converged = bool(relative_change < tolerance)
             break
 
         old_eta = eta
@@ -351,6 +429,26 @@ def gaussian_approximation_log_likelihood(
     mask = np.isfinite(pseudo_y)
     if not np.any(mask):
         return 0.0
+    if variance.ndim == 3:
+        if pseudo_y.ndim != 2 or variance.shape != (*pseudo_y.shape, pseudo_y.shape[-1]):
+            raise ValueError("Full pseudo covariance requires shape (T,K,K).")
+        total = 0.0
+        for t in range(len(pseudo_y)):
+            observed = np.flatnonzero(mask[t])
+            if not observed.size:
+                continue
+            residual = pseudo_y[t, observed] - eta[t, observed]
+            covariance = variance[t][np.ix_(observed, observed)]
+            if np.any(~np.isfinite(residual)) or np.any(~np.isfinite(covariance)):
+                return -np.inf
+            try:
+                factor = np.linalg.cholesky(covariance)
+            except np.linalg.LinAlgError:
+                return -np.inf
+            standardized = np.linalg.solve(factor, residual)
+            total -= 0.5 * (len(observed) * np.log(2.0 * np.pi)
+                + 2.0 * np.log(np.diag(factor)).sum() + standardized @ standardized)
+        return float(total)
     residual = pseudo_y[mask] - eta[mask]
     selected_variance = variance[mask]
     if (
@@ -424,6 +522,8 @@ def laplace_mh(
     expected = (compiled.n_time + 1, compiled.state_dim)
     if current.shape != expected:
         raise ValueError(f"current_path must have shape {expected}.")
+    if not np.isfinite(state_log_density(current, compiled, params)):
+        raise ValueError("The current state trajectory is outside the Gaussian prior support.")
     approximation = build_laplace_approximation(
         y,
         compiled,

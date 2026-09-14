@@ -16,12 +16,13 @@ from ..inference.fit._fs_output import FSOutput
 from ..inference.config import (
     GibbsConfig,
     HierarchicalSampler,
+    SharedSampler,
     Laplace,
     MCMC,
-    Particles,
 )
 from ..inference.fit.disturbance import sample_posterior
 from ..inference.fit.hierarchical import sample_hierarchical_posterior
+from ..inference.fit.shared import sample_shared_posterior
 from ..inference.fit.fs_gaussian import FSGaussianKernel
 from ..inference.fit.fs_gev import FSGEVKernel
 from ..inference.plan import InferencePlan, inference_plan
@@ -237,7 +238,6 @@ def _stack_fs_chains(
     transform_sign: float,
     plan: InferencePlan,
     mcmc: MCMC,
-    particles: Particles,
     laplace: Laplace,
     initial_state: Mapping[str, Any],
     initial_observation: Mapping[str, Any],
@@ -257,7 +257,11 @@ def _stack_fs_chains(
         for name in sorted(keys)
     }
     state_draws = np.stack([np.asarray(output.draws_states) for output in outputs], axis=0)
-    log_posterior = np.stack([np.asarray(output.logpost) for output in outputs], axis=0)
+    # Legacy FSOutput.logpost contains the observation likelihood only. Keep
+    # its scientific meaning explicit; the full FS/shrinkage density is not
+    # evaluated by these kernels.
+    log_likelihood = np.stack([np.asarray(output.logpost) for output in outputs], axis=0)
+    log_posterior = np.full_like(log_likelihood, np.nan)
 
     acceptance_names = set().union(*(output.acceptance for output in outputs))
     acceptance = {
@@ -280,12 +284,6 @@ def _stack_fs_chains(
         "laplace_mh_mean_log_acceptance_ratio",
         "laplace_mh_log_weight",
         "laplace_mh_support_rejections",
-        "particle_min_ess",
-        "particle_mean_unique_ancestors",
-        "particle_path_changed",
-        "particle_path_update_fraction",
-        "particle_changed_fraction",
-        "particle_reference_ancestor_change_fraction",
         "fs_elliptical_slice_steps",
         "ssvs_model_move_accepted",
         "ssvs_model_proposed_change",
@@ -314,7 +312,7 @@ def _stack_fs_chains(
             values.append(raw)
         draw_metrics[name] = np.stack(values, axis=0)
 
-    auxiliary: dict[str, Array] = {}
+    auxiliary: dict[str, Array] = {"log_likelihood": log_likelihood}
     if all("draws_states_ncp" in output.meta for output in outputs):
         auxiliary["states.fruehwirth_schnatter"] = np.stack(
             [np.asarray(output.meta["draws_states_ncp"]) for output in outputs],
@@ -333,7 +331,6 @@ def _stack_fs_chains(
         "acceptance": acceptance,
         "draw_metrics": draw_metrics,
         "mcmc": asdict(mcmc),
-        "particles": asdict(particles),
         "laplace": asdict(laplace),
         "restored_fraction_by_chain": restored,
         "chain_seeds": list(map(int, seeds)),
@@ -378,6 +375,8 @@ def _stack_fs_chains(
         metadata={
             "bucex_version": __version__,
             "inference_contract": "fruehwirth_schnatter_augmented_noncentering",
+            "log_likelihood_available": True,
+            "log_posterior_available": False,
             "signed_innovation_scales": True,
             "kernel": outputs[0].meta.get("sampler"),
             "bayesian_lasso": bool(outputs[0].meta.get("bayesian_lasso", False)),
@@ -398,7 +397,6 @@ def _stack_fs_chains(
             "phi_exact_invariant": bool(
                 outputs[0].meta.get("phi_exact_invariant", False)
             ),
-            "pgas_exact_invariant": bool(outputs[0].meta.get("pgas_exact_invariant", False)),
             "laplace_mh_exact_invariant": bool(
                 outputs[0].meta.get("laplace_mh_exact_invariant", False)
             ),
@@ -431,7 +429,6 @@ def _fit_fruehwirth_schnatter(
     priors: FSGaussianPriors | FSGEVPriors,
     plan: InferencePlan,
     mcmc: MCMC,
-    particles: Particles,
     laplace: Laplace,
     state_kwargs: Mapping[str, Any],
     params_state: Mapping[str, Any],
@@ -444,11 +441,11 @@ def _fit_fruehwirth_schnatter(
     if exog is not None:
         raise ValueError("The FS parameterization does not currently support regression.")
     options = dict(state_kwargs)
+    retired = sorted(set(options) & {"particles", "particle_proposal", "particle_resampling", "ancestor_sampling"})
+    if retired:
+        raise ValueError(f"Particle methods were retired in 1.6.0; remove state options {retired}.")
     options.update(
         asis=bool(plan.asis),
-        particles=int(particles.n),
-        particle_proposal=str(particles.proposal),
-        particle_resampling=str(particles.resampling),
         laplace_max_iterations=int(laplace.max_iterations),
         laplace_tolerance=float(laplace.tolerance),
         curvature_floor=float(laplace.curvature_floor),
@@ -492,7 +489,6 @@ def _fit_fruehwirth_schnatter(
         transform_sign=transform_sign,
         plan=plan,
         mcmc=mcmc,
-        particles=particles,
         laplace=laplace,
         initial_state=params_state,
         initial_observation=params_obs,
@@ -510,9 +506,9 @@ def _fit_multiseries_model(
     parameterization: str,
     asis: bool,
     mcmc: MCMC | None,
-    particles: Particles | int | None,
     laplace: Laplace | None,
     hierarchical_sampler: HierarchicalSampler | None,
+    shared_sampler: SharedSampler | None,
     init: Mapping[str, Any] | FitResult | None,
     dates: Array | None,
     name: str | None,
@@ -545,7 +541,7 @@ def _fit_multiseries_model(
     y_model = y_original * model.transform_signs[None, :]
     if dates is not None and np.asarray(dates).reshape(-1).size != y_model.shape[0]:
         raise ValueError("dates must have the same length as multiseries observations.")
-    if exog is not None:
+    if exog is not None and not model.requires_joint_inference:
         raise ValueError("Hierarchical structural inference does not support regression yet.")
     compiled = compile_model(model, y_model, exog=exog)
     resolved_mcmc = _resolve_mcmc(
@@ -558,13 +554,6 @@ def _fit_multiseries_model(
         seed=seed,
         progress=progress,
     )
-    resolved_particles = (
-        Particles()
-        if particles is None
-        else (Particles(n=int(particles)) if isinstance(particles, int) else particles)
-    )
-    if not isinstance(resolved_particles, Particles):
-        raise TypeError("particles must be Particles(...) or an integer.")
     resolved_laplace = Laplace() if laplace is None else laplace
     if not isinstance(resolved_laplace, Laplace):
         raise TypeError("laplace must be Laplace(...).")
@@ -583,6 +572,23 @@ def _fit_multiseries_model(
         parameterization=parameterization,
         asis=asis,
     )
+    if model.requires_joint_inference:
+        if hierarchical_sampler is not None:
+            raise ValueError("Use shared_sampler= for joint shared-state or copula models.")
+        resolved_shared_sampler = SharedSampler() if shared_sampler is None else shared_sampler
+        if not isinstance(resolved_shared_sampler, SharedSampler):
+            raise TypeError("shared_sampler must be SharedSampler(...).")
+        if isinstance(init, FitResult):
+            if init.model != model or not np.array_equal(np.asarray(init.y), y_model, equal_nan=True):
+                raise ValueError("A shared warm start must use the same model and observations.")
+            init = init.warm_start()
+        return sample_shared_posterior(
+            y_model, compiled, priors, resolved_plan, mcmc=resolved_mcmc,
+            laplace=resolved_laplace, dates=dates, initial_parameters=init,
+            sampler=resolved_shared_sampler,
+        )
+    if shared_sampler is not None:
+        raise ValueError("shared_sampler= requires shared components or a copula.")
     if resolved_plan.parameterization != "fruehwirth_schnatter":
         raise ValueError(
             "MultiSeriesModel currently implements hierarchical inference through "
@@ -606,7 +612,6 @@ def _fit_multiseries_model(
         resolved_priors,
         resolved_plan,
         mcmc=resolved_mcmc,
-        particles=resolved_particles,
         laplace=resolved_laplace,
         sampler=resolved_hierarchical_sampler,
         dates=dates,
@@ -627,9 +632,10 @@ def fit(
     parameterization: str = "auto",
     asis: bool = False,
     mcmc: MCMC | None = None,
-    particles: Particles | int | None = None,
+    particles: Any = None,
     laplace: Laplace | None = None,
     hierarchical_sampler: HierarchicalSampler | None = None,
+    shared_sampler: SharedSampler | None = None,
     init: Mapping[str, Any] | FitResult | None = None,
     init_params_state: Mapping[str, Any] | None = None,
     init_params_obs: Mapping[str, Any] | None = None,
@@ -651,13 +657,15 @@ def fit(
 ) -> FitResult:
     """Fit a Bayesian structural model through one integrated framework.
 
-    The independent choices are ``engine`` (FFBS/Laplace/Laplace-MH/PGAS),
+    The independent choices are ``engine`` (FFBS/Laplace/Laplace-MH),
     ``parameterization`` (centred/FS/disturbance), the innovation prior, and
     optional ASIS interweaving.  Invalid mathematical combinations fail before
     sampling and are recorded in the returned :class:`FitResult` plan.
     """
     if str(method).lower() not in {"gibbs", "mcmc"}:
         raise NotImplementedError("fit currently exposes MCMC inference.")
+    if particles is not None:
+        raise ValueError("Particle methods were retired in 1.6.0; use Laplace–MH and omit particles=.")
     if dates is None and hasattr(y, "index"):
         dates = np.asarray(y.index)
     if name is None and getattr(y, "name", None) is not None:
@@ -699,9 +707,9 @@ def fit(
             parameterization=parameterization,
             asis=asis,
             mcmc=mcmc,
-            particles=particles,
             laplace=laplace,
             hierarchical_sampler=hierarchical_sampler,
+            shared_sampler=shared_sampler,
             init=init,
             dates=dates,
             name=name,
@@ -713,6 +721,8 @@ def fit(
             seed=seed,
             progress=progress,
         )
+    if shared_sampler is not None:
+        raise ValueError("shared_sampler= requires a MultiSeriesModel with shared components.")
     if hierarchical_sampler is not None:
         raise ValueError(
             "hierarchical_sampler= is only valid for MultiSeriesModel fits."
@@ -856,13 +866,6 @@ def fit(
         seed=seed,
         progress=progress,
     )
-    resolved_particles = (
-        Particles()
-        if particles is None
-        else (Particles(n=int(particles)) if isinstance(particles, int) else particles)
-    )
-    if not isinstance(resolved_particles, Particles):
-        raise TypeError("particles must be Particles(...) or an integer.")
     resolved_laplace = Laplace() if laplace is None else laplace
     if not isinstance(resolved_laplace, Laplace):
         raise TypeError("laplace must be Laplace(...).")
@@ -904,7 +907,6 @@ def fit(
             priors=resolved_priors,
             plan=plan,
             mcmc=resolved_mcmc,
-            particles=resolved_particles,
             laplace=resolved_laplace,
             state_kwargs=fs_state_kwargs,
             params_state=state_initial,
@@ -944,7 +946,6 @@ def fit(
         resolved_priors,
         plan,
         mcmc=resolved_mcmc,
-        particles=resolved_particles,
         laplace=resolved_laplace,
         dates=None if dates is None else np.asarray(dates),
         series_name=name,
@@ -990,7 +991,7 @@ def fit_bulk_tail(
     tail_engine: str = "auto",
     parameterization: str = "auto",
     asis: bool = False,
-    particles: Particles | int | None = None,
+    particles: Any = None,
     laplace: Laplace | None = None,
     dates: Array | None = None,
     tail_direction: str = "max",
@@ -999,6 +1000,8 @@ def fit_bulk_tail(
 ) -> BulkTailFit:
     """Fit aligned Gaussian bulk and GEV tail series independently."""
 
+    if particles is not None:
+        raise ValueError("Particle methods were retired in 1.6.0; use Laplace–MH and omit particles=.")
     bulk_values = np.asarray(bulk_y, dtype=float).reshape(-1)
     tail_values = np.asarray(tail_y, dtype=float).reshape(-1)
     if bulk_values.size != tail_values.size:
@@ -1034,7 +1037,6 @@ def fit_bulk_tail(
         "parameterization": parameterization,
         "asis": asis,
         "mcmc": tail_mcmc,
-        "particles": particles,
         "laplace": laplace,
         "dates": dates,
         "name": "tail",
@@ -1058,7 +1060,7 @@ def fit_bayes(y: Array, *args, **kwargs) -> FitResult:
     """Deprecated compact wrapper; all work is delegated to :func:`fit`."""
 
     warnings.warn(
-        "fit_bayes is deprecated; use bucex.fit with MCMC/Particles/Laplace configs.",
+        "fit_bayes is deprecated; use bucex.fit with MCMC/Laplace configs.",
         DeprecationWarning,
         stacklevel=2,
     )

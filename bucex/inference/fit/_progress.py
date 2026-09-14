@@ -139,7 +139,6 @@ def mcmc_progress_line(
     elapsed: float,
     parameters: Mapping[str, Any] | None = None,
     metrics: Mapping[str, float] | None = None,
-    particles: int | None = None,
     details: tuple[str, ...] = (),
 ) -> str:
     """Format one informative, log-friendly MCMC progress line."""
@@ -177,23 +176,7 @@ def mcmc_progress_line(
             pieces.append(formatted)
 
     values = {} if metrics is None else metrics
-    if str(engine).lower() == "pgas":
-        ess = float(values.get("particle_min_ess", np.nan))
-        ancestors = float(values.get("particle_mean_unique_ancestors", np.nan))
-        if np.isfinite(ess):
-            denominator = "" if particles is None else f"/{int(particles)}"
-            pieces.append(f"particle_min_ess={ess:.1f}{denominator}")
-        if np.isfinite(ancestors):
-            pieces.append(f"ancestors={ancestors:.1f}")
-        path_update = float(
-            values.get(
-                "particle_path_update_fraction",
-                values.get("particle_changed_fraction", np.nan),
-            )
-        )
-        if np.isfinite(path_update):
-            pieces.append(f"path_update={path_update:.2f}")
-    elif str(engine).lower() in {"laplace", "laplace_mh"}:
+    if str(engine).lower() in {"laplace", "laplace_mh"}:
         iterations = float(values.get("laplace_iterations", np.nan))
         converged = float(values.get("laplace_converged", np.nan))
         if np.isfinite(iterations):

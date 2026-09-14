@@ -10,7 +10,7 @@ import numpy as np
 
 from .core import FitResult, combine_fits
 from .datasets import UCCLE_SERIES, fit_uccle_series, validate_uccle_data
-from .inference import Laplace, MCMC, Particles
+from .inference import Laplace, MCMC
 
 
 def _json_default(value):
@@ -32,7 +32,7 @@ def _fit_summary(fit: FitResult, path: Path) -> dict[str, object]:
         "plan": fit.plan.to_dict(),
         "state_shape": list(fit.state_draws.shape),
         "parameters": sorted(fit.parameter_draws),
-        "prior_profile": fit.meta["prior_profile"],
+        "prior_profile": fit.meta.get("prior_profile", "custom"),
         "engine_diagnostics": fit.diagnostics()["engine"],
     }
 
@@ -52,7 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     fit_parser.add_argument("--end")
     fit_parser.add_argument(
         "--engine",
-        choices=("auto", "ffbs", "laplace", "laplace_mh", "pgas"),
+        choices=("auto", "ffbs", "laplace", "laplace_mh"),
         default="auto",
     )
     fit_parser.add_argument(
@@ -72,17 +72,13 @@ def build_parser() -> argparse.ArgumentParser:
             "normal",
             "ssvs",
         ),
-        default="manuscript_lasso",
+        default="normal",
     )
-    fit_parser.add_argument("--asis", action=argparse.BooleanOptionalAction, default=True)
+    fit_parser.add_argument("--asis", action=argparse.BooleanOptionalAction, default=False)
     fit_parser.add_argument("--draws", type=int, default=2_000)
     fit_parser.add_argument("--warmup", type=int, default=1_000)
     fit_parser.add_argument("--thin", type=int, default=1)
     fit_parser.add_argument("--chains", type=int, default=4)
-    fit_parser.add_argument("--particles", type=int, default=256)
-    fit_parser.add_argument(
-        "--particle-proposal", choices=("bootstrap", "guided"), default="guided"
-    )
     fit_parser.add_argument("--laplace-iterations", type=int, default=30)
     fit_parser.add_argument("--laplace-tolerance", type=float, default=1e-5)
     fit_parser.add_argument("--laplace-mh-steps", type=int, default=1)
@@ -154,10 +150,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             chains=args.chains,
             seed=args.seed,
             progress=args.progress,
-        ),
-        particles=Particles(
-            n=args.particles,
-            proposal=args.particle_proposal,
         ),
         laplace=Laplace(
             max_iterations=args.laplace_iterations,
