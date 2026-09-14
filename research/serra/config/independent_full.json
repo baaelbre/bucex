@@ -51,10 +51,10 @@
       }
     }
   },
-  "mcmc": {
-    "draws": 1000,
-    "warmup": 1000,
-    "chains": 4,
+  "mcmc": { 
+    "draws": 500,
+    "warmup": 500,
+    "chains": 1,
     "seed": 56100,
     "progress": true,
     "progress_every": 50
