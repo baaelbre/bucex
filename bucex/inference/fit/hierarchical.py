@@ -87,7 +87,8 @@ def _seasonal_initial(y: Array, period: int | None) -> Array:
     phase = np.arange(y.size) % int(period)
     overall = float(np.mean(y))
     full = np.asarray(
-        [float(np.mean(y[phase == index])) - overall for index in range(int(period))]
+        [float(np.mean(y[phase == index])) - overall if np.any(phase == index)
+         else 0.0 for index in range(int(period))]
     )
     full -= float(np.mean(full))
     return full[:-1]
@@ -477,10 +478,11 @@ def _gev_laplace_mh_step(
         X, theta_names, tbar = design_matrix_ncp(
             state.z_path, state.layout, center_time=True
         )
-        current_mu = mu_from_ncp(state.z_path, state.params_state, state.layout)
+        # Fixed observation anchor: the independence proposal must not depend
+        # on the current coefficient/model block without a reverse correction.
         pseudo_y, pseudo_variance = _laplace_pseudo_mu(
             state.y,
-            current_mu,
+            state.y,
             state.model,
             state.params_obs,
             curvature_floor=float(laplace.curvature_floor),

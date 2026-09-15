@@ -125,7 +125,7 @@ def posterior_pit(fit) -> Array:
         eta = fit.eta_draws(original_scale=False)
         output = np.full((fit.n_time, len(fit.channel_names)), np.nan)
         for index, channel in enumerate(fit.model.channels):
-            sigma = fit.parameter(f"sigma.{channel.name}")[:, None]
+            sigma = fit.sigma_draws(channel=channel.name)
             xi = (
                 fit.parameter(f"xi.{channel.name}")[:, None]
                 if channel.family == "gev"
@@ -220,7 +220,8 @@ def fit_diagnostics(fit):
                     )
                 ),
             )
-            engine["joint_state_mh_acceptance"] = engine["state_acceptance"]
+            key = "conditional_state_mh_acceptance" if fit.metadata.get("marginal_fs") else "joint_state_mh_acceptance"
+            engine[key] = engine["state_acceptance"]
             if "state_ess_evaluations" in metrics:
                 for label, metric in (
                     ("elliptical_slice_mean_likelihood_evaluations", "state_ess_evaluations"),
@@ -229,9 +230,17 @@ def fit_diagnostics(fit):
                     ("elliptical_slice_mean_absolute_angle", "state_ess_mean_absolute_angle"),
                 ):
                     engine[label] = _finite_mean(metrics.get(metric, []))
+    warnings = list(fit.plan.warnings)
+    if fit.n_chains < 2:
+        warnings.append("A single chain cannot assess between-chain convergence; use multiple chains for scientific inference.")
+    if hasattr(table, "columns"):
+        if "rhat" in table and np.any(table["rhat"].to_numpy() > 1.01):
+            warnings.append("Some parameter R-hat values exceed 1.01; inspect traces and scientific-target diagnostics.")
+        if "ess_bulk" in table and np.any(table["ess_bulk"].to_numpy() < 400):
+            warnings.append("Some bulk effective sample sizes are below 400; quantify Monte Carlo error before reporting results.")
     return {
         "parameters": table,
         "engine": engine,
         "pit": posterior_pit(fit),
-        "warnings": list(fit.plan.warnings),
+        "warnings": warnings,
     }

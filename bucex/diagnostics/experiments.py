@@ -208,7 +208,7 @@ def forecast_uncertainty(forecast, *, channel=None, levels=(0.90, 0.95, 0.99)):
         observations, eta = forecast.observations[..., index], forecast.eta[..., index]
         item = next(c for c in forecast.channels if c.name == channel)
         family, sign = item.family, item.transform_sign
-        sigma = forecast.parameters[f"sigma.{channel}"][:, None]
+        sigma = forecast.parameters.get(f"sigma_path.{channel}", forecast.parameters[f"sigma.{channel}"][:, None])
         xi = forecast.parameters.get(f"xi.{channel}")
     else:
         observations, eta = forecast.observations, forecast.eta
@@ -318,10 +318,13 @@ def prior_predictive_targets(model, prior, n_time, threshold, *, tail="upper",
                 params["sigma"] = np.exp(log_sigma)
             if np.any(~np.isfinite(params["sigma"])) or np.any(params["sigma"] <= 0):
                 raise FloatingPointError("Prior log-scale paths exceed numerical precision; reconsider the declared prior.")
+        if model.observation.scale is not None:
+            specification = model.observation.scale
+            params["scale.seasonal"] = specification.contrast() @ rng.normal(0, specification.prior_sd, specification.period-1)
         simulation = simulate(model, n_time, params, initial_state=initial,
                               seed=int(rng.integers(0, 2**32-1)))
         eta = simulation.eta
-        risk = 1-model.observation.cdf(sign*threshold, eta, sigma=params["sigma"], xi=params.get("xi"))
+        risk = 1-model.observation.cdf(sign*threshold, eta, sigma=simulation.sigma, xi=params.get("xi"))
         item = dict(level_change=sign*(simulation.states[-1, trend_slice.start]-simulation.states[1, trend_slice.start]),
             risk_start=risk[0], risk_end=risk[-1], risk_change=risk[-1]-risk[0],
             risk_event=risk[event_index], location_event=sign*eta[event_index])

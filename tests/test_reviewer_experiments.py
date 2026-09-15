@@ -15,7 +15,7 @@ def test_ssvs_prior_retains_atoms_and_sd_variance_scaling():
     np.testing.assert_array_equal(changed["sd.slope"], 2*original["sd.slope"])
     np.testing.assert_array_equal(changed["sd.level"], original["sd.level"])
     assert abs(np.mean(original["sd.level"] == 0)-.5) < .01
-    assert abs(np.mean(original["sd.slope"] == 0)-2/3) < .01
+    assert abs(np.mean(original["sd.slope"] == 0)-.55) < .01
     assert np.mean(changed["sd.slope"]**2) == pytest.approx(4*np.mean(original["sd.slope"]**2))
 
 

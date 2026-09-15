@@ -90,6 +90,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     validate_parser.add_argument("--data-dir", type=Path)
     validate_parser.add_argument("--check-daily", action="store_true")
+    validate_parser.add_argument("--daily-source", type=Path, help="daily CSV to compare against all summary months")
 
     inspect_parser = commands.add_parser("inspect", help="inspect a saved fit")
     inspect_parser.add_argument("fit", type=Path)
@@ -105,7 +106,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "validate-data":
-        table = validate_uccle_data(args.data_dir, check_daily=args.check_daily)
+        table = validate_uccle_data(args.data_dir, check_daily=args.check_daily,
+                                   daily_source=args.daily_source)
         print(
             json.dumps(
                 table.reset_index().to_dict(orient="records"),

@@ -70,7 +70,9 @@ def _seasonal_initial(y: Array, period: int | None) -> Array:
     overall = float(np.nanmean(y))
     phase = np.arange(y.size) % int(period)
     full = np.asarray(
-        [np.nanmean(y[phase == index]) - overall for index in range(int(period))],
+        [np.nanmean(y[phase == index]) - overall
+         if np.any(np.isfinite(y[phase == index])) else 0.0
+         for index in range(int(period))],
         dtype=float,
     )
     full = np.nan_to_num(full, nan=0.0)
@@ -566,6 +568,20 @@ def _fit_multiseries_model(
         raise TypeError(
             "hierarchical_sampler must be HierarchicalSampler(...)."
         )
+    from ..priors import MarginalPriors
+    from ..inference.fit.marginal import marginal_plan, sample_marginal_posterior
+    if isinstance(priors, MarginalPriors):
+        if hierarchical_sampler is not None or shared_sampler is not None or exog is not None:
+            raise ValueError("MarginalPriors uses the private FS sampler; omit hierarchical_sampler, shared_sampler and exog.")
+        if isinstance(init, FitResult):
+            if init.model != model or not np.array_equal(init.y, y_model, equal_nan=True):
+                raise ValueError("A marginal FS warm start must use the same model and observations.")
+            init = init.warm_start()
+        private_plan = marginal_plan(compiled, engine=engine, parameterization=parameterization, asis=asis)
+        return sample_marginal_posterior(y_model, compiled, priors, private_plan,
+            mcmc=resolved_mcmc, laplace=resolved_laplace, dates=dates, initial_parameters=init)
+    if any(channel.observation.scale is not None for channel in model.channels):
+        raise ValueError("Multiseries SeasonalScale requires MarginalPriors and private FS trajectories.")
     resolved_plan = inference_plan(
         compiled,
         engine=engine,
@@ -886,6 +902,16 @@ def fit(
         parameterization=plan.parameterization,
         priors=priors,
     )
+
+    if model.observation.scale is not None:
+        from ..inference.fit.marginal import marginal_plan
+        from ..inference.fit.marginal_adapter import sample_seasonal_univariate
+        if state_kwargs or exog is not None:
+            raise ValueError("SeasonalScale uses the private FS sampler; omit state_kwargs and exog.")
+        private_plan = marginal_plan(compiled, engine=engine, parameterization=parameterization, asis=asis)
+        return sample_seasonal_univariate(y_model, model, compiled, resolved_priors, private_plan,
+            mcmc=resolved_mcmc, laplace=resolved_laplace, dates=dates, sign=sign,
+            initial=init_payload, params_state=state_initial, params_obs=observation_initial, name=name)
 
     if plan.parameterization == "fruehwirth_schnatter":
         fs_state_kwargs = {} if state_kwargs is None else dict(state_kwargs)

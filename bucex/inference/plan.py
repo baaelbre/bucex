@@ -97,6 +97,14 @@ def inference_plan(
     asis: bool = False,
 ) -> InferencePlan:
     family = compiled.family
+    private_copula_fs = (getattr(compiled.model, "copula", None) is not None
+                         and not getattr(compiled.model, "shared", ())
+                         and str(parameterization).lower() in {"fs", "fruehwirth_schnatter", "ncp", "noncentered", "noncentred"})
+    seasonal_scale = (not hasattr(compiled, "channel_names")
+                      and getattr(compiled.model.observation, "scale", None) is not None)
+    if private_copula_fs or seasonal_scale:
+        from .fit.marginal import marginal_plan
+        return marginal_plan(compiled, engine=engine, parameterization=parameterization, asis=asis)
     if bool(getattr(compiled, "is_shared", False)):
         return _shared_inference_plan(
             compiled, engine=engine, parameterization=parameterization, asis=asis

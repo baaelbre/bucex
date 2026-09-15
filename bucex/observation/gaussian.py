@@ -8,14 +8,20 @@ import numpy as np
 from scipy.stats import norm
 
 from .base import ObsSpec, resolve_observation_parameters
+from .scale import SeasonalScale
 
 
 @dataclass(frozen=True)
 class Gaussian:
     """Gaussian observations with structural mean and static scale."""
 
+    scale: SeasonalScale | None = None
     name: str = field(default="gaussian", init=False)
     spec: ObsSpec = field(default=ObsSpec("gaussian"), init=False, repr=False)
+
+    def __post_init__(self):
+        if self.scale is not None and not isinstance(self.scale, SeasonalScale):
+            raise TypeError("scale must be SeasonalScale(...) or None.")
 
     def logpdf(
         self,
@@ -69,7 +75,7 @@ class Gaussian:
         return bool(np.all(np.asarray(sigma) > 0.0))
 
     def to_dict(self) -> dict[str, Any]:
-        return {"family": self.name}
+        return {"family": self.name, **({"scale": self.scale.to_dict()} if self.scale else {})}
 
 
 GaussianObs = Gaussian

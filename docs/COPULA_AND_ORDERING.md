@@ -1,169 +1,125 @@
 # Residual dependence and ordering
 
-BUCEX 1.6.1 adds an optional Gaussian residual copula to `MultiSeriesModel`.
-It works with private component paths alone, or with declared `Shared` and
-`Departures` components. Every channel retains its own observation distribution,
-baseline, and declared seasonal components. Ordinary univariate fitting remains
-available independently of either extension.
+## The 1.6.3 private FS/SSVS model
 
-## Model and interpretation
+Each series has a private level, slope, location seasonality, observation scale
+and (for GEV) shape. Structural SSVS priors are independent across channels.
+For a contemporaneous response vector, the likelihood is
 
-For a time block t, conditional on the states and parameters, the joint density is
+\[
+p(y_t\mid x_t,\theta,R)=c_R(F_{1t}(y_{1t}),\ldots,F_{Kt}(y_{Kt}))
+\prod_j f_{jt}(y_{jt}),\qquad
+\log c_R=-\tfrac12\log|R|-\tfrac12z_t^\top(R^{-1}-I)z_t.
+\]
 
-```text
-p(y_t | x_t, theta, R) = c_R(F_1(y_1t), ..., F_K(y_Kt)) * product_i f_i(y_it).
-log c_R(u) = -0.5 log|R| - 0.5 z' (R^-1 - I) z,  z_i = Phi^-1(u_i).
-```
+Here `z = Phi^-1(F(y))` uses original-scale CDFs. Reflected minima are handled
+with the corresponding survival function, so positive residual correlations
+have the same temperature orientation across all six summaries.
 
-All CDFs and correlations refer to original response units. For a minimum fitted
-internally as a reflected maximum, its original CDF is the survival function of
-the reflected variable. The implementation handles this reflection in both the
-likelihood and prediction. A positive residual correlation therefore has a
-consistent temperature interpretation across maxima, means, and minima.
+The conditional normal score of channel j is Gaussian with mean
+`R[j,-j] @ inv(R[-j,-j]) @ z[-j]` and its Schur-complement variance. That gives
+an exact conditional marginal likelihood. Gaussian states admit conditional
+FFBS; GEV states use a deterministic Laplace independence proposal with an
+exact MH correction. Structural coefficients/indicators, seasonal log-scale
+effects, baseline scale, shape and R are updated using this conditional target.
 
-A shared state describes co-movement in latent location over time; R describes
-remaining dependence between observations in the same block. These are different
-quantities. R is a correlation of conditional normal scores, not necessarily the
-Pearson correlation of temperatures. Shared states and posterior parameter
-uncertainty can induce predictive dependence even when R is the identity.
+Consequently, changing R can change the trajectories and SSVS probabilities.
+This is not a second-stage residual fit with frozen margins. For paired changes,
+`Var(D1-D2) = Var(D1)+Var(D2)-2 Cov(D1,D2)`; the covariance matters. Individual
+credible intervals can widen, narrow or shift. Better calibration is an
+empirical question, not a mathematical consequence of positive dependence.
 
-The current shared warming declaration uses specified loadings, ordinarily one,
-and zero-sum departures. It estimates an identified common component in Celsius;
-it does not estimate free dynamic-factor loadings or identify externally forced
-warming. Common and departure trajectories must be assessed together, including
-their joint contrasts and prior sensitivity.
-
-## Construction and priors
-
-Add the copula to the same general model declaration used elsewhere:
+## Declarations and priors
 
 ```python
-model = bx.MultiSeriesModel(
-    channels=channels,
-    shared=shared_components,  # use () for private paths only
-    copula=bx.GaussianCopula(eta=2.0),
-)
-fit = bx.fit(data, model=model, priors=joint_priors,
-             engine="laplace_mh", parameterization="centered",
-             mcmc=bx.MCMC(chains=4, warmup=1000, draws=1000))
+model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula(eta=2.))
+priors = bx.MarginalPriors({name: own_ssvs_prior for name in names})
+fit = bx.fit(data, model, priors=priors, parameterization="fs", asis=False,
+             mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000))
 ```
 
-Here `channels`, `shared_components`, and `joint_priors` are explicit scientific
-declarations; the runnable construction is in `research/serra/models.py`.
-`JointPriors` supplies proper process-SD, observation-SD, and GEV-shape priors.
-Each seasonal component is channel specific. Specify static or dynamic evolution
-per channel according to the question; a shared warming state does not force a
-shared seasonal cycle.
+The complete Uccle construction is `research/serra/models.py`. Fix
+`GaussianCopula(correlation=np.eye(K))` for a matched independence comparison.
+Both models have identical components and marginal priors. Six separate
+univariate jobs remain usable if the joint chain is impractical.
 
-`GaussianCopula(eta=2)` estimates R under an LKJ(2) prior. Larger eta increasingly
-concentrates near independence; eta=1 is uniform over correlation matrices,
-not uniform over each pairwise correlation when K>2. For K=6 and eta=2, each
-pairwise prior has mean zero and SD 1/3. Compare eta=1, 2, and 4 when conclusions
-depend on residual correlations. The implementation uses Cholesky partial
-correlations with the full transformation Jacobian. See the official
-[LKJ density](https://mc-stan.org/docs/functions-reference/correlation_matrix_distributions.html)
-and [correlation transform](https://mc-stan.org/docs/reference-manual/transforms.html#correlation-matrices)
-references.
+`eta=2` specifies LKJ(2), mildly favoring identity; eta=1 is uniform over
+correlation matrices, not over each pairwise correlation for K>2. For K=6,
+the LKJ(2) pairwise prior SD is 1/3. Compare eta=1,2,4. The Cholesky partial
+correlation transform includes its complete Jacobian. A continuous LKJ prior
+assigns probability zero to exact independence, so `Pr(rho != 0)` is not an
+informative dependence measure. Use intervals and practical thresholds.
 
-`GaussianCopula(correlation=R)` fixes a positive-definite correlation matrix.
-The SERRA `joint` baseline fixes R to the identity so that estimated-copula and
-independence fits can use identical marginal priors, components, and inference
-controls. This matched comparison is distinct from comparing the separate
-univariate SSVS fits with a continuous-shrinkage joint model.
+The new route supports complete aligned finite data, private local linear
+trends and optional dummy seasonality, exact FS/SSVS, and optional seasonal
+observation scale. Shared states and hierarchical pooling are separate routes.
+The existing continuous `JointPriors` copula model remains available, including
+its own missing-data handling; that is not the new private FS backend.
 
-## Inference and diagnostics
+## What hierarchical, shared and joint mean
 
-Mixed copula models use a deterministic Laplace proposal built from the full
-joint likelihood gradient and Hessian, including cross-channel curvature. The
-Gaussian pseudo-observations have full covariance matrices. Indefinite local
-curvature is stabilized in the proposal while retaining the likelihood score;
-Metropolis-Hastings correction still uses the original joint likelihood.
-With Gaussian margins this recovers the correlated Gaussian state posterior.
-Observation scale, GEV shape, residual correlation, and interwoven process-scale
-updates all account for the copula. An elliptical-slice refresh also targets
-the full joint likelihood.
+| Term | What links series? | FS/SSVS in this release? |
+|---|---|---|
+| Independent private models | Nothing across series | Yes |
+| Selection hierarchy | Pooled prior probabilities or slab scales | Existing hierarchical route |
+| Shared states | An actual common latent path with specified loadings and constrained departures | Continuous `JointPriors`, not private SSVS |
+| Joint residual copula | Within-month conditional observation dependence | Yes with `MarginalPriors`; full feedback |
+| Shared plus copula | Both a common latent path and dependent observation residuals | Existing continuous shared route |
 
-The initial marginal-only proposal was rejected after an actual Uccle pilot
-showed zero retained state-MH acceptance under strong dependence. Its evidence
-is retained alongside the revised-proposal pilot in `validation/`. Inspect
-acceptance rates, R-hat, ESS, traces, and effective samples per elapsed second
-for the revised proposal too. Exact targeting does not imply adequate finite-run
-mixing, and a successful short-record pilot does not establish full-record
-convergence.
+A residual copula does not supply free dynamic-factor loadings, common states,
+or a causal warming attribution. Each declared channel retains its own
+seasonality. There is no requirement that means and extreme locations share
+an identical change over time.
 
-Continuous or fixed process-SD priors are supported on this route. Structural
-SSVS remains available for univariate and the existing selection-hierarchical
-models; copula-plus-SSVS is not implemented. PGAS is absent.
+## Evidence for residual dependence
 
-Useful result methods are:
+1. Fit the private independence model after removing location/seasonal effects
+   and allowing seasonal scale. Inspect residual PIT/normal scores by month
+   and their temporal autocorrelation; raw temperature correlations are not
+   residual-dependence evidence.
+2. `bx.residual_dependence_check(fit)` compares observed score correlations
+   with joint posterior replications. It integrates over fitted states/parameters
+   and reports descriptive posterior predictive tail areas, not hypothesis-test
+   p-values. Use adequate draws and separate checks for serial dependence.
+3. `fit.copula_summary(practical_threshold=.1)` reports pairwise intervals,
+   `Pr(rho>0)`, `Pr(abs(rho)>.1)`, R-hat and ESS. Assess sensitivity to LKJ eta.
+4. Compare matched held-out joint/marginal scores and compound-event Brier
+   scores. `research.serra.compare` keeps forecast cases paired and resamples
+   whole calendar-year blocks. Try longer blocks if errors persist across years.
+
+`future.joint_log_score(y)` is a negative log score (lower is better), obtained
+by mixing complete joint conditional densities. It is generally not the sum
+of independently mixed marginal log scores. `compound_probability(events)`
+averages joint predictive draws; it is not a posterior credible interval for
+a conditional event probability. Increase predictive Monte Carlo draws for
+rare events. A Gaussian copula with nonsingular R has no asymptotic tail
+dependence; finite-threshold adequacy needs direct validation.
+
+## Ordering is an explicit limitation
+
+For common complete monthly blocks, TXn <= TXm <= TXx and TNn <= TNm <= TNx.
+Additional TX/TN inequalities require compatible daily recording windows.
+The bundled monthly observations satisfy `UCCLE_ORDER_CONSTRAINTS`; source
+notes flag different TX/TN windows and two daily TN>TX values in the extension.
 
 ```python
-fit.copula_summary()
-fit.copula_correlation_draws(combine_chains=False)
-prediction = fit.forecast(24, seed=81)
-prediction.joint_log_score(held_out_observations)
-prediction.ordering_diagnostics(bx.UCCLE_ORDER_CONSTRAINTS)
-prediction.compound_probability({"TXx": (">", 35), "TNm": (">", 20)})
+fit.ordering_diagnostics(bx.UCCLE_ORDER_CONSTRAINTS)
+future.ordering_diagnostics(bx.UCCLE_ORDER_CONSTRAINTS)
 ```
 
-Joint predictive scoring mixes complete draw-level joint densities. It is not
-the sum of separately mixed marginal log scores. Compound probabilities use
-unchanged joint draws, integrating state, parameter, and observation uncertainty.
-Keep channel alignment and posterior draws intact. Missing observations in
-likelihood fitting use the relevant observed submatrix of R.
+These functions report pairwise crossing probabilities and the union probability
+of any crossing. The latter is not the sum of the pairwise probabilities. Check
+summary observations, not an assumed ordering of Gaussian means and GEV locations.
 
-A Gaussian copula has no nonzero asymptotic tail dependence for nonsingular R.
-It can model dependence at finite thresholds, but fit quality for simultaneous
-rare extremes must be tested. A t-copula or other tail-dependent construction is
-a future extension, not a capability of this release.
+A Gaussian mean is unbounded, while a negative-shape GEV maximum has a finite
+upper endpoint. No copula can then impose mean <= maximum almost surely while
+preserving both margins. In general, almost-sure order requires stochastic
+ordering of the marginal CDFs. The current joint model is a working model of
+summary dependence and retains this support limitation.
 
-## Ordering is a separate model requirement
-
-For summaries of the same complete blocks, check these necessary inequalities:
-
-```text
-TXn <= TXm <= TXx
-TNn <= TNm <= TNx
-TNn <= TXn,  TNm <= TXm,  TNx <= TXx
-```
-
-The bundled 1,572 monthly Uccle blocks satisfy all seven pairwise inequalities.
-`UCCLE_ORDER_CONSTRAINTS` encodes them. The generic ordering diagnostic reports
-each violation probability, its time profile, and the probability that at least
-one constraint fails in a block. The latter is a union probability, not the sum
-of pairwise probabilities. These checks apply to observations, not to a presumed
-ordering of GEV location parameters and Gaussian means.
-
-A copula cannot generally enforce these constraints while preserving the chosen
-margins. If L <= M <= U almost surely, necessarily
-F_L(a) >= F_M(a) >= F_U(a) for every a. In particular, a negative-shape GEV maximum
-has a finite upper endpoint b, whereas a Gaussian mean has positive probability
-above b. Thus some mean-above-maximum probability is unavoidable under those
-unchanged margins, whatever the copula. Check its practical magnitude rather
-than assuming correlation eliminates it.
-
-This release diagnoses predictive crossings; it does not impose hard ordering.
-Sorting draws changes their marginal distributions. Rejecting crossed draws
-defines a conditional predictive model. An order-truncated joint likelihood
-requires its state- and parameter-dependent normalizing probability in inference;
-omitting that term does not fit the intended model.
-
-Two defensible future hard-order models are positive gaps around a central
-summary, or a daily-temperature model whose realizations are aggregated into all
-six summaries. Both change the current observation model. If predictive crossing
-probabilities are material, report that limitation and use one of these models
-before making claims that require physical ordering.
-
-## Evidence needed for a paper
-
-Run the independent six-series analysis first. Compare fixed-identity and
-estimated-R joint models with matched priors and seasonality, and then assess
-whether adding a shared state improves inference or prediction. Compare held-out
-joint and marginal scores, upper-tail calibration, interval widths and coverage,
-residual correlations, compound risks, and crossing probabilities. Correlation
-does not guarantee narrower or better calibrated credible intervals.
-
-The reviewer experiments and remaining manuscript tasks are tracked in
-`REVIEWER_MATRIX.md`. Numerical reference tests and short workflow runs establish
-implementation evidence; repeated recovery experiments and converged Uccle fits
-are still required for scientific conclusions.
+Do not sort predictions or discard crossed draws. Sorting changes the margins;
+rejection conditions the predictive distribution. An order-truncated likelihood
+needs its state/parameter-dependent normalizing probability inside inference.
+If violations are scientifically material, a positive-gap model or a daily
+model followed by aggregation is the next methodological step, with changed
+marginal assumptions. Hard ordering is not claimed by this release.

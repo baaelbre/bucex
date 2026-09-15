@@ -1,5 +1,6 @@
 """Shared setup for small, explicitly configured SERRA experiments."""
 from dataclasses import asdict, replace
+from copy import deepcopy
 import json
 import numpy as np
 import pandas as pd
@@ -24,6 +25,13 @@ def prior_for(item, data, config, variant):
         if not np.isfinite(factor) or factor <= 0:
             raise ValueError("initial_slope_multiplier must be finite and positive.")
         prior = replace(prior, beta0=bx.NormalPrior(prior.beta0.mean, prior.beta0.sd * factor))
+    if "trend_probabilities" in variant:
+        prior = replace(prior, ssvs=replace(prior.ssvs, trend_probabilities=tuple(variant["trend_probabilities"])))
+    if "seasonal_initial_multiplier" in variant:
+        prior = replace(prior, gamma0_season=bx.DiagonalNormalPrior(prior.gamma0_season.mean,
+            np.asarray(prior.gamma0_season.sd)*variant["seasonal_initial_multiplier"]))
+    if "observation_variance" in variant:
+        prior = replace(prior, sigma2=bx.InverseGammaPrior(*variant["observation_variance"]))
     if item.family == "gev":
         bounds = variant.get("xi_bounds", config["priors"]["xi_bounds"])
         prior = replace(prior, xi=bx.UniformPrior(*bounds), xi_max_abs=max(abs(v) for v in bounds))
@@ -31,14 +39,20 @@ def prior_for(item, data, config, variant):
 
 
 def fit_case(data, name, config, variant, *, engine="laplace_mh"):
+    config = deepcopy(config)
+    if variant.get("profile", "ssvs") != "ssvs" or variant.get("seasonal_scale") is False:
+        config["model"]["seasonal_scale"] = False
+    if "scale_prior_sd" in variant:
+        config["model"]["scale_prior_sd"] = variant["scale_prior_sd"]
     item = channel(name, data, config)
     if item.family == "gev":
         bounds = tuple(variant.get("xi_bounds", config["priors"]["xi_bounds"]))
-        item = replace(item, observation=bx.GEV(phi=config["model"].get("phi", "stationary"), xi_bounds=bounds))
+        item = replace(item, observation=replace(item.observation, xi_bounds=bounds))
     model, prior = bx.Model(item.observation, item.components), prior_for(item, data, config, variant)
     fit = bx.fit(data[name], model=model, tail=item.tail, priors=prior,
         engine="ffbs" if item.family == "gaussian" else engine,
-        parameterization="fs", mcmc=bx.MCMC(**config["mcmc"]), **inference_options(config))
+        parameterization="fs", mcmc=bx.MCMC(**config["mcmc"]),
+        init={"xi": 0.} if item.family == "gev" else None, **inference_options(config))
     return fit, prior
 
 
@@ -67,9 +81,9 @@ def save_case(fit, prior, directory, config, *, threshold, event_index=-1):
     pd.concat([prior_targets, scientific.assign(distribution="posterior")]).to_csv(
         directory / "prior_posterior_targets.csv")
     if config.get("figures", True):
-        save_band(fit, fit.component_draws("level"), directory / "level")
+        save_band(fit, fit.component_draws("level"), directory / "level", level=level)
         save_band(fit, fit.exceedance_probability_draws(threshold, return_labels=False),
-                  directory / "risk", ylabel=fit.event_label(threshold))
+                  directory / "risk", ylabel=fit.event_label(threshold), level=level)
         import matplotlib.pyplot as plt
         figure, axes = plt.subplots(1, 3, figsize=(10, 3))
         for axis, component in zip(axes, ("level", "slope", "seasonal")):

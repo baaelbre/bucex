@@ -8,6 +8,7 @@ import numpy as np
 from scipy.stats import genextreme
 
 from .base import ObsSpec, resolve_observation_parameters
+from .scale import SeasonalScale
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class GEV:
 
     xi_bounds: tuple[float, float] = (-0.5, 0.5)
     phi: str = "stationary"
+    scale: SeasonalScale | None = None
     name: str = field(default="gev", init=False)
     spec: ObsSpec = field(default=ObsSpec("gev"), init=False, repr=False)
 
@@ -42,6 +44,11 @@ class GEV:
         if mode not in {"stationary", "linear", "rw", "ssvs"}:
             raise ValueError("GEV phi must be 'stationary', 'linear', 'rw', or 'ssvs'.")
         object.__setattr__(self, "phi", mode)
+        if self.scale is not None:
+            if not isinstance(self.scale, SeasonalScale):
+                raise TypeError("scale must be SeasonalScale(...) or None.")
+            if mode != "stationary":
+                raise ValueError("SeasonalScale currently requires phi='stationary'; dynamic phi remains available without SeasonalScale.")
 
     @staticmethod
     def _parameters(params, sigma, xi):
@@ -214,6 +221,7 @@ class GEV:
             "family": self.name,
             "xi_bounds": list(self.xi_bounds),
             "phi": self.phi,
+            **({"scale": self.scale.to_dict()} if self.scale else {}),
         }
 
 

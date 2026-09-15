@@ -14,10 +14,12 @@ def selected_config(config, *, series=None, phi=None, copula=False):
         config["data"]["series"] = list(series)
     if phi is not None:
         config["model"]["phi"] = phi
+        if phi != "stationary":
+            config["model"]["seasonal_scale"] = False
     if copula:
-        modes = {"joint": "copula", "shared": "shared_copula"}
+        modes = {"joint": "copula"}
         if config["analysis"] not in modes:
-            raise ValueError("--copula requires a joint or shared configuration.")
+            raise ValueError("--copula requires a joint configuration.")
         config["analysis"] = modes[config["analysis"]]
     return config
 
@@ -48,7 +50,7 @@ def arguments(description=__doc__):
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--series", nargs="+", choices=tuple(bx.UCCLE_INFO))
     parser.add_argument("--phi", choices=("stationary", "linear", "rw", "ssvs"))
-    parser.add_argument("--copula", action="store_true", help="Add residual Gaussian dependence to a joint/shared config.")
+    parser.add_argument("--copula", action="store_true", help="Add residual Gaussian dependence to a private joint config.")
     args = parser.parse_args()
     return selected_config(bx.load_config(args.config), series=args.series, phi=args.phi, copula=args.copula)
 

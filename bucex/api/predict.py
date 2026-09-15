@@ -17,6 +17,29 @@ from ..core.calendar import seasonal_phases
 Array = np.ndarray
 
 
+def _seasonal_scale_paths(fit, indices, n_time, dates, *, start_index=0):
+    result = {}
+    channels = fit.model.channels if fit.is_multiseries_model else (None,)
+    for channel in channels:
+        observation = channel.observation if channel else fit.model.observation
+        if observation.scale is None:
+            continue
+        suffix = f".{channel.name}" if channel else ""
+        phase = observation.scale.phases(n_time, dates, start_index=start_index)
+        effects = fit.parameter("scale.seasonal"+suffix)[indices]
+        baseline = fit.parameter("sigma"+suffix)[indices]
+        result["sigma_path"+suffix] = baseline[:, None] * np.exp(effects[:, phase])
+    return result
+
+
+def _time_parameters(parameters, values, draw, time):
+    result = dict(parameters)
+    for name, array in values.items():
+        if name.startswith("sigma_path."):
+            result["sigma."+name.removeprefix("sigma_path.")] = float(array[draw, time])
+    return result
+
+
 def _component_designs(fit, n_time: int) -> dict[str, Array]:
     """Retain scientific decompositions in joint forecast objects."""
     if not fit.is_multiseries_model:
@@ -262,7 +285,7 @@ class Forecast:
                 raise ValueError("Return levels require a GEV channel.")
             sign = float(np.asarray(self.transform_sign)[index])
             eta = self.eta[:, :, index]
-            sigma = self.parameters[f"sigma.{channel}"][:, None]
+            sigma = self.parameters.get(f"sigma_path.{channel}", self.parameters[f"sigma.{channel}"][:, None])
             xi = self.parameters[f"xi.{channel}"][:, None]
         elif self.family != "gev":
             raise ValueError("Return levels require a GEV forecast.")
@@ -304,7 +327,7 @@ class Forecast:
             observation_model = self.observation_model[channel]
             sign = float(np.asarray(self.transform_sign)[index])
             eta_model = sign * self.eta[:, :, index]
-            sigma = self.parameters[f"sigma.{channel}"][:, None]
+            sigma = self.parameters.get(f"sigma_path.{channel}", self.parameters[f"sigma.{channel}"][:, None])
             xi = (
                 self.parameters[f"xi.{channel}"][:, None]
                 if getattr(observation_model, "name", None) == "gev"
@@ -360,6 +383,10 @@ class Forecast:
                 finite = np.isfinite(result[draw])
                 if not np.any(finite):
                     continue
+                for channel in self.channel_names:
+                    key = f"sigma_path.{channel}"
+                    if key in self.parameters:
+                        params[f"sigma.{channel}"] = self.parameters[key][draw, finite]
                 z = normal_scores(values[finite] * signs[None, :],
                                   self.eta[draw, finite] * signs[None, :],
                                   self.channels, params)
@@ -419,7 +446,7 @@ class Forecast:
             observation_model = self.observation_model[channel]
             sign = float(np.asarray(self.transform_sign)[index])
             eta_model = sign * self.eta[:, :, index]
-            sigma = self.parameters[f"sigma.{channel}"][:, None]
+            sigma = self.parameters.get(f"sigma_path.{channel}", self.parameters[f"sigma.{channel}"][:, None])
             xi = (
                 self.parameters[f"xi.{channel}"][:, None]
                 if getattr(observation_model, "name", None) == "gev"
@@ -783,14 +810,15 @@ def posterior_predictive(
         parameter_values = {
             name: fit.parameter(name)[indices] for name in required_parameters
         }
+        parameter_values.update(_seasonal_scale_paths(fit, indices, fit.n_time, resolved_dates))
         observations_model = np.zeros_like(eta_model)
         for draw in range(n_draws):
             params = {
-                name: float(values[draw]) for name, values in parameter_values.items()
+                name: float(values[draw]) for name, values in parameter_values.items() if values.ndim == 1
             }
             for time in range(fit.n_time):
                 observations_model[draw, time] = fit.compiled.sample_observation(
-                    eta_model[draw, time], params, rng
+                    eta_model[draw, time], _time_parameters(params, parameter_values, draw, time), rng
                 )
         signs = np.asarray(fit.transform_sign, dtype=float)
         return Forecast(
@@ -820,6 +848,7 @@ def posterior_predictive(
         name: fit.parameter(name)[indices] for name in required_parameters
     }
     sigma_path = fit.sigma_draws()[indices]
+    parameter_values["sigma_path"] = sigma_path
     if fit.family == "gev":
         parameter_values["phi"] = fit.phi_draws()[indices]
         parameter_values["sigma_path"] = sigma_path
@@ -892,6 +921,10 @@ def posterior_predict(
         raise ValueError("draws must be positive.")
     indices = np.arange(total) if n_draws == total else rng.choice(total, size=n_draws, replace=n_draws > total)
     flat_states = fit.state_draws.reshape((total,) + fit.state_draws.shape[2:])
+    resolved_dates = (np.arange(fit.n_time, fit.n_time+horizon) if dates is None and fit.dates is None
+                      else _future_dates(fit.dates, horizon) if dates is None else np.asarray(dates))
+    if np.asarray(resolved_dates).reshape(-1).size != horizon:
+        raise ValueError("dates must have length equal to horizon.")
     if getattr(fit, "is_multiseries_model", False):
         required_parameters = [
             *(f"sd.{name}" for name in fit.compiled.noise_names),
@@ -903,13 +936,14 @@ def posterior_predict(
         parameter_values = {
             name: fit.parameter(name)[indices] for name in required_parameters
         }
+        parameter_values.update(_seasonal_scale_paths(fit, indices, horizon, resolved_dates, start_index=fit.n_time))
         n_channels = len(fit.channel_names)
         state_paths = np.zeros((n_draws, horizon, fit.compiled.state_dim))
         eta_model = np.zeros((n_draws, horizon, n_channels))
         observations_model = np.zeros_like(eta_model)
         for draw, posterior_index in enumerate(indices):
             state = flat_states[posterior_index, -1].copy()
-            params = {name: float(values[draw]) for name, values in parameter_values.items()}
+            params = {name: float(values[draw]) for name, values in parameter_values.items() if values.ndim == 1}
             process_sd = fit.compiled.process_vector(params)
             design = fit.compiled.design(horizon, exog=exog_future, params=params)
             for h in range(horizon):
@@ -920,7 +954,7 @@ def posterior_predict(
                 state_paths[draw, h] = state
                 eta_model[draw, h] = design[h] @ state
                 observations_model[draw, h] = fit.compiled.sample_observation(
-                    eta_model[draw, h], params, rng
+                    eta_model[draw, h], _time_parameters(params, parameter_values, draw, h), rng
                 )
         signs = np.asarray(fit.transform_sign, dtype=float)
         resolved_dates = (
@@ -1023,6 +1057,9 @@ def posterior_predict(
                 raise ValueError("phi_model draws must use codes 0, 1, or 2.")
         parameter_values["phi"] = future_phi
         parameter_values["sigma_path"] = np.exp(future_phi)
+    parameter_values.update(_seasonal_scale_paths(fit, indices, horizon, resolved_dates, start_index=fit.n_time))
+    if fit.model.observation.scale is not None and fit.family == "gev":
+        parameter_values["phi"] = np.log(parameter_values["sigma_path"])
     design = fit.compiled.design(horizon, exog=exog_future)
     state_paths = np.zeros((n_draws, horizon, fit.compiled.state_dim))
     eta_model = np.zeros((n_draws, horizon))

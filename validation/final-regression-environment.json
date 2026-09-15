@@ -1,6 +1,0 @@
-{
-  "version": "1.6.1",
-  "installed_wheel_import_verified": true,
-  "all_source_modules_byte_equal_to_installed": true,
-  "reason": "Final Gaussian-copula default Kalman covariance fix after the complete 215-test suite; this gate checks that change and copula inference, prediction, math and ordering contracts."
-}

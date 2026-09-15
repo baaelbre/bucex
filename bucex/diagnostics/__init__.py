@@ -1,4 +1,5 @@
 """Posterior, predictive and calibration diagnostics."""
+from .comparison import paired_block_comparison
 from .calibration import PITResult, empirical_coverage, pit_diagnostics
 from .contrasts import summarize_draws
 from .cv import LFOResult, leave_future_out, rolling_origin_splits
@@ -14,6 +15,7 @@ from .experiments import (
 )
 from .posterior import ess_bulk, fit_diagnostics, posterior_pit, rhat
 from .residuals import one_step_ahead_residuals
+from .dependence import residual_dependence_check
 from .ordering import OrderingResult, ordering_diagnostics, compound_event_probability
 from .scores import (
     crps_ensemble,
@@ -26,6 +28,8 @@ from .scores import (
 )
 
 __all__ = [
+    "paired_block_comparison",
+    "residual_dependence_check",
     "OrderingResult", "ordering_diagnostics", "compound_event_probability",
     "summarize_draws",
     "rhat",

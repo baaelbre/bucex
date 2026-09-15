@@ -602,7 +602,7 @@ class SSVSPrior:
         }
     )
     level_dynamic_probability: float = 0.5
-    trend_probabilities: Sequence[float] = (1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0)
+    trend_probabilities: Sequence[float] = (0.10, 0.45, 0.45)
     season_probabilities: Sequence[float] = (1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0)
     trend_model_probabilities: Mapping[str, float] | None = None
 

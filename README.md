@@ -1,119 +1,109 @@
-# bucex 1.6.1
+# BUCEX 1.6.3
 
-Bayesian unobserved-component state-space models for Gaussian means and GEV
-extremes. A model is a response distribution plus readable components; the same
-API fits, diagnoses, forecasts and computes risks. Mixed hierarchies use exact
-Laplace–MH state updates. Shared components and an optional Gaussian residual
-copula extend the joint model. The six independent Uccle analyses remain a
-complete, separate route to the SERRA revision.
+Bayesian unobserved-component models for Gaussian means and GEV extremes.
+Build a model, fit it, inspect its components, and compute forecasts and risks
+through one API. Each series can retain its own level, slope, seasonal location,
+and seasonal observation scale. An optional Gaussian residual copula fits the
+private FS/SSVS models jointly and feeds dependence back into their posteriors.
+
+## Start here
+
+From the extracted directory containing `pyproject.toml`:
 
 ```bash
 python -m pip install -e ".[plot,test]"
-python -m pytest
-python -m research.serra.tutorials --kind all
+python -m research.serra.univariate --series TXm TXx
+python -m research.serra.copula --independence
+python -m research.serra.copula
 ```
 
-Run these commands from the extracted directory containing `pyproject.toml`.
-`bucex/` is the installable package; `research/serra/` contains every active
-research script and configuration. There are no conference directories or
-particle inference kernels. The default tutorials are execution checks with
-four saved draws, not scientific analyses.
+These defaults are tiny execution checks, with four retained draws. For the
+full study and an explanation of every output, follow
+[the SERRA run guide](research/serra/README.md). Every active research script is
+in `research/serra`; conference examples and particle inference are removed.
 
-## Build a model through the public API
+## One trajectory
 
 ```python
 import bucex as bx
 
-model = bx.Model(bx.GEV(xi_bounds=(-0.5, 0.5)), (
-    bx.LocalLinearTrend(),
-    bx.DummySeasonal(period=12),
-))
-prior = bx.ssvs_gev_priors(period=12,
-    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02})
-fit = bx.fit(y, model, priors=prior, engine="laplace_mh",
-             parameterization="fs", mcmc=bx.MCMC(draws=1000, warmup=1000, chains=4))
+y = bx.load_uccle_multiseries(end="2022-12-01")["TXx"]
+model = bx.Model(
+    bx.GEV(xi_bounds=(-0.5, 0.5), scale=bx.SeasonalScale(period=12, prior_sd=0.3)),
+    [bx.LocalLinearTrend(), bx.DummySeasonal(period=12)],
+)
+prior = bx.ssvs_gev_priors(
+    period=12, alpha_mean=float(y.iloc[:120].median()), alpha_sd=3.2,
+    beta_sd=0.0025, seasonal_initial_sd=2.25,
+    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02},
+    trend_probabilities=(0.10, 0.45, 0.45),
+    season_probabilities=(0.0, 0.5, 0.5),
+    sigma2_prior=bx.InverseGammaPrior(2, 2),
+)
+fit = bx.fit(y, model, priors=prior, parameterization="fs", asis=False,
+             engine="laplace_mh", mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000))
 fit.diagnostics()
+fit.component_probabilities()
 fit.plot("level")
+fit.sigma_draws()
 fit.exceedance_probability_draws(35)
 fit.forecast(12).summary()
-fit.save("fit.bucex")
+fit.save("TXx.bucex")
 ```
 
-Here `y` is your aligned series. Gaussian models use `bx.Gaussian()` and exact
-FFBS. Each Uccle minimum is fitted with `tail="lower"`; the result API restores
-original Celsius orientation automatically.
+For means use `Gaussian` and `ssvs_gaussian_priors`; the state update is FFBS.
+For minima pass `tail="lower"` to `fit`, or declare it on a `Channel`.
+Predictions and risks return to the original temperature orientation.
+`GEV()` and `Gaussian()` still mean constant observation scale. Seasonal scale
+is an explicit, optional declaration; the existing scalar API remains usable.
 
-## Start with the six independent analyses
+## Joint private trajectories
 
-The same short runner and one configuration replace six nearly identical
-scripts. These jobs can be run separately; none depends on a successful joint
-or factor fit.
-
-```bash
-python -m research.serra.run --config research/serra/config/independent_full.json --series TXm
-python -m research.serra.run --config research/serra/config/independent_full.json --series TNm
-python -m research.serra.run --config research/serra/config/independent_full.json --series TXx
-python -m research.serra.run --config research/serra/config/independent_full.json --series TXn
-python -m research.serra.run --config research/serra/config/independent_full.json --series TNx
-python -m research.serra.run --config research/serra/config/independent_full.json --series TNn
+```python
+channels = [
+    bx.Channel("TXm", bx.Gaussian(scale=bx.SeasonalScale()),
+               [bx.LocalLinearTrend(), bx.DummySeasonal(12)]),
+    bx.Channel("TXx", model.observation, model.components),
+]
+priors = bx.MarginalPriors({
+    "TXm": bx.ssvs_gaussian_priors(alpha_mean=12.),
+    "TXx": prior,
+})
+joint = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula(eta=2.))
+data = bx.load_uccle_multiseries(series=["TXm", "TXx"], end="2022-12-01")
+fit = bx.fit(data, joint, priors=priors, parameterization="fs", asis=False,
+             mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000))
+fit.component_probabilities()
+fit.copula_summary(practical_threshold=0.1)
+bx.residual_dependence_check(fit)
+future = fit.forecast(12)
+future.compound_probability({"TXm": (">", 25), "TXx": (">", 35)})
 ```
 
-Omit `--series` to fit all six sequentially. Use `independent_smoke.json` first
-to check execution. All six supplied summaries are **monthly**, with period 12.
-For an independent extreme series, append `--phi linear`, `--phi rw`, or
-`--phi ssvs` to assess changing log scale. Priors and numerical controls live
-in JSON; the copied configuration records command-line overrides.
+`MarginalPriors` gives every channel its own independent structural priors.
+`GaussianCopula(correlation=np.eye(K))` is the matched independence baseline.
+Estimated dependence changes the likelihood during fitting, so trajectories,
+selection probabilities and uncertainty can change. Interval narrowing is not
+guaranteed. The model diagnoses, but does not enforce, physical summary ordering.
 
-## Optional joint analyses
+This private FS/copula route requires complete aligned data, a local linear
+trend with optional dummy seasonality, and exact SSVS priors. It does not combine
+with shared states, hierarchical pooling, regression, or dynamic GEV `phi`.
+Those established model families remain separate API routes; see the
+[inference matrix](docs/INFERENCE_MATRIX.md).
 
-```bash
-python -m research.serra.run --config research/serra/config/hierarchical_smoke.json
-python -m research.serra.run --config research/serra/config/shared_smoke.json
-python -m research.serra.run --config research/serra/config/joint_smoke.json
-python -m research.serra.run --config research/serra/config/joint_smoke.json --copula
-python -m research.serra.run --config research/serra/config/shared_smoke.json --copula
-```
+## Data and evidence
 
-Replace `_smoke` with `_full` for the full 1892–2022 record and initial study
-budgets. Hierarchical analysis pools selection information while retaining
-separate trajectories. Shared analysis estimates a common warming component
-with unit loadings and constrained departures; each series has its own
-seasonal cycle. `--copula` adds contemporaneous residual dependence. To make
-the private-trend dependence comparison controlled, `joint` fixes the copula
-correlation to identity; `joint --copula` estimates it with the same priors.
+The bundled Uccle series cover January 1892–August 2026. Primary paper configs
+end in December 2022; `extension_full.json` is a separate mixed-source extension.
+See [data provenance](bucex/data/SOURCES.md) before interpreting the extension.
+The original daily CSV can be reaggregated with `bx.derive_uccle_monthly`.
 
-A Gaussian copula does **not** enforce minimum ≤ mean ≤ maximum, and does not
-provide nonzero asymptotic tail dependence. The package reports physical
-ordering violations on unaltered predictive draws. See
-[dependence and ordering](docs/COPULA_AND_ORDERING.md) before interpreting
-compound probabilities.
+Run `python -m pytest` for numerical reference and API tests. The
+[validation record](docs/VALIDATION.md) separates executed software checks from
+scientific experiments still required. Four chains and a configured iteration
+count are starting budgets, not a convergence certificate.
 
-The copula passes independent numerical reference tests, but the six-series
-mixed Uccle pilot still mixes poorly. Treat this joint analysis as experimental;
-use the independent route as the primary revision workflow until adequate
-joint-model convergence has been demonstrated.
-
-## Assess the revision
-
-```bash
-python -m research.serra.validate --config research/serra/config/independent_full.json --series TXx
-python -m research.serra.validate --config research/serra/config/shared_full.json
-```
-
-Held-out validation saves PITs, proper scores, central 90/95/99% coverage,
-both-tail quantile coverage, and diagnostics for every refit. It releases each
-fit before the next origin. Results appear in fresh timestamped directories
-under `results/serra/`; no run overwrites an earlier fit.
-
-Read [research/serra/README.md](research/serra/README.md) for sensitivity,
-shape-recovery, endpoint and forecast experiments; [the reviewer matrix](docs/REVIEWER_MATRIX.md)
-maps each comment to evidence still needed. [Validation](docs/VALIDATION.md)
-distinguishes tests and pilots from completed scientific studies.
-
-The supplied MCMC budgets are starting points. Assess common-warming and
-channel-change mixing, prior sensitivity, recovery and held-out calibration
-before using results in a manuscript. Shared/coupled full-record fits remain
-computationally demanding; successful tests do not certify scientific coverage.
-The executed short recovery pilot still has poorly mixed risk and trend
-contrasts. Its diagnostics are retained in `validation/`; publication requires
-longer, diagnostically adequate runs and more independent replications.
+See [release notes](RELEASE_NOTES.md), [migration notes](docs/MIGRATION.md),
+[seasonal scales](docs/LOG_SCALE.md), and the
+[reviewer experiment map](docs/REVIEWER_MATRIX.md).

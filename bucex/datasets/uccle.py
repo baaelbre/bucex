@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from pathlib import Path
 from typing import Iterable, Iterator, Mapping
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -66,7 +69,7 @@ def _resolve_data_dir(
         )
         is_daily_source_directory = (
             explicit.is_dir()
-            and (explicit / "Uccle_24_10_23.csv").is_file()
+            and any(explicit.glob("Uccle_*.csv"))
             and not has_any_summary
         )
         if not is_daily_source_directory:
@@ -75,7 +78,9 @@ def _resolve_data_dir(
                 + ", ".join(f"{name}.csv" for name in missing)
             )
 
-    candidates = [Path.cwd() / "data", Path(__file__).resolve().parents[1] / "data"]
+    # Custom summaries require data_dir; stale working-directory copies must
+    # not shadow the bundled observations in a newly installed release.
+    candidates = [Path(__file__).resolve().parents[1] / "data"]
     for candidate in candidates:
         if all((candidate / f"{name}.csv").is_file() for name in required):
             return candidate
@@ -101,13 +106,15 @@ def load_uccle_series(
     frame = pd.read_csv(path)
     if "date" not in frame:
         raise ValueError(f"{path.name} must contain a date column.")
+    if frame.empty:
+        raise ValueError(f"{path.name} contains no observations.")
     value_column = series if series in frame else next((c for c in frame if c != "date"), None)
     if value_column is None:
         raise ValueError(f"{path.name} has no value column.")
     dates = pd.to_datetime(frame["date"], errors="raise")
     values = pd.to_numeric(frame[value_column], errors="raise")
     result = pd.Series(values.to_numpy(float), index=dates, name=series).sort_index()
-    if result.index.duplicated().any() or not np.all(np.isfinite(result.to_numpy())):
+    if result.index.hasnans or result.index.duplicated().any() or not np.all(np.isfinite(result.to_numpy())):
         raise ValueError(f"{path.name} contains duplicate dates or non-finite values.")
     expected = pd.date_range(result.index[0], result.index[-1], freq="MS")
     if not result.index.equals(expected):
@@ -146,29 +153,104 @@ def load_uccle_multiseries(
     return frame.loc[:, list(selected)]
 
 
-def load_uccle_daily(data_dir: str | Path | None = None) -> pd.DataFrame:
-    """Load the optional daily source file from a source checkout."""
-
-    candidates = [] if data_dir is None else [Path(data_dir)]
-    candidates.extend([Path.cwd() / "data", Path(__file__).resolve().parents[1] / "data"])
-    path = next(
-        (candidate / "Uccle_24_10_23.csv" for candidate in candidates if (candidate / "Uccle_24_10_23.csv").is_file()),
-        None,
-    )
-    if path is None:
-        raise FileNotFoundError("Pass data_dir containing Uccle_24_10_23.csv.")
-    frame = pd.read_csv(path)
-    required = {"DAY", "TX", "TN", "RR"}
-    if set(frame) != required:
-        raise ValueError(f"Daily file must contain exactly {sorted(required)}.")
+def _daily_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Normalize dates and numeric temperatures without changing observations."""
+    missing = {"DAY", "TX", "TN"} - set(frame)
+    if missing:
+        raise ValueError(f"Daily data are missing columns: {sorted(missing)}.")
+    frame = frame.copy()
     frame["DAY"] = pd.to_datetime(frame["DAY"], errors="raise")
+    dates = pd.DatetimeIndex(frame["DAY"])
+    if dates.hasnans or dates.tz is not None or not dates.equals(dates.normalize()):
+        raise ValueError("DAY must contain nonmissing dates at midnight without a timezone.")
+    if dates.duplicated().any():
+        raise ValueError("Daily data contain duplicate dates.")
+    for name in ("TX", "TN"):
+        frame[name] = pd.to_numeric(frame[name], errors="raise")
+        if np.isinf(frame[name].to_numpy(dtype=float, na_value=np.nan)).any():
+            raise ValueError(f"{name} contains infinite values.")
     return frame.sort_values("DAY").reset_index(drop=True)
 
 
-def derive_uccle_monthly(data_dir: str | Path | None = None, *, end: str = "2022-12-31") -> pd.DataFrame:
-    """Recreate the six summaries from the optional daily source."""
+def _daily_argument(source, data_dir):
+    """Keep the existing data_dir keyword while preferring an explicit source."""
+    if data_dir is not None:
+        if source is not None:
+            raise ValueError("Pass source or data_dir, not both.")
+        return data_dir
+    return source
 
-    daily = load_uccle_daily(data_dir).set_index("DAY").loc[: pd.Timestamp(end)]
+
+def load_uccle_daily(
+    source: str | Path | None = None, *, data_dir: str | Path | None = None,
+) -> pd.DataFrame:
+    """Read a daily CSV with DAY, TX and TN; RR is optional and preserved.
+
+    Prefer an explicit CSV path. A directory must contain exactly one
+    Uccle_*.csv. Without source, look in the current/source checkout's data/.
+    The daily file is not included in the wheel. The previous data_dir keyword
+    remains supported.
+    """
+    source = _daily_argument(source, data_dir)
+    candidates = ([Path(source)] if source is not None else
+                  [Path.cwd() / "data", Path(__file__).resolve().parents[2] / "data"])
+    for candidate in dict.fromkeys(candidates):
+        paths = sorted(candidate.glob("Uccle_*.csv")) if candidate.is_dir() else [candidate]
+        paths = [path for path in paths if path.is_file()]
+        if len(paths) > 1:
+            raise ValueError(f"Multiple daily files in {candidate}; pass an explicit CSV path.")
+        if paths:
+            path = paths[0]
+            frame = _daily_frame(pd.read_csv(path))
+            frame.attrs["daily_file"] = path.name
+            frame.attrs["daily_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+            return frame
+    raise FileNotFoundError("No daily CSV found; pass its path to load_uccle_daily(source).")
+
+
+def derive_uccle_monthly(
+    source: pd.DataFrame | str | Path | None = None,
+    *,
+    end: str | None = None,
+    output_dir: str | Path | None = None,
+    data_dir: str | Path | None = None,
+) -> pd.DataFrame:
+    """Condense daily TX/TN into the six complete calendar-month summaries.
+
+    source is a daily DataFrame (DAY, TX, TN), a CSV path, or a directory as
+    accepted by load_uccle_daily. end is an optional inclusive daily cutoff;
+    by default every available complete month is used. Partial boundary
+    months are excluded; missing dates/temperatures in retained months raise.
+
+    Return a DataFrame indexed by month starts, with quality metadata in attrs.
+    If output_dir is given, also write the six date/series CSVs and
+    quality_report.json. Temperatures retain their original Celsius signs.
+    """
+    source = _daily_argument(source, data_dir)
+    frame = _daily_frame(source) if isinstance(source, pd.DataFrame) else load_uccle_daily(source)
+    daily = frame.set_index("DAY")
+    if end is not None:
+        cutoff = pd.Timestamp(end)
+        if pd.isna(cutoff) or cutoff.tz is not None or cutoff != cutoff.normalize():
+            raise ValueError("end must be a date without a time or timezone.")
+        daily = daily.loc[:cutoff]
+    if daily.empty:
+        raise ValueError("No daily observations remain in the requested range.")
+    first, last = daily.index[0], daily.index[-1]
+    calendar = pd.date_range(first.to_period("M").start_time,
+                             last.to_period("M").end_time.normalize(), freq="D")
+    counts = daily[["TX", "TN"]].reindex(calendar).resample("MS").count()
+    retained = ((counts.index >= first)
+                & (counts.index + pd.offsets.MonthEnd(0) <= last))
+    excluded = counts.index[~retained].strftime("%Y-%m").tolist()
+    counts = counts.loc[retained]
+    if counts.empty:
+        raise ValueError("The selected data contain no complete calendar month.")
+    bad = counts.lt(counts.index.days_in_month, axis=0).any(axis=1)
+    if bad.any():
+        details = [f"{date:%Y-%m} (TX={row.TX}, TN={row.TN}, expected={date.days_in_month})"
+                   for date, row in counts.loc[bad].iterrows()]
+        raise ValueError("Missing daily temperatures or dates in retained months: " + "; ".join(details))
     monthly = pd.DataFrame(
         {
             "TXm": daily["TX"].resample("MS").mean(),
@@ -179,38 +261,65 @@ def derive_uccle_monthly(data_dir: str | Path | None = None, *, end: str = "2022
             "TNn": daily["TN"].resample("MS").min(),
         }
     )
+    monthly = monthly.loc[counts.index, list(UCCLE_SERIES)]
     monthly.index.name = "date"
+    last_day = monthly.index[-1] + pd.offsets.MonthEnd(0)
+    used = daily.loc[monthly.index[0]:last_day]
+    inverted = used.loc[used.TN > used.TX, ["TX", "TN"]]
+    monthly.attrs = {
+        **{key: frame.attrs[key] for key in ("daily_file", "daily_sha256") if key in frame.attrs},
+        "frequency": "monthly", "seasonal_period": 12, "n_months": len(monthly),
+        "first_month": str(monthly.index[0].date()), "last_month": str(monthly.index[-1].date()),
+        "last_included_day": str(last_day.date()), "excluded_partial_boundary_months": excluded,
+        "daily_TN_above_TX": [{"date": str(date.date()), "TX": float(row.TX), "TN": float(row.TN)}
+                              for date, row in inverted.iterrows()],
+    }
+    if excluded:
+        warnings.warn("Excluded partial boundary months: " + ", ".join(excluded), UserWarning, stacklevel=2)
+    if not inverted.empty:
+        warnings.warn(f"Retained {len(inverted)} reported daily TN > TX pairs; see monthly.attrs or quality_report.json.",
+                      UserWarning, stacklevel=2)
+    if output_dir is not None:
+        output = Path(output_dir)
+        output.mkdir(parents=True, exist_ok=True)
+        for name in UCCLE_SERIES:
+            monthly[[name]].to_csv(output / f"{name}.csv", date_format="%Y-%m-%d")
+        (output / "quality_report.json").write_text(json.dumps(monthly.attrs, indent=2) + "\n", encoding="utf-8")
     return monthly
 
 
-def validate_uccle_data(data_dir: str | Path | None = None, *, check_daily: bool = False) -> pd.DataFrame:
-    """Return an integrity table for the bundled summaries."""
+def validate_uccle_data(
+    data_dir: str | Path | None = None,
+    *,
+    check_daily: bool = False,
+    daily_source: pd.DataFrame | str | Path | None = None,
+) -> pd.DataFrame:
+    """Check aligned summaries, optionally against an explicit daily source.
 
-    # A source checkout keeps the optional daily file in ``data/`` and the six
-    # packaged summaries in ``bucex/data/``. If the explicit directory has no
-    # summary files at all, use it only for the requested daily cross-check.
-    summary_data_dir = data_dir
-    if data_dir is not None:
-        candidate = Path(data_dir)
-        has_any_summary = any(
-            (candidate / f"{name}.csv").is_file() for name in UCCLE_SERIES
-        )
-        if not has_any_summary:
-            summary_data_dir = None
-
-    rows = []
-    for name in UCCLE_SERIES:
-        values = load_uccle_series(name, summary_data_dir)
-        rows.append(
-            {"series": name, "n": values.size, "start": values.index[0], "end": values.index[-1], "minimum": values.min(), "maximum": values.max()}
-        )
-    table = pd.DataFrame(rows).set_index("series")
-    if check_daily:
-        rebuilt = derive_uccle_monthly(data_dir)
+    Passing daily_source enables the cross-check. check_daily=True retains
+    automatic daily-file lookup. Daily data must cover every supplied month;
+    missing comparison dates are errors, never ignored NaNs.
+    """
+    supplied = load_uccle_multiseries(data_dir)
+    table = pd.DataFrame([
+        {"series": name, "n": len(supplied), "start": supplied.index[0], "end": supplied.index[-1],
+         "minimum": supplied[name].min(), "maximum": supplied[name].max()}
+        for name in UCCLE_SERIES
+    ]).set_index("series")
+    if check_daily or daily_source is not None:
+        if daily_source is None and data_dir is not None:
+            candidate = Path(data_dir)
+            if any(candidate.glob("Uccle_*.csv")):
+                daily_source = candidate
+        rebuilt = derive_uccle_monthly(daily_source,
+                                       end=str((supplied.index[-1] + pd.offsets.MonthEnd(0)).date()))
+        missing = supplied.index.difference(rebuilt.index)
+        if len(missing):
+            raise ValueError("Daily source does not cover all supplied months: "
+                             + ", ".join(missing.strftime("%Y-%m")))
         for name in UCCLE_SERIES:
-            supplied = load_uccle_series(name, summary_data_dir)
-            delta = rebuilt[name].reindex(supplied.index).to_numpy() - supplied.to_numpy()
-            table.loc[name, "daily_max_abs_difference"] = np.nanmax(np.abs(delta))
+            delta = rebuilt.loc[supplied.index, name].to_numpy() - supplied[name].to_numpy()
+            table.loc[name, "daily_max_abs_difference"] = np.max(np.abs(delta))
     return table
 
 

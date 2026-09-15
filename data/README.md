@@ -1,47 +1,27 @@
-# Uccle data in this source release
+# Daily Uccle source data
 
-`Uccle_24_10_23.csv` is the supplied daily source table with columns `DAY`,
-`TX`, `TN`, and `RR`. It is the only observation file kept at repository level.
-The six derived monthly files live once, in `bucex/data`, and cover January
-1892 through December 2022:
+`Uccle_31_08_26.csv` contains 49,186 unique consecutive daily rows from
+1892-01-01 through 2026-08-31, with columns `DAY`, `TX`, `TN`, and `RR`.
+The original observations through 2023-10-17 are preserved. The temperature
+extension uses the supplied Meteostat export for 2024, with its missing day
+filled from Meteociel; the remaining added dates use Meteociel. New RR values
+are unavailable and remain NA.
 
-| File | Aggregation |
-| --- | --- |
-| `TXm.csv` | monthly mean of daily maximum temperature |
-| `TNm.csv` | monthly mean of daily minimum temperature |
-| `TXx.csv` | monthly maximum of daily maximum temperature |
-| `TXn.csv` | monthly minimum of daily maximum temperature |
-| `TNx.csv` | monthly maximum of daily minimum temperature |
-| `TNn.csv` | monthly minimum of daily minimum temperature |
+The six derived monthly CSVs live once in `bucex/data`. They contain 1,616
+months through August 2026. Regenerate them from the source root:
 
-They can be regenerated and checked with:
-
-```python
-import bucex as bx
-
-monthly = bx.derive_uccle_monthly("data")
-print(bx.validate_uccle_data("data", check_daily=True))
+```bash
+python -m research.serra.prepare_uccle
+bucex-uccle validate-data --daily-source data/Uccle_31_08_26.csv
 ```
 
-All six bundled monthly files reproduce the corresponding daily aggregation
-to floating-point precision (maximum absolute discrepancy below `4e-15`).
+The preparation settings are `research/serra/config/prepare_uccle.json`.
+See [the data API](../docs/UCCLE.md) for direct Python use and custom outputs.
+`Dagelijksetemperaturensinds1833.xlsx` is retained as a supplied supporting
+file; it is not an input to this preparation step.
 
-## Provenance and redistribution gate
-
-The uploaded package did not include the daily file's original download URL,
-dataset identifier, access date, citation, or license. The station name and
-variables are consistent with Royal Meteorological Institute of Belgium
-(RMI/KMI/IRM) observations, but that inference is not sufficient provenance
-for public redistribution.
-
-Before publishing the CSVs, record the exact source dataset and verify that its
-terms cover this historical extract and derived monthly files. The official
-RMI open-data portal and terms are:
-
-- <https://opendata.meteo.be/download>
-- <https://opendata.meteo.be/termsandconditions>
-
-The portal states that qualifying high-value datasets may be reused under CC
-BY 4.0, but the exact supplied file has not been tied to such a dataset record.
-Do not apply CC BY 4.0 merely by assumption. The repository's MIT license covers
-software, not the observations.
+[Source notes](../bucex/data/SOURCES.md) preserve the extraction details,
+reporting-window differences, two reported TN > TX pairs, and the limitations
+of combining the historical and newer sources. No homogenization is applied.
+The original historical file's exact source record and observation license
+were not supplied; the software MIT license does not license the observations.

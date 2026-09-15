@@ -1,9 +1,10 @@
-# Release validation evidence
+# Executed release checks
 
-This directory holds machine-readable evidence generated for BUCEX 1.6.1.
-Scientific experiment entry points live under `research/serra`; unit and
-independent mathematical reference checks live under `tests`.
+This directory contains version 1.6.3 source/installed-package test records,
+environment information and short workflow completion checks. Research outputs
+are deliberately excluded from the source release. The full paper studies
+remain unexecuted protocols, regardless of whether their smoke counterparts ran.
 
-A test pass or tiny smoke fit verifies only its stated software/numerical
-contract. See `docs/VALIDATION.md` and `docs/REVIEWER_MATRIX.md` for outstanding
-scientific runs and manuscript revisions.
+See `docs/VALIDATION.md` for interpretation and `docs/REVIEWER_MATRIX.md` for
+scientific evidence still required. Historical archive fixtures remain in
+`tests/fixtures`; obsolete version-specific test copies are removed.

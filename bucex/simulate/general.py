@@ -34,7 +34,7 @@ class Simulation:
 
         if isinstance(self.model, MultiSeriesModel):
             raise ValueError("Choose a channel-specific scale for multiseries simulations.")
-        values = np.asarray(self.params["sigma"], dtype=float)
+        values = np.asarray(self.params.get("sigma_path", self.params["sigma"]), dtype=float)
         return np.full(self.y.shape[0], float(values)) if values.ndim == 0 else values
 
     @property
@@ -50,6 +50,7 @@ def simulate(
     params: dict[str, Any],
     *,
     exog=None,
+    dates=None,
     initial_state=None,
     seed: int | None = None,
 ) -> Simulation:
@@ -71,9 +72,24 @@ def simulate(
     missing.extend(name for name in required if name not in params)
     if missing:
         raise ValueError(f"Missing simulation parameters: {missing}")
+    scale_paths = {}
+    channels = model.channels if isinstance(model, MultiSeriesModel) else (None,)
+    for channel in channels:
+        observation = channel.observation if channel else model.observation
+        if observation.scale is None:
+            continue
+        suffix = f".{channel.name}" if channel else ""
+        key = "scale.seasonal"+suffix
+        if key not in params:
+            raise ValueError(f"Supply {key}: zero-sum seasonal log-scale effects.")
+        effects = np.asarray(params[key], float)
+        if effects.shape != (observation.scale.period,) or not np.all(np.isfinite(effects)) or not np.isclose(effects.sum(), 0., atol=1e-10):
+            raise ValueError(f"{key} must contain period finite effects summing to zero.")
+        phase = observation.scale.phases(n_time, dates)
+        scale_paths["sigma"+suffix] = np.asarray(params["sigma"+suffix]) * np.exp(effects[phase])
     sigma_path = None
     if not isinstance(model, MultiSeriesModel):
-        sigma_values = np.asarray(params["sigma"], dtype=float)
+        sigma_values = np.asarray(scale_paths.get("sigma", params["sigma"]), dtype=float)
         if sigma_values.ndim == 0:
             sigma_path = np.full(n_time, float(sigma_values), dtype=float)
         elif sigma_values.shape == (n_time,):
@@ -102,7 +118,8 @@ def simulate(
         )
         if isinstance(model, MultiSeriesModel):
             eta[t - 1] = design[t - 1] @ states[t]
-            y[t - 1] = compiled.sample_observation(eta[t - 1], params, rng)
+            time_params = {**params, **{name: float(path[t-1]) for name,path in scale_paths.items()}}
+            y[t - 1] = compiled.sample_observation(eta[t - 1], time_params, rng)
         else:
             eta[t - 1] = float(design[t - 1] @ states[t])
             y[t - 1] = float(
@@ -117,4 +134,7 @@ def simulate(
         signs = model.transform_signs[None, :]
         y = signs * y
         eta = signs * eta
-    return Simulation(y=y, eta=eta, states=states, params=dict(params), model=model, exog=compiled.exog)
+    output_params = dict(params)
+    if scale_paths and sigma_path is not None:
+        output_params["sigma_path"] = sigma_path
+    return Simulation(y=y, eta=eta, states=states, params=output_params, model=model, exog=compiled.exog)

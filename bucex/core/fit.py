@@ -31,7 +31,7 @@ class FitResult(SharedResultMethods):
     dates: Array | None = None
     series_name: str | None = None
     transform_sign: Any = 1.0
-    schema_version: str = "2.9.0"
+    schema_version: str = "2.10.0"
     initial_values: dict[str, Any] = field(default_factory=dict)
     auxiliary_draws: dict[str, Array] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -289,17 +289,29 @@ class FitResult(SharedResultMethods):
             raise ValueError("phi_draws is defined only for GEV fits.")
         if "phi" in self.parameter_draws:
             return self.parameter("phi", combine_chains=combine_chains)
-        sigma = self.parameter("sigma", combine_chains=combine_chains)
-        return np.repeat(np.log(sigma)[..., None], self.n_time, axis=-1)
+        return np.log(self.sigma_draws(combine_chains=combine_chains))
 
-    def sigma_draws(self, *, combine_chains: bool = True) -> Array:
-        """Posterior observation-scale paths with shape ``(..., T)``."""
+    def sigma_draws(self, *, channel: str | None = None, combine_chains: bool = True) -> Array:
+        """Observation-scale paths, including private calendar effects.
 
+        This is an SD for Gaussian observations and a scale for GEV margins.
+        """
         if self.is_multiseries_model:
-            raise ValueError("sigma_draws is currently available for univariate fits.")
-        if "sigma_path" in self.parameter_draws:
-            return self.parameter("sigma_path", combine_chains=combine_chains)
-        sigma = self.parameter("sigma", combine_chains=combine_chains)
+            if channel not in self.channel_names:
+                raise ValueError(f"Choose channel from {self.channel_names}.")
+            observation = self.model.channel(channel).observation
+            suffix = f".{channel}"
+        else:
+            if channel is not None:
+                raise ValueError("channel= requires a multiseries fit.")
+            observation, suffix = self.model.observation, ""
+        if "sigma_path"+suffix in self.parameter_draws:
+            return self.parameter("sigma_path"+suffix, combine_chains=combine_chains)
+        sigma = self.parameter("sigma"+suffix, combine_chains=combine_chains)
+        if observation.scale is not None:
+            effects = self.parameter("scale.seasonal"+suffix, combine_chains=combine_chains)
+            phases = observation.scale.phases(self.n_time, self.dates)
+            return sigma[..., None] * np.exp(effects[..., phases])
         return np.repeat(sigma[..., None], self.n_time, axis=-1)
 
     def phi_model_probabilities(self) -> dict[str, float]:
@@ -475,14 +487,16 @@ class FitResult(SharedResultMethods):
             key = f"slab.{name}"
             if key not in self.parameter_draws:
                 continue
-            values = np.asarray(self.parameter(key), dtype=int).reshape(-1)
-            switches = int(np.sum(values[1:] != values[:-1])) if values.size > 1 else 0
+            chains = np.asarray(self.parameter(key, combine_chains=False), dtype=int)
+            values = chains.reshape(-1)
+            switches = int(np.count_nonzero(np.diff(chains, axis=1)))
+            opportunities = chains.shape[0] * max(chains.shape[1] - 1, 0)
             rows.append(
                 {
                     "process": name,
                     "n_draws": int(values.size),
                     "n_switches": switches,
-                    "switch_rate": float(switches / max(values.size - 1, 1)),
+                    "switch_rate": float(switches / max(opportunities, 1)),
                     "first_state": "slab" if values[0] else "spike",
                     "last_state": "slab" if values[-1] else "spike",
                     "status": (
@@ -501,14 +515,16 @@ class FitResult(SharedResultMethods):
             for name, key in self._structural_indicator_keys(current).items():
                 if key not in self.parameter_draws:
                     continue
-                values = np.asarray(self.parameter(key), dtype=int).reshape(-1)
-                switches = int(np.sum(values[1:] != values[:-1])) if values.size > 1 else 0
+                chains = np.asarray(self.parameter(key, combine_chains=False), dtype=int)
+                values = chains.reshape(-1)
+                switches = int(np.count_nonzero(np.diff(chains, axis=1)))
+                opportunities = chains.shape[0] * max(chains.shape[1] - 1, 0)
                 labels = {0: "zero", 1: "fixed", 2: "dynamic"}
                 row = {
                     "process": name,
                     "n_draws": int(values.size),
                     "n_switches": switches,
-                    "switch_rate": float(switches / max(values.size - 1, 1)),
+                    "switch_rate": float(switches / max(opportunities, 1)),
                     "first_state": labels[int(values[0])],
                     "last_state": labels[int(values[-1])],
                     "status": "constant posterior allocation" if switches == 0 else "switching",
@@ -729,7 +745,7 @@ class FitResult(SharedResultMethods):
                 "eta": self.channel_eta_draws(
                     channel, combine_chains=True, original_scale=False
                 ),
-                "sigma": self.parameter(f"sigma.{channel}")[:, None],
+                "sigma": self.sigma_draws(channel=channel),
                 "xi": (
                     self.parameter(f"xi.{channel}")[:, None]
                     if specification.family == "gev"
@@ -1132,7 +1148,7 @@ class FitResult(SharedResultMethods):
                     result[chain, draw] = copula.correlation_matrix(parameters, self.channel_names)
         return result.reshape((-1,) + result.shape[2:]) if combine_chains else result
 
-    def copula_summary(self, *, credible_interval: float = 0.90):
+    def copula_summary(self, *, credible_interval: float = 0.90, practical_threshold: float = 0.1):
         """Posterior intervals and chain diagnostics for pairwise residual R."""
         from ..diagnostics.contrasts import summarize_draws
 
@@ -1140,7 +1156,13 @@ class FitResult(SharedResultMethods):
         pairs = {f"rho.{left}.{right}": correlation[..., i, j]
                  for i, left in enumerate(self.channel_names)
                  for j, right in enumerate(self.channel_names) if i > j}
-        return summarize_draws(pairs, credible_interval=credible_interval)
+        if not 0 <= practical_threshold < 1:
+            raise ValueError("practical_threshold must lie in [0, 1).")
+        table = summarize_draws(pairs, credible_interval=credible_interval)
+        table["probability_positive"] = [float(np.mean(pairs[name] > 0)) for name in table.index]
+        table["probability_practically_nonzero"] = [float(np.mean(np.abs(pairs[name]) > practical_threshold)) for name in table.index]
+        table["practical_threshold"] = practical_threshold
+        return table
 
     def ordering_diagnostics(self, constraints, *, draws=None, seed=None, tolerance=0.0):
         """Check original-scale observed and replicated ordering without alteration."""
@@ -1226,6 +1248,9 @@ class FitResult(SharedResultMethods):
                 "draw": draw_index,
             }
         }
+        if self.metadata.get("marginal_fs"):
+            from ..inference.fit.marginal_adapter import export_marginal_start
+            return export_marginal_start(self, chain_index, draw_index)
         if self.is_shared_model:
             output["state_path"] = self.state_draws[chain_index, draw_index].copy()
             output["parameters"] = {

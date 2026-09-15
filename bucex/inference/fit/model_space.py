@@ -600,6 +600,12 @@ def sample_structural_regression_exact(
     Metropolis--Hastings ratio based on the exact likelihood.  An exact
     elliptical-slice update then refreshes the active coefficients.
 
+    ``pseudo_y`` and ``pseudo_variance`` MUST be fixed conditional on the
+    other blocks: they cannot be recomputed from the incumbent regression
+    coefficients. All production exact callers use the support-safe eta=y
+    anchor. An incumbent-dependent proposal needs a separately evaluated
+    reverse proposal, which is not this independence kernel.
+
     The small uniform mixture on model proposals guarantees positive proposal
     probability for every model with positive prior mass.  Consequently the
     kernel remains irreducible even if the Laplace approximation is extremely

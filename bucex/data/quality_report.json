@@ -1,0 +1,23 @@
+{
+  "daily_file": "Uccle_31_08_26.csv",
+  "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38",
+  "frequency": "monthly",
+  "seasonal_period": 12,
+  "n_months": 1616,
+  "first_month": "1892-01-01",
+  "last_month": "2026-08-01",
+  "last_included_day": "2026-08-31",
+  "excluded_partial_boundary_months": [],
+  "daily_TN_above_TX": [
+    {
+      "date": "2023-11-30",
+      "TX": 2.2,
+      "TN": 2.3
+    },
+    {
+      "date": "2024-12-11",
+      "TX": 3.9,
+      "TN": 4.0
+    }
+  ]
+}

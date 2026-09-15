@@ -42,7 +42,7 @@ where = ["."]
 include = ["bucex*"]
 
 [tool.setuptools.package-data]
-bucex = ["data/*.csv", "data/*.md"]
+bucex = ["data/*.csv", "data/*.md", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

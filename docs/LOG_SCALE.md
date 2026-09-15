@@ -1,4 +1,32 @@
-# Time-varying GEV log scale
+# Observation scale: seasonal effects and dynamic GEV log scale
+
+
+## Seasonal observation scale in 1.6.3
+
+```python
+bx.Gaussian(scale=bx.SeasonalScale(period=12, prior_sd=0.3))
+bx.GEV(scale=bx.SeasonalScale(period=12, prior_sd=0.3))
+```
+
+This specifies `log(sigma_t) = log(sigma_baseline) + d[month(t)]`, with
+`sum(d)=0`. Coefficients in an orthonormal contrast basis have independent
+Normal(0, prior_sd²) priors, so no month is an arbitrary reference category.
+Each effect has prior variance `prior_sd² * (1 - 1/period)`. The baseline is
+the geometric mean seasonal scale. These static month effects are distinct
+from the location seasonal state, which can evolve through structural SSVS.
+Each channel has its own effect vector and baseline scale.
+
+Use exact FS/SSVS priors (`MarginalPriors` for private multiseries fits) and
+`asis=False`. This supports both scalar analysis and joint copula feedback.
+For monthly dated observations, phases are calendar months even when the record
+starts in March; without dates, the first observation defines phase one.
+Effects repeat in forecasts. They model seasonal heteroscedasticity, not a
+secular trend in variance. `fit.sigma_draws(channel=...)` gives complete paths.
+GEV sigma is a scale parameter, not generally a standard deviation.
+
+Seasonal scale is currently incompatible with dynamic GEV `phi`. Requests to
+combine them fail explicitly. The remainder of this document describes the
+retained *univariate* dynamic-phi alternatives without seasonal effects.
 
 ## Public model choice
 
@@ -216,7 +244,8 @@ is adequate.
 ## Current scope
 
 Time-varying log scale is supported for univariate GEV models under the
-Fruehwirth--Schnatter parameterization. It is not yet enabled inside
-`MultiSeriesModel`; requests fail early with a clear error. The four Uccle
+Fruehwirth--Schnatter parameterization. Dynamic `phi` is not enabled inside
+`MultiSeriesModel`; requests fail early with a clear error. Static seasonal
+log-scale effects are supported there through the new private FS route. The four Uccle
 series can therefore be fitted independently through the general univariate API,
 which also makes their jobs and chains naturally parallel on PBS.

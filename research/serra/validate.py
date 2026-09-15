@@ -50,7 +50,7 @@ def validate(config):
     for label, values, model, prior, tail in analyses:
         target = directory / label
         target.mkdir()
-        scores, pits, coverages, joint_scores = [], [], [], []
+        scores, pits, coverages, joint_scores, compound = [], [], [], [], []
         for fold, (train, test) in enumerate(splits):
             print(f"{label}: fold {fold + 1}/{len(splits)}, training {train.stop} blocks", flush=True)
             training = values.iloc[:train.stop]
@@ -79,6 +79,14 @@ def validate(config):
                 observed = values.iloc[list(test)].to_numpy()
                 joint_scores.append(pd.DataFrame({"origin": train.stop, "time": forecast.dates,
                     "score": forecast.joint_log_score(observed)}))
+                if {'TXx', 'TNx'} <= set(values):
+                    events = {'TXx': ('>', config['risks']['TXx']), 'TNx': ('>', config['risks']['TNx'])}
+                    probability = forecast.compound_probability(events)
+                    event = ((values['TXx'].iloc[list(test)].to_numpy() > config['risks']['TXx']) &
+                             (values['TNx'].iloc[list(test)].to_numpy() > config['risks']['TNx']))
+                    compound.append(pd.DataFrame({'origin': train.stop, 'time': forecast.dates,
+                        'probability': probability, 'observed_event': event,
+                        'brier': (probability-event)**2}))
                 constraints = [pair for pair in bx.UCCLE_ORDER_CONSTRAINTS if set(pair) <= set(values)]
                 if constraints:
                     forecast.ordering_diagnostics(constraints, observed=observed).by_time.to_csv(
@@ -93,6 +101,8 @@ def validate(config):
             mean="mean", n="size").to_csv(target / "score_summary.csv")
         coverage_table.groupby(["channel", "kind", "nominal"])["covered"].agg(
             empirical="mean", n="size").to_csv(target / "coverage_summary.csv")
+        if compound:
+            pd.concat(compound).to_csv(target / 'compound_heat_scores.csv', index=False)
         if joint_scores:
             pd.concat(joint_scores).to_csv(target / "joint_log_scores.csv", index=False)
     return directory

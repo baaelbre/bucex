@@ -162,8 +162,8 @@ class MultiSeriesModel:
 
     def __post_init__(self) -> None:
         channels = tuple(self.channels)
-        if len(channels) < 2:
-            raise ValueError("A MultiSeriesModel requires at least two channels.")
+        if len(channels) < 1:
+            raise ValueError("A MultiSeriesModel requires at least one channel.")
         names = [channel.name for channel in channels]
         if len(names) != len(set(names)):
             raise ValueError("MultiSeriesModel channel names must be unique.")
@@ -255,7 +255,7 @@ class MultiSeriesModel:
     def supports_fs_parameterization(self) -> bool:
         """Whether every channel has the structural hierarchy layout."""
 
-        if self.requires_joint_inference:
+        if self.shared:
             return False
         for channel in self.channels:
             trends = [

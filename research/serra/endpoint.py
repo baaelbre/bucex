@@ -39,8 +39,18 @@ def main():
             quantiles = np.quantile(location, [.05, .5, .95], axis=0)
             pd.DataFrame(dict(time=fit.time[window], lower=quantiles[0], median=quantiles[1], upper=quantiles[2])).to_csv(target / "event_window.csv", index=False)
             pd.concat(results).to_csv(directory / "endpoint_comparison.csv", index=False)
+            # Train strictly before July 2019; no event information enters this fit.
+            prefit, _ = fit_case(data.iloc[:index], event["series"], local, variant, engine=engine)
+            prediction = prefit.forecast(1, dates=data.index[index:index+1], seed=config["seed"])
+            probability = 1-prediction.conditional_cdf(np.asarray([event["value"]]))[:,0]
+            pd.DataFrame({"mean_probability": [probability.mean()],
+                          "lower_probability": [np.quantile(probability,.05)],
+                          "upper_probability": [np.quantile(probability,.95)],
+                          "log_score": prediction.log_score(np.asarray([event["value"]]))}).to_csv(
+                              target / "pre_event_forecast.csv", index=False)
+            prefit.diagnostics()["parameters"].to_csv(target / "pre_event_mcmc.csv")
     (directory / "interpretation.txt").write_text(
-        "The event is included in fitting: these are posterior descriptive probabilities, not held-out forecasts.\n"
+        "Full-record tables describe smoothing with the event included. pre_event_forecast.csv uses only earlier months; this selected-event case is not an overall calibration test.\n"
         "Compare identical-prior engines only after satisfactory mixing. Positive-shape draws have infinite upper endpoints.\n")
     print(directory)
 

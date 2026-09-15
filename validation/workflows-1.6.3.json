@@ -1,0 +1,99 @@
+{
+  "version": "1.6.3",
+  "date": "2026-09-14",
+  "scientific_full_runs_completed": false,
+  "checks": [
+    {
+      "workflow": "univariate_gaussian_gev",
+      "completed": true,
+      "checked_outputs": [
+        "TXm/fit.bucex",
+        "TXx/fit.bucex",
+        "TXm/series_structure_mixing.csv",
+        "TXx/series_structure_mixing.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "six_margin_copula",
+      "completed": true,
+      "checked_outputs": [
+        "fit.bucex",
+        "copula_correlations.csv",
+        "residual_dependence.csv",
+        "scientific_targets.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "sensitivity",
+      "completed": true,
+      "checked_outputs": [],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "endpoint_2019",
+      "completed": true,
+      "checked_outputs": [
+        "interpretation.txt",
+        "original_bounds/laplace/pre_event_forecast.csv",
+        "original_bounds/laplace_mh/pre_event_forecast.csv",
+        "wider_negative/laplace/pre_event_forecast.csv",
+        "wider_negative/laplace_mh/pre_event_forecast.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "forecast_uncertainty",
+      "completed": true,
+      "checked_outputs": [
+        "TXm/forecast_uncertainty.csv",
+        "TXx/annual_aggregation.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "joint_recovery",
+      "completed": true,
+      "checked_outputs": [
+        "recovery.csv",
+        "correlations.csv",
+        "structures.csv",
+        "scores.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "shape_grid_eleven_values_two_engines",
+      "completed": true,
+      "checked_outputs": [
+        "status.csv",
+        "recovery.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "held_out_independence",
+      "completed": true,
+      "checked_outputs": [
+        "joint/joint_log_scores.csv",
+        "joint/compound_heat_scores.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "held_out_copula",
+      "completed": true,
+      "checked_outputs": [
+        "joint/joint_log_scores.csv",
+        "joint/compound_heat_scores.csv"
+      ],
+      "evidence": "execution only; four retained draws per chain; not a scientific result"
+    },
+    {
+      "workflow": "paired_block_score_comparison",
+      "completed": true,
+      "evidence": "one held-out year: uncertainty interval intentionally unavailable"
+    }
+  ]
+}

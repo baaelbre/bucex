@@ -225,8 +225,8 @@ def normal_scores(y: Any, eta: Any, channels: Sequence[Any], params: Mapping[str
         if not np.any(mask):
             continue
         location = predictor[..., j][mask]
-        sigma = float(params[f"sigma.{channel.name}"])
-        if not np.isfinite(sigma) or sigma <= 0 or not np.all(np.isfinite(location)):
+        sigma = np.broadcast_to(np.asarray(params[f"sigma.{channel.name}"], float), observations.shape[:-1])[mask]
+        if np.any(~np.isfinite(sigma)) or np.any(sigma <= 0) or not np.all(np.isfinite(location)):
             raise ValueError("Finite eta and a positive finite marginal scale are required.")
         if channel.family == "gaussian":
             score = (observations[..., j][mask] - location) / sigma

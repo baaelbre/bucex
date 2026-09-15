@@ -91,14 +91,14 @@ components. The established univariate transform conventions remain unchanged.
 Shared declarations support `LocalLevel`, `LocalLinearTrend`, and
 `DummySeasonal`. Private channels also support regression with per-channel
 `exog` matrices. Supply future covariates explicitly when forecasting regression
-models. A plain `MultiSeriesModel` without shared declarations retains the
-existing hierarchical route; a univariate `Model` retains its original route.
+models. A private `MultiSeriesModel` selects its route by prior type: `MarginalPriors`
+for private FS/SSVS, hierarchical priors for pooling, or `JointPriors` for the
+continuous joint backend. A univariate `Model` retains its scalar result API.
 
 The Uccle helpers `make_uccle_shared_model()` and `fit_uccle_shared()` construct
 these same objects and call the same inference API. They are conveniences, not
-alternative models or numerical implementations. For a readable complete
-construction see `research/serra/tutorials.py`; the six-series specification
-is in `research/serra/models.py`.
+alternative models or numerical implementations. Use the general declarations above for construction. The active six-series
+specification in `research/serra/models.py` now uses private FS/SSVS paths.
 
 ## Priors and seasonality
 
@@ -248,3 +248,7 @@ scientific experiments before using the shared model in the manuscript.
 Use NaN for a missing channel observation. Each channel needs at least two
 finite observations and every retained time needs at least one observed
 channel; rows missing every channel are rejected. Covariates must be finite.
+
+In 1.6.3 the active SERRA study uses private FS/SSVS trajectories, with optional
+residual copula feedback. It does not use these common states or estimate free
+factor loadings. Shared-state examples are retained here as general API documentation.

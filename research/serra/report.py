@@ -45,6 +45,10 @@ def scientific_targets(fit):
     for name in fit.channel_names if fit.is_multiseries_model else (None,):
         values = fit.component_draws("level", channel=name, combine_chains=False)
         targets[f"{name or 'series'}_level_change"] = values[..., -1] - values[..., 0]
+    if fit.is_multiseries_model:
+        for left, right in (("TXx", "TXm"), ("TNn", "TNm"), ("TXm", "TNm"), ("TXx", "TNx")):
+            if {left, right} <= set(fit.channel_names):
+                targets[f"{left}_minus_{right}_change"] = targets[f"{left}_level_change"] - targets[f"{right}_level_change"]
     for group in getattr(fit.model, "shared", ()):
         if not isinstance(group.component, (bx.LocalLevel, bx.LocalLinearTrend)):
             continue
@@ -119,8 +123,16 @@ def _write_report(fit, directory, *, config, risks=None, horizon=12, level=0.90)
             check = forecast.ordering_diagnostics(constraints)
             check.summary.to_csv(directory / "ordering_forecast.csv", index=False)
             check.by_time.to_csv(directory / "ordering_forecast_by_time.csv", index=False)
+    if fit.is_multiseries_model:
+        bx.residual_dependence_check(fit, draws=config.get("predictive_check_draws", 200),
+                                    seed=config.get("seed", 42)).to_csv(directory / "residual_dependence.csv", index=False)
+        if {"TXx", "TNx"} <= set(fit.channel_names):
+            probability = forecast.compound_probability({"TXx": (">", 35), "TNx": (">", 25)})
+            pd.DataFrame({"time": forecast.dates, "probability": probability}).to_csv(directory / "compound_heat_forecast.csv", index=False)
     channels = fit.channel_names if fit.is_multiseries_model else (None,)
     for channel in channels:
+        save_band(fit, fit.sigma_draws(channel=channel), directory / f"{channel or 'series'}_observation_scale",
+                  ylabel="observation scale / °C", level=level)
         name = channel or "series"
         values = (fit.channel_eta_draws(channel, original_scale=True)
                   if channel else fit.eta_draws(original_scale=True))
@@ -133,6 +145,8 @@ def _write_report(fit, directory, *, config, risks=None, horizon=12, level=0.90)
         if not isinstance(fit.priors, bx.JointPriors):
             fit.component_probabilities(channel=channel).to_csv(
                 directory / f"{name}_structure.csv")
+            fit.component_transition_summary(channel=channel).to_csv(directory / f"{name}_structure_mixing.csv")
+            fit.structural_model_probabilities(channel=channel).to_csv(directory / f"{name}_models.csv", index=False)
         for component in ("level", "season"):
             if component == "season" and fit.model.period is None:
                 continue

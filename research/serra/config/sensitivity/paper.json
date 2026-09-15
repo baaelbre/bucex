@@ -1,5 +1,5 @@
 {
-  "_comment": "Full configs are starting run budgets; smoke confirms execution only. All summaries are MONTHLY in this source release.",
+  "_comment": "Research configuration, not evidence of completed or converged results. Primary record ends in 2022. MCMC budgets require diagnostics.",
   "analysis": "independent",
   "data": {
     "series": [
@@ -16,7 +16,9 @@
   "model": {
     "period": 12,
     "phi": "stationary",
-    "seasonal": "dynamic"
+    "seasonal": "dynamic",
+    "seasonal_scale": true,
+    "scale_prior_sd": 0.3
   },
   "priors": {
     "baseline_sd": 3.2,
@@ -49,18 +51,30 @@
         "linear": 0.25,
         "rw": 0.25
       }
-    }
+    },
+    "trend_probabilities": [
+      0.1,
+      0.45,
+      0.45
+    ],
+    "level_dynamic_probability": 0.5,
+    "season_probabilities": [
+      0.0,
+      0.5,
+      0.5
+    ],
+    "reference_months": 120
   },
   "mcmc": {
-    "draws": 500,
-    "warmup": 500,
-    "chains": 1,
+    "draws": 2000,
+    "warmup": 2000,
+    "chains": 4,
     "seed": 56100
   },
   "seed": 56101,
   "output": "results/serra",
   "forecast_horizon": 12,
-  "credible_interval": 0.9,
+  "credible_interval": 0.95,
   "risks": {
     "TXm": 25,
     "TNm": 18,
@@ -83,7 +97,7 @@
     }
   },
   "figures": true,
-  "predictive_check_draws": 12,
+  "predictive_check_draws": 400,
   "prior_draws": 10000,
   "prior_predictive_draws": 500,
   "save_fits": true,
@@ -209,6 +223,45 @@
     {
       "name": "initial_slope_x2",
       "initial_slope_multiplier": 2
+    },
+    {
+      "name": "constant_scale_ssvs",
+      "seasonal_scale": false
+    },
+    {
+      "name": "scale_prior_tight",
+      "scale_prior_sd": 0.15
+    },
+    {
+      "name": "scale_prior_wide",
+      "scale_prior_sd": 0.6
+    },
+    {
+      "name": "equal_trend_probabilities",
+      "trend_probabilities": [
+        0.3333333333333333,
+        0.3333333333333333,
+        0.3333333333333333
+      ]
+    },
+    {
+      "name": "seasonal_initial_x2",
+      "seasonal_initial_multiplier": 2.0
+    },
+    {
+      "name": "observation_variance_IG_2_1",
+      "observation_variance": [
+        2,
+        1
+      ]
+    },
+    {
+      "name": "observation_variance_IG_2_4",
+      "observation_variance": [
+        2,
+        4
+      ]
     }
-  ]
+  ],
+  "_legacy_note": "Non-SSVS lasso/hyperprior variants use CONSTANT observation scale; compare them to constant_scale_ssvs, not to the seasonal-scale baseline."
 }

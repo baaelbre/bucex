@@ -1,5 +1,5 @@
 {
-  "_comment": "Generating shape grid is distinct from fitted-prior support. Smoke checks execution only; paper coverage requires independent datasets and converged chains. Endpoint stress cases replace one observation and are NOT unconditional coverage replicates.",
+  "_comment": "Research configuration, not evidence of completed or converged results. Primary record ends in 2022. MCMC budgets require diagnostics.",
   "analysis": "independent",
   "data": {
     "series": [
@@ -11,7 +11,9 @@
   "model": {
     "period": 12,
     "phi": "stationary",
-    "seasonal": "dynamic"
+    "seasonal": "dynamic",
+    "seasonal_scale": false,
+    "scale_prior_sd": 0.3
   },
   "priors": {
     "baseline_sd": 3.2,
@@ -44,7 +46,19 @@
         "linear": 0.25,
         "rw": 0.25
       }
-    }
+    },
+    "trend_probabilities": [
+      0.1,
+      0.45,
+      0.45
+    ],
+    "level_dynamic_probability": 0.5,
+    "season_probabilities": [
+      0.0,
+      0.5,
+      0.5
+    ],
+    "reference_months": 120
   },
   "mcmc": {
     "draws": 2000,
@@ -55,7 +69,7 @@
   "seed": 56101,
   "output": "results/serra",
   "forecast_horizon": 12,
-  "credible_interval": 0.9,
+  "credible_interval": 0.95,
   "risks": {
     "TXm": 25,
     "TNm": 18,
@@ -78,7 +92,7 @@
     }
   },
   "figures": true,
-  "predictive_check_draws": 12,
+  "predictive_check_draws": 400,
   "prior_draws": 2000,
   "prior_predictive_draws": 100,
   "save_fits": false,

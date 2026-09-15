@@ -1,5 +1,5 @@
 {
-  "_comment": "Full configs are starting run budgets; smoke confirms execution only. All summaries are MONTHLY in this source release.",
+  "_comment": "Research configuration, not evidence of completed or converged results. Primary record ends in 2022. MCMC budgets require diagnostics.",
   "analysis": "independent",
   "data": {
     "series": [
@@ -16,7 +16,9 @@
   "model": {
     "period": 12,
     "phi": "stationary",
-    "seasonal": "dynamic"
+    "seasonal": "dynamic",
+    "seasonal_scale": true,
+    "scale_prior_sd": 0.3
   },
   "priors": {
     "baseline_sd": 3.2,
@@ -49,12 +51,24 @@
         "linear": 0.25,
         "rw": 0.25
       }
-    }
+    },
+    "trend_probabilities": [
+      0.1,
+      0.45,
+      0.45
+    ],
+    "level_dynamic_probability": 0.5,
+    "season_probabilities": [
+      0.0,
+      0.5,
+      0.5
+    ],
+    "reference_months": 120
   },
-  "mcmc": { 
-    "draws": 500,
-    "warmup": 500,
-    "chains": 1,
+  "mcmc": {
+    "draws": 2000,
+    "warmup": 2000,
+    "chains": 4,
     "seed": 56100,
     "progress": true,
     "progress_every": 50
@@ -62,7 +76,7 @@
   "seed": 56101,
   "output": "results/serra",
   "forecast_horizon": 120,
-  "credible_interval": 0.9,
+  "credible_interval": 0.95,
   "risks": {
     "TXm": 25,
     "TNm": 18,
@@ -74,7 +88,7 @@
   "validation": {
     "initial": 1188,
     "horizon": 12,
-    "step": 120,
+    "step": 12,
     "save_fits": false
   },
   "inference": {
