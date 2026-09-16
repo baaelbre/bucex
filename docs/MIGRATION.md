@@ -1,4 +1,18 @@
-# Migrating from 1.6.4 to 1.6.5
+# Migrating from 1.6.5 to 1.7.0
+
+- Existing Model/Channel component declarations and fit archives remain supported.
+- Named `parameters` declarations add `Constant` and `Latent`; see PARAMETER_EVOLUTION.md.
+- Structural log-scale evolution uses its own components, shrinkage priors and forecast innovations.
+- SERRA primary data now explicitly end in August 2026. Historical 2022 configurations remain named.
+- Primary scale is genuinely constant: `seasonal_scale=false`; LKJ eta=1; ASIS off.
+- Changing the scale assumption or prior requires a refit. Re-exporting a saved fit changes reports only.
+- Recent climate contrasts now span September 1996–August 2026, paired against 1892–1921.
+- Joint sensitivity configs perform joint refits. Core, targeted and structural checks are separate.
+- Univariate `--scale constant` now disables monthly scale effects; `--scale seasonal` enables them.
+  Linear/RW and full structural scale remain general package capabilities, not paper CLI options.
+- New public period estimands and parameter path plots reduce research-side statistical code.
+
+## Earlier migration: 1.6.4 to 1.6.5
 
 - No inference kernel or prior default changed. Existing 1.6.4 fit archives load directly.
 - Full SERRA application runs use the latest bundled month; historical configurations retain 2022.

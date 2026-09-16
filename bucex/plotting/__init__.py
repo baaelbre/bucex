@@ -53,3 +53,6 @@ __all__ = [
     "plot_bulk_tail",
     "plot_collection",
 ]
+
+from .parameters import plot_parameter_path
+__all__.append("plot_parameter_path")

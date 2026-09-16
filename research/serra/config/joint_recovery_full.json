@@ -20,7 +20,9 @@
       0.0,
       0.5
     ],
-    "log_scale_amplitude": 0.2,
+    "log_scale_amplitude": 0.0,
     "innovation_multiplier": 1.0
-  }
+  },
+  "save_fits": false,
+  "contrasts": null
 }

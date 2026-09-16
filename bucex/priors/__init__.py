@@ -124,3 +124,6 @@ __all__ = [
     "ssvs_gaussian_priors",
     "ssvs_gev_priors",
 ]
+
+from .evolution import EvolutionPriors
+__all__.append("EvolutionPriors")

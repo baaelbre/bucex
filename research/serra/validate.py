@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import bucex as bx
 from research.serra.run import arguments
-from research.serra.report import new_run, scientific_targets
+from research.serra.report import convergence_parameters, new_run, scientific_targets
 from research.serra.models import channel, marginal_prior, joint_model, fit_options
 
 
@@ -60,8 +60,13 @@ def validate(config):
                          **fit_options(config, family=model.family, tail=tail))
             forecast = fit.forecast(len(test), dates=values.index[list(test)],
                 draws=settings.get("draws", config.get("forecast_draws")), seed=config["seed"] + fold)
-            fit.diagnostics()["parameters"].to_csv(target / f"mcmc_{train.stop}.csv")
-            fit.contrast_diagnostics(scientific_targets(fit)).to_csv(target / f"targets_{train.stop}.csv")
+            diagnostics = fit.diagnostics()["parameters"].assign(chains=fit.n_chains)
+            diagnostics.to_csv(target / f"mcmc_{train.stop}.csv")
+            targets = fit.contrast_diagnostics(scientific_targets(fit))
+            targets.to_csv(target / f"targets_{train.stop}.csv")
+            assessment = bx.convergence_assessment({'parameters': convergence_parameters(diagnostics, fit.n_chains), 'scientific_targets': targets},
+                **config.get('diagnostic_thresholds', {}))
+            bx.save_config(assessment, target / f"convergence_{train.stop}.json")
             if settings.get("save_fits", False):
                 fit.save(target / f"fit_{train.stop}.bucex")
             for name in values:
@@ -91,6 +96,14 @@ def validate(config):
                 if constraints:
                     forecast.ordering_diagnostics(constraints, observed=observed).by_time.to_csv(
                         target / f"ordering_{train.stop}.csv", index=False)
+            # Save paired case scores at each origin, not just after a long grid.
+            pd.concat(scores).to_csv(target / "scores.csv", index=False)
+            pd.concat(pits).to_csv(target / "held_out_pit.csv", index=False)
+            pd.concat(coverages).to_csv(target / "coverage_by_case.csv", index=False)
+            if joint_scores:
+                pd.concat(joint_scores).to_csv(target / "joint_log_scores.csv", index=False)
+            if compound:
+                pd.concat(compound).to_csv(target / "compound_heat_scores.csv", index=False)
             del fit, forecast  # Retain compact scores, not every full state posterior.
             gc.collect()
         score_table, coverage_table = pd.concat(scores), pd.concat(coverages)

@@ -88,7 +88,10 @@ def simulate(
         phase = observation.scale.phases(n_time, dates)
         offset = np.zeros(n_time)
         mode = getattr(observation.scale,"mode","constant")
-        if mode == "linear":
+        if mode == "structural":
+            from ..inference.fit.evolution import simulate_evolution
+            offset = simulate_evolution(observation.scale, n_time, params, rng, suffix)
+        elif mode == "linear":
             if "scale_slope"+suffix not in params:
                 raise ValueError("Linear scale simulation requires scale_slope"+suffix)
             offset = float(params["scale_slope"+suffix])*np.arange(1,n_time+1)/observation.scale.time_unit

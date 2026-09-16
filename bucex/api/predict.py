@@ -36,7 +36,12 @@ def _seasonal_scale_paths(fit, indices, n_time, dates, *, start_index=0, rng=Non
         baseline = fit.parameter("sigma"+suffix)[indices]
         offset = np.zeros((len(indices), n_time))
         mode = getattr(observation.scale, "mode", "constant")
-        if mode == "linear":
+        if mode == "structural":
+            if rng is None:
+                raise ValueError("Structural scale forecasts require a random generator.")
+            from ..inference.fit.evolution import forecast_evolution
+            offset = forecast_evolution(observation.scale, fit, indices, n_time, rng, suffix)
+        elif mode == "linear":
             slope = fit.parameter("scale_slope"+suffix)[indices]
             offset = slope[:,None]*np.arange(start_index+1,start_index+n_time+1)/observation.scale.time_unit
         elif mode == "rw":
@@ -294,6 +299,19 @@ class Forecast:
         if tail == "upper":
             return np.mean(observations > float(threshold), axis=0)
         return np.mean(observations < float(threshold), axis=0)
+
+    def parameter_path(self, parameter: str, *, channel=None, link_scale=False) -> Array:
+        """Future mu, sigma or xi paths, using the same names as fitted paths."""
+        index = self._channel_index(channel)
+        if parameter == "mu":
+            return self.eta[...,index] if self.is_multiseries_forecast else self.eta
+        if parameter == "sigma":
+            values = self.sigma_draws(channel=channel)
+            return np.log(values) if link_scale else values
+        key = "xi"+("."+channel if self.is_multiseries_forecast else "")
+        if parameter == "xi" and key in self.parameters:
+            return np.broadcast_to(self.parameters[key][:,None],(self.n_draws,self.horizon))
+        raise ValueError("Supported parameters are mu, sigma and (GEV only) xi.")
 
     def sigma_draws(self, *, channel: str | None = None) -> Array:
         """Monthly observation SD (Gaussian) or scale (GEV), for every path."""

@@ -1,4 +1,4 @@
-# Inference in 1.6.4
+# Inference in 1.7.0
 
 | Model/prior route | Sampler | Scope |
 |---|---|---|
@@ -40,3 +40,12 @@ residual AR models and a residual t copula are not implemented.
 Use `fit.plan.to_dict()` to record the actual backend. Approximate Laplace is
 available only through the historical univariate route; it is not accepted as
 a shortcut for the private copula model. No PGAS engine is present.
+
+## Ancillary structural evolution
+
+`StructuralScale` / named latent sigma uses private FS inference with independent
+normal/lasso/triple-gamma evolution priors and exact-likelihood elliptical slice
+updates of its NCP path and coefficients. Location keeps FFBS/Laplace–MH.
+Every update includes the copula conditional when present. Shape is constant.
+Shared-location plus structural scale and scale regressions are not supported.
+See [PARAMETER_EVOLUTION.md](PARAMETER_EVOLUTION.md).

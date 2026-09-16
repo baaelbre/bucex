@@ -1,0 +1,7 @@
+{
+  "extends": "copula_full.json",
+  "_comment": "Compatibility alias for the complete record. Primary full configurations now also include August 2026.",
+  "data": {
+    "end": "2026-08-01"
+  }
+}

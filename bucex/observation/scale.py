@@ -90,9 +90,77 @@ class LogScale:
                 "time_unit": self.time_unit}
 
 
+@dataclass(frozen=True)
+class StructuralScale:
+    """A complete additive structural model for log observation scale.
+
+    log(sigma_t) = log(sigma) + level_t + seasonal_t. The evolving level
+    starts at zero; its initial slope and seasonal state are estimated.
+    Components use the same time-step convention as location. Separate
+    ``EvolutionPriors`` prevent accidental reuse of temperature-scale priors
+    for a dimensionless log scale. Inference uses exact-likelihood elliptical
+    slices in FS coordinates, including any residual copula contribution.
+    """
+    components: tuple
+    priors: object = None
+
+    def __post_init__(self):
+        from ..components import LocalLevel, LocalLinearTrend, DummySeasonal
+        from ..priors.evolution import EvolutionPriors
+        components = tuple(self.components)
+        if any(not isinstance(c, (LocalLevel, LocalLinearTrend, DummySeasonal)) for c in components):
+            raise TypeError("StructuralScale supports level, local-linear trend, and dummy seasonality.")
+        if sum(isinstance(c, (LocalLevel, LocalLinearTrend)) for c in components) != 1:
+            raise ValueError("StructuralScale requires exactly one level or trend component.")
+        if sum(isinstance(c, DummySeasonal) for c in components) > 1:
+            raise ValueError("StructuralScale supports one seasonal component.")
+        # Initial distributions belong to EvolutionPriors; never silently ignore
+        # a second initial-state declaration on an ancillary component.
+        for c in components:
+            fields = ("initial_mean", "initial_sd", "initial_level", "initial_level_sd",
+                      "initial_slope_sd")
+            if any(getattr(c, k, None) is not None for k in fields) or getattr(c, "initial_slope", 0.) != 0.:
+                raise ValueError("Declare scale initial priors in EvolutionPriors, not in components.")
+        components = tuple(LocalLinearTrend(level_mode=c.mode, trend_mode="off",
+                           level_name=c.name) if isinstance(c, LocalLevel) else c for c in components)
+        prior = EvolutionPriors() if self.priors is None else self.priors
+        if not isinstance(prior, EvolutionPriors):
+            raise TypeError("StructuralScale.priors must be EvolutionPriors(...).")
+        names = [n for c in components for n in c.spec.state_names]
+        if len(names) != len(set(names)):
+            raise ValueError("Scale state names must be unique.")
+        object.__setattr__(self, "components", components)
+        object.__setattr__(self, "priors", prior)
+
+    @property
+    def mode(self):
+        return "structural"
+
+    @property
+    def period(self):
+        # Static calendar coefficients are absent; seasonality lives in the
+        # structural state, not a duplicate SeasonalScale term.
+        return 1
+
+    def contrast(self):
+        return np.empty((1, 0))
+
+    def phases(self, n_time, dates=None, *, start_index=0):
+        return np.zeros(n_time, int)
+
+    def to_dict(self):
+        return {"kind": "structural_scale", "components": [c.to_dict() for c in self.components],
+                "priors": self.priors.to_dict()}
+
+
 def scale_from_dict(value):
     if not value:
         return None
+    if value.get("kind") == "structural_scale":
+        from ..components import component_from_dict
+        from ..priors.evolution import EvolutionPriors
+        return StructuralScale(tuple(component_from_dict(c) for c in value["components"]),
+                               EvolutionPriors(**value["priors"]))
     if value.get("kind") == "log_scale":
         fields = {k:v for k,v in value.items() if k != "kind"}
         fields["seasonal"] = SeasonalScale(**fields["seasonal"]) if fields.get("seasonal") else None

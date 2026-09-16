@@ -37,7 +37,8 @@ def run(config, replicate=None):
                     period = config['model']['period']
                     initial[block.state_slice.start + 2:block.state_slice.stop] = 2 * np.cos(2*np.pi*np.arange(period-1)/period)
                     params[f'sigma.{name}'] = 1.5
-                    params[f'scale.seasonal.{name}'] = settings['log_scale_amplitude'] * np.cos(2*np.pi*np.arange(period)/period)
+                    scale_period = item.observation.scale.period if item.observation.scale else 1
+                    params[f'scale.seasonal.{name}'] = (settings['log_scale_amplitude'] * np.cos(2*np.pi*np.arange(scale_period)/scale_period) if scale_period > 1 else np.zeros(1))
                     if item.family == 'gev':
                         params[f'xi.{name}'] = xi
                     for process, legacy in [('level', 'level'), ('slope', 'trend'), ('seasonal', 'season')]:
@@ -52,6 +53,8 @@ def run(config, replicate=None):
                     fit = bx.fit(training, model, priors=prior, **fit_options(current, family='mixed'))
                     label = dict(replicate=rep, rho=rho, xi=xi, analysis=mode)
                     prefix = f'{rep}_{ri}_{xi_i}_{mode}'
+                    if config.get('save_fits', False):
+                        fit.save(directory / (prefix+'.bucex'))
                     fit.diagnostics()['parameters'].to_csv(directory / f'mcmc_{prefix}.csv')
                     for j, name in enumerate(names):
                         estimate = fit.channel_eta_draws(name, original_scale=True)
@@ -60,7 +63,7 @@ def run(config, replicate=None):
                         recovery.append({**label, 'channel': name,
                             'location_rmse': np.sqrt(np.mean((estimate.mean(axis=0)-target)**2)),
                             'location_coverage_95': np.mean((lo <= target) & (target <= hi)),
-                            'scale_rmse': np.sqrt(np.mean((fit.sigma_draws(channel=name).mean(axis=0)-1.5*np.exp(params[f'scale.seasonal.{name}'][np.arange(n)%period]))**2))})
+                            'scale_rmse': np.sqrt(np.mean((fit.sigma_draws(channel=name).mean(axis=0)-np.asarray(truth.params.get(f'sigma_path.{name}', np.full(n+horizon, 1.5)))[:n])**2))})
                     structures.append(fit.contrast_diagnostics({key:value for name in names for key,value in
                         ((name+'.'+k,v) for k,v in fit.innovation_effect_draws(120,channel=name,combine_chains=False).items())}).reset_index().assign(**label))
                     table = fit.copula_summary(credible_interval=.95).reset_index()
@@ -68,6 +71,11 @@ def run(config, replicate=None):
                     correlations.append(table.assign(**label))
                     forecast = fit.forecast(horizon, dates=dates[n:], seed=seed+2)
                     scores.append({**label, 'mean_joint_log_score': np.mean(forecast.joint_log_score(truth.y[n:]))})
+                    # Checkpoint each completed case so long grids remain auditable.
+                    pd.DataFrame(recovery).to_csv(directory / 'recovery.csv', index=False)
+                    pd.concat(correlations).to_csv(directory / 'correlations.csv', index=False)
+                    pd.concat(structures).to_csv(directory / 'innovation_effects.csv', index=False)
+                    pd.DataFrame(scores).to_csv(directory / 'scores.csv', index=False)
     pd.DataFrame(recovery).to_csv(directory / 'recovery.csv', index=False)
     pd.concat(correlations).to_csv(directory / 'correlations.csv', index=False)
     pd.concat(structures).to_csv(directory / 'innovation_effects.csv', index=False)

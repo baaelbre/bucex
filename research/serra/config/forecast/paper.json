@@ -1,12 +1,5 @@
 {
   "extends": "../base.json",
-  "data": {
-    "series": [
-      "TXm",
-      "TXx",
-      "TNn"
-    ]
-  },
   "forecast_horizon": 120,
   "forecast_draws": 4000
 }

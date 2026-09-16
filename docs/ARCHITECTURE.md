@@ -32,3 +32,12 @@ under the separate continuous `JointPriors` route. These modes are not silently
 interchanged. Uccle wrappers are convenience calls over general declarations.
 Scientific assumptions and result summarization belong in the package; study
 windows, sensitivity grids and output locations belong in research configs.
+
+## Parameter declarations in 1.7
+
+`parameters.py` binds named Constant/Latent declarations to canonical model
+representations. `priors/evolution.py` calibrates ancillary evolution in link
+units; `inference/fit/evolution.py` updates a Gaussian structural evolution
+against a supplied likelihood callback. `diagnostics/periods.py` provides
+paired climate-period estimands. These general computations stay outside
+`research/serra`, which declares the fixed-scale paper protocol.

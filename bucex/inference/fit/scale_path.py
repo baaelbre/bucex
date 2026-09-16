@@ -30,6 +30,9 @@ def secular_scale_step(state, specification, likelihood, rng):
     n_time = len(state.y)
     if mode == "constant":
         return {}
+    if mode == "structural":
+        from .evolution import structural_scale_step
+        return structural_scale_step(state, specification, likelihood, rng)
     metric = {}
     if mode == "linear":
         basis = np.arange(1, n_time+1)/specification.time_unit

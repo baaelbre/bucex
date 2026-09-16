@@ -8,20 +8,20 @@ import numpy as np
 from scipy.stats import norm
 
 from .base import ObsSpec, resolve_observation_parameters
-from .scale import SeasonalScale, LogScale
+from .scale import SeasonalScale, LogScale, StructuralScale
 
 
 @dataclass(frozen=True)
 class Gaussian:
     """Gaussian observations with structural mean and static scale."""
 
-    scale: SeasonalScale | LogScale | None = None
+    scale: SeasonalScale | LogScale | StructuralScale | None = None
     name: str = field(default="gaussian", init=False)
     spec: ObsSpec = field(default=ObsSpec("gaussian"), init=False, repr=False)
 
     def __post_init__(self):
-        if self.scale is not None and not isinstance(self.scale, (SeasonalScale, LogScale)):
-            raise TypeError("scale must be SeasonalScale(...), LogScale(...), or None.")
+        if self.scale is not None and not isinstance(self.scale, (SeasonalScale, LogScale, StructuralScale)):
+            raise TypeError("scale must be SeasonalScale(...), LogScale(...), StructuralScale(...), or None.")
 
     def logpdf(
         self,

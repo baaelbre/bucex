@@ -30,5 +30,6 @@
       "name": "uniform_shape",
       "xi_prior": "uniform"
     }
-  ]
+  ],
+  "contrasts": null
 }

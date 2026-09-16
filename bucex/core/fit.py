@@ -276,6 +276,63 @@ class FitResult(SharedResultMethods):
     def mu_draws(self, *, original_scale: bool = True) -> Array:
         return self.eta_draws(combine_chains=True, original_scale=original_scale)
 
+    def parameter_path(self, parameter: str, *, channel: str | None = None,
+                       link_scale: bool = False, combine_chains: bool = True) -> Array:
+        """Time-aligned draws of mu, sigma or xi, even when constant.
+
+        Location is returned in the original observation orientation. Scale
+        uses its natural units unless ``link_scale=True`` requests log sigma.
+        Shape is the fitted GEV shape in the reflected-maxima convention.
+        """
+        if self.is_multiseries_model and channel not in self.channel_names:
+            raise ValueError(f"Choose channel from {self.channel_names}.")
+        if not self.is_multiseries_model and channel is not None:
+            raise ValueError("channel= requires a multiseries fit.")
+        if parameter == "mu":
+            return (self.channel_eta_draws(channel, combine_chains=combine_chains)
+                    if self.is_multiseries_model else self.eta_draws(
+                        original_scale=True, combine_chains=combine_chains))
+        if parameter == "sigma":
+            values = self.sigma_draws(channel=channel, combine_chains=combine_chains)
+            return np.log(values) if link_scale else values
+        observation = self.model.channel(channel).observation if channel else self.model.observation
+        if parameter == "xi" and observation.name == "gev":
+            values = self.parameter("xi"+("."+channel if channel else ""), combine_chains=combine_chains)
+            return np.repeat(values[...,None], self.n_time, axis=-1)
+        raise ValueError("Supported parameters are mu, sigma and (GEV only) xi.")
+
+    def parameter_component_draws(self, parameter: str, component: str, *,
+                                 channel: str | None = None, combine_chains: bool = True) -> Array:
+        """Location components or log-scale structural components.
+
+        For sigma, level includes log(sigma)'s baseline. Slope is log-scale
+        change per observation step; seasonal effects are on log-scale units.
+        """
+        if parameter == "mu":
+            return self.component_draws(component, channel=channel, combine_chains=combine_chains)
+        if parameter != "sigma":
+            raise ValueError("Components are available for mu and structural log sigma.")
+        from ..observation.scale import StructuralScale
+        from ..inference.fit.evolution import GaussianEvolutionState
+        if self.is_multiseries_model and channel not in self.channel_names:
+            raise ValueError(f"Choose channel from {self.channel_names}.")
+        if not self.is_multiseries_model and channel is not None:
+            raise ValueError("channel= requires a multiseries fit.")
+        obs = self.model.channel(channel).observation if channel else self.model.observation
+        if not isinstance(obs.scale, StructuralScale):
+            raise ValueError("Log-scale components require StructuralScale or Latent sigma.")
+        suffix = "."+channel if channel else ""
+        layout = GaussianEvolutionState(obs.scale, self.n_time).layout
+        states = self.parameter("evolution.state"+suffix, combine_chains=combine_chains)[...,1:,:]
+        if component == "level":
+            return states[...,layout.idx_alpha] + np.log(self.parameter(
+                "sigma"+suffix, combine_chains=combine_chains))[...,None]
+        if component == "slope":
+            return states[...,layout.idx_beta] if layout.has_beta else np.zeros(states.shape[:-1])
+        if component == "seasonal":
+            return states[...,layout.season_slice.start] if layout.season_dim else np.zeros(states.shape[:-1])
+        raise ValueError("component must be level, slope, or seasonal.")
+
     def phi_draws(self, *, channel: str | None = None, combine_chains: bool = True) -> Array:
         """Posterior paths for ``phi_t = log(sigma_t)``.
 

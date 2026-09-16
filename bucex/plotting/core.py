@@ -1623,6 +1623,9 @@ def plot_fit(fit, kind: str = "state", **kwargs):
         return result
 
     key = str(kind).lower().replace("-", "_")
+    if key == "parameter_path":
+        from .parameters import plot_parameter_path
+        return finish(plot_parameter_path(fit, **kwargs))
     if getattr(fit, "is_multiseries_model", False):
         if key in {"copula", "copula_correlation"}:
             from .dependence import plot_copula

@@ -1,132 +1,104 @@
-# BUCEX 1.6.5
+# BUCEX 1.7.0
 
-Bayesian unobserved-component models for means and extremes, with private or
-shared states. The SERRA workflow tracks six related temperature summaries
-using continuous Frühwirth–Schnatter (FS) innovation shrinkage, then adds a
-residual Gaussian copula with full feedback into the marginal posteriors.
-
-## Install and check
-
-From this release directory:
+Bayesian unobserved components for Gaussian summaries and GEV extremes.
+Declare the observation distribution, give its parameters an interpretable
+structure, choose priors, and use the same fitting and posterior APIs for a
+single series or related series with residual dependence.
 
 ```bash
-python -m pip install -e '.[test]'
+python -m pip install -e ".[test]"
 python -m pytest
-python -m research.serra.univariate --series TXm
-python -m research.serra.copula
 ```
 
-The last two commands use tiny **execution checks**, not research-length fits.
-Run commands from the extracted directory so the bundled data and `research`
-modules are available. Install `.[plot]` for figures without pytest.
-
-## One model, one fitting API
+## One series, explicit parameter structure
 
 ```python
 import bucex as bx
 
+y = bx.load_uccle_multiseries(series=["TXx"], end="2026-08-01")["TXx"]
 model = bx.Model(
-    bx.GEV(scale=bx.LogScale(seasonal=bx.SeasonalScale(12))),
-    [bx.LocalLinearTrend(), bx.DummySeasonal(12)],
+    bx.GEV(xi_bounds=(-0.5, 0.5)),
+    parameters={
+        "mu": bx.Latent([bx.LocalLinearTrend(), bx.DummySeasonal(12)]),
+        "sigma": bx.Constant(),
+        "xi": bx.Constant(),
+    },
 )
-prior = bx.fs_priors("gev", innovation="lasso")
-y = bx.load_uccle_multiseries(series="TXx")["TXx"]
-fit = bx.fit(y, model, priors=prior, parameterization="fs", asis=True,
-             mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000, seed=31))
-fit.diagnostics()["parameters"]
-fit.innovation_effect_draws(120)       # SD of each future location contribution
-fit.exceedance_probability_draws(35)  # respects maxima/minima orientation
-forecast = fit.forecast(120, seed=32)
+prior = bx.fs_priors("gev", period=12, innovation="lasso")
+fit = bx.fit(y, model, priors=prior, parameterization="fs",
+             engine="laplace_mh", asis=False,
+             mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000, seed=1700))
+
+location = fit.parameter_path("mu", combine_chains=False)
+scale = fit.parameter_path("sigma", combine_chains=False)
+slopes = 120 * fit.component_draws("slope", combine_chains=False)
+risk = fit.exceedance_probability_draws(35, return_labels=False)
+future = fit.forecast(120, seed=1701)
 fit.save("TXx.bucex")
 ```
 
-Budgets are starting points. Assess convergence for physical innovation SDs,
-variances, changes, risks and correlation coefficients; a visually smooth path
-or high acceptance rate does not establish convergence. Exact posterior
-**targeting** does not establish finite-run accuracy.
+`Constant()` means **unknown but constant in time**. The scale and shape are
+estimated, not numerically fixed. The original API remains valid:
+`Model(GEV(), [LocalLinearTrend(), DummySeasonal(12)])`. Existing saved fits
+remain readable. The default observation-scale prior from `fs_priors` is
+IG(2,2) on variance; shape is N(0,.3²), truncated by the declared bounds.
 
-## Add dependence without sharing the trajectories
+## Give scale its own evolution
 
-```python
-channels = [
-    bx.Channel("mean", bx.Gaussian(scale=bx.LogScale(seasonal=bx.SeasonalScale())),
-               [bx.LocalLinearTrend(), bx.DummySeasonal()]),
-    bx.Channel("maximum", bx.GEV(scale=bx.LogScale(seasonal=bx.SeasonalScale())),
-               [bx.LocalLinearTrend(), bx.DummySeasonal()]),
-]
-model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula(eta=2))
-priors = bx.MarginalPriors({c.name: bx.fs_priors(c.family) for c in channels})
-# data is an aligned DataFrame with columns "mean" and "maximum".
-# fit = bx.fit(data, model, priors=priors, parameterization="fs", asis=True,
-#              mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000, seed=31))
-```
-
-Each channel retains its own location, seasonality, observation scale and GEV
-shape. Every marginal update includes the copula conditional likelihood. This
-is a joint Bayesian model, not a copula fitted afterwards to point estimates.
-Proper independent priors do not prevent dependence in the posterior.
-
-- `fs_priors(..., innovation="normal" | "lasso" | "triple_gamma")` matches prior
-  medians of physical innovation SDs. It fixes lasso lambda² and triple-gamma
-  global/shape hyperparameters; local mixing variables remain sampled.
-- `LogScale("constant" | "linear" | "rw", seasonal=SeasonalScale())` keeps
-  observation seasonality distinct from latent location seasonality.
-- `LocalLinearTrend(trend_mode="static")` and `DummySeasonal(mode="static")`
-  give explicit fixed-component comparisons in the private continuous kernel.
-- `SeasonalGaussianCopula(structure="harmonic", prior_sd=.25)` adds pooled
-  periodic dependence. Four-season and monthly contrasts are also available.
-- `forecast.compound_probability_draws({"mean": (">", 25), "maximum": (">", 35)})`
-  integrates bivariate residual noise per parameter/state draw by quadrature.
-  The existing `compound_probability` method remains a simulation estimate.
-
-## Calendar predictions and PNG reports
+Use the same component language for a log-scale predictor:
 
 ```python
-forecast = fit.forecast(120, draws=1000, seed=32)
-forecast.summary(phase=7)                  # each future July
-annual = forecast.aggregate()             # Gaussian means or GEV extrema
-seasons = forecast.aggregate(frequency="season")
-annual.summary(level=.95)
-annual.risk_curve([15, 16, 17])             # choose thresholds for this estimand
-bx.save_prediction_report(fit, "figures", forecast=forecast, threshold=35)
+model = bx.Model(
+    bx.GEV(),
+    parameters={
+        "mu": bx.Latent([bx.LocalLinearTrend(), bx.DummySeasonal(12)]),
+        "sigma": bx.Latent(
+            [bx.LocalLinearTrend(), bx.DummySeasonal(12)],
+            link="log",
+            priors=bx.EvolutionPriors(
+                innovation="lasso",
+                innovation_median={"level": .01, "trend": .00001, "season": .01},
+                initial_slope_sd=.001,
+                seasonal_initial_sd=.3,
+            ),
+        ),
+    },
+)
 ```
 
-Monthly means use calendar-day weights, including leap years. Monthly maxima
-and minima aggregate by max/min of observations. Partial periods are omitted;
-DJF is assigned to its ending year. Annual mean risk differs from the risk of
-at least one monthly exceedance. See [docs/FORECASTS.md](docs/FORECASTS.md) for
-uncertainty, scale interpretation, useful plots and commands for saved fits.
+Location and scale have **separate states and priors**. The scale level is
+anchored at zero initially, with the overall baseline supplied by the unknown
+observation scale. Its initial slope is regularized separately. Static/dynamic
+level and slope and fixed/evolving dummy seasonality can be combined. This
+extension supports normal, lasso and triple-gamma innovation priors, exact
+likelihood updates, persistence, restart, simulation and forecasts.
 
-## Research guide
+Read [parameter evolution](docs/PARAMETER_EVOLUTION.md) for units, examples,
+identification and supported combinations. Shape remains constant in 1.7.0;
+unsupported parameter/family combinations fail explicitly. Ancillary full
+structural models need their own mixing and scientific validation. They are
+**not part of the SERRA reference analysis**.
 
-Start with [research/serra/README.md](research/serra/README.md). It lists the
-necessary scripts, commands, output files, and interpretation checks in paper
-order. Configurations inherit a common `base.json`; every run saves its fully
-resolved configuration. Full runs use the latest bundled data (August 2026).
-The `*_1892_2022.json` configurations preserve the original manuscript window.
+## Related series
 
-The implementation-to-manuscript mapping is in [docs/MANUSCRIPT_ALIGNMENT.md](docs/MANUSCRIPT_ALIGNMENT.md).
+`Channel` accepts the same `parameters` mapping. Put channels in
+`MultiSeriesModel(..., copula=GaussianCopula(eta=1))`, assign their location and
+observation priors with `MarginalPriors`, and call `fit`. Every conditional
+update includes the copula likelihood; univariate fits are not frozen inputs.
+Fixed identity correlation is the matched joint independence benchmark.
+Shared-location declarations remain available through their existing API;
+new structural scale evolution uses private marginal trajectories.
 
-See [docs/INFERENCE_MATRIX.md](docs/INFERENCE_MATRIX.md) for supported routes,
-[docs/REVIEWER_MATRIX.md](docs/REVIEWER_MATRIX.md) for experiments, and
-[docs/MIGRATION.md](docs/MIGRATION.md) for compatibility. Shared-state and
-hierarchical APIs remain available; they are separate from the private FS
-paper workflow. Exact SSVS remains optional. PGAS is retired.
+## Run the revised paper
 
-## Scientific limits
+Start with [START_HERE.md](START_HERE.md), then the
+[SERRA run guide](research/serra/README.md). The primary model is six monthly
+structural locations, constant unknown scales/shapes and optional constant
+Gaussian copula dependence. The primary window is January 1892–August 2026. Named
+`*_1892_2022.json` configurations retain the historical comparison.
 
-The new private kernel requires complete, aligned Gaussian/GEV series with
-local-linear trends and optional dummy seasonality. It does not implement
-serially dependent copula residuals, a t copula, regressions, or shared factors.
-The broader existing model API has separate supported routes for shared states.
-A Gaussian copula has no asymptotic tail dependence for nonsingular R.
-
-Independent marginal likelihoods plus an unrestricted copula do not enforce
-min ≤ mean ≤ max. Ordering diagnostics retain the original draws; sorting or
-rejection would change the model. Seasonal copula priors depend on channel
-ordering, unlike the constant LKJ prior. All reported uncertainties must be
-qualified by model adequacy, prior sensitivity and Monte Carlo accuracy.
-
-This release supplies software and executable studies. It does not claim that
-new full-record fits, simulation coverage or reviewer experiments are completed.
-See `validation/RELEASE_VALIDATION.md` for checks actually run on this release.
+Research scripts are thin users of BUCEX's public API. Configurations declare
+the science and computation. No PGAS or conference directories are needed.
+See [manuscript alignment](docs/MANUSCRIPT_ALIGNMENT.md),
+[reviewer map](docs/REVIEWER_MATRIX.md), and
+[release validation](validation/RELEASE_VALIDATION.md).

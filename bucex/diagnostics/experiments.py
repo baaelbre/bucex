@@ -313,6 +313,13 @@ def prior_predictive_targets(model, prior, n_time, threshold, *, tail="upper",
     season_slice = compiled.component_slices.get("seasonal")
     if seasons and (prior.gamma0_season is None or len(prior.gamma0_season.mean) != seasons[0].period - 1):
         raise ValueError("The FS seasonal prior must have period-1 initial-state coordinates.")
+    scale_samples = None
+    specification = model.observation.scale
+    if getattr(specification, "mode", None) == "structural":
+        scale_period = next((c.period for c in specification.components
+                             if isinstance(c, DummySeasonal) and c.mode != "off"), None)
+        scale_samples = draw_structural_prior(specification.priors.resolve(scale_period), size,
+                                              seed=int(rng.integers(0, 2**32-1)))
     targets = []
     for i in range(size):
         params = {"sigma": samples["sigma"][i],
@@ -346,7 +353,13 @@ def prior_predictive_targets(model, prior, n_time, threshold, *, tail="upper",
                 raise FloatingPointError("Prior log-scale paths exceed numerical precision; reconsider the declared prior.")
         if model.observation.scale is not None:
             specification = model.observation.scale
-            params["scale.seasonal"] = specification.contrast() @ rng.normal(0, specification.prior_sd, specification.period-1)
+            if scale_samples is not None:
+                for component in ("level", "slope", "seasonal"):
+                    params["scale.sd."+component] = scale_samples["sd."+component][i]
+                params["scale.initial.slope"] = scale_samples["initial.slope"][i]
+                params["scale.initial.seasonal"] = scale_samples["initial.seasonal"][i]
+            else:
+                params["scale.seasonal"] = specification.contrast() @ rng.normal(0, specification.prior_sd, specification.period-1)
             if getattr(specification,"mode","constant") == "linear":
                 params["scale_slope"] = rng.normal(0,specification.slope_sd)
             elif getattr(specification,"mode","constant") == "rw":

@@ -39,8 +39,14 @@ def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", lev
     plt.close(figure)
 
 
-def scientific_targets(fit):
-    """First-to-last observed changes, retaining chain and draw dimensions."""
+def convergence_parameters(table, n_chains):
+    """Screen scientific parameters; fixed shrinkage hyperparameters remain in mcmc.csv."""
+    names = [name for name in table.index if str(name).startswith(('sd.', 'initial.', 'sigma', 'xi', 'copula.'))]
+    return table.loc[names].assign(chains=n_chains)
+
+
+def scientific_targets(fit, config=None):
+    """Endpoint diagnostics plus explicitly declared climate-period estimands."""
     targets = {}
     for name in fit.channel_names if fit.is_multiseries_model else (None,):
         values = fit.component_draws("level", channel=name, combine_chains=False)
@@ -61,6 +67,13 @@ def scientific_targets(fit):
             for name in fit.channel_names:
                 values = fit.departure_draws(name, name=group.name, combine_chains=False)
                 targets[f"{name}_{group.name}_change"] = values[..., -1] - values[..., 0]
+    periods = (config or {}).get('contrasts')
+    if periods:
+        pairs = [pair for pair in periods.get('pairs', [])
+                 if fit.is_multiseries_model and set(pair) <= set(fit.channel_names)]
+        targets.update(bx.period_contrasts(fit, periods['reference'], periods['comparison'],
+            pairs=pairs, months=periods.get('months', []),
+            rate_multiplier=periods.get('rate_multiplier', 120.)))
     return targets
 
 
@@ -85,8 +98,17 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         warnings=diagnostic['warnings'],interval='pointwise posterior credible interval',
         status='Research output; assess convergence, sensitivity and held-out forecasts before reporting.'),directory/'run.json')
     pd.DataFrame(diagnostic['pit']).to_csv(directory/'in_sample_pit.csv',index=False)
-    targets = scientific_targets(fit)
-    fit.contrast_diagnostics(targets,credible_interval=level).to_csv(directory/'scientific_targets.csv')
+    targets = scientific_targets(fit, config)
+    target_table = fit.contrast_diagnostics(targets, credible_interval=level)
+    target_table['probability_positive'] = [float(np.mean(targets[key] > 0)) for key in target_table.index]
+    target_table.to_csv(directory/'scientific_targets.csv')
+    parameter_table = convergence_parameters(diagnostic['parameters'], fit.n_chains)
+    assessment = bx.convergence_assessment({'parameters': parameter_table, 'scientific_targets': target_table},
+        **config.get('diagnostic_thresholds', {}))
+    bx.save_config(assessment, directory/'convergence.json')
+    if config.get('contrasts'):
+        bx.save_config(config['contrasts'], directory/'contrast_definitions.json')
+        target_table.loc[[key for key in target_table.index if '.' in key]].to_csv(directory/'period_contrasts.csv')
     bx.residual_serial_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
         directory/'residual_serial.csv',index=False)
     metrics = fit.sampler_diagnostics.get('draw_metrics',{})
@@ -111,6 +133,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         prior=fit.priors.channels[name] if isinstance(fit.priors,bx.MarginalPriors) else fit.priors
         channel=fit.model.channel(name) if name else fit.model
         band(fit.component_draws('level',channel=name),label+'_level')
+        band(120*fit.component_draws('slope',channel=name),label+'_slope_C_per_decade',ylabel='latent slope / °C per decade')
         if channel.period is not None:
             band(fit.component_draws('seasonal',channel=name),label+'_seasonal')
         band(fit.channel_eta_draws(name,original_scale=True) if name else fit.eta_draws(original_scale=True),label+'_location')
@@ -129,6 +152,17 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         if threshold is not None:
             probability=fit.exceedance_probability_draws(threshold,channel=name,return_labels=False)
             band(probability,label+'_risk',ylabel=fit.event_label(threshold,channel=name))
+            periods = config.get('contrasts')
+            if periods:
+                paired = probability.reshape(fit.n_chains, fit.draws_per_chain, fit.n_time)
+                risk_targets = {}
+                for month in periods.get('months', []):
+                    early = bx.period_average(paired, fit.time, periods['reference'], month=month)
+                    late = bx.period_average(paired, fit.time, periods['comparison'], month=month)
+                    risk_targets.update({f'month_{month:02d}.reference':early,
+                        f'month_{month:02d}.comparison':late, f'month_{month:02d}.change':late-early})
+                if risk_targets:
+                    fit.contrast_diagnostics(risk_targets,credible_interval=level).to_csv(directory/(label+'_period_risks.csv'))
         if config.get('figures',True):
             axis=forecast.plot(channel=name,level=level,history=fit.observed,history_dates=fit.time,history_points=120)
             axis.figure.savefig(directory/(label+'_forecast.'+image_format),bbox_inches='tight',dpi=dpi);plt.close(axis.figure)

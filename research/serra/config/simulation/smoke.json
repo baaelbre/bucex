@@ -53,5 +53,6 @@
   "case_figures": false,
   "risks": {
     "TXx": 27.0
-  }
+  },
+  "contrasts": null
 }

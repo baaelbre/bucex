@@ -80,6 +80,8 @@ def _channel_parameters(state, effects, *, selection=True):
             result[f"{key}.{name}"] = np.asarray(state.params_obs[key]).copy()
     if "scale_signed_sd" in state.params_obs:
         result[f"scale_rw_sd.{name}"] = abs(state.params_obs["scale_signed_sd"])
+    result.update({f"{key}.{name}": np.asarray(value).copy()
+                   for key,value in state.params_obs.items() if key.startswith("evolution.")})
     return result
 
 
@@ -366,6 +368,9 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                   "marginal_fs": True, "structural_ssvs": any(p.ssvs is not None for p in priors.channels.values()),
                   "model_selection_exact": any(p.ssvs is not None for p in priors.channels.values()),
                   "innovation_prior_families": {k:p.profile for k,p in priors.channels.items()},
+                  "parameter_updates": {c.name: {"mu": plan.state_update,
+                      "sigma": "Gaussian evolution elliptical slice" if getattr(c.observation.scale,"mode",None)=="structural" else "exact likelihood scale updates",
+                      **({"xi": "constant shape slice"} if c.family=="gev" else {})} for c in model.channels},
                   "asis": plan.asis, "continuous_coefficient_update": "Gaussian reference elliptical slice",
                   "shared_temporal_state": False, "hierarchical_model_selection": False,
                   "joint_model": True, "joint_likelihood": True,

@@ -40,12 +40,15 @@ class Model(StateSpaceModel):
         *,
         obs: Observation | None = None,
         eta_name: str = "mu",
+        parameters: dict | None = None,
     ) -> None:
         if observation is not None and obs is not None:
             raise ValueError("Give observation= or obs=, not both.")
         resolved = observation if observation is not None else obs
         if not isinstance(resolved, (Gaussian, GEV)):
             raise TypeError("observation must be Gaussian() or GEV().")
+        from ..parameters import resolve_parameters
+        resolved, components = resolve_parameters(resolved, components, parameters)
         self.observation = resolved
         self.components = tuple(components)
         self.name = name

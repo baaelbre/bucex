@@ -7,7 +7,7 @@ Departures declarations instead introduce jointly inferred latent components.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, InitVar
 from typing import Any, Mapping, Sequence
 
 import numpy as np
@@ -62,19 +62,23 @@ class Channel:
 
     name: str
     observation: Observation
-    components: tuple[Component, ...]
+    components: tuple[Component, ...] = ()
     tail: str | None = None
     eta_name: str = "mu"
     description: str | None = None
+    parameters: InitVar[dict | None] = None
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, parameters=None) -> None:
         name = str(self.name)
         if not name or "." in name:
             raise ValueError("Channel names must be non-empty and may not contain '.'.")
         if not isinstance(self.observation, (Gaussian, GEV)):
             raise TypeError("Channel observation must be Gaussian() or GEV().")
+        from ..parameters import resolve_parameters
+        observation, declared = resolve_parameters(self.observation, self.components, parameters)
+        object.__setattr__(self, "observation", observation)
         components = _validate_channel_components(
-            self.components, label=f"channel '{name}'"
+            declared, label=f"channel '{name}'"
         )
         tail = None if self.tail is None else str(self.tail).lower()
         aliases = {

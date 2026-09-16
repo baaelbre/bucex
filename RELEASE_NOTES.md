@@ -1,50 +1,47 @@
-# BUCEX 1.6.5 — calendar forecasts and diagnostics
+# BUCEX 1.7.0 — explicit parameter evolution and the SERRA protocol
 
-- Full SERRA runs follow the latest bundled month (August 2026); named historical configurations preserve 1892–2022. Actual fitted dates are printed and saved.
-- Added draw-wise calendar averages/extremes, leap-year day weights, DJF ending-year labels, explicit incomplete windows and analytic aggregate risks.
-- PNG reports now include slopes, physical parameter/scale/target traces, PIT/Q-Q/residual diagnostics, month panels, annual/seasonal forecasts and risk curves.
-- Saved-fit report regeneration and fixed-origin checks against later observations are available as short research scripts.
-- Inference kernels and prior defaults are unchanged from 1.6.4. A report cannot update the posterior to new data.
-- Validation: 276 source tests and 21 installed-package checks passed; full-date TXm and mixed copula execution checks completed.
+## General API
 
-See `docs/FORECASTS.md` for the API, output files, aggregation assumptions and commands. The uploaded one-chain TXm analysis remains preliminary; this release does not repair its mixing or add residual serial dependence.
+- `Model` and `Channel` accept named `parameters` declarations using `Constant`
+  and `Latent`. Existing `components=` and observation-scale APIs remain valid.
+- `Constant()` means estimated but time-constant; it does not fix a value.
+- Location and log observation scale can have separate level, slope and dummy
+  seasonal states. `EvolutionPriors` supplies separately calibrated continuous
+  normal/lasso/triple-gamma shrinkage for log-scale innovations and regularizes
+  its initial slope/seasonal coefficients. The scale initial level is anchored.
+- A reusable Gaussian-evolution kernel takes a likelihood callback. Scale path
+  and coefficient slices use the exact observation/copula conditional; the
+  location sampler remains Gaussian FFBS or GEV Laplace–MH.
+- Added fitted/forecast `parameter_path`, fitted `parameter_component_draws`,
+  parameter path plots, structural-scale simulation and prior-predictive targets.
+  Saved fits preserve ancillary states/mixings; forecasts propagate future
+  innovations and support warm starts.
+- GEV shape remains constant. New observation families, scale regressions,
+  shared scale states and shared-location plus structural-scale combinations
+  are not implemented; unsupported declarations are rejected explicitly.
 
-## Earlier release notes
+## SERRA research
 
-# BUCEX 1.6.4 — continuous private trajectories and joint dependence
+- The primary data window is **January 1892–August 2026** (1616 months), as
+  requested. The 1892–2022 configurations remain historical comparisons.
+- Primary models use estimated constant scale/shape, continuous lasso FS
+  shrinkage, LKJ(1) residual dependence and pure NCP (ASIS off).
+- Reports add paired 30-year period contrasts, period-average slopes,
+  month-specific location/risk changes, posterior sign probabilities and
+  numerical screening. The recent window is September 1996–August 2026;
+  historical runs retain 1993–2022. Endpoint summaries remain secondary.
+- Prior sensitivity supports both six separate fits and actual joint copula
+  refits. Five core prior comparisons, targeted nuisance checks and the small
+  fixed/evolving seasonality × constant/monthly scale supplement are separate.
+- Matched R=I/copula validation, constant-scale joint recovery, endpoint and
+  full generating-shape-grid experiments are aligned. Long validation/recovery
+  jobs checkpoint numerical results after each completed case.
+- `preflight` prints resolved dates/models/priors and a memory estimate.
+  `START_HERE.md` and the research guide give an explicit run order. The general
+  evolving-scale example is outside the paper's research directory.
 
-This release implements the revised paper's main workflow:
-
-- Continuous FS normal, lasso and triple-gamma priors in private joint fits;
-  exact copula feedback in every path/parameter update. SSVS is optional.
-- A public `fs_priors` constructor with deterministic median calibration,
-  proper initial-state priors, and a normal GEV shape prior by default.
-- Prior-whitened Gaussian regression, corrected GEV coefficient elliptical
-  slices, and location-scale ASIS through invariant NCP rescaling.
-- Nondegenerate lasso/PC local-scale draws at zero coefficients and removal of
-  triple-gamma variance floors.
-- Private static components; seasonal, linear and RW observation log scales;
-  pooled harmonic/four-season/monthly Gaussian-copula dependence.
-- Calendar-correct forecasting and archive/restart support for these models.
-- Physical innovation-effect summaries, bulk/tail ESS, residual-score serial
-  and seasonal dependence checks, and bivariate compound-risk quadrature.
-- Concise SERRA scripts with resolved configuration inheritance, prior/shape
-  sensitivity, staged predictive model comparison, simulation, July 2019
-  endpoint checks, joint recovery and forecast uncertainty decomposition.
-
-Reference priors: median innovation SDs (level, slope, season) =
-(0.02, 0.00005, 0.02), initial level N(0,20²), initial slope N(0,.0025²),
-initial seasonal coordinates N(0,2.25²), baseline observation variance IG(2,2),
-xi ~ N(0,.3²) truncated to [-.5,.5]. These are explicit starting assumptions;
-inspect prior predictions and sensitivity. Lasso lambda²=1; TG a=c=.5 and
-global multiplier=1 are fixed. All local mixing variables are sampled.
-
-The release keeps the univariate, shared-state and hierarchical APIs. It does
-not convert their past fits to the new model. There is no residual AR process,
-t copula or ordering-constrained likelihood. Seasonal copula priors depend on
-channel order; the baseline LKJ prior alone is permutation invariant.
-
-The test report distinguishes numerical target checks and execution checks
-from research-length convergence and coverage. New full Uccle results are not
-included or asserted. The manuscript's preliminary SSVS figures remain a
-separate pilot and must be replaced before claiming continuous-prior results.
+The full joint centered state array alone is approximately 8.07 GB at the
+configured budget. Numerical execution checks do not establish convergence,
+coverage or prior robustness of production runs. See
+`validation/RELEASE_VALIDATION.md` for checks actually performed. No preliminary
+outputs are bundled as manuscript results.

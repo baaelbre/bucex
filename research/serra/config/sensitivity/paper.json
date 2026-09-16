@@ -5,103 +5,28 @@
       "name": "lasso_reference"
     },
     {
+      "name": "innovation_half",
+      "multipliers": {
+        "level": 0.5,
+        "trend": 0.5,
+        "season": 0.5
+      }
+    },
+    {
+      "name": "innovation_double",
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0,
+        "season": 2.0
+      }
+    },
+    {
       "name": "normal",
       "innovation": "normal"
     },
     {
       "name": "triple_gamma",
       "innovation": "triple_gamma"
-    },
-    {
-      "name": "tg_spikier",
-      "innovation": "triple_gamma",
-      "tg_spike_shape": 0.1,
-      "tg_tail_shape": 0.5
-    },
-    {
-      "name": "level_x0.5",
-      "multipliers": {
-        "level": 0.5
-      }
-    },
-    {
-      "name": "level_x2",
-      "multipliers": {
-        "level": 2.0
-      }
-    },
-    {
-      "name": "trend_x0.5",
-      "multipliers": {
-        "trend": 0.5
-      }
-    },
-    {
-      "name": "trend_x2",
-      "multipliers": {
-        "trend": 2.0
-      }
-    },
-    {
-      "name": "season_x0.5",
-      "multipliers": {
-        "season": 0.5
-      }
-    },
-    {
-      "name": "season_x2",
-      "multipliers": {
-        "season": 2.0
-      }
-    },
-    {
-      "name": "xi_uniform",
-      "xi_prior": "uniform"
-    },
-    {
-      "name": "xi_normal_sd_0.2",
-      "xi_sd": 0.2
-    },
-    {
-      "name": "xi_wider_support",
-      "xi_bounds": [
-        -0.75,
-        0.75
-      ]
-    },
-    {
-      "name": "initial_slope_x2",
-      "initial_slope_multiplier": 2.0
-    },
-    {
-      "name": "seasonal_initial_x2",
-      "seasonal_initial_multiplier": 2.0
-    },
-    {
-      "name": "scale_season_tight",
-      "scale_prior_sd": 0.15
-    },
-    {
-      "name": "scale_season_wide",
-      "scale_prior_sd": 0.6
-    },
-    {
-      "name": "variance_IG_2_1",
-      "observation_variance": [
-        2.0,
-        1.0
-      ]
-    },
-    {
-      "name": "variance_IG_2_4",
-      "observation_variance": [
-        2.0,
-        4.0
-      ]
-    },
-    {
-      "name": "asis_off",
-      "asis": false
     }
   ]
 }

@@ -21,5 +21,15 @@
   "figures": false,
   "predictive_check_draws": 4,
   "prior_draws": 200,
-  "prior_predictive_draws": 4
+  "prior_predictive_draws": 4,
+  "contrasts": {
+    "reference": [
+      "2023-09",
+      "2024-08"
+    ],
+    "comparison": [
+      "2025-09",
+      "2026-08"
+    ]
+  }
 }

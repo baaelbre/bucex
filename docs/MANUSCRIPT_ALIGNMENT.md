@@ -1,52 +1,43 @@
-# Alignment with the September manuscript revision
+# SERRA alignment in BUCEX 1.7.0
 
-The release follows the revised manuscript's order: private Gaussian/GEV
-margins, continuous FS shrinkage, observation scale, joint residual dependence,
-scientific contrasts/risks, and staged validation. It preserves the independent
-six-series fallback. No preliminary SSVS figure is relabelled as a result from
-the new continuous model.
+The primary runs use the user's requested complete record through **August
+2026**. Update manuscript date labels accordingly: reference January
+1892–December 1921 versus recent September 1996–August 2026 (360 months each).
+The original 1892–2022 record is retained as a named historical sensitivity,
+with its 1993–2022 recent window. The mixed source provenance after 2022 remains
+visible; no automatic homogenization claim is made.
 
-| Manuscript element | BUCEX 1.6.4 |
+| Scientific element | Implementation/configuration |
 |---|---|
-| FS normal/lasso/triple-gamma comparison | `fs_priors`, identical marginal model declarations, median-matched SDs |
-| Practical innovation magnitude | `innovation_effect_draws(H)`; direct level, integrated slope and exact dummy-seasonal propagation |
-| Joint posterior | `MarginalPriors` and copula-conditional updates in every margin |
-| Continuous coefficient computation | Exact weighted Gaussian update or Gaussian-reference elliptical slice |
-| Non-centred mixing improvements | Prior whitening; continuous location ASIS by invariant rescaling; diagnostics on physical SDs and scientific quantities |
-| Seasonal/secular observation scale | `LogScale`, independent per channel |
-| Seasonal residual dependence | Pooled Fisher partial-correlation contrasts with an LKJ baseline |
-| Rare compound probabilities | Bivariate residual integration per state/parameter draw |
-| Model comparison | Matched rolling-origin experiments, paired score comparisons; no automatic Bayes-factor or model-averaging claim |
-| Shape, weak dynamics and endpoint checks | Research configurations and scripts, with wider fitted support for the generating shape grid |
+| Six monthly marginal summaries | Two Gaussian means, four GEV extrema, lower extrema reflected |
+| Structural location | Per-channel level, slope, dummy seasonal, period 12 |
+| Primary observation scale/shape | Unknown constant sigma/xi; no monthly scale effects by default |
+| Continuous shrinkage | Median-matched lasso, normal, triple_gamma |
+| Main priors | Lasso reference medians (.02,.00005,.02); initial level N(0,20²), slope N(0,.0025²), seasonal coefficients N(0,2.25²); sigma² IG(2,2); xi N(0,.3²) truncated to [-.5,.5] |
+| Joint dependence | Constant Gaussian residual copula, LKJ(1); every conditional update has feedback |
+| Computation | FS NCP; Gaussian FFBS; GEV Laplace–MH; exact-likelihood coefficient updates; ASIS off |
+| Main estimands | Period-average level/location changes, average slopes, month-specific location changes; paired cross-series changes |
+| Main risks | Original-tail monthly and annual events, forecast uncertainty and compound heat |
+| Core prior sensitivity | Reference, all process medians ×.5, ×2, matched normal, matched TG; independent and joint drivers |
+| Targeted sensitivity | Initial coefficients, IG observation prior, shape family/SD/support, LKJ(2/4) |
+| Supplementary structure | Fixed/evolving location seasonality × constant/monthly observation scale |
+| Model comparison | Small matched rolling-origin comparisons with proper scores and paired uncertainty |
+| Reviewer validation | Shape grid, zero/weak dynamics, endpoint stress, approximate/exact benchmark, joint recovery, annual aggregation |
+| Fallback | Six independent runs remain fully supported |
 
-The manuscript's implementation-status paragraphs and table can now be updated
-from “proposed backend” to “implemented and tested in BUCEX 1.6.4.” That change
-is about software. Statements about scientific recovery, convergence, prior
-robustness or predictive superiority still require completed research runs.
+`period_contrasts.csv` and `contrast_definitions.json` provide the numerical
+inputs for manuscript period comparisons. `*_period_risks.csv` describes
+month-specific changes. `convergence.json` screens scientific quantities and
+parameters; trace inspection and adequate Monte Carlo precision remain needed.
+The run configuration, rather than prose defaults, is authoritative.
 
-Record these concrete choices in the final paper:
+The new general `Latent`/`StructuralScale` API is a software extension. The
+paper does **not** need to claim a full distributional location-and-scale
+model or benchmark it to use this release. Shape remains constant. Factor
+models, sparse post-selection, residual t copulas, residual serial dependence
+and ordering-constrained likelihoods are not part of the revision's primary
+implementation. Existing shared-location APIs are preserved separately.
 
-- Reference median physical innovation SDs are (.02, .00005, .02). These values
-  are medians, whereas the preliminary SSVS pilot's same numbers were slab SDs.
-- Lasso lambda² is fixed at one; component coefficients are rescaled to match
-  the declared medians. This is compatible with the manuscript's calibration
-  principle, not its optional learned-Gamma hyperprior alternative.
-- Triple-gamma uses fixed a=c=.5 and global multiplier one; local numerator and
-  denominator variables are sampled. The spikier a=.1 case is a sensitivity
-  configuration. No finite slab cap is used by these default configurations.
-- Initial level is N(0,20²) in the internal response orientation, using no
-  estimated prior centre. The pilot's data-centred N(median,3.2²) is a different
-  prior and must remain labelled as such.
-- Shape is N(0,.30²), truncated to [-.5,.5]; uniform on the same support,
-  SD .20, and wider support are separate sensitivity changes.
-- Linear scale uses t/120 for monthly data. The RW scale is anchored at z_0=0
-  with a signed-normal innovation coefficient. These are explicit alternatives
-  to the retained legacy `phi` API.
-- Seasonal copula baseline coordinates have the LKJ prior; seasonal effect
-  coefficients have independent normals. It is not an LKJ prior on each
-  monthly matrix, and it is not invariant to a permutation of channels.
-
-Residual serial dependence, a residual t copula, an ordering-constrained
-likelihood and free dynamic-factor loadings are outside this release's private
-paper workflow. Existing shared-state APIs are separate. These omissions must
-remain visible wherever the manuscript motivates them as future comparisons.
+Software checks are not scientific results. No release smoke output replaces
+a manuscript results placeholder. Final convergence, prior robustness,
+predictive performance and reviewer simulations still require production runs.

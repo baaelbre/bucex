@@ -10,14 +10,16 @@ def main():
     parser.add_argument("--config", type=Path, default=Path("research/serra/config/independent_smoke.json"))
     parser.add_argument("--series", nargs="+", choices=tuple(bx.UCCLE_INFO))
     parser.add_argument("--prior", choices=("normal", "lasso", "triple_gamma"))
-    parser.add_argument("--scale", choices=("constant", "linear", "rw"))
+    parser.add_argument("--scale", choices=("constant", "seasonal"),
+                        help="Constant scale or repeating monthly scale (supplement).")
     args = parser.parse_args()
     config = bx.load_config(args.config)
     config["analysis"] = "independent"
     if args.prior:
         config['priors']['innovation'] = args.prior
     if args.scale:
-        config['model']['scale_mode'] = args.scale
+        config['model']['scale_mode'] = 'constant'
+        config['model']['seasonal_scale'] = args.scale == 'seasonal'
     print(run(config, series=args.series))
 
 

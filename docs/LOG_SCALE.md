@@ -52,3 +52,11 @@ Use the staged `research.serra.model_comparison` study to assess added scale
 structure. Compare residual PIT by season, serial residual behavior, held-out
 calibration and marginal/compound risk changes. Avoid choosing scale flexibility
 solely from smoothed in-sample residuals.
+
+## Full structural scale (1.7.0)
+
+For separate level, slope and seasonal states on log sigma, use
+`StructuralScale(components, EvolutionPriors(...))` or the named `Latent`
+declaration in [PARAMETER_EVOLUTION.md](PARAMETER_EVOLUTION.md). The baseline
+scale remains estimated. SERRA uses an estimated **constant scale** by default;
+seasonal scale is a supplementary comparison.

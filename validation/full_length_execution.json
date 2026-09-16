@@ -1,0 +1,18 @@
+{
+  "n_months": 1616,
+  "last_month": "2026-08",
+  "channels": [
+    "TXm",
+    "TNm",
+    "TXx",
+    "TXn",
+    "TNx",
+    "TNn"
+  ],
+  "chains": 1,
+  "warmup": 1,
+  "retained": 2,
+  "actual_constant_scales": true,
+  "n_scientific_targets": 163,
+  "purpose": "Full-length execution check; no convergence inference"
+}

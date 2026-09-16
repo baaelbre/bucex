@@ -1,0 +1,4 @@
+{
+  "extends": "copula_smoke.json",
+  "analysis": "joint"
+}

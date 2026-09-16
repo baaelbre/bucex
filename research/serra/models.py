@@ -7,7 +7,7 @@ def channel(name, data, config):
     """Private location components and a separately declared observation scale."""
     info, settings = bx.UCCLE_INFO[name], config['model']
     seasonal = (bx.SeasonalScale(settings['period'], settings.get('scale_prior_sd', .3))
-                if settings.get('seasonal_scale', True) else None)
+                if settings.get('seasonal_scale', False) else None)
     scale = bx.LogScale(settings.get('scale_mode', 'constant'), seasonal,
         slope_sd=settings.get('scale_slope_sd', .1),
         innovation_sd=settings.get('scale_innovation_sd', .01),
@@ -21,7 +21,13 @@ def channel(name, data, config):
     components = (bx.LocalLinearTrend(level_mode=settings.get('level', 'dynamic'),
                     trend_mode=settings.get('trend', 'dynamic')),
                   bx.DummySeasonal(settings['period'], mode=settings.get('seasonal', 'dynamic')))
-    return bx.Channel(name, obs, components, tail=info['tail'])
+    # Both univariate and joint fits use the same named parameter declaration.
+    if seasonal is None and scale is not None and scale.mode == 'constant':
+        obs = bx.Gaussian() if info['family'] == 'gaussian' else bx.GEV(xi_bounds=tuple(config['priors']['xi_bounds']))
+        parameters = {'mu': bx.Latent(components), 'sigma': bx.Constant()}
+    else:
+        parameters = {'mu': bx.Latent(components)}
+    return bx.Channel(name, obs, parameters=parameters, tail=info['tail'])
 
 
 def marginal_prior(item, data, config):
@@ -48,12 +54,12 @@ def joint_model(data, config):
     if mode not in {'joint', 'copula'}:
         raise ValueError("Joint analysis is 'joint' (R=I) or 'copula'.")
     channels = tuple(channel(name, data, config) for name in data)
-    settings = dict(config.get('copula', {'eta': 2.}))
+    settings = dict(config.get('copula', {'eta': 1.}))
     structure = settings.pop('structure', 'constant')
     if mode == 'joint':
         copula = bx.GaussianCopula(correlation=np.eye(len(channels)))
     elif structure == 'constant':
-        copula = bx.GaussianCopula(eta=settings.get('eta', 2.))
+        copula = bx.GaussianCopula(eta=settings.get('eta', 1.))
     else:
         copula = bx.SeasonalGaussianCopula(structure=structure,
             period=config['model']['period'], **settings)
@@ -67,7 +73,7 @@ def inference_options(config):
 
 def fit_options(config, *, family='mixed', tail=None):
     options = dict(engine='ffbs' if family == 'gaussian' else 'laplace_mh',
-        parameterization='fs', asis=config.get('inference', {}).get('asis', True),
+        parameterization='fs', asis=config.get('inference', {}).get('asis', False),
         mcmc=bx.MCMC(**config['mcmc']), **inference_options(config))
     if tail is not None:
         options['tail'] = tail

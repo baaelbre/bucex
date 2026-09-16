@@ -1,0 +1,15 @@
+{
+  "extends": "smoke.json",
+  "analysis": "copula",
+  "variants": [
+    {
+      "name": "lasso_reference"
+    },
+    {
+      "name": "lkj_2",
+      "copula": {
+        "eta": 2.0
+      }
+    }
+  ]
+}

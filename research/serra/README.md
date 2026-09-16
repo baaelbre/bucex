@@ -1,226 +1,213 @@
-# SERRA workflow for BUCEX 1.6.5
+# SERRA workflow — BUCEX 1.7.0
 
-Run from the extracted release directory, after:
+Run commands from the extracted release directory. Install with
+`python -m pip install -e ".[test]"`. Start with [../../START_HERE.md](../../START_HERE.md).
 
-```bash
-python -m pip install -e '.[test]'
-python -m pytest
-```
+## The primary analysis
 
-The six trajectories are TXm/TNm (Gaussian monthly means), TXx/TNx (GEV
-maxima), and TXn/TNn (reflected GEV minima). Full fits now use **1892–August 2026**
-(`data.end: null`, the latest bundled month). The `independent_1892_2022.json`
-and `copula_1892_2022.json` configurations retain the original manuscript window.
-The extended record has mixed sources; see `bucex/data/SOURCES.md`.
+All six summaries are **monthly**: TXm/TNm Gaussian means; TXx/TNx GEV
+maxima; TXn/TNn reflected GEV minima. The primary record is **January 1892 to
+August 2026: 1616 monthly blocks**. The later data have mixed sources; see
+[../../bucex/data/SOURCES.md](../../bucex/data/SOURCES.md). The named
+`*_1892_2022.json` configurations retain the earlier record for comparison.
+The `*_extended.json` files remain compatibility aliases for the full record.
 
-`config/base.json` contains the scientific assumptions and a four-chain,
-2000-warmup/2000-retained budget. `config/smoke.json` inherits it but uses 36
-months and four draws: it checks execution only. Run directories are unique,
-so a new job does not overwrite an earlier result. Every run saves expanded
-settings, model declarations and declared priors.
+Each channel has a dynamic local level, slope and dummy location seasonality.
+Observation scale and GEV shape are unknown but constant. Reference priors are
+continuous FS lasso; no SSVS, PGAS or dynamic-factor analysis is required.
+The optional constant Gaussian copula is fitted jointly. ASIS is off.
 
-## 1. Run and inspect one margin, then all six
-
-```bash
-python -m research.serra.univariate --series TXm
-python -m research.serra.univariate --series TXx TNn
-python -m research.serra.univariate --series TXx --prior normal --scale linear
-python -m research.serra.univariate --config research/serra/config/independent_full.json
-```
-
-Each series is fitted independently and can be run as a separate job. The same
-`Model → fs_priors → fit → diagnostics/risk/forecast` API is used for every series.
-Read `models.py` first: it is the complete scientific model declaration. Uccle
-metadata supplies only the observation family and the extrema orientation.
-
-Look at these files before interpreting a figure:
-
-| Output | What to assess |
-|---|---|
-| `run.json`, `config.json`, `declared_priors.json` | Correct dates, family, model, priors, engine and saved settings |
-| `mcmc.csv` | Multiple chains, R-hat near 1 (investigate >1.01), bulk/tail ESS, constants and weakly identified parameters |
-| `scientific_targets.csv` | Mixing and uncertainty of level changes and paired changes, retaining chain membership |
-| `sampler_metrics.csv`, `engine.json` | Channel-specific path acceptance, coefficient slice cost, support failures and ASIS invariance errors |
-| `*_innovation_effects.csv` | SD of each component's contribution over 120 months; probability this SD exceeds 0.1°C |
-| `*_level.csv`, `*_seasonal.csv`, `*_observation_scale.csv` | Separate location evolution, location seasonality and observational variability |
-| `*_risk.csv`, `*_return_level_100_blocks.csv` | Original-tail probabilities; **100 monthly blocks**, not 100 years |
-| `residual_serial.csv`, `in_sample_pit.csv` | Descriptive lack-of-fit signals; in-sample smoothing is not held-out calibration |
-
-The innovation-effect probability is a practical magnitude summary, not a
-posterior inclusion probability. All main priors are continuous. Exact SSVS
-remains in the package but is absent from the reference research protocol.
-PNG traces of physical SDs, scale, shape and scientific contrasts are exported
-automatically; sign-switching alone is not mixing evidence. Slopes are in °C per
-decade. `*_pit_qq_residuals.png` is an in-sample smoothed check. The calendar
-forecast/risk and scale files are explained in [../../docs/FORECASTS.md](../../docs/FORECASTS.md).
-
-Re-export a saved fit without rerunning MCMC:
+`config/base.json` is the resolved scientific protocol. Its production starting
+budget is four independently seeded chains, 2000 warm-up and 2000 retained
+iterations each. This is not an empirical convergence guarantee. Every run
+writes expanded settings and actual dates into a fresh directory.
 
 ```bash
-python -m research.serra.report --fit PATH_TO_RUN/fit.bucex
-python -m research.serra.report --fit PATH_TO_RUN/fit.bucex --months 1 7 8 --horizon 120
-python -m research.serra.check_updates --fit PATH_TO_RUN/fit.bucex
-```
-
-`report` defaults to the saved `config.json` and PNGs. It prints the actual
-training window and never extends a saved posterior. `check_updates` compares
-fixed-origin forecasts with later bundled observations; it does not refit.
-To assimilate the new observations, run the full univariate or copula fit.
-
-## 2. Check prior sensitivity with matched models
-
-```bash
-python -m research.serra.sensitivity --config research/serra/config/sensitivity/smoke.json --series TXm TXx
-python -m research.serra.sensitivity --config research/serra/config/sensitivity/paper.json
-```
-
-Normal/lasso/TG share prior median innovation SDs and the same observation-scale
-model. The full grid also changes each innovation median, initial slope and
-seasonality, scale seasonality prior width, observation variance, ASIS setting,
-shape-prior family and shape support. Review `prior_posterior.csv`,
-`prior_posterior_targets.csv`, `scientific_targets.csv` and `sensitivity.csv`.
-Sensitivity in an unconverged fit is not reliable prior sensitivity.
-
-Reference: lasso lambda²=1; TG a=c=0.5 and global multiplier=1; all local
-mixing variables sampled. TG a=0.1 is an additional spikier case. Initial
-hyperparameters are declared without using the data to center them. The normal
-shape prior has SD .30 on [-.5,.5]; the uniform alternative uses identical
-support. Wider support and SD .20 are separate comparisons.
-
-## 3. Compare a small set of model structures predictively
-
-```bash
-python -m research.serra.model_comparison --candidates reference static_season constant_scale
-python -m research.serra.model_comparison --config research/serra/config/model_comparison_full.json --stage margins
-```
-
-Candidates include static/dynamic location seasonality, fixed/absent slope,
-constant/seasonal observational scale, and seasonal-plus-linear/RW log scale.
-Use the same held-out calendar months. The scripts do not choose a winner from
-in-sample likelihoods and do not average unweighted models. Record a justified
-marginal specification before the next stage; update the common config so
-independence and dependence fits use **identical** marginal specifications.
-
-`runs.csv` locates every candidate's validation output. Compare two directories:
-
-```bash
-python -m research.serra.compare PATH_TO_BASELINE_VALIDATION PATH_TO_CANDIDATE_VALIDATION --output comparison.csv
-```
-
-Lower proper scores are better. Comparison uncertainty resamples paired calendar
-year blocks; consider longer blocks if errors persist across years. Smokes have
-only one held-out year and cannot support score-comparison uncertainty.
-
-## 4. Add contemporaneous residual dependence
-
-```bash
-python -m research.serra.copula --independence
+python -m research.serra.preflight --config research/serra/config/copula_full.json
+python -m research.serra.univariate --series TXx
 python -m research.serra.copula
-python -m research.serra.copula --structure harmonic
+```
+
+The last two commands default to **smoke runs**: 36 months, four warm-up and
+four retained draws, one chain. They verify execution only.
+
+## Primary fits and the independent fallback
+
+```bash
+python -m research.serra.univariate --config research/serra/config/independent_full.json --series TXx
+python -m research.serra.univariate --config research/serra/config/independent_full.json
 python -m research.serra.copula --config research/serra/config/copula_full.json --independence
 python -m research.serra.copula --config research/serra/config/copula_full.json
 ```
 
-These are private trajectories under R=I versus estimated R. Every parameter
-and state update includes the copula; the univariate fits are not frozen inputs.
-The independent six-series analysis remains available if joint inference is
-impractical. Do not include unsupported joint conclusions in that fallback.
+Run each univariate series as a separate job with `--series`. The R=I joint
+baseline uses identical marginal declarations. The estimated copula changes
+the **joint posterior**, so trajectories, slopes and interval widths can change.
+Raw correlations alone are not evidence of residual dependence; inspect
+conditional score dependence after location, scale and seasonality.
 
-Inspect `copula_correlations.csv`, `residual_dependence.csv`,
-`residual_dependence_by_month.csv`, paired scientific contrasts and how the
-marginal paths/risks change. Positive raw temperature correlations can reflect
-shared seasonality or warming; evidence here concerns **conditional residual
-scores**. R-hat/ESS for R and the trajectories must both be satisfactory.
+If the joint fit remains impractical or mixes poorly, the six independent
+analyses still run. Remove unsupported joint empirical claims; do not report
+contrasts formed by arbitrarily pairing unrelated marginal MCMC indices as if
+they came from the joint copula posterior.
+
+The full joint centered state array is about **8.07 GB**, before forecasts,
+diagnostics and temporary copies. `preflight` prints the budget; choose a
+suitable machine or run the independent series separately.
+
+## What the outputs mean
+
+| Output | Inspect for |
+|---|---|
+| `data_window.json`, `config.json`, `run.json`, `declared_priors.json` | Actual endpoint, declaration, priors, engine and retained budget |
+| `convergence.json`, `mcmc.csv` | R-hat, bulk/tail ESS, independent chain count, undefined diagnostics and constant draws |
+| `scientific_targets.csv`, `period_contrasts.csv` | Climate-period changes, posterior sign probabilities and paired differences; chain dimensions retained |
+| `contrast_definitions.json` | Exact dates, months, channel pairs and rate units |
+| `sampler_metrics.csv`, `engine.json` | Laplace–MH acceptance, slice cost, GEV support failures, state-update diagnostics |
+| `*_level.*`, `*_slope_C_per_decade.*`, `*_seasonal.*`, `*_location.*` | Distinct latent components with pointwise credible bands |
+| `*_observation_scale.*`, `*_innovation_effects.csv` | Scale assumption and practical 120-month contribution of each innovation |
+| `*_period_risks.csv`, `*_risk.*` | Original-tail risk, by calendar month and period |
+| `*_traces*.png`, `*_pit_qq_residuals.png` | Chain movement and descriptive in-sample fit |
+| `residual_serial.csv`, `residual_dependence*.csv` | Remaining serial, cross-series and seasonal dependence |
+| `copula_correlations.csv`, `compound_heat_forecast.csv` | Posterior dependence and conditional compound probability |
+| `ordering_in_sample.csv`, `ordering_forecast.csv` | Min/mean/max crossings; observations are never sorted or discarded |
+
+`convergence.json` screens physical structural SDs, initial coefficients,
+scale, shape, copula parameters and scientific contrasts. All shrinkage
+parameters remain in `mcmc.csv`, including declared fixed hyperparameters.
+A numerical pass is not proof of model adequacy: assess traces, precision of
+risk probabilities, sensitivity and held-out calibration as well.
+
+The main comparison is **January 1892–December 1921** versus
+**September 1996–August 2026**, two complete 360-month windows. Report slopes
+as period averages in °C/decade, and compare each calendar month's full
+location. The historical configurations instead compare 1892–1921 with
+1993–2022. Endpoint changes/final slopes are also retained as secondary
+summaries. Equal weighting of monthly latent states is distinct from
+**day-weighted annual observed means**.
+
+Joint channel contrasts subtract quantities within the same draw. With fixed
+scale/shape, within-margin quantile changes equal location changes; six fitted
+summary distributions do not reconstruct the full daily temperature density.
+A small continuous innovation SD is not an inclusion probability or a model
+selection result. See [../../docs/FORECASTS.md](../../docs/FORECASTS.md) for
+month-specific, seasonal and annual forecasts and risk figures.
+
+## Core and targeted prior sensitivity
 
 ```bash
-python -m research.serra.model_comparison --stage dependence
-python -m research.serra.model_comparison --config research/serra/config/model_comparison_full.json --stage dependence
-python -m research.serra.copula --config research/serra/config/copula_seasonal_full.json
+python -m research.serra.sensitivity --config research/serra/config/sensitivity/paper.json
+python -m research.serra.sensitivity --config research/serra/config/sensitivity/joint.json
+python -m research.serra.sensitivity --config research/serra/config/sensitivity/targeted.json
+python -m research.serra.sensitivity --config research/serra/config/sensitivity/joint_targeted.json --variants lkj_2 lkj_4
 ```
 
-The default seasonal alternative has one harmonic pair per Fisher partial
-correlation, shrunk towards a common baseline. This avoids 12 unrelated
-correlation matrices. `SeasonalGaussianCopula` also supports four-season or
-monthly zero-sum contrasts. For seasonal models, check a different channel
-ordering and contrast prior widths (.125/.25/.5); this prior is order dependent.
-The dependence comparison includes LKJ eta=1,2,4 for the constant model.
+The five core variants are lasso reference, **all** innovation medians halved,
+all doubled, matched normal, matched triple-gamma. Location process SD prior
+medians are (.02, .00005, .02). Initial level is N(0,20²), initial slope is
+N(0,.0025²), initial seasonal coordinates are N(0,2.25²); sigma² is IG(2,2).
+Shape is N(0,.3²) on [-.5,.5]. Lasso lambda²=1; TG a=c=.5 and global multiplier
+1. Local mixing variables are inferred; the prior center is not estimated
+from the data.
 
-## 5. Study recovery, shape and the July 2019 endpoint
+Targeted variants alter initial priors, observation variance, shape SD/support
+and a uniform shape alternative. Joint targeted variants include LKJ(2/4)
+against LKJ(1). Run cases individually with `--variants NAME`.
+`sensitivity/joint_smoke.json` checks this joint-refit route. `status.csv`
+distinguishes execution completion from numerical screening. Compare the
+actual scientific contrasts/risks, not just prior shapes.
+
+## Limited structural checks for the supplement
 
 ```bash
-python -m research.serra.simulate --config research/serra/config/simulation/smoke.json
+python -m research.serra.sensitivity --config research/serra/config/sensitivity/structure.json
+python -m research.serra.sensitivity --config research/serra/config/sensitivity/joint_structure.json
+python -m research.serra.model_comparison --config research/serra/config/model_comparison_full.json --stage margins
+```
+
+The four structural variants cross fixed/evolving **location seasonality**
+with constant/monthly **observation scale**, retaining monthly observations.
+A deterministic linear-location benchmark is additionally available in rolling
+validation. This is a small declared comparison, not a search over every
+possible source of nonstationarity. Full structural scale is demonstrated in
+`docs/examples/parameter_evolution.py`, outside the paper workflow.
+
+## Predictive validation and dependence comparison
+
+```bash
+python -m research.serra.validate --config research/serra/config/independent_full.json
+python -m research.serra.validate --config research/serra/config/independence_full.json
+python -m research.serra.validate --config research/serra/config/copula_full.json
+python -m research.serra.model_comparison --config research/serra/config/model_comparison_full.json --stage dependence
+python -m research.serra.compare PATH_TO_BASELINE_VALIDATION PATH_TO_CANDIDATE_VALIDATION --output comparison.csv
+```
+
+Use the joint R=I validation for a **joint log-score** comparison with the
+copula; independent per-series outputs alone do not contain a joint log score.
+Validation uses matched held-out months, 90/95/99% central coverage, direct
+quantiles .005–.995, PIT and proper scores, including compound heat Brier
+scores. Prior declarations are unchanged across origins. Outputs checkpoint
+each completed fold, including convergence diagnostics.
+
+With a 12-month forecast horizon and annual origins, the final complete test
+year is 2025. The January–August 2026 observations are in the full model fit
+but are not a complete annual validation block. A supplementary shorter-horizon
+validation can include them; never label an incomplete year as an annual test.
+
+Paired score differences use calendar-year block uncertainty; consider longer
+blocks for persistent errors/overlapping origins. The optional harmonic copula
+configuration is supplementary. It shrinks seasonal deviations and has an
+order-dependent partial-correlation prior: test channel order/prior width
+before claiming seasonal dependence. The Gaussian copula is not a model of
+asymptotic tail dependence or residual serial dependence.
+
+## Reviewer simulations, endpoint and aggregation
+
+```bash
 python -m research.serra.simulate --config research/serra/config/simulation/paper.json
 python -m research.serra.simulate --config research/serra/config/simulation/zero_paper.json
 python -m research.serra.simulate --config research/serra/config/simulation/weak_paper.json
 python -m research.serra.simulate --config research/serra/config/simulation/endpoint_paper.json
 python -m research.serra.joint_recovery --config research/serra/config/joint_recovery_full.json
 python -m research.serra.endpoint --config research/serra/config/endpoint/paper.json
-```
-
-The generating shape grid is -.5,-.4,…,.5; fitted support is [-.75,.75].
-`endpoint_paper.json` is a **conditional stress test**, not ordinary coverage.
-Shape recovery uses independent replicates and common random numbers across
-shapes within a replicate. Report uncertainty across replicates and all failures;
-time points within one simulated trajectory are not independent replications.
-Joint recovery compares R=I versus estimated R with mixed margins.
-
-Paired approximate/exact historical constant-scale comparisons are explicit:
-
-```bash
-python -m research.serra.simulate --config research/serra/config/simulation/laplace_benchmark.json
-python -m research.serra.endpoint --config research/serra/config/endpoint/laplace_benchmark.json
-```
-
-They do not validate an approximate seasonal-copula sampler. The main private
-kernel always corrects GEV path proposals by MH. July 2019 output distinguishes
-full-record smoothing from a forecast trained strictly before the selected event.
-A finite GEV endpoint is a statistical support boundary, not a physical limit.
-
-## 6. Validate intervals, annual aggregation and compound risks
-
-```bash
-python -m research.serra.validate --config research/serra/config/independent_full.json
-python -m research.serra.validate --config research/serra/config/copula_full.json
 python -m research.serra.forecast_check --config research/serra/config/forecast/paper.json
 ```
 
-Coverage is reported at 90/95/99%, with tail quantiles, PIT and proper scores.
-Separate latent-level, full-location and observation prediction intervals.
-Finite Monte Carlo variances do not prove finite posterior moments near xi=.5.
-The annual product is formed within a draw before averaging; it assumes
-conditional residual independence across months, and uses complete years.
+Start with corresponding smoke configurations before expensive grids. Recovery
+uses generating xi=-.5,-.4,...,.5 and wider fitted support [-.75,.75]. The endpoint
+stress design is conditional, not ordinary frequentist coverage. Joint recovery
+uses **constant** scale for both truth and fitting, with R=I versus estimated R.
+`--replicate` runs one selected joint-recovery replicate; numerical tables
+checkpoint each completed case. Report failures and between-replicate uncertainty.
 
-Compound-risk quadrature integrates bivariate residual noise within each draw,
-avoiding a zero estimate simply because no rare event was simulated. The mean
-of these probabilities estimates posterior predictive risk. Forecast bands
-also contain sampled future-state variability; isolating epistemic uncertainty
-would require nested future-path integration. Three-or-more-channel events
-remain available through simulation, without pretending their counts are
-posterior credible intervals for a probability.
+`simulation/laplace_benchmark.json` and `endpoint/laplace_benchmark.json`
+compare legacy approximate Laplace with corrected Laplace–MH under exactly
+matched constant scales. The primary private kernel always uses MH correction.
+Endpoint output distinguishes full-record smoothing from a fit ending before
+the July 2019 event. A finite endpoint is a statistical support boundary, not
+a physical limit.
 
-Always inspect `ordering_in_sample.csv` and `ordering_forecast.csv`. The model
-does not enforce min ≤ mean ≤ max; no draws are sorted or discarded. If crossings
-are material, qualify compound interpretations or change the observation model.
+Annual extrema use complete years and a product **within each posterior draw**
+before posterior averaging. This assumes conditional residual independence
+across months. Distinguish monthly-block return levels from annual return
+levels, posterior predictive means from probability credible intervals, and
+pointwise bands from simultaneous bands. Ordering is checked, not enforced.
 
-## Optional data preparation
-
-The release already contains validated monthly data. To rebuild it explicitly:
+## Reuse fitted posteriors and rebuild data
 
 ```bash
+python -m research.serra.report --fit PATH_TO_RUN/fit.bucex --months 1 7 8 --horizon 120
+python -m research.serra.check_updates --fit PATH_TO_RUN/fit.bucex
 python -m research.serra.prepare_uccle
 ```
 
-The helper scripts are `models.py` (declarations), `experiment.py` (matched
-sensitivity cases), and `report.py` (public result APIs). There are no conference
-subdirectories. Keep outputs outside source control; tiny execution outputs are
-not bundled as paper results.
+`report` never refits or adds observations. For a legacy saved configuration,
+pass an updated `--config` to request the new period contrasts only when the
+saved fit contains the complete requested periods. A genuinely different
+scale model or prior needs a new fit. Data preparation is optional: all six
+validated monthly files are bundled.
 
-## Resource planning
-
-The default full joint fit retains roughly 7.8 GB of centred state draws alone
-(4 chains × 2000 draws × 1573 state times × 78 states × 8 bytes), before
-diagnostics, forecasts and temporary copies. The six univariate jobs reduce
-peak memory per fit. Choose chain/draw budgets and storage deliberately;
-changing them is an explicit configuration choice, not a convergence remedy.
-For large simulation grids, set `save_fits: false` when compact numerical
-outputs and saved configurations suffice; retain selected fits for auditing.
+Read `models.py` for model construction, `run.py` for fitting, `report.py` for
+public posterior APIs, `sensitivity.py` for matched refits, and `validate.py`
+for forecasts. The helper modules contain research orchestration; inference,
+period estimands, diagnostics, risks, forecasts and figure APIs live in BUCEX.

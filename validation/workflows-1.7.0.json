@@ -1,0 +1,13 @@
+{
+  "independent_six_margins": "36 months; 1 chain, 4 warmup + 4 retained; reports and archives completed",
+  "joint_copula": "six margins, 36 months; reports, period contrasts and forecasts completed",
+  "joint_sensitivity": "LKJ(2) joint refit completed with resolved priors and period summaries",
+  "univariate_sensitivity": "normal-prior TXx case completed with prior/predictive exports and figures",
+  "held_out_independence": "R=I mixed model, one 12-month held-out fold completed",
+  "joint_recovery": "constant scale, rho=.5, xi=0, one replicate; R=I and estimated R completed",
+  "shape_grid": "one short replicate at each xi=-.5,-.4,...,.5; all 11 Laplace-MH cases completed",
+  "endpoint": "reference, wider-support and uniform-shape short July-2019 cases completed",
+  "general_evolution_example": "120 simulated Gaussian observations, two short chains; diagnostics/PNG/forecasts/save completed",
+  "full_length_joint": "all six margins, 1616 months through August 2026, 1 warmup + 2 retained; constant scale and 163 scientific targets checked",
+  "scientific_status": "All are execution checks. No production posterior, coverage, robustness or acceptance claim."
+}

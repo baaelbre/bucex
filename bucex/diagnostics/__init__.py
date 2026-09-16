@@ -60,3 +60,6 @@ __all__ = [
     "recovery_metrics",
     "scientific_summary",
 ]
+
+from .periods import period_average, period_contrasts, convergence_assessment
+__all__ += ["period_average", "period_contrasts", "convergence_assessment"]

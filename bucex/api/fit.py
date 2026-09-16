@@ -586,7 +586,7 @@ def _fit_multiseries_model(
            getattr(c, "mode", None) == "static" for channel in model.channels for c in channel.components):
         raise ValueError("Explicit static FS components require MarginalPriors with continuous priors.")
     if any(channel.observation.scale is not None for channel in model.channels):
-        raise ValueError("Multiseries SeasonalScale requires MarginalPriors and private FS trajectories.")
+        raise ValueError("Multiseries scale declarations require MarginalPriors and private FS trajectories.")
     resolved_plan = inference_plan(
         compiled,
         engine=engine,
@@ -917,7 +917,7 @@ def fit(
         from ..inference.fit.marginal import marginal_plan
         from ..inference.fit.marginal_adapter import sample_seasonal_univariate
         if state_kwargs or exog is not None:
-            raise ValueError("SeasonalScale uses the private FS sampler; omit state_kwargs and exog.")
+            raise ValueError("Declared scale evolution uses the private FS sampler; omit state_kwargs and exog.")
         private_plan = marginal_plan(compiled, engine=engine, parameterization=parameterization, asis=asis)
         return sample_seasonal_univariate(y_model, model, compiled, resolved_priors, private_plan,
             mcmc=resolved_mcmc, laplace=resolved_laplace, dates=dates, sign=sign,

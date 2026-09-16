@@ -1,7 +1,7 @@
-# Research workflows
+# Research
 
-`serra/` is the only research workflow. Start with `serra/README.md`, then
-`serra/models.py`. General statistical algorithms live in `bucex/`; these scripts
-declare experiments and call that API. Configurations and saved run settings
-make every scientific choice explicit. Execution checks are separate from
-research-length inference and never serve as publication results.
+The active paper workflow is [serra/README.md](serra/README.md).
+All scientific model settings are in `serra/config`; scripts use the public
+BUCEX API. The primary record runs through August 2026 with constant observation
+scale. General parameter evolution is demonstrated in `docs/examples`, outside
+the SERRA programme. No conference directories are required.

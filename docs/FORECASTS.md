@@ -1,7 +1,7 @@
 # Calendar forecasts, risk and diagnostic figures
 
 The application data are monthly summaries, not daily observations. Full SERRA
-configurations use the latest bundled month, August 2026 in this release.
+configurations explicitly use August 2026, the latest bundled month in this release.
 `data.end: null` prevents an old protocol cutoff silently excluding new data.
 The actual fitted dates are printed and saved in `data_window.json` and `run.json`.
 A saved fit is immutable evidence about its original training record: report
@@ -17,7 +17,7 @@ python -m research.serra.univariate --config research/serra/config/independent_f
 ```
 
 Omit `--series TXm` to fit all six independently. The full default is four
-chains, 2000 warmup and 2000 retained draws per chain, with ASIS. This is a
+chains, 2000 warmup and 2000 retained draws per chain, with ASIS disabled. This is a
 starting budget, not a convergence guarantee. Commands without `--config`
 still use four-draw execution checks. Read the printed chain/draw/date counts.
 

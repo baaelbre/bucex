@@ -2,7 +2,7 @@
 from .base import ObservationModel, ObsSpec
 from .gaussian import Gaussian, GaussianObs
 from .gev import GEV, GEVObs
-from .scale import SeasonalScale, LogScale, scale_from_dict
+from .scale import SeasonalScale, LogScale, StructuralScale, scale_from_dict
 
 Observation = Gaussian | GEV
 
@@ -23,6 +23,7 @@ def observation_from_dict(value):
 __all__ = [
     "SeasonalScale",
     "LogScale",
+    "StructuralScale",
     "ObservationModel",
     "ObsSpec",
     "Observation",

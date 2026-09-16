@@ -35,6 +35,9 @@ def export_marginal_start(fit, chain, draw):
         for key in ("scale_slope", "scale_signed_sd", "scale_z", "log_scale_offset"):
             if key+suffix in fit.parameter_draws:
                 obs[key] = value(key+suffix)
+        for key in fit.parameter_draws:
+            if key.startswith("evolution.") and (not suffix or key.endswith(suffix)):
+                obs[key.removesuffix(suffix) if suffix else key] = value(key)
         if channel.family == "gev":
             obs["xi"] = float(value("xi"+suffix))
         path = fit.state_draws[chain,draw]

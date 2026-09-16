@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.0
+
+Named parameter declarations, structural log-scale evolution with continuous FS
+shrinkage, reusable exact-likelihood evolution updates, parameter path APIs,
+simulation/forecast/archive support, and SERRA fixed-scale workflows through
+August 2026. Added climate-period estimands, actual joint prior sensitivity,
+preflight and a revised run guide. See RELEASE_NOTES.md for scope and validation.
+
 ## 1.6.5
 
 - Full SERRA runs follow the latest bundled month (August 2026); named historical configurations preserve 1892–2022. Actual fitted dates are printed and saved.

@@ -1,0 +1,62 @@
+{
+  "extends": "targeted.json",
+  "analysis": "copula",
+  "variants": [
+    {
+      "name": "lasso_reference"
+    },
+    {
+      "name": "xi_uniform",
+      "xi_prior": "uniform"
+    },
+    {
+      "name": "xi_sd_0.2",
+      "xi_sd": 0.2
+    },
+    {
+      "name": "xi_wider_support",
+      "xi_bounds": [
+        -0.75,
+        0.75
+      ]
+    },
+    {
+      "name": "initial_slope_half",
+      "initial_slope_multiplier": 0.5
+    },
+    {
+      "name": "initial_slope_double",
+      "initial_slope_multiplier": 2.0
+    },
+    {
+      "name": "initial_season_double",
+      "seasonal_initial_multiplier": 2.0
+    },
+    {
+      "name": "variance_IG_2_1",
+      "observation_variance": [
+        2.0,
+        1.0
+      ]
+    },
+    {
+      "name": "variance_IG_2_4",
+      "observation_variance": [
+        2.0,
+        4.0
+      ]
+    },
+    {
+      "name": "lkj_2",
+      "copula": {
+        "eta": 2.0
+      }
+    },
+    {
+      "name": "lkj_4",
+      "copula": {
+        "eta": 4.0
+      }
+    }
+  ]
+}

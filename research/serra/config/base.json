@@ -1,5 +1,5 @@
 {
-  "_comment": "Declared research protocol, not a completed or converged analysis. Continuous FS priors; calendar is monthly.",
+  "_comment": "SERRA primary model through August 2026: private monthly FS locations, constant scales/shapes, continuous shrinkage; source provenance is documented.",
   "analysis": "independent",
   "data": {
     "series": [
@@ -11,7 +11,7 @@
       "TNn"
     ],
     "start": "1892-01-01",
-    "end": null
+    "end": "2026-08-01"
   },
   "model": {
     "period": 12,
@@ -19,7 +19,7 @@
     "trend": "dynamic",
     "seasonal": "dynamic",
     "scale_mode": "constant",
-    "seasonal_scale": true,
+    "seasonal_scale": false,
     "scale_prior_sd": 0.3,
     "scale_slope_sd": 0.1,
     "scale_innovation_sd": 0.01,
@@ -58,7 +58,7 @@
     "progress_every": 50
   },
   "inference": {
-    "asis": true,
+    "asis": false,
     "laplace": {
       "max_iterations": 30,
       "tolerance": 1e-05,
@@ -80,7 +80,7 @@
   },
   "copula": {
     "structure": "constant",
-    "eta": 2.0
+    "eta": 1.0
   },
   "validation": {
     "initial": 1188,
@@ -109,5 +109,65 @@
     10,
     11,
     12
-  ]
+  ],
+  "contrasts": {
+    "reference": [
+      "1892-01",
+      "1921-12"
+    ],
+    "comparison": [
+      "1996-09",
+      "2026-08"
+    ],
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "rate_multiplier": 120.0,
+    "pairs": [
+      [
+        "TXx",
+        "TXm"
+      ],
+      [
+        "TXn",
+        "TXm"
+      ],
+      [
+        "TNx",
+        "TNm"
+      ],
+      [
+        "TNn",
+        "TNm"
+      ],
+      [
+        "TXm",
+        "TNm"
+      ],
+      [
+        "TXx",
+        "TNx"
+      ],
+      [
+        "TXn",
+        "TNn"
+      ]
+    ]
+  },
+  "diagnostic_thresholds": {
+    "max_rhat": 1.01,
+    "min_ess": 400,
+    "min_chains": 4
+  }
 }

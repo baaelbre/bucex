@@ -6,28 +6,23 @@
         "name": "reference"
       },
       {
-        "name": "static_season",
+        "name": "fixed_location_seasonality",
         "seasonal": "static"
       },
       {
-        "name": "fixed_slope",
-        "trend": "static"
+        "name": "monthly_scale",
+        "seasonal_scale": true
       },
       {
-        "name": "no_slope",
-        "trend": "off"
+        "name": "fixed_location_seasonality_monthly_scale",
+        "seasonal": "static",
+        "seasonal_scale": true
       },
       {
-        "name": "constant_scale",
-        "seasonal_scale": false
-      },
-      {
-        "name": "linear_scale",
-        "scale_mode": "linear"
-      },
-      {
-        "name": "rw_scale",
-        "scale_mode": "rw"
+        "name": "linear_location",
+        "level": "static",
+        "trend": "static",
+        "seasonal": "static"
       }
     ],
     "dependence": [
@@ -37,35 +32,15 @@
       },
       {
         "name": "constant",
-        "analysis": "copula",
-        "copula": {
-          "structure": "constant",
-          "eta": 2.0
-        }
+        "analysis": "copula"
       },
       {
         "name": "harmonic",
         "analysis": "copula",
         "copula": {
           "structure": "harmonic",
-          "eta": 2.0,
+          "eta": 1.0,
           "prior_sd": 0.25
-        }
-      },
-      {
-        "name": "lkj_1",
-        "analysis": "copula",
-        "copula": {
-          "structure": "constant",
-          "eta": 1.0
-        }
-      },
-      {
-        "name": "lkj_4",
-        "analysis": "copula",
-        "copula": {
-          "structure": "constant",
-          "eta": 4.0
         }
       }
     ]

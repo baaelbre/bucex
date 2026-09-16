@@ -26,6 +26,10 @@ def configured_variant(config, variant):
     p['seasonal_initial_sd'] *= variant.get('seasonal_initial_multiplier', 1.)
     if 'asis' in variant:
         config.setdefault('inference', {})['asis'] = variant['asis']
+    if 'copula' in variant:
+        config.setdefault('copula', {}).update(variant['copula'])
+    if 'analysis' in variant:
+        config['analysis'] = variant['analysis']
     return config
 
 
@@ -40,7 +44,7 @@ def fit_case(data, name, config, variant, *, engine='laplace_mh'):
     fit = bx.fit(data[name], model, tail=item.tail, priors=prior,
         engine='ffbs' if item.family == 'gaussian' else engine,
         parameterization='fs', mcmc=bx.MCMC(**local['mcmc']),
-        asis=local.get('inference',{}).get('asis', True),
+        asis=local.get('inference',{}).get('asis', False),
         init={'xi':0.} if item.family == 'gev' else None, **inference_options(local))
     return fit, prior
 

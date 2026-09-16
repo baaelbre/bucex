@@ -1,0 +1,4 @@
+{
+  "extends": "structure.json",
+  "analysis": "copula"
+}
