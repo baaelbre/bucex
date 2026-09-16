@@ -35,7 +35,7 @@ def validate(config):
     directory = new_run(config["output"], f"validation_{config['analysis']}")
     bx.save_config(config, directory / "config.json")
     analyses = []
-    # Freeze data-centred priors using only the first training prefix.
+    # Freeze all declared priors before the first held-out fold.
     if config["analysis"] == "independent":
         for name in data:
             item = channel(name, initial, config)
@@ -81,7 +81,7 @@ def validate(config):
                     "score": forecast.joint_log_score(observed)}))
                 if {'TXx', 'TNx'} <= set(values):
                     events = {'TXx': ('>', config['risks']['TXx']), 'TNx': ('>', config['risks']['TNx'])}
-                    probability = forecast.compound_probability(events)
+                    probability = forecast.compound_probability_draws(events).mean(axis=0)
                     event = ((values['TXx'].iloc[list(test)].to_numpy() > config['risks']['TXx']) &
                              (values['TNx'].iloc[list(test)].to_numpy() > config['risks']['TNx']))
                     compound.append(pd.DataFrame({'origin': train.stop, 'time': forecast.dates,

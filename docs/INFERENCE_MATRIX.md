@@ -1,31 +1,42 @@
-# Inference in 1.6.3
+# Inference in 1.6.4
 
-| Model declaration | Priors and parameterization | Maintained inference |
+| Model/prior route | Sampler | Scope |
 |---|---|---|
-| Scalar Gaussian, constant scale | Existing FS shrinkage/SSVS or generic priors | FFBS |
-| Scalar GEV, constant or dynamic `phi` | Existing FS shrinkage/SSVS | Laplace–MH |
-| Scalar Gaussian/GEV with `SeasonalScale` | FS exact SSVS; `asis=False` | New private-margin kernel, adapted to scalar results |
-| Private multiseries, with or without Gaussian copula | `MarginalPriors`, FS exact SSVS; `asis=False` | Conditional Gaussian FFBS / GEV Laplace–MH; all updates include dependence |
-| Gaussian selection hierarchy | Hierarchical priors, FS | FFBS and pooled selection/slab updates |
-| Mixed/GEV selection hierarchy | Hierarchical priors, FS | Corrected Laplace–MH and pooled updates |
-| Shared states, optionally residual copula | Continuous `JointPriors`, centered | Existing joint Gaussian / Laplace–MH and slice updates |
+| Scalar Gaussian, legacy constant scale | Existing FS FFBS or generic engine | Established API preserved |
+| Scalar GEV, legacy constant scale or `phi` | Existing FS Laplace–MH; optional approximate Laplace | Original API preserved |
+| Scalar Gaussian/GEV with `SeasonalScale` or `LogScale` | Private FS kernel adapted to scalar results | Continuous normal/lasso/TG; optional exact SSVS |
+| Explicit static FS components | Private FS kernel | Continuous priors; fixed innovation terms omitted |
+| Private multiseries with `MarginalPriors` | Copula-conditional FFBS / Laplace–MH | Continuous normal/lasso/TG; optional exact SSVS |
+| Constant or seasonal Gaussian copula plus `MarginalPriors` | Same private kernel; correlation slice updates | Full joint feedback, complete aligned observations |
+| Shared states or `JointPriors` | Existing general joint state sampler | Constant copula only; not private FS/SSVS |
+| `HierarchicalPriors` | Existing structural hierarchy | Separate optional analysis, not the SERRA reference |
 
-`fit.plan` records the actual route. `bx.plan(model, parameterization="fs")`
-can inspect the private route before fitting. `MarginalPriors` is the explicit
-prior type that chooses it during fitting. Private models can use one channel.
-A copula does not introduce shared temporal states or pooled prior parameters.
+The private kernel requires exactly one local-linear trend, at most one dummy
+seasonal block, no regressions/shared states, and at least two complete rows.
+Normal/lasso/TG priors are the main supported research comparisons. Existing PC
+and regularized-horseshoe priors remain accepted by the private implementation,
+but are not part of the release's paper study matrix.
 
-The new route requires complete, finite, aligned data and private local linear
-trends with optional dummy seasonality. Regression, shared states, hierarchy,
-continuous lasso priors and dynamic `phi` are not accepted on that route.
-The existing centered `JointPriors` route retains its own missing-data support;
-that support must not be inferred for the new FS route.
+For GEV paths, the deterministic Laplace approximation is only a proposal;
+Metropolis–Hastings corrects to the exact conditional likelihood. Continuous
+GEV coefficients use a fixed Gaussian-reference elliptical slice. Its target
+contains the exact likelihood and prior divided by that reference. The anchor
+is held fixed during each conditional update; it is not changed based on the
+incumbent coefficient vector. Gaussian coefficient updates are conjugate in
+prior-whitened coordinates. Initial-level/slope prior covariance induced by
+time centering is retained.
 
-Every channel can have a different declared location/scale seasonal period.
-With monthly dated data and period 12, scale dummies refer to calendar months.
-`SeasonalScale` with GEV `phi="linear"`, `"rw"` or `"ssvs"` is rejected.
+ASIS updates active continuous location innovation scales, preserving centred
+paths through NCP rescaling. They do not interweave the observation-scale RW.
+ASIS is rejected with exact SSVS point masses. Static component reductions omit
+the corresponding coefficient and its local shrinkage variable. Continuous
+priors never produce posterior inclusion probabilities.
 
-`engine="laplace"` remains an explicitly approximate univariate comparison
-for constant-scale/dynamic-phi models. It is not used for the new copula/seasonal
-scale route. No PGAS implementation remains. Exact targeting refers to the
-invariant posterior, not a guarantee that a finite MCMC run has converged.
+Scale baseline, seasonal contrasts, secular scale terms, GEV shape and copula
+coefficients use their full conditional likelihoods. RW log-scale paths use an
+elliptical slice over the anchored Gaussian path. Missing-data private inference,
+residual AR models and a residual t copula are not implemented.
+
+Use `fit.plan.to_dict()` to record the actual backend. Approximate Laplace is
+available only through the historical univariate route; it is not accepted as
+a shortcut for the private copula model. No PGAS engine is present.

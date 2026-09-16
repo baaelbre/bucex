@@ -17,23 +17,42 @@ from ..core.calendar import seasonal_phases
 Array = np.ndarray
 
 
-def _seasonal_scale_paths(fit, indices, n_time, dates, *, start_index=0):
+def _seasonal_scale_paths(fit, indices, n_time, dates, *, start_index=0, rng=None):
     result = {}
+    copula = getattr(fit.model, "copula", None)
+    if copula is not None and copula.seasonal:
+        result["copula_phase"] = np.broadcast_to(copula.phases(n_time, dates, start_index=start_index), (len(indices), n_time))
     channels = fit.model.channels if fit.is_multiseries_model else (None,)
     for channel in channels:
         observation = channel.observation if channel else fit.model.observation
         if observation.scale is None:
             continue
         suffix = f".{channel.name}" if channel else ""
+        if start_index == 0 and "sigma_path"+suffix in fit.parameter_draws:
+            result["sigma_path"+suffix] = fit.parameter("sigma_path"+suffix)[indices]
+            continue
         phase = observation.scale.phases(n_time, dates, start_index=start_index)
         effects = fit.parameter("scale.seasonal"+suffix)[indices]
         baseline = fit.parameter("sigma"+suffix)[indices]
-        result["sigma_path"+suffix] = baseline[:, None] * np.exp(effects[:, phase])
+        offset = np.zeros((len(indices), n_time))
+        mode = getattr(observation.scale, "mode", "constant")
+        if mode == "linear":
+            slope = fit.parameter("scale_slope"+suffix)[indices]
+            offset = slope[:,None]*np.arange(start_index+1,start_index+n_time+1)/observation.scale.time_unit
+        elif mode == "rw":
+            if rng is None:
+                raise ValueError("Random-walk scale forecasting requires an explicit random generator.")
+            signed_sd = fit.parameter("scale_signed_sd"+suffix)[indices]
+            last = fit.parameter("scale_z"+suffix)[indices,-1]
+            offset = signed_sd[:,None]*(last[:,None]+np.cumsum(rng.normal(size=(len(indices),n_time)),axis=1))
+        result["sigma_path"+suffix] = baseline[:, None] * np.exp(effects[:, phase] + offset)
     return result
 
 
 def _time_parameters(parameters, values, draw, time):
     result = dict(parameters)
+    if "copula_phase" in values:
+        result["__copula_phase"] = int(values["copula_phase"][draw, time])
     for name, array in values.items():
         if name.startswith("sigma_path."):
             result["sigma."+name.removeprefix("sigma_path.")] = float(array[draw, time])
@@ -390,7 +409,11 @@ class Forecast:
                 z = normal_scores(values[finite] * signs[None, :],
                                   self.eta[draw, finite] * signs[None, :],
                                   self.channels, params)
-                correlation = self.copula.correlation_matrix(params, self.channel_names)
+                if self.copula.seasonal:
+                    phase = self.parameters["copula_phase"][draw, finite].astype(int)
+                    correlation = self.copula.correlation_matrix(params, self.channel_names)[phase-1]
+                else:
+                    correlation = self.copula.correlation_matrix(params, self.channel_names)
                 result[draw, finite] += gaussian_copula_logpdf(z, correlation)
         return np.asarray(result)
 
@@ -421,6 +444,19 @@ class Forecast:
             raise ValueError("Compound probabilities require a multiseries forecast.")
         return compound_event_probability(self.observations, channel_names=self.channel_names,
                                           events=events, operation=operation)
+
+    def compound_probability_draws(self, events, *, operation="all", rtol=1e-8) -> Array:
+        """Bivariate event probabilities per draw/time, integrating residual noise.
+
+        Returns (draws, time), including parameter and state-path uncertainty.
+        Forecast draws include sampled future states; intervals therefore
+        describe conditional future-path risks. Their average estimates the
+        posterior predictive event probability. To isolate epistemic risk
+        uncertainty, additionally integrate many future paths per parameter
+        draw. This method does not impose physical ordering constraints.
+        """
+        from ..dependence.probability import pair_probability_draws
+        return pair_probability_draws(self,events,operation=operation,rtol=rtol)
 
     def log_score(
         self,
@@ -936,7 +972,7 @@ def posterior_predict(
         parameter_values = {
             name: fit.parameter(name)[indices] for name in required_parameters
         }
-        parameter_values.update(_seasonal_scale_paths(fit, indices, horizon, resolved_dates, start_index=fit.n_time))
+        parameter_values.update(_seasonal_scale_paths(fit, indices, horizon, resolved_dates, start_index=fit.n_time, rng=rng))
         n_channels = len(fit.channel_names)
         state_paths = np.zeros((n_draws, horizon, fit.compiled.state_dim))
         eta_model = np.zeros((n_draws, horizon, n_channels))
@@ -1057,7 +1093,7 @@ def posterior_predict(
                 raise ValueError("phi_model draws must use codes 0, 1, or 2.")
         parameter_values["phi"] = future_phi
         parameter_values["sigma_path"] = np.exp(future_phi)
-    parameter_values.update(_seasonal_scale_paths(fit, indices, horizon, resolved_dates, start_index=fit.n_time))
+    parameter_values.update(_seasonal_scale_paths(fit, indices, horizon, resolved_dates, start_index=fit.n_time, rng=rng))
     if fit.model.observation.scale is not None and fit.family == "gev":
         parameter_values["phi"] = np.log(parameter_values["sigma_path"])
     design = fit.compiled.design(horizon, exog=exog_future)

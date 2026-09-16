@@ -9,50 +9,39 @@ from research.serra.models import channel, marginal_prior, inference_options
 from research.serra.report import save_band
 
 
-def prior_for(item, data, config, variant):
-    prior = marginal_prior(item, data, config)
-    profile = variant.get("profile", "ssvs")
-    if profile == "manuscript_original":
-        builder = bx.manuscript_gaussian_priors if item.family == "gaussian" else bx.manuscript_gev_priors
-        prior = builder(period=config["model"]["period"],
-                        alpha_mean=item.transform_sign * float(np.median(data[item.name])))
-    else:
-        prior = bx.innovation_prior_variant(prior, profile=profile,
-            multipliers=variant.get("multipliers"), lasso_shape=variant.get("lasso_shape", 1),
-            lasso_rate=variant.get("lasso_rate", 1))
-    if "initial_slope_multiplier" in variant:
-        factor = float(variant["initial_slope_multiplier"])
-        if not np.isfinite(factor) or factor <= 0:
-            raise ValueError("initial_slope_multiplier must be finite and positive.")
-        prior = replace(prior, beta0=bx.NormalPrior(prior.beta0.mean, prior.beta0.sd * factor))
-    if "trend_probabilities" in variant:
-        prior = replace(prior, ssvs=replace(prior.ssvs, trend_probabilities=tuple(variant["trend_probabilities"])))
-    if "seasonal_initial_multiplier" in variant:
-        prior = replace(prior, gamma0_season=bx.DiagonalNormalPrior(prior.gamma0_season.mean,
-            np.asarray(prior.gamma0_season.sd)*variant["seasonal_initial_multiplier"]))
-    if "observation_variance" in variant:
-        prior = replace(prior, sigma2=bx.InverseGammaPrior(*variant["observation_variance"]))
-    if item.family == "gev":
-        bounds = variant.get("xi_bounds", config["priors"]["xi_bounds"])
-        prior = replace(prior, xi=bx.UniformPrior(*bounds), xi_max_abs=max(abs(v) for v in bounds))
-    return prior
-
-
-def fit_case(data, name, config, variant, *, engine="laplace_mh"):
+def configured_variant(config, variant):
     config = deepcopy(config)
-    if variant.get("profile", "ssvs") != "ssvs" or variant.get("seasonal_scale") is False:
-        config["model"]["seasonal_scale"] = False
-    if "scale_prior_sd" in variant:
-        config["model"]["scale_prior_sd"] = variant["scale_prior_sd"]
-    item = channel(name, data, config)
-    if item.family == "gev":
-        bounds = tuple(variant.get("xi_bounds", config["priors"]["xi_bounds"]))
-        item = replace(item, observation=replace(item.observation, xi_bounds=bounds))
-    model, prior = bx.Model(item.observation, item.components), prior_for(item, data, config, variant)
-    fit = bx.fit(data[name], model=model, tail=item.tail, priors=prior,
-        engine="ffbs" if item.family == "gaussian" else engine,
-        parameterization="fs", mcmc=bx.MCMC(**config["mcmc"]),
-        init={"xi": 0.} if item.family == "gev" else None, **inference_options(config))
+    p, m = config['priors'], config['model']
+    for key in ('innovation', 'xi_prior', 'xi_sd', 'xi_bounds', 'tg_spike_shape', 'tg_tail_shape',
+                'observation_variance'):
+        if key in variant:
+            p[key] = variant[key]
+    for key in ('seasonal_scale', 'scale_mode', 'scale_prior_sd', 'scale_slope_sd',
+                'scale_innovation_sd', 'level', 'trend', 'seasonal'):
+        if key in variant:
+            m[key] = variant[key]
+    for key,factor in variant.get('multipliers', {}).items():
+        p['innovation_median'][key] *= factor
+    p['initial_slope_sd'] *= variant.get('initial_slope_multiplier', 1.)
+    p['seasonal_initial_sd'] *= variant.get('seasonal_initial_multiplier', 1.)
+    if 'asis' in variant:
+        config.setdefault('inference', {})['asis'] = variant['asis']
+    return config
+
+
+def prior_for(item, data, config, variant):
+    return marginal_prior(item, data, configured_variant(config,variant))
+
+
+def fit_case(data, name, config, variant, *, engine='laplace_mh'):
+    local = configured_variant(config,variant)
+    item = channel(name,data,local)
+    model, prior = bx.Model(item.observation,item.components), marginal_prior(item,data,local)
+    fit = bx.fit(data[name], model, tail=item.tail, priors=prior,
+        engine='ffbs' if item.family == 'gaussian' else engine,
+        parameterization='fs', mcmc=bx.MCMC(**local['mcmc']),
+        asis=local.get('inference',{}).get('asis', True),
+        init={'xi':0.} if item.family == 'gev' else None, **inference_options(local))
     return fit, prior
 
 

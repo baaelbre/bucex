@@ -1,0 +1,7 @@
+{
+  "extends": "copula_full.json",
+  "copula": {
+    "structure": "harmonic",
+    "prior_sd": 0.25
+  }
+}

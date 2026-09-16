@@ -1,0 +1,9 @@
+{
+  "version": "1.6.4",
+  "wheel_built": true,
+  "sdist_built": true,
+  "wheel_python_matches_source": true,
+  "nested_source_copy": false,
+  "run_outputs_in_distributions": false,
+  "schema": "2.11.0"
+}

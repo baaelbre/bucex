@@ -15,11 +15,8 @@ python -m research.serra.prepare_uccle
 bucex-uccle validate-data --daily-source data/Uccle_31_08_26.csv
 ```
 
-
 The preparation settings are `research/serra/config/prepare_uccle.json`.
 See [the data API](../docs/UCCLE.md) for direct Python use and custom outputs.
-`Dagelijksetemperaturensinds1833.xlsx` is retained as a supplied supporting
-file; it is not an input to this preparation step.
 
 [Source notes](../bucex/data/SOURCES.md) preserve the extraction details,
 reporting-window differences, two reported TN > TX pairs, and the limitations

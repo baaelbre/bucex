@@ -1,55 +1,37 @@
-# BUCEX 1.6.3
+# BUCEX 1.6.4 — continuous private trajectories and joint dependence
 
-This release supports the revised paper's private structural models and their
-joint residual-dependence extension. No empirical paper findings are asserted.
+This release implements the revised paper's main workflow:
 
-- `SeasonalScale(period=12, prior_sd=.3)` adds identifiable, zero-sum seasonal
-  log-scale effects to Gaussian and stationary-scale GEV observations. Each
-  channel has its own effects; dated monthly forecasts use calendar months.
-- `MarginalPriors` retains independent FS/exact-SSVS priors for private channels.
-  A Gaussian copula now enters all conditional state, structural, scale, shape
-  and correlation updates. This is full posterior feedback, not a copula fitted
-  to fixed marginal residuals.
-- Seasonal starts remain finite when a short record does not cover all phases.
-- Private Gaussian states use conditional FFBS; GEV states use support-aware
-  Laplace–MH. The structural proposal is anchored independently of the
-  coefficients it updates, with the complete proposal correction.
-- The default slope probabilities are `(0.10, 0.45, 0.45)` for absent, fixed and
-  dynamic slopes. Explicit existing priors remain explicit. Probabilities must
-  sum to one; `(0.1, 0.4, 0.4)` is not silently accepted or normalized.
-- Seasonal scales are included in prediction, PIT, densities, endpoints,
-  return levels, risks, simulation, archives and restarts. Scalar result names
-  and component-summary methods remain compatible.
-- Added residual normal-score dependence checks, practical-correlation
-  probabilities and paired block-bootstrap score comparisons. SSVS transition
-  counts exclude artificial transitions between independent chains.
-- Clean SERRA runners cover univariate and copula analyses, matched identity
-  baselines, prior/shape sensitivity, endpoint assessment, forecasts, replicated
-  recovery, and held-out marginal, joint and compound-event scores.
-- Primary paper configs end in 2022. The August 2026 data extension remains
-  available under a separate config with explicit provenance qualifications.
-- Removed duplicated obsolete tests, unreachable particle code, conference
-  demonstrations, the redundant old daily CSV and an unused spreadsheet.
-  Maintained API tests and historical archive fixtures remain.
+- Continuous FS normal, lasso and triple-gamma priors in private joint fits;
+  exact copula feedback in every path/parameter update. SSVS is optional.
+- A public `fs_priors` constructor with deterministic median calibration,
+  proper initial-state priors, and a normal GEV shape prior by default.
+- Prior-whitened Gaussian regression, corrected GEV coefficient elliptical
+  slices, and location-scale ASIS through invariant NCP rescaling.
+- Nondegenerate lasso/PC local-scale draws at zero coefficients and removal of
+  triple-gamma variance floors.
+- Private static components; seasonal, linear and RW observation log scales;
+  pooled harmonic/four-season/monthly Gaussian-copula dependence.
+- Calendar-correct forecasting and archive/restart support for these models.
+- Physical innovation-effect summaries, bulk/tail ESS, residual-score serial
+  and seasonal dependence checks, and bivariate compound-risk quadrature.
+- Concise SERRA scripts with resolved configuration inheritance, prior/shape
+  sensitivity, staged predictive model comparison, simulation, July 2019
+  endpoint checks, joint recovery and forecast uncertainty decomposition.
 
-## Correction affecting previous hierarchical fits
+Reference priors: median innovation SDs (level, slope, season) =
+(0.02, 0.00005, 0.02), initial level N(0,20²), initial slope N(0,.0025²),
+initial seasonal coordinates N(0,2.25²), baseline observation variance IG(2,2),
+xi ~ N(0,.3²) truncated to [-.5,.5]. These are explicit starting assumptions;
+inspect prior predictions and sensitivity. Lasso lambda²=1; TG a=c=.5 and
+global multiplier=1 are fixed. All local mixing variables are sampled.
 
-The older mixed/GEV **hierarchical structural-selection** update constructed
-its Gaussian independence proposal at the current predictor without rebuilding
-that proposal for the reverse move. It now uses a fixed observation anchor,
-so the implemented MH ratio is valid. Refit previous results from that affected
-hierarchical exact-SSVS route before scientific use. The existing univariate
-GEV structural proposal already used the fixed anchor and was not affected.
+The release keeps the univariate, shared-state and hierarchical APIs. It does
+not convert their past fits to the new model. There is no residual AR process,
+t copula or ordering-constrained likelihood. Seasonal copula priors depend on
+channel order; the baseline LKJ prior alone is permutation invariant.
 
-## Scope
-
-The new `MarginalPriors` route requires complete finite aligned observations,
-private local linear trends with optional dummy seasonality, and FS/exact SSVS.
-Shared components and hierarchical pooling retain their separate established
-routes. Free factor loadings, a tail-dependent copula, hard ordering, residual
-serial dependence, and combining seasonal scale with dynamic GEV `phi` are not
-implemented. Existing univariate dynamic-`phi` models remain available.
-
-Result archives use schema 2.10.0; historical readers are retained. Short workflow
-checks and posterior-reference tests establish implementation evidence, not
-full-record convergence, empirical coverage or journal acceptance.
+The test report distinguishes numerical target checks and execution checks
+from research-length convergence and coverage. New full Uccle results are not
+included or asserted. The manuscript's preliminary SSVS figures remain a
+separate pilot and must be replaced before claiming continuous-prior results.

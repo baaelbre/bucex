@@ -25,7 +25,7 @@ def main():
             local = copy.deepcopy(config)
             local["variant"] = variant
             label = variant["name"]
-            if bx.UCCLE_INFO[name]["family"] == "gaussian" and set(variant) <= {"name", "xi_bounds"} and "xi_bounds" in variant:
+            if bx.UCCLE_INFO[name]["family"] == "gaussian" and set(variant) <= {"name", "xi_bounds", "xi_prior", "xi_sd"} and len(variant) > 1:
                 status.append(dict(variant=label, series=name, status="not_applicable", reason="Gaussian observations have no GEV shape."))
                 continue
             print(f"{label}: {name}", flush=True)

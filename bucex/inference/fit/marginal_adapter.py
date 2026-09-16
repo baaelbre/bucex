@@ -16,7 +16,7 @@ def export_marginal_start(fit, chain, draw):
                 tail="lower" if fit.transform_sign < 0 else None)]
     def value(key, default=0.):
         return np.asarray(fit.parameter_draws[key])[chain,draw].copy() if key in fit.parameter_draws else default
-    result = {"channels": {}, "copula": {key: float(value(key)) for key in fit.parameter_draws if key.startswith("copula.z.")}}
+    result = {"channels": {}, "mixing": {k:float(value(k)) for k in fit.parameter_draws if k.startswith(("shrinkage.","horseshoe.","triple_gamma."))}, "copula": {key: float(value(key)) for key in fit.parameter_draws if key.startswith("copula.")}}
     for channel in channels:
         name = channel.name
         multi = fit.is_multiseries_model
@@ -32,6 +32,9 @@ def export_marginal_start(fit, chain, draw):
             state[f"s_{legacy}"], state[f"q_{legacy}"] = sd, sd*sd
         sigma = float(value("sigma"+suffix))
         obs = {"sigma": sigma, "sigma2": sigma*sigma}
+        for key in ("scale_slope", "scale_signed_sd", "scale_z", "log_scale_offset"):
+            if key+suffix in fit.parameter_draws:
+                obs[key] = value(key+suffix)
         if channel.family == "gev":
             obs["xi"] = float(value("xi"+suffix))
         path = fit.state_draws[chain,draw]

@@ -13,9 +13,7 @@ def selected_config(config, *, series=None, phi=None, copula=False):
     if series:
         config["data"]["series"] = list(series)
     if phi is not None:
-        config["model"]["phi"] = phi
-        if phi != "stationary":
-            config["model"]["seasonal_scale"] = False
+        config["model"]["scale_mode"] = "constant" if phi == "stationary" else phi
     if copula:
         modes = {"joint": "copula"}
         if config["analysis"] not in modes:
@@ -49,7 +47,7 @@ def arguments(description=__doc__):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--series", nargs="+", choices=tuple(bx.UCCLE_INFO))
-    parser.add_argument("--phi", choices=("stationary", "linear", "rw", "ssvs"))
+    parser.add_argument("--phi", choices=("stationary", "linear", "rw"))
     parser.add_argument("--copula", action="store_true", help="Add residual Gaussian dependence to a private joint config.")
     args = parser.parse_args()
     return selected_config(bx.load_config(args.config), series=args.series, phi=args.phi, copula=args.copula)

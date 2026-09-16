@@ -34,4 +34,4 @@ population frequency of climate mechanisms.
 
 Inspect `fit.component_probabilities(channel=...)`,
 `fit.hierarchical_probabilities()`, `fit.channel_eta_draws(...)`, and
-`fit.diagnostics()`. The declarations above use the general API; SERRA now focuses on private FS/SSVS and residual copula models.
+`fit.diagnostics()`. The declarations above use the general API; SERRA now focuses on private continuous FS (optional SSVS) and residual copula models.

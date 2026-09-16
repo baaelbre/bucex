@@ -580,6 +580,11 @@ def _fit_multiseries_model(
         private_plan = marginal_plan(compiled, engine=engine, parameterization=parameterization, asis=asis)
         return sample_marginal_posterior(y_model, compiled, priors, private_plan,
             mcmc=resolved_mcmc, laplace=resolved_laplace, dates=dates, initial_parameters=init)
+    if model.copula is not None and model.copula.seasonal:
+        raise ValueError("SeasonalGaussianCopula requires MarginalPriors and private FS trajectories.")
+    if not model.requires_joint_inference and any(getattr(c, "level_mode", None) == "static" or getattr(c, "trend_mode", None) == "static" or
+           getattr(c, "mode", None) == "static" for channel in model.channels for c in channel.components):
+        raise ValueError("Explicit static FS components require MarginalPriors with continuous priors.")
     if any(channel.observation.scale is not None for channel in model.channels):
         raise ValueError("Multiseries SeasonalScale requires MarginalPriors and private FS trajectories.")
     resolved_plan = inference_plan(
@@ -885,6 +890,8 @@ def fit(
     resolved_laplace = Laplace() if laplace is None else laplace
     if not isinstance(resolved_laplace, Laplace):
         raise TypeError("laplace must be Laplace(...).")
+    if str(parameterization).lower() == "auto" and isinstance(priors, (FSGaussianPriors, FSGEVPriors)):
+        parameterization = "fs"
     plan = inference_plan(
         compiled,
         engine=engine,
@@ -903,7 +910,10 @@ def fit(
         priors=priors,
     )
 
-    if model.observation.scale is not None:
+    has_static_fs = (plan.parameterization == "fruehwirth_schnatter" and
+                    any(getattr(c, "level_mode", None) == "static" or getattr(c, "trend_mode", None) == "static" or
+                        getattr(c, "mode", None) == "static" for c in model.components))
+    if model.observation.scale is not None or has_static_fs:
         from ..inference.fit.marginal import marginal_plan
         from ..inference.fit.marginal_adapter import sample_seasonal_univariate
         if state_kwargs or exog is not None:

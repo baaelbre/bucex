@@ -1,9 +1,9 @@
 # Residual dependence and ordering
 
-## The 1.6.3 private FS/SSVS model
+## The 1.6.4 private FS model
 
 Each series has a private level, slope, location seasonality, observation scale
-and (for GEV) shape. Structural SSVS priors are independent across channels.
+and (for GEV) shape. Continuous innovation priors are independent across channels; SSVS is optional.
 For a contemporaneous response vector, the likelihood is
 
 \[
@@ -33,8 +33,8 @@ empirical question, not a mathematical consequence of positive dependence.
 
 ```python
 model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula(eta=2.))
-priors = bx.MarginalPriors({name: own_ssvs_prior for name in names})
-fit = bx.fit(data, model, priors=priors, parameterization="fs", asis=False,
+priors = bx.MarginalPriors({name: own_fs_prior for name in names})
+fit = bx.fit(data, model, priors=priors, parameterization="fs", asis=True,
              mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000))
 ```
 
@@ -51,8 +51,8 @@ assigns probability zero to exact independence, so `Pr(rho != 0)` is not an
 informative dependence measure. Use intervals and practical thresholds.
 
 The new route supports complete aligned finite data, private local linear
-trends and optional dummy seasonality, exact FS/SSVS, and optional seasonal
-observation scale. Shared states and hierarchical pooling are separate routes.
+trends and optional dummy seasonality, continuous FS or exact SSVS, optional seasonal/secular
+observation scale, and constant or pooled periodic residual correlation. Shared states and hierarchical pooling are separate routes.
 The existing continuous `JointPriors` copula model remains available, including
 its own missing-data handling; that is not the new private FS backend.
 
@@ -123,3 +123,24 @@ needs its state/parameter-dependent normalizing probability inside inference.
 If violations are scientifically material, a positive-gap model or a daily
 model followed by aggregation is the next methodological step, with changed
 marginal assumptions. Hard ordering is not claimed by this release.
+
+## Pooled seasonal dependence in 1.6.4
+
+`SeasonalGaussianCopula` adds harmonic or zero-sum calendar contrasts to
+Fisher partial-correlation coordinates. Its baseline has the LKJ prior; each
+contrast coefficient has a zero-centred Normal prior. Individual monthly R
+matrices do not each have LKJ priors. A harmonic coefficient pair with SD .25
+gives SD .25 for its combined monthly coordinate effect; orthonormal dummy
+contrasts have phase variance .25²(1−1/p).
+
+All matrices are positive definite by construction. Channels must retain a
+declared ordering because the seasonal effect prior uses ordered partial
+correlations. Refit meaningful permutations to assess sensitivity. Compare
+constant versus seasonal dependence on the same held-out months after allowing
+seasonal marginal scales; otherwise seasonal heteroscedasticity can masquerade
+as changing dependence. This model has no serial residual process.
+
+For two threshold events, `compound_probability_draws` evaluates the Gaussian
+rectangle within each parameter/state draw by deterministic quadrature. It
+retains posterior uncertainty and avoids reliance on rare-event counts. It
+does not enforce ordering or generate asymptotic tail dependence.

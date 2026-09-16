@@ -97,7 +97,7 @@ aggregator. Its `research/serra/config/prepare_uccle.json` contains:
 Paths are relative to the working directory; run from the source root.
 Change `daily_file` when a new daily CSV is available, then rerun preparation.
 Primary SERRA full configurations end in December 2022, matching the submitted
-record. `config/extension_full.json` explores the later mixed-source record
+record. An explicit `data.end` override explores the later mixed-source record
 separately; no homogenization is asserted. The loader's default remains the
 complete bundled record. Consult `bucex/data/SOURCES.md` for source windows and
 comparability before interpreting the extension.

@@ -13,9 +13,9 @@ from .experiments import (
     recovery_metrics,
     scientific_summary,
 )
-from .posterior import ess_bulk, fit_diagnostics, posterior_pit, rhat
+from .posterior import ess_bulk, ess_tail, fit_diagnostics, posterior_pit, rhat
 from .residuals import one_step_ahead_residuals
-from .dependence import residual_dependence_check
+from .dependence import residual_dependence_check, residual_serial_check
 from .ordering import OrderingResult, ordering_diagnostics, compound_event_probability
 from .scores import (
     crps_ensemble,
@@ -30,6 +30,7 @@ from .scores import (
 __all__ = [
     "paired_block_comparison",
     "residual_dependence_check",
+    "residual_serial_check", "ess_tail",
     "OrderingResult", "ordering_diagnostics", "compound_event_probability",
     "summarize_draws",
     "rhat",

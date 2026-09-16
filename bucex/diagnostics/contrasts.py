@@ -5,7 +5,7 @@ from collections.abc import Mapping
 
 import numpy as np
 
-from .posterior import ess_bulk, rhat
+from .posterior import ess_bulk, ess_tail, rhat
 
 
 def summarize_draws(draws: Mapping[str, np.ndarray], *, credible_interval: float = 0.90):
@@ -42,12 +42,12 @@ def summarize_draws(draws: Mapping[str, np.ndarray], *, credible_interval: float
             lower, median, upper = np.quantile(values, [alpha, 0.5, 1.0 - alpha])
             row.update(mean=float(np.mean(values)), sd=float(np.std(values, ddof=1)) if values.size > 1 else 0.0,
                        lower=float(lower), median=float(median), upper=float(upper),
-                       rhat=rhat(values), ess_bulk=ess_bulk(values))
+                       rhat=rhat(values), ess_bulk=ess_bulk(values), ess_tail=ess_tail(values))
             row["diagnostic"] = ("constant draw; R-hat and ESS undefined" if constant else
                                  "insufficient draws for split R-hat" if values.shape[1] < 4 else
                                  "single original chain; use independently initialized chains" if values.shape[0] < 2 else "sampled")
         else:
-            row.update({key: np.nan for key in ("mean", "sd", "lower", "median", "upper", "rhat", "ess_bulk")})
+            row.update({key: np.nan for key in ("mean", "sd", "lower", "median", "upper", "rhat", "ess_bulk", "ess_tail")})
             row["diagnostic"] = "nonfinite draws; summarize finite-endpoint probability separately"
         rows.append(row)
     import pandas as pd

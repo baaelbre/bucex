@@ -1,4 +1,4 @@
-"""Fit any of the six private FS/SSVS temperature trajectories."""
+"""Fit any of the six private continuous FS temperature trajectories."""
 import argparse
 from pathlib import Path
 import bucex as bx
@@ -9,9 +9,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path("research/serra/config/independent_smoke.json"))
     parser.add_argument("--series", nargs="+", choices=tuple(bx.UCCLE_INFO))
+    parser.add_argument("--prior", choices=("normal", "lasso", "triple_gamma"))
+    parser.add_argument("--scale", choices=("constant", "linear", "rw"))
     args = parser.parse_args()
     config = bx.load_config(args.config)
     config["analysis"] = "independent"
+    if args.prior:
+        config['priors']['innovation'] = args.prior
+    if args.scale:
+        config['model']['scale_mode'] = args.scale
     print(run(config, series=args.series))
 
 

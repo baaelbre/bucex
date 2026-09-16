@@ -1,4 +1,4 @@
-"""Known-truth mixed-margin recovery with private FS/SSVS and a residual copula."""
+"""Known-truth mixed-margin recovery with private continuous FS and a residual copula."""
 import argparse
 from dataclasses import replace
 import numpy as np
@@ -41,7 +41,7 @@ def run(config, replicate=None):
                     if item.family == 'gev':
                         params[f'xi.{name}'] = xi
                     for process, legacy in [('level', 'level'), ('slope', 'trend'), ('seasonal', 'season')]:
-                        params[f'sd.channel.{name}.{process}'] = config['priors']['innovation_slab_sd'][legacy] * settings.get('innovation_multiplier', 1.)
+                        params[f'sd.channel.{name}.{process}'] = config['priors']['innovation_median'][legacy] * settings.get('innovation_multiplier', 1.)
                 truth = bx.simulate(generator, n_time=n+horizon, params=params,
                                     initial_state=initial, dates=dates, seed=seed)
                 training = pd.DataFrame(truth.y[:n], index=dates[:n], columns=names)
@@ -61,7 +61,8 @@ def run(config, replicate=None):
                             'location_rmse': np.sqrt(np.mean((estimate.mean(axis=0)-target)**2)),
                             'location_coverage_95': np.mean((lo <= target) & (target <= hi)),
                             'scale_rmse': np.sqrt(np.mean((fit.sigma_draws(channel=name).mean(axis=0)-1.5*np.exp(params[f'scale.seasonal.{name}'][np.arange(n)%period]))**2))})
-                    structures.append(fit.component_probabilities().reset_index().assign(**label))
+                    structures.append(fit.contrast_diagnostics({key:value for name in names for key,value in
+                        ((name+'.'+k,v) for k,v in fit.innovation_effect_draws(120,channel=name,combine_chains=False).items())}).reset_index().assign(**label))
                     table = fit.copula_summary(credible_interval=.95).reset_index()
                     table['truth'] = [R[names.index(key.split('.')[1]), names.index(key.split('.')[2])] for key in table.iloc[:, 0]]
                     correlations.append(table.assign(**label))
@@ -69,7 +70,7 @@ def run(config, replicate=None):
                     scores.append({**label, 'mean_joint_log_score': np.mean(forecast.joint_log_score(truth.y[n:]))})
     pd.DataFrame(recovery).to_csv(directory / 'recovery.csv', index=False)
     pd.concat(correlations).to_csv(directory / 'correlations.csv', index=False)
-    pd.concat(structures).to_csv(directory / 'structures.csv', index=False)
+    pd.concat(structures).to_csv(directory / 'innovation_effects.csv', index=False)
     pd.DataFrame(scores).to_csv(directory / 'scores.csv', index=False)
     return directory
 

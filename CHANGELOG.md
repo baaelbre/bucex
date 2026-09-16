@@ -1,3 +1,7 @@
+# 1.6.4
+
+Continuous private FS inference, median-matched priors, secular/seasonal observation scale, pooled seasonal copulas, exact bivariate risk quadrature and revised SERRA workflows. See RELEASE_NOTES.md and validation/RELEASE_VALIDATION.md.
+
 # Changelog
 
 ## 1.6.3

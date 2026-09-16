@@ -13,16 +13,41 @@ from typing import Any, Mapping
 
 
 def load_config(path: str | Path) -> dict[str, Any]:
-    """Read a JSON object and return an independent mutable dictionary."""
+    """Read JSON, resolving an optional relative ``extends`` base recursively.
 
-    resolved = Path(path).expanduser().resolve()
+    Dictionaries merge recursively; scalar values, lists and null replace the
+    base value. Cycles are errors. Saving the returned dictionary records all
+    effective settings and does not depend on the original base file.
+    """
+
+    return _load_config(Path(path).expanduser().resolve(), ())
+
+
+def _load_config(resolved, parents):
+    if resolved in parents:
+        raise ValueError(f"Configuration inheritance cycle: {resolved}")
+
     if not resolved.is_file():
         raise FileNotFoundError(f"Configuration file not found: {resolved}")
     with resolved.open("r", encoding="utf-8") as stream:
         value = json.load(stream)
     if not isinstance(value, dict):
         raise ValueError(f"Configuration must contain one JSON object: {resolved}")
-    return deepcopy(value)
+    base = value.pop("extends", None)
+    if base is None:
+        return deepcopy(value)
+    if not isinstance(base,str):
+        raise ValueError("extends must be one relative or absolute file path.")
+    inherited = _load_config((resolved.parent/base).resolve(), (*parents,resolved))
+    return _merge(inherited,value)
+
+
+def _merge(base, overrides):
+    result = deepcopy(base)
+    for key,value in overrides.items():
+        result[key] = (_merge(result[key],value) if isinstance(result.get(key),dict) and isinstance(value,dict)
+                       else deepcopy(value))
+    return result
 
 
 def save_config(config: Mapping[str, Any], path: str | Path) -> Path:

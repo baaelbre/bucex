@@ -7,7 +7,7 @@ from .structural import FSGaussianPriors, FSGEVPriors
 
 @dataclass(frozen=True)
 class MarginalPriors:
-    """Named FS + SSVS priors for private trajectories.
+    """Named FS priors for private trajectories, with optional exact SSVS.
 
     No hyperparameters are pooled. A model's optional GaussianCopula creates
     full posterior feedback through the likelihood, while these priors stay
@@ -20,6 +20,6 @@ class MarginalPriors:
         if not self.channels:
             raise ValueError("MarginalPriors requires at least one named channel.")
         for name, prior in self.channels.items():
-            if not isinstance(prior, (FSGaussianPriors, FSGEVPriors)) or prior.ssvs is None:
-                raise TypeError(f"{name}: supply an FS prior with exact SSVS enabled.")
+            if not isinstance(prior, (FSGaussianPriors, FSGEVPriors)):
+                raise TypeError(f"{name}: supply Gaussian or GEV FS priors.")
         object.__setattr__(self, "channels", dict(self.channels))

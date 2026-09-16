@@ -1,4 +1,4 @@
-"""Private FS + exact SSVS trajectories with optional residual copula.
+"""Private FS trajectories with continuous shrinkage or exact SSVS with optional residual copula.
 
 Gaussian channels use their exact copula-conditional Gaussian regression.
 GEV paths use deterministic conditional Laplace independence proposals and
@@ -24,12 +24,11 @@ from .fs_utils import (
     _slice_sample_real, _ncp_laplace_pseudo_data,
 )
 from .model_space import sample_structural_regression, sample_structural_regression_exact
+from .continuous import ShrinkageState, continuous_step
 
 
 def marginal_plan(compiled, *, engine="auto", parameterization="auto", asis=False):
     from ..plan import normalize_parameterization, supports_fs
-    if asis:
-        raise ValueError("The private FS/copula sampler uses asis=False.")
     resolved = normalize_parameterization(parameterization, fs_supported=supports_fs(compiled))
     if resolved != "fruehwirth_schnatter":
         raise ValueError("MarginalPriors and SeasonalScale require parameterization='fs'.")
@@ -39,7 +38,7 @@ def marginal_plan(compiled, *, engine="auto", parameterization="auto", asis=Fals
         raise ValueError("Private FS inference requires ffbs for Gaussian models and laplace_mh for mixed/GEV models.")
     return InferencePlan(
         family=compiled.family, engine=actual, parameterization=resolved,
-        asis=False, state_update="conditional Gaussian FFBS / exact Laplace-MH",
+        asis=bool(asis), state_update="conditional Gaussian FFBS / exact Laplace-MH",
         targets_exact_posterior=True, approximation=None,
         proposal=None if gaussian else "copula_conditional_laplace",
         backend="marginal_fs", warnings=(),
@@ -47,14 +46,14 @@ def marginal_plan(compiled, *, engine="auto", parameterization="auto", asis=Fals
 
 
 def _sigma(state, effects, phase):
-    return float(state.params_obs["sigma"]) * np.exp(effects[phase])
+    return float(state.params_obs["sigma"]) * np.exp(effects[phase] + state.params_obs.get("log_scale_offset", 0.))
 
 
 def _observation_params(state, effects, phase):
     return {**state.params_obs, "sigma": _sigma(state, effects, phase)}
 
 
-def _channel_parameters(state, effects):
+def _channel_parameters(state, effects, *, selection=True):
     name, p, s = state.name, state.params_state, state.model_state
     result = {
         f"initial.channel.{name}.level": float(p["alpha0"]),
@@ -62,6 +61,8 @@ def _channel_parameters(state, effects):
         f"state.{name}.season": int(s.season), f"model_index.{name}": int(state.model_index),
         f"sigma.{name}": float(state.params_obs["sigma"]),
     }
+    if not selection:
+        result = {k:v for k,v in result.items() if not k.startswith(("state.", "model_index."))}
     if state.family == "gev":
         result[f"xi.{name}"] = float(state.params_obs["xi"])
     if state.layout.has_beta:
@@ -74,6 +75,11 @@ def _channel_parameters(state, effects):
             result[f"signed_sd.channel.{name}.{process}"] = float(p[signed])
     if state.model.observation.scale is not None:
         result[f"scale.seasonal.{name}"] = effects.copy()
+    for key in ("scale_slope", "scale_signed_sd", "scale_z", "log_scale_offset"):
+        if key in state.params_obs:
+            result[f"{key}.{name}"] = np.asarray(state.params_obs[key]).copy()
+    if "scale_signed_sd" in state.params_obs:
+        result[f"scale_rw_sd.{name}"] = abs(state.params_obs["scale_signed_sd"])
     return result
 
 
@@ -136,14 +142,16 @@ def _structure_step(state, conditional, params, prior, laplace, rng):
     return metric
 
 
-def _observation_step(state, conditional, coefficients, scale, phase, prior, rng):
+def _observation_step(state, conditional, coefficients, scale, phase, prior, rng, mixing=None):
     basis = scale.contrast() if scale else np.zeros((1, 0))
     effects = basis @ coefficients
     eta = mu_from_ncp(state.z_path, state.params_state, state.layout)
 
-    def likelihood(log_scale, effect=effects, xi=None):
+    def likelihood(log_scale, effect=effects, xi=None, offset=None):
+        if offset is None:
+            offset = state.params_obs.get("log_scale_offset", 0.)
         with np.errstate(over="ignore", under="ignore", invalid="ignore"):
-            sigma = np.exp(log_scale + effect[phase])
+            sigma = np.exp(log_scale + effect[phase] + offset)
         if np.any(~np.isfinite(sigma)) or np.any(sigma <= 0):
             return -np.inf
         params = {**state.params_obs, "sigma": sigma}
@@ -158,18 +166,26 @@ def _observation_step(state, conditional, coefficients, scale, phase, prior, rng
                 lp = -.5*((value-prior.log_sigma.mean)/prior.log_sigma.sd)**2
             else:
                 lp = -2*prior.sigma2.a*value - prior.sigma2.b*np.exp(-2*value)
+        if mixing is not None and prior.lasso is not None and prior.lasso.variance_mode == "observation":
+            terms = [(state.params_state["s_"+k] / prior.lasso.coefficient_scale_for(k))**2 / v
+                     for k,v in mixing.tau.items()]
+            with np.errstate(over="ignore", invalid="ignore"):
+                lp += -len(terms)*value - .5*sum(terms)*np.exp(-2*value)
         return float(lp + likelihood(value)) if np.isfinite(lp) else -np.inf
 
     log_scale, evaluations = _slice_sample_real(np.log(state.params_obs["sigma"]), log_scale_target, rng, width=.08)
     state.params_obs.update(sigma=float(np.exp(log_scale)), sigma2=float(np.exp(2*log_scale)))
     metric = {"scale_slice_evaluations": evaluations}
-    if scale:
+    if scale and scale.period > 1:
         coefficients, evaluations = elliptical_slice_gaussian_prior(
             coefficients, np.zeros(scale.period-1), scale.prior_sd**2*np.eye(scale.period-1),
             lambda b: likelihood(log_scale, basis @ b), rng,
         )
         effects = basis @ coefficients
         metric["seasonal_scale_slice_evaluations"] = evaluations
+    from .scale_path import secular_scale_step
+    metric.update(secular_scale_step(state, scale,
+        lambda offset: likelihood(log_scale, effects, offset=offset), rng))
     if state.family == "gev":
         lower, upper = state.model.observation.xi_bounds
         lower, upper = max(lower, -prior.xi_max_abs), min(upper, prior.xi_max_abs)
@@ -189,8 +205,10 @@ def _observation_step(state, conditional, coefficients, scale, phase, prior, rng
 
 def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates=None, initial_parameters=None):
     if not isinstance(priors, MarginalPriors):
-        raise TypeError("Use MarginalPriors(channels={name: ssvs_*_priors(...)}).")
+        raise TypeError("Use MarginalPriors(channels={name: fs_prior}).")
     model = compiled.model
+    if plan.asis and any(p.ssvs is not None for p in priors.channels.values()):
+        raise ValueError("ASIS requires continuous priors for every channel; exact SSVS has point-mass zero scales.")
     if model.shared or not model.supports_fs_parameterization:
         raise ValueError("Private FS/SSVS requires local-linear trends with optional dummy seasonality, without shared states or regressions.")
     if set(priors.channels) != set(compiled.channel_names):
@@ -213,6 +231,12 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
     initial = dict(initial_parameters or {})
     restart = initial.pop("__fs_marginal__", None)
     seeds = np.random.SeedSequence(mcmc.seed).spawn(C)
+    def correlation_for(parameters):
+        if model.copula is None:
+            return np.eye(K)
+        if model.copula.seasonal:
+            return model.copula.correlation_path(parameters, compiled.channel_names, T, dates)
+        return model.copula.correlation_matrix(parameters, compiled.channel_names)
     for chain, seed in enumerate(seeds):
         rng = np.random.default_rng(seed)
         # Each channel starts at a support-safe Gumbel fit. A restart restores
@@ -222,7 +246,16 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
         for state in states:
             from .model_space import enumerate_structural_models, structural_model_log_prior, enforce_structural_state
             prior = priors.channels[state.name]
-            if not np.isfinite(structural_model_log_prior(state.model_state, prior.ssvs)):
+            from .fs_utils import _active_scale_names
+            inactive = {"level", "trend", "season"} - set(_active_scale_names(state.layout))
+            has_fixed = (any(getattr(c, "level_mode", None) == "static" or
+                             getattr(c, "trend_mode", None) == "static" or
+                             getattr(c, "mode", None) == "static" for c in state.model.components))
+            if has_fixed and prior.ssvs is not None:
+                raise ValueError("Explicit static components use continuous priors; for SSVS declare dynamic components and select them through SSVSPrior.")
+            for component in inactive:
+                state.params_state["s_"+component] = state.params_state["q_"+component] = 0.
+            if prior.ssvs is not None and not np.isfinite(structural_model_log_prior(state.model_state, prior.ssvs)):
                 candidates = enumerate_structural_models(state.layout, prior.ssvs)
                 state.model_state = max(candidates, key=lambda m: structural_model_log_prior(m, prior.ssvs))
                 state.params_state = enforce_structural_state(state.params_state, state.model_state, state.layout)
@@ -237,6 +270,7 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
             residual = state.y-mu_from_ncp(state.z_path, state.params_state, state.layout)
             scale = max(state.params_obs["sigma"], float(np.max(-state.params_obs["xi"]*residual))/.8)
             state.params_obs.update(sigma=scale, sigma2=scale*scale)
+        mixing = [ShrinkageState.initialize(priors.channels[s.name], s.layout) if priors.channels[s.name].ssvs is None else None for s in states]
         coefficients = [np.zeros(s.period-1) if s else np.zeros(0) for s in scales]
         effects = [s.contrast() @ b if s else np.zeros(1) for s,b in zip(scales, coefficients)]
         cp = model.copula.initial_parameters(compiled.channel_names) if model.copula else {}
@@ -252,9 +286,11 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                     effects[j] = np.asarray(saved["effects"])
                     coefficients[j] = scales[j].contrast().T @ effects[j]
             cp.update(restart["copula"])
+            for state, mixture in zip(states,mixing):
+                if mixture is not None: mixture.restore(restart.get("mixing",{}),state.name)
         saved_draw = 0
         for iteration in range(mcmc.iterations):
-            correlation = model.copula.correlation_matrix(cp, compiled.channel_names) if model.copula else np.eye(K)
+            correlation = correlation_for(cp)
             scores = np.column_stack([
                 model.transform_signs[j] * ConditionalMargin(s.model.observation, 0, 1).scores(
                     s.y, mu_from_ncp(s.z_path, s.params_state, s.layout), _observation_params(s, effects[j], phases[j]))
@@ -265,9 +301,13 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                 mean, variance = conditional_score_parameters(scores, correlation, j, model.transform_signs[j])
                 conditional = ConditionalMargin(state.model.observation, mean, variance)
                 prior = priors.channels[state.name]
-                metric = _structure_step(state, conditional, _observation_params(state, effects[j], phases[j]), prior, laplace, rng)
+                if prior.ssvs is not None:
+                    metric = _structure_step(state, conditional, _observation_params(state, effects[j], phases[j]), prior, laplace, rng)
+                else:
+                    metric = continuous_step(state, conditional, _observation_params(state, effects[j], phases[j]),
+                                             prior, mixing[j], laplace, rng, asis=plan.asis)
                 coefficients[j], effects[j], obs_metric = _observation_step(
-                    state, conditional, coefficients[j], scales[j], phases[j], prior, rng)
+                    state, conditional, coefficients[j], scales[j], phases[j], prior, rng, mixing[j])
                 row_metrics.update({f"{key}.{state.name}": value for key,value in {**metric, **obs_metric}.items()})
                 scores[:,j] = model.transform_signs[j] * conditional.scores(
                     state.y, mu_from_ncp(state.z_path, state.params_state, state.layout), _observation_params(state, effects[j], phases[j]))
@@ -276,20 +316,23 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                     def target(value):
                         proposed = {**cp, name: value}
                         try:
-                            R = model.copula.correlation_matrix(proposed, compiled.channel_names)
-                            return model.copula.log_prior(proposed, compiled.channel_names) + float(np.sum(gaussian_copula_logpdf(scores, R)))
+                            return model.copula.log_prior(proposed, compiled.channel_names) + float(np.sum(
+                                model.copula.logpdf(scores, proposed, compiled.channel_names, dates=dates)))
                         except (ValueError, FloatingPointError, np.linalg.LinAlgError):
                             return -np.inf
                     cp[name], evaluations = _slice_sample_real(cp[name], target, rng, width=.08)
                     row_metrics[f"slice_evaluations.{name}"] = evaluations
-                correlation = model.copula.correlation_matrix(cp, compiled.channel_names)
+                correlation = correlation_for(cp)
             retain = iteration >= mcmc.warmup and (iteration-mcmc.warmup) % mcmc.thin == 0
             if retain:
                 current = dict(cp)
                 total = float(np.sum(gaussian_copula_logpdf(scores, correlation)))
                 for j, (state, block) in enumerate(zip(states, compiled.blocks)):
                     paths[chain,saved_draw,:,block.state_slice] = map_ncp_to_centered(state.z_path, state.params_state, state.layout)
-                    current.update(_channel_parameters(state, effects[j]))
+                    current.update(_channel_parameters(state, effects[j], selection=priors.channels[state.name].ssvs is not None))
+                    if scales[j] is not None:
+                        current[f"sigma_path.{state.name}"] = _sigma(state, effects[j], phases[j])
+                    if mixing[j] is not None: current.update(mixing[j].parameter_values(state.name))
                     total += float(np.sum(state.model.observation.logpdf(state.y,
                         mu_from_ncp(state.z_path, state.params_state, state.layout), _observation_params(state, effects[j], phases[j]))))
                 if not np.isfinite(total):
@@ -305,7 +348,7 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                     metrics[key][chain,saved_draw] = value
                 saved_draw += 1
             if mcmc.progress and ((iteration+1) % max(1, mcmc.progress_every or 50) == 0 or iteration+1 == mcmc.iterations):
-                print(f"Private FS/SSVS {plan.engine}: chain {chain+1}/{C}, iteration {iteration+1}/{mcmc.iterations}, retained {saved_draw}/{D}", flush=True)
+                print(f"Private FS {plan.engine}: chain {chain+1}/{C}, iteration {iteration+1}/{mcmc.iterations}, retained {saved_draw}/{D}", flush=True)
     # Preserve per-channel diagnostics and expose pooled computational summaries.
     for key in {name.rsplit(".", 1)[0] for name in metrics if name.startswith("laplace_")}:
         metrics[key] = np.mean([value for name,value in metrics.items() if name.startswith(key+".")], axis=0)
@@ -320,7 +363,10 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
         dates=None if dates is None else np.asarray(dates), series_name=model.name,
         transform_sign=model.transform_signs,
         metadata={"bucex_version": __version__, "inference_contract": "private_fs_joint_likelihood",
-                  "marginal_fs": True, "structural_ssvs": True, "model_selection_exact": True,
+                  "marginal_fs": True, "structural_ssvs": any(p.ssvs is not None for p in priors.channels.values()),
+                  "model_selection_exact": any(p.ssvs is not None for p in priors.channels.values()),
+                  "innovation_prior_families": {k:p.profile for k,p in priors.channels.items()},
+                  "asis": plan.asis, "continuous_coefficient_update": "Gaussian reference elliptical slice",
                   "shared_temporal_state": False, "hierarchical_model_selection": False,
                   "joint_model": True, "joint_likelihood": True,
                   "conditional_channel_independence": model.copula is None,

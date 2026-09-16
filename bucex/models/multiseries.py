@@ -275,10 +275,10 @@ class MultiSeriesModel:
             ]
             if (
                 len(trends) != 1
-                or trends[0].level_mode != "dynamic"
-                or trends[0].trend_mode not in {"dynamic", "off"}
+                or trends[0].level_mode not in {"dynamic", "static"}
+                or trends[0].trend_mode not in {"dynamic", "static", "off"}
                 or len(seasons) > 1
-                or any(component.mode not in {"dynamic", "off"} for component in seasons)
+                or any(component.mode not in {"dynamic", "static", "off"} for component in seasons)
                 or regressions
                 or len(channel.components) != len(trends) + len(seasons)
             ):

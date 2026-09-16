@@ -2,14 +2,14 @@
 from .base import ObservationModel, ObsSpec
 from .gaussian import Gaussian, GaussianObs
 from .gev import GEV, GEVObs
-from .scale import SeasonalScale
+from .scale import SeasonalScale, LogScale, scale_from_dict
 
 Observation = Gaussian | GEV
 
 
 def observation_from_dict(value):
     family = str(value["family"]).lower()
-    scale = SeasonalScale(**value["scale"]) if value.get("scale") else None
+    scale = scale_from_dict(value.get("scale"))
     if family == "gaussian":
         return Gaussian(scale=scale)
     if family == "gev":
@@ -22,6 +22,7 @@ def observation_from_dict(value):
 
 __all__ = [
     "SeasonalScale",
+    "LogScale",
     "ObservationModel",
     "ObsSpec",
     "Observation",

@@ -9,7 +9,7 @@ description = "Bayesian unobserved-component models for environmental extremes"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
-authors = [{name = "Bastiaan AVV"}]
+authors = [{name = "Bastiaan A. Van Velthoven"}]
 dependencies = [
   "numpy>=1.24",
   "scipy>=1.10",

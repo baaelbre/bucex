@@ -1,0 +1,161 @@
+[
+  {
+    "name": "univariate",
+    "completed": true,
+    "result_directory": "uccle_independent_20260915T193844_676457Z",
+    "file_count": 56,
+    "fit_archives": 3,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "warmup": 4,
+      "seed": 56100
+    },
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "seasonal_copula",
+    "completed": true,
+    "result_directory": "uccle_copula_20260915T193940_125678Z",
+    "file_count": 61,
+    "fit_archives": 1,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "copula",
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "prior_sensitivity",
+    "completed": true,
+    "result_directory": "sensitivity_20260915T193940_101257Z",
+    "file_count": 102,
+    "fit_archives": 11,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "independent",
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "joint_recovery",
+    "completed": true,
+    "result_directory": "joint_recovery_20260915T193939_957883Z",
+    "file_count": 7,
+    "fit_archives": 0,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "copula",
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "margin_model_comparison",
+    "completed": true,
+    "result_directory": "model_comparison_margins_20260915T193939_951207Z",
+    "file_count": 174,
+    "fit_archives": 0,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "independent",
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "shape_recovery",
+    "completed": true,
+    "result_directory": "shape_recovery_20260915T194502_210614Z",
+    "file_count": 113,
+    "fit_archives": 11,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "independent",
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "endpoint",
+    "completed": true,
+    "result_directory": "endpoint_2019_20260915T194502_243978Z",
+    "file_count": 39,
+    "fit_archives": 3,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "independent",
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "forecast_uncertainty",
+    "completed": true,
+    "result_directory": "forecast_uncertainty_20260915T194502_177244Z",
+    "file_count": 34,
+    "fit_archives": 3,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "independent",
+    "observed_date": "2026-09-15"
+  },
+  {
+    "name": "dependence_model_comparison",
+    "completed": true,
+    "result_directory": "model_comparison_dependence_20260915T194502_283631Z",
+    "file_count": 35,
+    "fit_archives": 0,
+    "purpose": "execution only; not convergence or empirical evidence",
+    "mcmc": {
+      "chains": 1,
+      "draws": 4,
+      "progress": false,
+      "progress_every": 50,
+      "seed": 56100,
+      "warmup": 4
+    },
+    "analysis": "independent",
+    "observed_date": "2026-09-15"
+  }
+]

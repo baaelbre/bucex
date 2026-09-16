@@ -1,0 +1,11 @@
+{
+  "extends": "paper.json",
+  "model": {
+    "legacy_constant_scale": true,
+    "seasonal_scale": false
+  },
+  "engines": [
+    "laplace",
+    "laplace_mh"
+  ]
+}

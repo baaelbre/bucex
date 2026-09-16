@@ -157,11 +157,14 @@ class BayesianLassoPrior:
 
     For each active structural block ``k`` the non-centred sampler uses
 
-    ``s_k | tau_k ~ N(0, variance_scale * tau_k)``
+    ``s_k | tau_k ~ N(0, variance_scale * coefficient_scale[k]**2 * tau_k)``
 
     ``tau_k | lambda2 ~ Exp(lambda2 / 2)``
 
     ``lambda2 ~ Gamma(a_lambda, b_lambda)``  (shape-rate).
+
+    Supplying ``fixed_lambda2`` instead fixes this rate. With fixed variance
+    one, the marginal signed scale is Laplace(0, coefficient_scale/sqrt(lambda2)).
 
     ``variance_mode='observation'`` reproduces the Gaussian manuscript code,
     where ``variance_scale = sigma**2``. ``variance_mode='fixed'`` is used by
@@ -175,6 +178,8 @@ class BayesianLassoPrior:
     initial_lambda2: float = 1.0
     variance_mode: str = "fixed"
     fixed_variance: float = 1.0
+    fixed_lambda2: Optional[float] = None
+    coefficient_scale: Mapping[str, float] = field(default_factory=lambda: {'level':1.,'trend':1.,'season':1.})
 
     def __post_init__(self) -> None:
         if self.a_lambda <= 0.0 or self.b_lambda <= 0.0:
@@ -185,6 +190,10 @@ class BayesianLassoPrior:
             raise ValueError("variance_mode must be 'fixed' or 'observation'.")
         if self.fixed_variance <= 0.0:
             raise ValueError("fixed_variance must be > 0.")
+        if self.fixed_lambda2 is not None and (not np.isfinite(self.fixed_lambda2) or self.fixed_lambda2 <= 0):
+            raise ValueError('fixed_lambda2 must be positive and finite.')
+        if set(self.coefficient_scale) != {'level','trend','season'} or any(not np.isfinite(v) or v <= 0 for v in self.coefficient_scale.values()):
+            raise ValueError('coefficient_scale requires positive level, trend and season values.')
 
     def variance_scale(self, sigma2: float | None = None) -> float:
         if self.variance_mode == "observation":
@@ -198,7 +207,7 @@ class BayesianLassoPrior:
         return False
 
     def coefficient_scale_for(self, component: str) -> float:
-        return 1.0
+        return float(self.coefficient_scale[component])
 
 
 @dataclass(frozen=True)
@@ -485,17 +494,18 @@ class TripleGammaPrior:
         global_scale: float,
         slab2: Optional[float] = None,
     ) -> float:
-        variance = (
-            max(float(global_scale), 1e-24)
-            * max(float(numerator), 1e-24)
-            / max(float(denominator), 1e-24)
-        )
+        values = (float(global_scale), float(numerator), float(denominator))
+        if any(not np.isfinite(v) or v <= 0 for v in values):
+            return np.nan
+        log_variance = np.log(values[0]) + np.log(values[1]) - np.log(values[2])
         if self.regularized:
             if slab2 is None:
                 raise ValueError("A slab2 value is required by regularized triple gamma.")
-            slab2 = max(float(slab2), 1e-24)
-            variance = slab2 * variance / (slab2 + variance)
-        return float(variance)
+            if not np.isfinite(slab2) or slab2 <= 0:
+                return np.nan
+            log_variance = -np.logaddexp(-np.log(slab2), -log_variance)
+        with np.errstate(over="ignore", under="ignore"):
+            return float(np.exp(log_variance))
 
     def conditional_variance(
         self,
@@ -704,7 +714,7 @@ class FSGaussianPriors:
     @property
     def profile(self) -> str:
         if self.lasso is not None:
-            return "regularized_lasso" if self.lasso.componentwise else "manuscript_lasso"
+            return "regularized_lasso" if self.lasso.componentwise else ("lasso" if self.lasso.fixed_lambda2 is not None else "manuscript_lasso")
         if self.horseshoe is not None:
             return "regularized_horseshoe"
         if self.triple_gamma is not None:
@@ -790,7 +800,7 @@ class FSGEVPriors:
     @property
     def profile(self) -> str:
         if self.lasso is not None:
-            return "regularized_lasso" if self.lasso.componentwise else "manuscript_lasso"
+            return "regularized_lasso" if self.lasso.componentwise else ("lasso" if self.lasso.fixed_lambda2 is not None else "manuscript_lasso")
         if self.horseshoe is not None:
             return "regularized_horseshoe"
         if self.triple_gamma is not None:

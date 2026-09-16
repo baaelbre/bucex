@@ -13,7 +13,7 @@ class ConditionalMargin:
     def __init__(self, observation, mean, variance):
         self.observation = observation
         self.mean = np.asarray(mean, float)  # INTERNAL score orientation
-        self.variance = float(variance)
+        self.variance = np.asarray(variance, float)
         self.name = observation.name
 
     def scores(self, y, eta, params):
@@ -63,6 +63,15 @@ class ConditionalMargin:
 
 def conditional_score_parameters(scores, correlation, index, sign=1.):
     """Internal z_j | z_-j parameters, using original-orientation R."""
+    correlation = np.asarray(correlation)
+    if correlation.ndim == 3:
+        # Work per distinct phase rather than inverting T identical matrices.
+        matrices, labels = np.unique(correlation, axis=0, return_inverse=True)
+        mean, variance = np.empty(len(scores)), np.empty(len(scores))
+        for group, matrix in enumerate(matrices):
+            selected = labels == group
+            mean[selected], variance[selected] = conditional_score_parameters(scores[selected], matrix, index, sign)
+        return mean, variance
     k = correlation.shape[0]
     others = np.arange(k) != index
     if not np.any(others):

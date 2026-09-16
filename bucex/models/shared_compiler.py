@@ -86,7 +86,10 @@ class CompiledSharedModel(CompiledMultiSeriesModel):
         if not self.has_copula:
             return super().sample_observation(eta_t, params, rng)
         from ..dependence import sample_normal_scores, quantiles_from_normal_scores
-        correlation = self.model.copula.correlation_matrix(params, self.channel_names)
+        phase = params.get("__copula_phase")
+        if self.model.copula.seasonal and phase is None:
+            raise ValueError("Seasonal copula simulation requires an explicit calendar phase.")
+        correlation = self.model.copula.correlation_matrix(params, self.channel_names, phase=phase)
         scores = np.asarray(sample_normal_scores(correlation, 1, rng)).reshape(len(self.channel_names))
         return quantiles_from_normal_scores(scores, np.asarray(eta_t), self.model.channels, params)
 

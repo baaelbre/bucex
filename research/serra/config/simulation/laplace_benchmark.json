@@ -1,0 +1,11 @@
+{
+  "extends": "paper.json",
+  "model": {
+    "legacy_constant_scale": true
+  },
+  "engines": [
+    "laplace",
+    "laplace_mh"
+  ],
+  "_comment": "Paired historical constant-scale kernels; this comparison does not validate a seasonal-scale or seasonal-copula approximation."
+}

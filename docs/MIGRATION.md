@@ -1,41 +1,43 @@
-# Migrating from 1.6.2 to 1.6.3
+# Migrating from 1.6.3 to 1.6.4
 
-Existing constant-scale univariate `Model`, `fit`, diagnostics, risk, prediction
-and archive calls remain supported. Existing explicit prior probabilities are
-preserved. The default SSVS slope probabilities now equal `(0.10, 0.45, 0.45)`.
+Existing univariate calls, result methods and archives remain supported. The
+new SERRA workflow changes the declared scientific prior, so it requires new
+fits; an earlier SSVS fit is not a continuous-prior result.
 
-To add a seasonal observational SD/scale, use
-`Gaussian(scale=SeasonalScale())` or `GEV(scale=SeasonalScale())`, an FS SSVS
-prior, and `asis=False`. Obtain all dated scale paths with `fit.sigma_draws()`
-or `fit.sigma_draws(channel="TXx")`. Seasonal effects are zero-sum in log scale.
-For Uccle convenience wrappers, also pass `asis=False` explicitly.
+1. Replace the research `ssvs_*_priors` calls with `fs_priors(family,
+   innovation="lasso")`. Normal and triple-gamma are matched by physical prior
+   median SDs. The old lower-level constructors still work.
+2. Use `LogScale()` for the new private univariate kernel even when the scale
+   is constant. `SeasonalScale` continues to work directly.
+3. Add private channels and `MarginalPriors` to fit a joint model. The marginal
+   declarations can be identical to those in the univariate fits. No separate
+   first-stage posterior is frozen.
+4. `asis=True` is now allowed for all-continuous private fits. SSVS requires
+   `asis=False`; the SSVS implementation is retained but not used by default.
+5. Inspect SDs/variances and horizon effects. Continuous models intentionally
+   omit sampled structure indicators. Structure-probability files are generated
+   only for an actual SSVS fit.
 
-To retain FS/SSVS while adding residual dependence, put private channels in
-`MultiSeriesModel(..., copula=GaussianCopula(eta=2))` and pass
-`MarginalPriors({name: own_ssvs_prior, ...})`. `JointPriors` continues to select
-the existing continuous shared/centered route; it does not become SSVS.
-A one-time copula fit to marginal posterior residuals does not have the new
-joint posterior target.
+`SeasonalGaussianCopula` adds a phase axis to `copula_correlation_draws()`:
+(draws, phases, channels, channels). Supply `phase=1,...,period` for one matrix.
+Constant-copula return shapes are unchanged. `combine_chains=False` always
+preserves separate chain/draw axes.
 
-Research entry points are now `research.serra.univariate` and
-`research.serra.copula`. Omit `--series` for all six; pass one or more names to
-select channels. The common `run` module remains available. Conference and
-standalone tutorial scripts/configs are removed. General hierarchy/shared
-construction is documented under `docs/`; these are not active SERRA studies.
+`forecast.compound_probability` retains the simulation-based estimate.
+`compound_probability_draws` is a new bivariate quadrature method returning one
+conditional probability per parameter/state draw. Averaging integrates those
+draws; forecast risk bands also include variation in sampled future states.
 
-The primary full configs use 1892–2022. To explore the later mixed-source data,
-use `config/extension_full.json`. The loader still returns the complete bundled
-record when no end date is supplied. The redundant older daily CSV was removed;
-the retained updated CSV includes the historical prefix. Dataset helpers and
-custom data directories remain supported.
+Configurations accept one relative `extends` file. Dictionaries merge; lists
+replace. Saved run configs are fully expanded. `research/serra` is the sole
+research workflow directory; duplicated conference examples and the nested
+copy of the source tree are not shipped.
 
-**Refit affected older mixed/GEV hierarchical exact-SSVS results.** Version
-1.6.3 corrects the independence-proposal anchor in that structural-selection
-update. Existing univariate GEV selection already used the correct fixed anchor
-and is not affected by this correction. See `RELEASE_NOTES.md`.
+1.6.4 corrects very-small-coefficient lasso/PC local-scale updates and removes
+triple-gamma variance flooring. The new private coefficient and ASIS updates
+avoid older covariance floors/cancellation. Refit continuous analyses affected
+by these changes before comparing them scientifically. Legacy constant-scale
+kernels retain their established coefficient implementation and are explicitly
+labelled in the paired historical Laplace benchmark.
 
-Schema 2.10 archives store seasonal effects and `MarginalPriors`, with historical
-readers retained. `init=fit` restarts the new scalar/private route from the
-matching model and prior declaration. PGAS is removed; use supported FFBS or
-Laplace–MH routes. Missing observations remain unsupported on the new private
-FS/copula route and raise a clear error.
+New archives use schema 2.11. Earlier supported schemas remain readable; older BUCEX installations cannot be expected to read the new scale/copula declarations.

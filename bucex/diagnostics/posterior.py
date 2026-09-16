@@ -114,6 +114,15 @@ def ess_bulk(values: Array) -> float:
     )
 
 
+def ess_tail(values: Array) -> float:
+    """Minimum ESS of the 5% and 95% empirical-quantile indicators."""
+    values = np.asarray(values,float)
+    if values.ndim != 2 or not np.all(np.isfinite(values)) or np.all(values == values.flat[0]):
+        return np.nan
+    lower,upper = np.quantile(values,[.05,.95])
+    return float(min(ess_bulk((values <= lower).astype(float)),ess_bulk((values <= upper).astype(float))))
+
+
 def posterior_pit(fit) -> Array:
     """In-sample posterior PIT values.
 
@@ -166,6 +175,7 @@ def fit_diagnostics(fit):
             "sd": float(np.std(values, ddof=1)) if values.size > 1 else 0.0,
             "rhat": rhat(values),
             "ess_bulk": ess_bulk(values),
+            "ess_tail": ess_tail(values),
             "acceptance": _finite_mean(acceptance[name]) if name in acceptance else np.nan,
             "update": update_methods.get(name, "derived_or_fixed"),
             "constant": constant,

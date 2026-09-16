@@ -33,6 +33,7 @@ class NCPLayout:
     season_ncp_slice: slice
     ncp_state_names: tuple[str, ...]
     ncp_state_dim: int
+    active_components: tuple[str, ...] | None = None
 
 
 def _project_psd(A: Array, floor: float = 1e-12) -> Array:
@@ -161,8 +162,8 @@ def validate_ncp_model(model: StateSpaceModel) -> None:
     """Validate that the model matches the specialized non-centred sampler scope.
 
     Supported structure:
-      - one LocalLinearTrend with dynamic level and trend in {dynamic, off}
-      - at most one DummySeasonal with mode in {dynamic, off}
+      - one LocalLinearTrend with dynamic/static level and dynamic/static/off trend
+      - at most one DummySeasonal with mode in {dynamic, static, off}
       - no regression component
     """
     if not isinstance(model, StructuralSSM):
@@ -183,13 +184,13 @@ def validate_ncp_model(model: StateSpaceModel) -> None:
         raise NotImplementedError("Non-centred fitters support only LocalLinearTrend plus optional DummySeasonal in the current implementation.")
 
     trend = trend_blocks[0]
-    if trend.level_mode != "dynamic":
-        raise NotImplementedError("Non-centred fitters require a dynamic level state.")
-    if trend.trend_mode not in {"dynamic", "off"}:
-        raise NotImplementedError("Non-centred fitters support trend_mode in {'dynamic', 'off'} only.")
+    if trend.level_mode not in {"dynamic", "static"}:
+        raise NotImplementedError("Non-centred fitters require a dynamic or static level.")
+    if trend.trend_mode not in {"dynamic", "static", "off"}:
+        raise NotImplementedError("Unsupported trend mode.")
 
-    if season_blocks and season_blocks[0].mode not in {"dynamic", "off"}:
-        raise NotImplementedError("Non-centred fitters support DummySeasonal mode in {'dynamic', 'off'} only.")
+    if season_blocks and season_blocks[0].mode not in {"dynamic", "static", "off"}:
+        raise NotImplementedError("Unsupported seasonal mode.")
 
 
 def infer_ncp_layout(model: StateSpaceModel) -> NCPLayout:
@@ -253,6 +254,10 @@ def infer_ncp_layout(model: StateSpaceModel) -> NCPLayout:
         season_ncp_slice=season_ncp_slice,
         ncp_state_names=tuple(z_names),
         ncp_state_dim=len(z_names),
+        active_components=tuple(name for name,active in (
+            ("level", trend.level_mode == "dynamic"),
+            ("trend", trend.trend_mode == "dynamic"),
+            ("season", seasonal is not None and seasonal.mode == "dynamic")) if active),
     )
 
 
@@ -960,6 +965,8 @@ def _posterior_gaussian_precision(
 
 
 def _active_scale_names(layout: NCPLayout) -> list[str]:
+    if layout.active_components is not None:
+        return list(layout.active_components)
     names = ["level"]
     if layout.has_beta:
         names.append("trend")
@@ -987,7 +994,7 @@ def initialise_lasso(priors: Any, layout: NCPLayout) -> tuple[dict[str, float], 
         lambda2 = {name: float(lp.initial_lambda2_for(name)) for name in names}
         return tau, lambda2
     tau = {name: float(lp.initial_tau) for name in names}
-    return tau, float(lp.initial_lambda2)
+    return tau, float(lp.fixed_lambda2 if getattr(lp,'fixed_lambda2',None) is not None else lp.initial_lambda2)
 
 
 def copy_lasso_lambda2(lambda2: Any) -> Any:
@@ -1110,9 +1117,11 @@ def horseshoe_conditional_variance(
 
 
 def _normal_zero_logpdf(value: float, variance: float) -> float:
-    variance = max(float(variance), 1e-300)
+    variance = float(variance)
+    if not np.isfinite(variance) or variance <= 0:
+        return -np.inf
     return float(
-        -0.5 * (np.log(2.0 * np.pi * variance) + float(value) ** 2 / variance)
+        -0.5 * (np.log(2.0 * np.pi) + np.log(variance) + (float(value)/np.sqrt(variance))**2)
     )
 
 
@@ -1277,7 +1286,9 @@ def update_triple_gamma_scales(
 
             def target(log_value, *, field_name=field_name, shape_name=shape_name):
                 candidate = copy_triple_gamma_state(out)
-                value = float(np.exp(np.clip(log_value, -700.0, 700.0)))
+                if not np.log(np.nextafter(0., 1.)) < log_value < np.log(np.finfo(float).max):
+                    return -np.inf
+                value = float(np.exp(log_value))
                 candidate[field_name][component] = value
                 return (
                     coefficient_log_density(candidate, [component])
@@ -1297,7 +1308,9 @@ def update_triple_gamma_scales(
 
         def global_target(log_value):
             candidate = copy_triple_gamma_state(out)
-            value = float(np.exp(np.clip(log_value, -700.0, 700.0)))
+            if not np.log(np.nextafter(0., 1.)) < log_value < np.log(np.finfo(float).max):
+                return -np.inf
+            value = float(np.exp(log_value))
             candidate["global"] = value
             return (
                 coefficient_log_density(candidate)
@@ -1353,7 +1366,9 @@ def update_triple_gamma_scales(
 
         def slab_target(log_value):
             candidate = copy_triple_gamma_state(out)
-            value = float(np.exp(np.clip(log_value, -700.0, 700.0)))
+            if not np.log(np.nextafter(0., 1.)) < log_value < np.log(np.finfo(float).max):
+                return -np.inf
+            value = float(np.exp(log_value))
             candidate["slab2"] = value
             return (
                 coefficient_log_density(candidate)
@@ -1505,30 +1520,26 @@ def update_lasso_scales(
     if lp is None:
         return tau, lambda2
 
-    sig2 = max(float(variance_scale), 1e-12)
+    from scipy.stats import geninvgauss
+    sig2 = float(variance_scale)
     out: dict[str, float] = {}
     key_map = {"level": "s_level", "trend": "s_trend", "season": "s_season"}
     names = _active_scale_names(layout)
     componentwise = bool(getattr(lp, "componentwise", False))
 
     for name in names:
-        lam2 = max(
-            float(lambda2[name]) if componentwise else float(lambda2),
-            1e-12,
-        )
-        coefficient_scale = max(lasso_coefficient_scale(lp, name), 1e-16)
+        lam2 = float(lambda2[name]) if componentwise else float(lambda2)
+        coefficient_scale = lasso_coefficient_scale(lp, name)
         sk = float(params_state.get(key_map[name], 0.0))
         standardized_s2 = (sk / coefficient_scale) ** 2
-        if standardized_s2 < 1e-16:
-            if componentwise:
-                initial_tau = float(lp.initial_tau_for(name))
-            else:
-                initial_tau = float(lp.initial_tau)
-            out[name] = max(float(tau.get(name, initial_tau)), 1e-8)
+        if standardized_s2 == 0:
+            out[name] = float(rng.gamma(.5, 2./lam2))
         else:
-            mu_u = np.sqrt(lam2 * sig2 / standardized_s2)
-            u_k = _rand_invgauss(mu_u, lam2, rng)
-            out[name] = float(np.clip(1.0 / u_k, 1e-12, 1e12))
+            b = standardized_s2 / sig2
+            out[name] = float(geninvgauss.rvs(.5, np.sqrt(lam2*b),
+                              scale=np.sqrt(b/lam2), random_state=rng))
+        if not np.isfinite(out[name]) or out[name] <= 0:
+            raise FloatingPointError('Non-finite lasso mixture scale; no clipping was applied.')
 
     if componentwise:
         new_lambda2 = {}
@@ -1540,6 +1551,8 @@ def update_lasso_scales(
             )
         return out, new_lambda2
 
+    if getattr(lp,'fixed_lambda2',None) is not None:
+        return out, float(lp.fixed_lambda2)
     shape = float(lp.a_lambda + len(out))
     rate = float(lp.b_lambda + 0.5 * sum(out.values()))
     new_lambda2 = float(rng.gamma(shape=shape, scale=1.0 / max(rate, 1e-12)))
@@ -1559,19 +1572,19 @@ def update_pc_scales(
     if pc is None:
         return tau
     output: dict[str, float] = {}
+    from scipy.stats import geninvgauss
     key_map = {"level": "s_level", "trend": "s_trend", "season": "s_season"}
     for component in _active_scale_names(layout):
         coefficient_scale = float(pc.coefficient_scale_for(component))
         standardized = float(params_state.get(key_map[component], 0.0)) / coefficient_scale
         lambda2 = float(pc.standardized_rate_for(component)) ** 2
-        if standardized * standardized < 1e-16:
-            output[component] = max(
-                float(tau.get(component, pc.initial_tau)), 1e-8
-            )
-            continue
-        inverse_mean = np.sqrt(lambda2 / (standardized * standardized))
-        inverse_tau = _rand_invgauss(inverse_mean, lambda2, rng)
-        output[component] = float(np.clip(1.0 / inverse_tau, 1e-12, 1e12))
+        if standardized == 0:
+            output[component] = float(rng.gamma(.5, 2./lambda2))
+        else:
+            output[component] = float(geninvgauss.rvs(.5, abs(standardized)*np.sqrt(lambda2),
+                scale=abs(standardized)/np.sqrt(lambda2), random_state=rng))
+        if not np.isfinite(output[component]) or output[component] <= 0:
+            raise FloatingPointError("PC mixture scale is nonpositive/nonfinite; no clipping applied.")
     return output
 
 def _theta_prior_mean_precision(

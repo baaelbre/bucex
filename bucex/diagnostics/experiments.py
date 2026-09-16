@@ -53,7 +53,7 @@ def innovation_prior_variant(prior, *, profile="ssvs", multipliers=None,
     return replace(prior, ssvs=None, lasso=lasso)
 
 
-def draw_structural_prior(prior, size=2000, *, seed=None):
+def draw_structural_prior(prior, size=2000, *, seed=None, xi_bounds=None):
     """Draw the *unconditional* FS prior, including exact SSVS atoms at zero.
 
     Lasso local scales and their common/componentwise Gamma hyperprior are
@@ -77,12 +77,20 @@ def draw_structural_prior(prior, size=2000, *, seed=None):
         output["initial.seasonal"] = rng.normal(prior.gamma0_season.mean_array(),
             prior.gamma0_season.sd_array(), size=(size, len(prior.gamma0_season.mean)))
     if hasattr(prior, "xi"):
+        lower,upper = -prior.xi_max_abs,prior.xi_max_abs
+        if xi_bounds is not None:
+            lower,upper = max(lower,xi_bounds[0]),min(upper,xi_bounds[1])
         if isinstance(prior.xi, UniformPrior):
-            output["xi"] = prior.xi.sample(rng, size=size)
+            lower,upper = max(lower,prior.xi.lower),min(upper,prior.xi.upper)
+            if lower >= upper:
+                raise ValueError("Empty shape-prior support.")
+            output["xi"] = rng.uniform(lower,upper,size)
         elif isinstance(prior.xi, NormalPrior):
             # Match FSGEV._xi_prior: Normal is truncated at +/-xi_max_abs.
-            lo = (-prior.xi_max_abs - prior.xi.mean) / prior.xi.sd
-            hi = (prior.xi_max_abs - prior.xi.mean) / prior.xi.sd
+            if lower >= upper:
+                raise ValueError("Empty shape-prior support.")
+            lo = (lower - prior.xi.mean) / prior.xi.sd
+            hi = (upper - prior.xi.mean) / prior.xi.sd
             output["xi"] = truncnorm.rvs(lo, hi, loc=prior.xi.mean,
                 scale=prior.xi.sd, size=size, random_state=rng)
         else:
@@ -90,7 +98,14 @@ def draw_structural_prior(prior, size=2000, *, seed=None):
     lasso = prior.lasso
     common_lambda = None
     if lasso is not None and not lasso.componentwise:
-        common_lambda = rng.gamma(lasso.a_lambda, 1.0 / lasso.b_lambda, size)
+        common_lambda = (np.full(size,lasso.fixed_lambda2) if lasso.fixed_lambda2 is not None
+                         else rng.gamma(lasso.a_lambda, 1.0 / lasso.b_lambda, size))
+    tg = prior.triple_gamma
+    if tg is not None:
+        a = (.5*rng.beta(*tg.spike_shape_prior,size) if tg.learn_shapes else np.full(size,tg.spike_shape))
+        c = (.5*rng.beta(*tg.tail_shape_prior,size) if tg.learn_shapes else np.full(size,tg.tail_shape))
+        global_scale = (rng.gamma(c)/rng.gamma(a) if tg.learn_global else np.full(size,tg.global_scale))
+        slab = tg.slab_df*tg.slab_scale**2/(2*rng.gamma(tg.slab_df/2,size=size)) if tg.regularized else None
     if prior.ssvs is not None and prior.ssvs.trend_model_probabilities is not None:
         raise ValueError("Joint trend-model prior draws are not implemented by this helper.")
     for key, canonical in _COMPONENTS.items():
@@ -115,11 +130,16 @@ def draw_structural_prior(prior, size=2000, *, seed=None):
         elif prior.pc is not None:
             rate = -np.log(prior.pc.alpha_for(key)) / prior.pc.upper[key]
             signed = rng.laplace(scale=1.0 / rate, size=size)
+        elif tg is not None:
+            variance = global_scale*rng.gamma(a)/rng.gamma(c)
+            if tg.regularized:
+                variance = 1/(1/slab+1/variance)
+            signed = rng.normal(size=size)*np.sqrt(variance)*tg.coefficient_scale_for(key)
         elif getattr(prior, f"s_{key}") is not None:
             declared = getattr(prior, f"s_{key}")
             signed = rng.normal(declared.mean, declared.sd, size)
         else:
-            raise ValueError("Prior draws support SSVS, lasso, PC and normal profiles.")
+            raise ValueError("Prior draws support SSVS, lasso, PC, triple-gamma and normal profiles.")
         output[f"sd.{canonical}"] = np.abs(signed)
     return output
 
@@ -267,9 +287,12 @@ def prior_predictive_targets(model, prior, n_time, threshold, *, tail="upper",
         raise ValueError("Prior predictive targets require a univariate FS local-linear-trend model, optionally with dummy seasonality.")
     trends = [c for c in model.components if isinstance(c, LocalLinearTrend)]
     seasons = [c for c in model.components if isinstance(c, DummySeasonal)]
-    if (len(trends) != 1 or trends[0].level_mode != "dynamic" or trends[0].trend_mode != "dynamic"
-            or len(seasons) > 1 or any(c.mode != "dynamic" for c in seasons)):
-        raise ValueError("Expose full dynamic trend/seasonal components; use the FS prior for structural selection.")
+    if len(trends) != 1 or len(seasons) > 1:
+        raise ValueError("Declare one trend and at most one dummy-seasonal component.")
+    if prior.ssvs is not None and (trends[0].level_mode == "static" or trends[0].trend_mode == "static"
+                                  or any(c.mode == "static" for c in seasons)):
+        raise ValueError("Use full dynamic components with SSVS; explicit static reductions require continuous priors.")
+    seasons = [c for c in seasons if c.mode != "off"]
     if int(n_time) != n_time or n_time < 1:
         raise ValueError("n_time must be a positive integer.")
     if not 0 < level < 1:
@@ -281,7 +304,8 @@ def prior_predictive_targets(model, prior, n_time, threshold, *, tail="upper",
         raise ValueError("Gaussian means do not use a lower-tail transformation.")
     n_time = int(n_time)
     prior_seed, simulation_seed = np.random.SeedSequence(seed).spawn(2)
-    samples = draw_structural_prior(prior, size, seed=prior_seed)
+    samples = draw_structural_prior(prior, size, seed=prior_seed,
+        xi_bounds=model.observation.xi_bounds if model.family == "gev" else None)
     size = int(size)
     rng = np.random.default_rng(simulation_seed)
     compiled = compile_model(model, np.zeros(n_time))
@@ -295,7 +319,9 @@ def prior_predictive_targets(model, prior, n_time, threshold, *, tail="upper",
             f"sd.{trends[0].level_name}": samples["sd.level"][i],
             f"sd.{trends[0].slope_name}": samples["sd.slope"][i]}
         initial = np.zeros(compiled.state_dim)
-        initial[trend_slice] = samples["initial.level"][i], samples["initial.slope"][i]
+        initial[trend_slice.start] = samples["initial.level"][i]
+        if trends[0].trend_mode != "off":
+            initial[trend_slice.start+1] = samples["initial.slope"][i]
         if seasons:
             params[f"sd.{seasons[0].name}"] = samples["sd.seasonal"][i]
             # FS gamma0 is the state at observation 1. Generic simulation
@@ -321,6 +347,10 @@ def prior_predictive_targets(model, prior, n_time, threshold, *, tail="upper",
         if model.observation.scale is not None:
             specification = model.observation.scale
             params["scale.seasonal"] = specification.contrast() @ rng.normal(0, specification.prior_sd, specification.period-1)
+            if getattr(specification,"mode","constant") == "linear":
+                params["scale_slope"] = rng.normal(0,specification.slope_sd)
+            elif getattr(specification,"mode","constant") == "rw":
+                params["scale_signed_sd"] = rng.normal(0,specification.innovation_sd)
         simulation = simulate(model, n_time, params, initial_state=initial,
                               seed=int(rng.integers(0, 2**32-1)))
         eta = simulation.eta

@@ -1,56 +1,64 @@
-"""The paper's scientific declarations, expressed through the public API."""
+"""Scientific declarations for the paper, using only the public BUCEX API."""
 import numpy as np
 import bucex as bx
 
 
 def channel(name, data, config):
-    """Each summary has its own location components and observation seasonality."""
+    """Private location components and a separately declared observation scale."""
     info, settings = bx.UCCLE_INFO[name], config['model']
-    scale = (bx.SeasonalScale(settings['period'], settings.get('scale_prior_sd', .3))
-             if settings.get('seasonal_scale', True) else None)
-    observation = (bx.Gaussian(scale=scale) if info['family'] == 'gaussian' else
-                   bx.GEV(phi=settings.get('phi', 'stationary'), scale=scale,
-                          xi_bounds=tuple(config['priors']['xi_bounds'])))
-    return bx.Channel(name, observation,
-        (bx.LocalLinearTrend(), bx.DummySeasonal(settings['period'])), tail=info['tail'])
+    seasonal = (bx.SeasonalScale(settings['period'], settings.get('scale_prior_sd', .3))
+                if settings.get('seasonal_scale', True) else None)
+    scale = bx.LogScale(settings.get('scale_mode', 'constant'), seasonal,
+        slope_sd=settings.get('scale_slope_sd', .1),
+        innovation_sd=settings.get('scale_innovation_sd', .01),
+        time_unit=settings.get('scale_time_unit', 120))
+    if settings.get('legacy_constant_scale', False):
+        if seasonal is not None or scale.mode != 'constant':
+            raise ValueError('The historical Laplace benchmark requires a constant scale.')
+        scale = None
+    obs = (bx.Gaussian(scale=scale) if info['family'] == 'gaussian' else
+           bx.GEV(scale=scale, xi_bounds=tuple(config['priors']['xi_bounds'])))
+    components = (bx.LocalLinearTrend(level_mode=settings.get('level', 'dynamic'),
+                    trend_mode=settings.get('trend', 'dynamic')),
+                  bx.DummySeasonal(settings['period'], mode=settings.get('seasonal', 'dynamic')))
+    return bx.Channel(name, obs, components, tail=info['tail'])
 
 
 def marginal_prior(item, data, config):
-    """Independent, explicit FS/SSVS priors; slope absence has probability .10."""
+    """Proper continuous priors; no estimated/data-centred hyperparameters."""
     p = config['priors']
-    # This empirical centering is fixed using an initial reference prefix.
-    reference = data[item.name].iloc[:p.get('reference_months', 120)]
-    arguments = dict(period=config['model']['period'],
-        alpha_mean=item.transform_sign * float(np.median(reference)),
-        alpha_sd=p['baseline_sd'], beta_sd=p['initial_slope_sd'],
+    center = p.get('initial_level_mean', 0.)
+    if isinstance(center, dict):
+        center = center[item.name]
+    xi = (bx.UniformPrior(*p['xi_bounds']) if p.get('xi_prior', 'normal') == 'uniform'
+          else bx.NormalPrior(p.get('xi_mean', 0.), p.get('xi_sd', .3)))
+    return bx.fs_priors(item.family, period=config['model']['period'],
+        innovation=p.get('innovation', 'lasso'), innovation_median=p['innovation_median'],
+        initial_level=bx.NormalPrior(item.transform_sign*center, p.get('baseline_sd', 20.)),
+        initial_slope=bx.NormalPrior(0., p['initial_slope_sd']),
         seasonal_initial_sd=p['seasonal_initial_sd'],
-        innovation_slab_sd=p['innovation_slab_sd'],
-        level_dynamic_probability=p.get('level_dynamic_probability', .5),
-        trend_probabilities=tuple(p.get('trend_probabilities', (.10, .45, .45))),
-        season_probabilities=tuple(p.get('season_probabilities', (0., .5, .5))),
-        sigma2_prior=bx.InverseGammaPrior(*p['observation_variance']))
-    if item.family == 'gaussian':
-        return bx.ssvs_gaussian_priors(**arguments)
-    arguments.update(xi_prior=bx.UniformPrior(*p['xi_bounds']),
-                     xi_max_abs=max(abs(v) for v in p['xi_bounds']))
-    if 'phi' in p:
-        phi = p['phi']
-        arguments['phi_prior'] = bx.PhiPrior(linear=bx.NormalPrior(**phi['linear']),
-            rw_variance=bx.InverseGammaPrior(**phi['rw_variance']),
-            model_probabilities=phi['model_probabilities'])
-    return bx.ssvs_gev_priors(**arguments)
+        observation_variance=bx.InverseGammaPrior(*p['observation_variance']),
+        xi_prior=xi, xi_max_abs=max(abs(v) for v in p['xi_bounds']),
+        spike_shape=p.get('tg_spike_shape', .5), tail_shape=p.get('tg_tail_shape', .5))
 
 
 def joint_model(data, config):
-    """Same six priors/trajectories; only the residual likelihood changes."""
+    """The same private marginal specifications with an optional joint copula."""
     mode = config['analysis']
     if mode not in {'joint', 'copula'}:
-        raise ValueError("SERRA joint analysis is 'joint' (R=I) or 'copula'.")
+        raise ValueError("Joint analysis is 'joint' (R=I) or 'copula'.")
     channels = tuple(channel(name, data, config) for name in data)
-    copula = (bx.GaussianCopula(correlation=np.eye(len(channels))) if mode == 'joint'
-              else bx.GaussianCopula(**config.get('copula', {'eta': 2.})))
-    return (bx.MultiSeriesModel(channels, copula=copula),
-            bx.MarginalPriors({item.name: marginal_prior(item, data, config) for item in channels}))
+    settings = dict(config.get('copula', {'eta': 2.}))
+    structure = settings.pop('structure', 'constant')
+    if mode == 'joint':
+        copula = bx.GaussianCopula(correlation=np.eye(len(channels)))
+    elif structure == 'constant':
+        copula = bx.GaussianCopula(eta=settings.get('eta', 2.))
+    else:
+        copula = bx.SeasonalGaussianCopula(structure=structure,
+            period=config['model']['period'], **settings)
+    model = bx.MultiSeriesModel(channels, copula=copula)
+    return model, bx.MarginalPriors({c.name: marginal_prior(c, data, config) for c in channels})
 
 
 def inference_options(config):
@@ -59,8 +67,8 @@ def inference_options(config):
 
 def fit_options(config, *, family='mixed', tail=None):
     options = dict(engine='ffbs' if family == 'gaussian' else 'laplace_mh',
-                   parameterization='fs', asis=False,
-                   mcmc=bx.MCMC(**config['mcmc']), **inference_options(config))
+        parameterization='fs', asis=config.get('inference', {}).get('asis', True),
+        mcmc=bx.MCMC(**config['mcmc']), **inference_options(config))
     if tail is not None:
         options['tail'] = tail
     if config['analysis'] == 'independent' and family == 'gev':

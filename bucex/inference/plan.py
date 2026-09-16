@@ -50,10 +50,10 @@ def supports_fs(compiled: CompiledModel) -> bool:
     regression = [component for component in compiled.model.components if isinstance(component, Regression)]
     return bool(
         len(trend) == 1
-        and trend[0].level_mode == "dynamic"
-        and trend[0].trend_mode in {"dynamic", "off"}
+        and trend[0].level_mode in {"dynamic", "static"}
+        and trend[0].trend_mode in {"dynamic", "static", "off"}
         and len(seasonal) <= 1
-        and all(component.mode in {"dynamic", "off"} for component in seasonal)
+        and all(component.mode in {"dynamic", "static", "off"} for component in seasonal)
         and not regression
     )
 
@@ -127,9 +127,16 @@ def inference_plan(
             f"choose {sorted(allowed)}."
         )
 
+    fs_available = supports_fs(compiled)
+    # Preserve the established automatic generic route for static scalar
+    # models. The explicit FS route now supports those reductions as well.
+    if not is_multiseries and str(parameterization).lower() == "auto" and any(
+            getattr(c,"level_mode",None) == "static" or getattr(c,"trend_mode",None) == "static" or
+            getattr(c,"mode",None) == "static" for c in compiled.model.components):
+        fs_available = False
     resolved_parameterization = normalize_parameterization(
         parameterization,
-        fs_supported=supports_fs(compiled),
+        fs_supported=fs_available,
     )
     if is_multiseries and resolved_parameterization != "fruehwirth_schnatter":
         raise ValueError(

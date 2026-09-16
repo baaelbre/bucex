@@ -132,6 +132,10 @@ class GaussianCopula:
     def estimated(self) -> bool:
         return self.correlation is None
 
+    @property
+    def seasonal(self) -> bool:
+        return False
+
     def parameter_names(self, channel_names: Sequence[str]) -> tuple[str, ...]:
         if not self.estimated:
             validate_correlation(self.correlation, len(channel_names))
@@ -160,11 +164,18 @@ class GaussianCopula:
         """Draw R from LKJ, or return the declared fixed matrix."""
         return self.correlation_matrix(self.sample_parameters(channel_names, rng), channel_names)
 
-    def correlation_matrix(self, params: Mapping[str, float], channel_names: Sequence[str]) -> np.ndarray:
+    def correlation_matrix(self, params: Mapping[str, float], channel_names: Sequence[str], *, phase=None) -> np.ndarray:
         if not self.estimated:
             return validate_correlation(self.correlation, len(channel_names))
         theta = [params[name] for name in self.parameter_names(channel_names)]
         return correlation_from_unconstrained(theta, len(channel_names))
+
+    def correlation_path(self, params, channel_names, n_time, dates=None, *, start_index=0):
+        matrix = self.correlation_matrix(params, channel_names)
+        return np.broadcast_to(matrix, (n_time, *matrix.shape))
+
+    def logpdf(self, scores, params, channel_names, *, dates=None, start_index=0):
+        return gaussian_copula_logpdf(scores, self.correlation_matrix(params, channel_names))
 
     def log_prior(self, params: Mapping[str, float], channel_names: Sequence[str]) -> float:
         if not self.estimated:
@@ -180,6 +191,9 @@ class GaussianCopula:
     def from_dict(cls, value: Mapping[str, Any]) -> GaussianCopula:
         if value.get("family", "gaussian") != "gaussian":
             raise ValueError("Only a Gaussian residual copula is supported.")
+        if value.get("seasonal", False):
+            from .seasonal import SeasonalGaussianCopula
+            return SeasonalGaussianCopula(**{k:v for k,v in value.items() if k not in {"family", "seasonal"}})
         return cls(eta=value.get("eta", 2.0), correlation=value.get("correlation"))
 
 
@@ -252,6 +266,17 @@ def gaussian_copula_logpdf(scores: Any, correlation: Any) -> np.ndarray | float:
     rows with zero or one observed margin have copula correction zero.
     Infinite observed scores are errors, never treated as missing.
     """
+    matrices = np.asarray(correlation)
+    if matrices.ndim == 3:
+        values = np.asarray(scores)
+        if values.ndim != 2 or len(values) != len(matrices):
+            raise ValueError("Time-varying correlation requires matching time by channel scores.")
+        unique, labels = np.unique(matrices, axis=0, return_inverse=True)
+        result = np.empty(len(values))
+        for group, matrix in enumerate(unique):
+            selected = labels == group
+            result[selected] = gaussian_copula_logpdf(values[selected], matrix)
+        return result
     matrix = validate_correlation(correlation)
     values = np.asarray(scores, dtype=float)
     if values.ndim < 1 or values.shape[-1] != matrix.shape[0]:

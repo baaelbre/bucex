@@ -31,7 +31,7 @@ class FitResult(SharedResultMethods):
     dates: Array | None = None
     series_name: str | None = None
     transform_sign: Any = 1.0
-    schema_version: str = "2.10.0"
+    schema_version: str = "2.11.0"
     initial_values: dict[str, Any] = field(default_factory=dict)
     auxiliary_draws: dict[str, Array] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -276,7 +276,7 @@ class FitResult(SharedResultMethods):
     def mu_draws(self, *, original_scale: bool = True) -> Array:
         return self.eta_draws(combine_chains=True, original_scale=original_scale)
 
-    def phi_draws(self, *, combine_chains: bool = True) -> Array:
+    def phi_draws(self, *, channel: str | None = None, combine_chains: bool = True) -> Array:
         """Posterior paths for ``phi_t = log(sigma_t)``.
 
         Stationary fits are expanded to ``T`` columns, so downstream code can
@@ -284,7 +284,9 @@ class FitResult(SharedResultMethods):
         """
 
         if self.is_multiseries_model:
-            raise ValueError("phi_draws is currently available for univariate GEV fits.")
+            return np.log(self.sigma_draws(channel=channel,combine_chains=combine_chains))
+        if channel is not None:
+            raise ValueError("channel= requires a multiseries fit.")
         if self.family != "gev":
             raise ValueError("phi_draws is defined only for GEV fits.")
         if "phi" in self.parameter_draws:
@@ -1125,7 +1127,7 @@ class FitResult(SharedResultMethods):
 
         return posterior_predictive(self, **kwargs)
 
-    def copula_correlation_draws(self, *, combine_chains: bool = True) -> Array:
+    def copula_correlation_draws(self, *, phase: int | None = None, combine_chains: bool = True) -> Array:
         """Residual Gaussian-copula correlations in original response orientation.
 
         These describe latent normal scores conditional on the state paths.
@@ -1139,13 +1141,14 @@ class FitResult(SharedResultMethods):
         if "copula_correlation" in self.auxiliary_draws:
             result = np.asarray(self.auxiliary_draws["copula_correlation"], dtype=float)
         else:
-            result = np.empty((self.n_chains, self.draws_per_chain, len(self.channel_names), len(self.channel_names)))
+            phase_shape = (copula.period,) if copula.seasonal and phase is None else ()
+            result = np.empty((self.n_chains, self.draws_per_chain, *phase_shape, len(self.channel_names), len(self.channel_names)))
             for chain in range(self.n_chains):
                 for draw in range(self.draws_per_chain):
                     parameters = {name: float(np.asarray(values)[chain, draw])
                                   for name, values in self.parameter_draws.items()
                                   if np.asarray(values)[chain, draw].ndim == 0}
-                    result[chain, draw] = copula.correlation_matrix(parameters, self.channel_names)
+                    result[chain, draw] = copula.correlation_matrix(parameters, self.channel_names, phase=phase)
         return result.reshape((-1,) + result.shape[2:]) if combine_chains else result
 
     def copula_summary(self, *, credible_interval: float = 0.90, practical_threshold: float = 0.1):
@@ -1156,6 +1159,9 @@ class FitResult(SharedResultMethods):
         pairs = {f"rho.{left}.{right}": correlation[..., i, j]
                  for i, left in enumerate(self.channel_names)
                  for j, right in enumerate(self.channel_names) if i > j}
+        if self.model.copula.seasonal:
+            pairs = {f"phase.{phase+1}.{key}": values[..., phase]
+                     for key,values in pairs.items() for phase in range(self.model.copula.period)}
         if not 0 <= practical_threshold < 1:
             raise ValueError("practical_threshold must lie in [0, 1).")
         table = summarize_draws(pairs, credible_interval=credible_interval)
@@ -1163,6 +1169,45 @@ class FitResult(SharedResultMethods):
         table["probability_practically_nonzero"] = [float(np.mean(np.abs(pairs[name]) > practical_threshold)) for name in table.index]
         table["practical_threshold"] = practical_threshold
         return table
+
+    def innovation_effect_draws(self, horizon: int, *, channel=None, combine_chains=True):
+        """SD of the future location contribution from each private innovation.
+
+        Conditions on the initial/final state and the innovation SD draw. A
+        slope contribution accumulates with sum(k²), k=0,...,horizon-1;
+        dummy-seasonal contributions use their exact transition. Values are
+        response units, not inclusion probabilities or realized changes.
+        Shared-state contributions require their separately named processes.
+        """
+        if int(horizon) != horizon or horizon < 1:
+            raise ValueError("horizon must be a positive integer.")
+        if getattr(self.model,"shared",()):
+            raise ValueError("Use shared-state forecast decompositions for shared models.")
+        if self.is_multiseries_model:
+            if channel not in self.channel_names:
+                raise ValueError("Choose a channel for private innovation effects.")
+            model = self.model.channel(channel)
+            prefix = f"sd.channel.{channel}."
+        else:
+            model, prefix = self.model,"sd."
+        factors = {"level":np.sqrt(horizon),
+                   "slope":np.sqrt(horizon*(horizon-1)*(2*horizon-1)/6.)}
+        if model.period is not None:
+            from ..inference.fit.fs_utils import seasonal_rotation_matrix
+            rotation = seasonal_rotation_matrix(model.period-1)
+            impulse = np.eye(model.period-1)[:,0]
+            variance = 0.
+            for _ in range(horizon):
+                variance += impulse[0]**2
+                impulse = rotation @ impulse
+            factors["seasonal"] = np.sqrt(variance)
+        result = {}
+        for process,factor in factors.items():
+            values = (self.parameter(prefix+process,combine_chains=combine_chains)
+                      if prefix+process in self.parameter_draws else
+                      np.zeros(self.n_draws if combine_chains else (self.n_chains,self.draws_per_chain)))
+            result[process] = factor*values
+        return result
 
     def ordering_diagnostics(self, constraints, *, draws=None, seed=None, tolerance=0.0):
         """Check original-scale observed and replicated ordering without alteration."""

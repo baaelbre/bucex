@@ -1,6 +1,7 @@
 # Research workflows
 
-All maintained study scripts are in [serra](serra/README.md). They use the public
-BUCEX API. Start with independent trajectories, then add residual dependence
-using the same marginal models. Configured paper studies are protocols awaiting
-converged runs; smoke settings only verify execution.
+`serra/` is the only research workflow. Start with `serra/README.md`, then
+`serra/models.py`. General statistical algorithms live in `bucex/`; these scripts
+declare experiments and call that API. Configurations and saved run settings
+make every scientific choice explicit. Execution checks are separate from
+research-length inference and never serve as publication results.

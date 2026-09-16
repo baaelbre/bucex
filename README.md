@@ -1,109 +1,113 @@
-# BUCEX 1.6.3
+# BUCEX 1.6.4
 
-Bayesian unobserved-component models for Gaussian means and GEV extremes.
-Build a model, fit it, inspect its components, and compute forecasts and risks
-through one API. Each series can retain its own level, slope, seasonal location,
-and seasonal observation scale. An optional Gaussian residual copula fits the
-private FS/SSVS models jointly and feeds dependence back into their posteriors.
+Bayesian unobserved-component models for means and extremes, with private or
+shared states. The SERRA workflow tracks six related temperature summaries
+using continuous Frühwirth–Schnatter (FS) innovation shrinkage, then adds a
+residual Gaussian copula with full feedback into the marginal posteriors.
 
-## Start here
+## Install and check
 
-From the extracted directory containing `pyproject.toml`:
+From this release directory:
 
 ```bash
-python -m pip install -e ".[plot,test]"
-python -m research.serra.univariate --series TXm TXx
-python -m research.serra.copula --independence
+python -m pip install -e '.[test]'
+python -m pytest
+python -m research.serra.univariate --series TXm
 python -m research.serra.copula
 ```
 
-These defaults are tiny execution checks, with four retained draws. For the
-full study and an explanation of every output, follow
-[the SERRA run guide](research/serra/README.md). Every active research script is
-in `research/serra`; conference examples and particle inference are removed.
+The last two commands use tiny **execution checks**, not research-length fits.
+Run commands from the extracted directory so the bundled data and `research`
+modules are available. Install `.[plot]` for figures without pytest.
 
-## One trajectory
+## One model, one fitting API
 
 ```python
 import bucex as bx
 
-y = bx.load_uccle_multiseries(end="2022-12-01")["TXx"]
 model = bx.Model(
-    bx.GEV(xi_bounds=(-0.5, 0.5), scale=bx.SeasonalScale(period=12, prior_sd=0.3)),
-    [bx.LocalLinearTrend(), bx.DummySeasonal(period=12)],
+    bx.GEV(scale=bx.LogScale(seasonal=bx.SeasonalScale(12))),
+    [bx.LocalLinearTrend(), bx.DummySeasonal(12)],
 )
-prior = bx.ssvs_gev_priors(
-    period=12, alpha_mean=float(y.iloc[:120].median()), alpha_sd=3.2,
-    beta_sd=0.0025, seasonal_initial_sd=2.25,
-    innovation_slab_sd={"level": 0.02, "trend": 0.00005, "season": 0.02},
-    trend_probabilities=(0.10, 0.45, 0.45),
-    season_probabilities=(0.0, 0.5, 0.5),
-    sigma2_prior=bx.InverseGammaPrior(2, 2),
-)
-fit = bx.fit(y, model, priors=prior, parameterization="fs", asis=False,
-             engine="laplace_mh", mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000))
-fit.diagnostics()
-fit.component_probabilities()
-fit.plot("level")
-fit.sigma_draws()
-fit.exceedance_probability_draws(35)
-fit.forecast(12).summary()
+prior = bx.fs_priors("gev", innovation="lasso")
+y = bx.load_uccle_multiseries(series="TXx", end="2022-12-01")["TXx"]
+fit = bx.fit(y, model, priors=prior, parameterization="fs", asis=True,
+             mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000, seed=31))
+fit.diagnostics()["parameters"]
+fit.innovation_effect_draws(120)       # SD of each future location contribution
+fit.exceedance_probability_draws(35)  # respects maxima/minima orientation
+forecast = fit.forecast(120, seed=32)
 fit.save("TXx.bucex")
 ```
 
-For means use `Gaussian` and `ssvs_gaussian_priors`; the state update is FFBS.
-For minima pass `tail="lower"` to `fit`, or declare it on a `Channel`.
-Predictions and risks return to the original temperature orientation.
-`GEV()` and `Gaussian()` still mean constant observation scale. Seasonal scale
-is an explicit, optional declaration; the existing scalar API remains usable.
+Budgets are starting points. Assess convergence for physical innovation SDs,
+variances, changes, risks and correlation coefficients; a visually smooth path
+or high acceptance rate does not establish convergence. Exact posterior
+**targeting** does not establish finite-run accuracy.
 
-## Joint private trajectories
+## Add dependence without sharing the trajectories
 
 ```python
 channels = [
-    bx.Channel("TXm", bx.Gaussian(scale=bx.SeasonalScale()),
-               [bx.LocalLinearTrend(), bx.DummySeasonal(12)]),
-    bx.Channel("TXx", model.observation, model.components),
+    bx.Channel("mean", bx.Gaussian(scale=bx.LogScale(seasonal=bx.SeasonalScale())),
+               [bx.LocalLinearTrend(), bx.DummySeasonal()]),
+    bx.Channel("maximum", bx.GEV(scale=bx.LogScale(seasonal=bx.SeasonalScale())),
+               [bx.LocalLinearTrend(), bx.DummySeasonal()]),
 ]
-priors = bx.MarginalPriors({
-    "TXm": bx.ssvs_gaussian_priors(alpha_mean=12.),
-    "TXx": prior,
-})
-joint = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula(eta=2.))
-data = bx.load_uccle_multiseries(series=["TXm", "TXx"], end="2022-12-01")
-fit = bx.fit(data, joint, priors=priors, parameterization="fs", asis=False,
-             mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000))
-fit.component_probabilities()
-fit.copula_summary(practical_threshold=0.1)
-bx.residual_dependence_check(fit)
-future = fit.forecast(12)
-future.compound_probability({"TXm": (">", 25), "TXx": (">", 35)})
+model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula(eta=2))
+priors = bx.MarginalPriors({c.name: bx.fs_priors(c.family) for c in channels})
+# data is an aligned DataFrame with columns "mean" and "maximum".
+# fit = bx.fit(data, model, priors=priors, parameterization="fs", asis=True,
+#              mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000, seed=31))
 ```
 
-`MarginalPriors` gives every channel its own independent structural priors.
-`GaussianCopula(correlation=np.eye(K))` is the matched independence baseline.
-Estimated dependence changes the likelihood during fitting, so trajectories,
-selection probabilities and uncertainty can change. Interval narrowing is not
-guaranteed. The model diagnoses, but does not enforce, physical summary ordering.
+Each channel retains its own location, seasonality, observation scale and GEV
+shape. Every marginal update includes the copula conditional likelihood. This
+is a joint Bayesian model, not a copula fitted afterwards to point estimates.
+Proper independent priors do not prevent dependence in the posterior.
 
-This private FS/copula route requires complete aligned data, a local linear
-trend with optional dummy seasonality, and exact SSVS priors. It does not combine
-with shared states, hierarchical pooling, regression, or dynamic GEV `phi`.
-Those established model families remain separate API routes; see the
-[inference matrix](docs/INFERENCE_MATRIX.md).
+- `fs_priors(..., innovation="normal" | "lasso" | "triple_gamma")` matches prior
+  medians of physical innovation SDs. It fixes lasso lambda² and triple-gamma
+  global/shape hyperparameters; local mixing variables remain sampled.
+- `LogScale("constant" | "linear" | "rw", seasonal=SeasonalScale())` keeps
+  observation seasonality distinct from latent location seasonality.
+- `LocalLinearTrend(trend_mode="static")` and `DummySeasonal(mode="static")`
+  give explicit fixed-component comparisons in the private continuous kernel.
+- `SeasonalGaussianCopula(structure="harmonic", prior_sd=.25)` adds pooled
+  periodic dependence. Four-season and monthly contrasts are also available.
+- `forecast.compound_probability_draws({"mean": (">", 25), "maximum": (">", 35)})`
+  integrates bivariate residual noise per parameter/state draw by quadrature.
+  The existing `compound_probability` method remains a simulation estimate.
 
-## Data and evidence
+## Research guide
 
-The bundled Uccle series cover January 1892–August 2026. Primary paper configs
-end in December 2022; `extension_full.json` is a separate mixed-source extension.
-See [data provenance](bucex/data/SOURCES.md) before interpreting the extension.
-The original daily CSV can be reaggregated with `bx.derive_uccle_monthly`.
+Start with [research/serra/README.md](research/serra/README.md). It lists the
+necessary scripts, commands, output files, and interpretation checks in paper
+order. Configurations inherit a common `base.json`; every run saves its fully
+resolved configuration. The manuscript's original 1892–2022 window is explicit.
 
-Run `python -m pytest` for numerical reference and API tests. The
-[validation record](docs/VALIDATION.md) separates executed software checks from
-scientific experiments still required. Four chains and a configured iteration
-count are starting budgets, not a convergence certificate.
+The implementation-to-manuscript mapping is in [docs/MANUSCRIPT_ALIGNMENT.md](docs/MANUSCRIPT_ALIGNMENT.md).
 
-See [release notes](RELEASE_NOTES.md), [migration notes](docs/MIGRATION.md),
-[seasonal scales](docs/LOG_SCALE.md), and the
-[reviewer experiment map](docs/REVIEWER_MATRIX.md).
+See [docs/INFERENCE_MATRIX.md](docs/INFERENCE_MATRIX.md) for supported routes,
+[docs/REVIEWER_MATRIX.md](docs/REVIEWER_MATRIX.md) for experiments, and
+[docs/MIGRATION.md](docs/MIGRATION.md) for compatibility. Shared-state and
+hierarchical APIs remain available; they are separate from the private FS
+paper workflow. Exact SSVS remains optional. PGAS is retired.
+
+## Scientific limits
+
+The new private kernel requires complete, aligned Gaussian/GEV series with
+local-linear trends and optional dummy seasonality. It does not implement
+serially dependent copula residuals, a t copula, regressions, or shared factors.
+The broader existing model API has separate supported routes for shared states.
+A Gaussian copula has no asymptotic tail dependence for nonsingular R.
+
+Independent marginal likelihoods plus an unrestricted copula do not enforce
+min ≤ mean ≤ max. Ordering diagnostics retain the original draws; sorting or
+rejection would change the model. Seasonal copula priors depend on channel
+ordering, unlike the constant LKJ prior. All reported uncertainties must be
+qualified by model adequacy, prior sensitivity and Monte Carlo accuracy.
+
+This release supplies software and executable studies. It does not claim that
+new full-record fits, simulation coverage or reviewer experiments are completed.
+See `validation/RELEASE_VALIDATION.md` for checks actually run on this release.

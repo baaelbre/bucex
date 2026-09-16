@@ -1,0 +1,97 @@
+{
+  "_comment": "Declared research protocol, not a completed or converged analysis. Continuous FS priors; calendar is monthly.",
+  "analysis": "independent",
+  "data": {
+    "series": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
+    ],
+    "start": "1892-01-01",
+    "end": "2022-12-01"
+  },
+  "model": {
+    "period": 12,
+    "level": "dynamic",
+    "trend": "dynamic",
+    "seasonal": "dynamic",
+    "scale_mode": "constant",
+    "seasonal_scale": true,
+    "scale_prior_sd": 0.3,
+    "scale_slope_sd": 0.1,
+    "scale_innovation_sd": 0.01,
+    "scale_time_unit": 120
+  },
+  "priors": {
+    "innovation": "lasso",
+    "innovation_median": {
+      "level": 0.02,
+      "trend": 5e-05,
+      "season": 0.02
+    },
+    "initial_level_mean": 0.0,
+    "baseline_sd": 20.0,
+    "initial_slope_sd": 0.0025,
+    "seasonal_initial_sd": 2.25,
+    "observation_variance": [
+      2.0,
+      2.0
+    ],
+    "xi_prior": "normal",
+    "xi_sd": 0.3,
+    "xi_bounds": [
+      -0.5,
+      0.5
+    ],
+    "tg_spike_shape": 0.5,
+    "tg_tail_shape": 0.5
+  },
+  "mcmc": {
+    "draws": 2000,
+    "warmup": 2000,
+    "chains": 4,
+    "seed": 56100,
+    "progress": true,
+    "progress_every": 50
+  },
+  "inference": {
+    "asis": true,
+    "laplace": {
+      "max_iterations": 30,
+      "tolerance": 1e-05,
+      "mh_steps": 1
+    }
+  },
+  "seed": 56101,
+  "output": "results/serra",
+  "forecast_horizon": 120,
+  "forecast_draws": 1000,
+  "credible_interval": 0.95,
+  "risks": {
+    "TXm": 25,
+    "TNm": 18,
+    "TXx": 35,
+    "TXn": 0,
+    "TNx": 25,
+    "TNn": -10
+  },
+  "copula": {
+    "structure": "constant",
+    "eta": 2.0
+  },
+  "validation": {
+    "initial": 1188,
+    "horizon": 12,
+    "step": 12,
+    "save_fits": false
+  },
+  "figures": true,
+  "predictive_check_draws": 400,
+  "prior_draws": 10000,
+  "prior_predictive_draws": 200,
+  "save_fits": true,
+  "continue_on_error": false
+}
