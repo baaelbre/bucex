@@ -2,7 +2,8 @@
   "extends": "base.json",
   "_comment": "Execution check ONLY: four retained draws cannot establish scientific results.",
   "data": {
-    "start": "2020-01-01"
+    "start": "2023-09-01",
+    "end": "2026-08-01"
   },
   "mcmc": {
     "draws": 4,
@@ -10,7 +11,7 @@
     "chains": 1,
     "progress": false
   },
-  "forecast_horizon": 12,
+  "forecast_horizon": 24,
   "forecast_draws": 4,
   "validation": {
     "initial": 24,

@@ -36,7 +36,7 @@ def _gev_sample(seed: int = 710) -> tuple[bx.Model, np.ndarray]:
 def test_version_plan_and_configuration_contract():
     model, values = _gev_sample()
     plan = bx.plan(model, values, engine="laplace_mh", parameterization="fs")
-    assert bx.__version__ == "1.6.4"
+    assert bx.__version__ == "1.6.5"
     assert plan.engine == "laplace_mh"
     assert plan.targets_exact_posterior
     assert plan.approximation is None

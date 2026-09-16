@@ -1,0 +1,7 @@
+{
+  "extends": "copula_full.json",
+  "_comment": "Historical manuscript window; the standard full workflow uses the complete bundled data.",
+  "data": {
+    "end": "2022-12-01"
+  }
+}

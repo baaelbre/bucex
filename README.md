@@ -1,4 +1,4 @@
-# BUCEX 1.6.4
+# BUCEX 1.6.5
 
 Bayesian unobserved-component models for means and extremes, with private or
 shared states. The SERRA workflow tracks six related temperature summaries
@@ -30,7 +30,7 @@ model = bx.Model(
     [bx.LocalLinearTrend(), bx.DummySeasonal(12)],
 )
 prior = bx.fs_priors("gev", innovation="lasso")
-y = bx.load_uccle_multiseries(series="TXx", end="2022-12-01")["TXx"]
+y = bx.load_uccle_multiseries(series="TXx")["TXx"]
 fit = bx.fit(y, model, priors=prior, parameterization="fs", asis=True,
              mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000, seed=31))
 fit.diagnostics()["parameters"]
@@ -79,12 +79,31 @@ Proper independent priors do not prevent dependence in the posterior.
   integrates bivariate residual noise per parameter/state draw by quadrature.
   The existing `compound_probability` method remains a simulation estimate.
 
+## Calendar predictions and PNG reports
+
+```python
+forecast = fit.forecast(120, draws=1000, seed=32)
+forecast.summary(phase=7)                  # each future July
+annual = forecast.aggregate()             # Gaussian means or GEV extrema
+seasons = forecast.aggregate(frequency="season")
+annual.summary(level=.95)
+annual.risk_curve([15, 16, 17])             # choose thresholds for this estimand
+bx.save_prediction_report(fit, "figures", forecast=forecast, threshold=35)
+```
+
+Monthly means use calendar-day weights, including leap years. Monthly maxima
+and minima aggregate by max/min of observations. Partial periods are omitted;
+DJF is assigned to its ending year. Annual mean risk differs from the risk of
+at least one monthly exceedance. See [docs/FORECASTS.md](docs/FORECASTS.md) for
+uncertainty, scale interpretation, useful plots and commands for saved fits.
+
 ## Research guide
 
 Start with [research/serra/README.md](research/serra/README.md). It lists the
 necessary scripts, commands, output files, and interpretation checks in paper
 order. Configurations inherit a common `base.json`; every run saves its fully
-resolved configuration. The manuscript's original 1892–2022 window is explicit.
+resolved configuration. Full runs use the latest bundled data (August 2026).
+The `*_1892_2022.json` configurations preserve the original manuscript window.
 
 The implementation-to-manuscript mapping is in [docs/MANUSCRIPT_ALIGNMENT.md](docs/MANUSCRIPT_ALIGNMENT.md).
 

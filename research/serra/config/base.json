@@ -11,7 +11,7 @@
       "TNn"
     ],
     "start": "1892-01-01",
-    "end": "2022-12-01"
+    "end": null
   },
   "model": {
     "period": 12,
@@ -93,5 +93,21 @@
   "prior_draws": 10000,
   "prior_predictive_draws": 200,
   "save_fits": true,
-  "continue_on_error": false
+  "continue_on_error": false,
+  "figure_format": "png",
+  "figure_dpi": 150,
+  "forecast_months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ]
 }

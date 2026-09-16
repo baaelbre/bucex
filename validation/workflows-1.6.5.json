@@ -1,0 +1,29 @@
+[
+  {
+    "analysis": "uccle_copula",
+    "data_window": {
+      "end": "2026-08-01 00:00:00",
+      "n_months": 36,
+      "requested_end": "2026-08-01",
+      "series": [
+        "TXm",
+        "TNn"
+      ],
+      "start": "2023-09-01 00:00:00"
+    },
+    "purpose": "Execution only; one chain, four warmup, four retained draws; no convergence claims."
+  },
+  {
+    "analysis": "uccle_independent",
+    "data_window": {
+      "end": "2026-08-01 00:00:00",
+      "n_months": 1616,
+      "requested_end": null,
+      "series": [
+        "TXm"
+      ],
+      "start": "1892-01-01 00:00:00"
+    },
+    "purpose": "Execution only; one chain, four warmup, four retained draws; no convergence claims."
+  }
+]

@@ -1,3 +1,16 @@
+# BUCEX 1.6.5 — calendar forecasts and diagnostics
+
+- Full SERRA runs follow the latest bundled month (August 2026); named historical configurations preserve 1892–2022. Actual fitted dates are printed and saved.
+- Added draw-wise calendar averages/extremes, leap-year day weights, DJF ending-year labels, explicit incomplete windows and analytic aggregate risks.
+- PNG reports now include slopes, physical parameter/scale/target traces, PIT/Q-Q/residual diagnostics, month panels, annual/seasonal forecasts and risk curves.
+- Saved-fit report regeneration and fixed-origin checks against later observations are available as short research scripts.
+- Inference kernels and prior defaults are unchanged from 1.6.4. A report cannot update the posterior to new data.
+- Validation: 276 source tests and 21 installed-package checks passed; full-date TXm and mixed copula execution checks completed.
+
+See `docs/FORECASTS.md` for the API, output files, aggregation assumptions and commands. The uploaded one-chain TXm analysis remains preliminary; this release does not repair its mixing or add residual serial dependence.
+
+## Earlier release notes
+
 # BUCEX 1.6.4 — continuous private trajectories and joint dependence
 
 This release implements the revised paper's main workflow:

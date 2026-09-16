@@ -1,4 +1,14 @@
-# Migrating from 1.6.3 to 1.6.4
+# Migrating from 1.6.4 to 1.6.5
+
+- No inference kernel or prior default changed. Existing 1.6.4 fit archives load directly.
+- Full SERRA application runs use the latest bundled month; historical configurations retain 2022.
+- Reports default to PNG and save slope, physical-parameter traces, PIT/Q-Q, monthly scale, calendar forecasts and risk curves.
+- `Forecast.aggregate`, `probability_draws`, `risk_summary`, `sigma_draws`, and public report/plot functions are additive.
+- Rerender with `python -m research.serra.report --fit ...`; this never updates the posterior.
+- `check_updates` evaluates genuinely later observations from one fixed forecast origin.
+- Existing `annual=True` fitted risk and `annual_aggregation_check` keep their **at least one monthly threshold crossing / extreme** semantics. Use `Forecast.aggregate(reduction="mean")` for an annual mean.
+
+## Earlier migration: 1.6.3 to 1.6.4
 
 Existing univariate calls, result methods and archives remain supported. The
 new SERRA workflow changes the declared scientific prior, so it requires new

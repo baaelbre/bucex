@@ -26,6 +26,10 @@ def run(config, *, series=None):
     config = selected_config(config, series=series)
     data = bx.load_uccle_multiseries(**config["data"])
     directory = new_run(config["output"], f"uccle_{config['analysis']}")
+    print(f"Fitting {data.index[0]:%Y-%m} through {data.index[-1]:%Y-%m}: {len(data)} monthly blocks.",flush=True)
+    print(f"MCMC: {config['mcmc']['chains']} chains, {config['mcmc']['warmup']} warmup, {config['mcmc']['draws']} retained per chain.",flush=True)
+    bx.save_config(dict(start=str(data.index[0]),end=str(data.index[-1]),n_months=len(data),
+                        requested_end=config['data'].get('end'),series=list(data)),directory/'data_window.json')
     report = dict(config=config, risks=config["risks"], horizon=config["forecast_horizon"],
                   level=config["credible_interval"])
     if config["analysis"] == "independent":
@@ -34,7 +38,7 @@ def run(config, *, series=None):
             model = bx.Model(item.observation, item.components)
             fit = bx.fit(data[name], model=model, priors=marginal_prior(item, data, config),
                          **fit_options(config, family=item.family, tail=item.tail))
-            write_report(fit, directory / name, **{**report, "risks": {"series": config["risks"][name]}})
+            write_report(fit, directory / name, **report)
             del fit  # Six marginal jobs need not retain six posterior state arrays.
     else:
         model, prior = joint_model(data, config)

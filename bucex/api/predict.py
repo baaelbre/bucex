@@ -295,6 +295,53 @@ class Forecast:
             return np.mean(observations > float(threshold), axis=0)
         return np.mean(observations < float(threshold), axis=0)
 
+    def sigma_draws(self, *, channel: str | None = None) -> Array:
+        """Monthly observation SD (Gaussian) or scale (GEV), for every path."""
+        self._channel_index(channel)
+        suffix = f".{channel}" if self.is_multiseries_forecast else ""
+        values = self.parameters.get("sigma_path" + suffix)
+        if values is None:
+            values = np.asarray(self.parameters["sigma" + suffix])[:, None]
+        return np.broadcast_to(values, (self.n_draws, self.horizon))
+
+    def probability_draws(self, threshold, *, channel=None, direction=None):
+        """Monthly risk integrating observation noise within each parameter/state draw.
+
+        Bands across these draws include future-state uncertainty. Use their
+        mean for the posterior predictive probability, not a median band line.
+        """
+        index = self._channel_index(channel)
+        tail = self.tail[index] if self.is_multiseries_forecast else self.tail
+        direction = direction or ("<" if tail == "lower" else ">")
+        if direction not in {"<", ">"} or not np.isfinite(threshold):
+            raise ValueError("Use a finite threshold and direction '<' or '>'.")
+        cdf = self.conditional_cdf(np.full(self.horizon, threshold), channel=channel)
+        return cdf if direction == "<" else 1-cdf
+
+    def risk_summary(self, threshold, *, channel=None, direction=None, phase=None, level=.95):
+        """Monthly conditional-risk bands and integrated predictive probabilities."""
+        import pandas as pd
+        from .aggregate import _band
+        values = self.probability_draws(threshold, channel=channel, direction=direction)
+        indices = self._phase_indices(phase)
+        index = self._channel_index(channel)
+        tail = self.tail[index] if self.is_multiseries_forecast else self.tail
+        direction = direction or ("<" if tail == "lower" else ">")
+        return pd.DataFrame(dict(time=np.asarray(self.dates)[indices], threshold=float(threshold), direction=direction,
+                                 **_band(values[:, indices], level)))
+
+    def aggregate(self, *, frequency="year", reduction=None, channel=None,
+                  months=None, weighting="days", include_partial=False):
+        """Calendar averages or block extremes; see :func:`aggregate_forecast`.
+
+        Partial years/seasons are omitted by default, never labelled complete.
+        ``frequency='season'`` uses DJF/MAM/JJA/SON; DJF belongs to its ending year.
+        """
+        from .aggregate import aggregate_forecast
+        return aggregate_forecast(self, frequency=frequency, reduction=reduction,
+                                  channel=channel, months=months, weighting=weighting,
+                                  include_partial=include_partial)
+
     def return_level(self, return_period: float, *, channel: str | None = None) -> Array:
         index = self._channel_index(channel)
         if self.is_multiseries_forecast:

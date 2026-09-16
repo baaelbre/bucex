@@ -28,7 +28,13 @@ def main():
         forecast = fit.forecast(config["forecast_horizon"], seed=config["seed"])
         uncertainty = bx.forecast_uncertainty(forecast)
         uncertainty.to_csv(target / "forecast_uncertainty.csv", index=False)
-        bx.annual_aggregation_check(forecast, config["risks"][name]).to_csv(target / "annual_aggregation.csv", index=False)
+        annual = forecast.aggregate()  # day-weighted means; maxima/minima of extreme blocks
+        annual.summary().to_csv(target / "annual_forecast.csv", index=False)
+        if fit.family == "gev":
+            bx.annual_aggregation_check(forecast, config["risks"][name]).to_csv(target / "annual_aggregation.csv", index=False)
+        else:
+            # This threshold concerns the annual mean, not at least one hot month.
+            annual.risk_summary(config["risks"][name]).to_csv(target / "annual_mean_risk.csv", index=False)
         if config.get("figures", True):
             import matplotlib.pyplot as plt
             figure, axis = plt.subplots(figsize=(8, 3))
@@ -37,7 +43,7 @@ def main():
                 axis.plot(rows.horizon, rows.interval_width, label=component)
             axis.set(xlabel="forecast horizon / months", ylabel="90% interval width / °C")
             axis.tick_params(labelsize=11); axis.xaxis.label.set_size(12); axis.yaxis.label.set_size(12)
-            axis.legend(); figure.tight_layout(); figure.savefig(target / "forecast_widths.pdf"); plt.close(figure)
+            axis.legend(); figure.tight_layout(); figure.savefig(target / "forecast_widths.png", dpi=150); plt.close(figure)
     print(directory)
 
 

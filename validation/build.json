@@ -1,9 +1,15 @@
 {
-  "version": "1.6.4",
-  "wheel_built": true,
-  "sdist_built": true,
-  "wheel_python_matches_source": true,
-  "nested_source_copy": false,
-  "run_outputs_in_distributions": false,
-  "schema": "2.11.0"
+  "artifacts": [
+    {
+      "file": "bucex-1.6.5-py3-none-any.whl",
+      "size_bytes": 357193,
+      "sha256": "6fb6652bac4c66a20066732f1f5733285b5f0f7e3481a7a664769d980af649a4"
+    },
+    {
+      "file": "bucex-1.6.5.tar.gz",
+      "size_bytes": 787282,
+      "sha256": "abce25a56effc25682e1d6bc6f7ba70829a5d90a226c1d6ec96f7685196d8f92"
+    }
+  ],
+  "status": "Wheel and sdist built; source ZIP contains final validation records."
 }

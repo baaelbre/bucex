@@ -1,5 +1,8 @@
 """Plots for the unified fit and forecast objects."""
 from .dependence import plot_copula, plot_ordering
+from .report import save_prediction_report
+from .predictive import (plot_predictive_diagnostics, plot_chain_traces,
+    plot_forecast_months, plot_scale_calendar, plot_calendar_risk_curves)
 from .shared import plot_shared, plot_departures, plot_channel_component
 from .core import (
     loess_smooth,
@@ -25,6 +28,9 @@ from .core import (
 )
 
 __all__ = [
+    "save_prediction_report",
+    "plot_predictive_diagnostics", "plot_chain_traces", "plot_forecast_months",
+    "plot_scale_calendar", "plot_calendar_risk_curves",
     "plot_copula", "plot_ordering", "plot_shared", "plot_departures", "plot_channel_component",
     "loess_smooth",
     "plot",

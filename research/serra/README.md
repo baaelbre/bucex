@@ -1,4 +1,4 @@
-# SERRA workflow for BUCEX 1.6.4
+# SERRA workflow for BUCEX 1.6.5
 
 Run from the extracted release directory, after:
 
@@ -8,9 +8,10 @@ python -m pytest
 ```
 
 The six trajectories are TXm/TNm (Gaussian monthly means), TXx/TNx (GEV
-maxima), and TXn/TNn (reflected GEV minima). The paper window is **1892–2022**.
-Later bundled observations are available by explicitly changing `data.end`;
-review their provenance and recording-window differences before combining them.
+maxima), and TXn/TNn (reflected GEV minima). Full fits now use **1892–August 2026**
+(`data.end: null`, the latest bundled month). The `independent_1892_2022.json`
+and `copula_1892_2022.json` configurations retain the original manuscript window.
+The extended record has mixed sources; see `bucex/data/SOURCES.md`.
 
 `config/base.json` contains the scientific assumptions and a four-chain,
 2000-warmup/2000-retained budget. `config/smoke.json` inherits it but uses 36
@@ -48,8 +49,23 @@ Look at these files before interpreting a figure:
 The innovation-effect probability is a practical magnitude summary, not a
 posterior inclusion probability. All main priors are continuous. Exact SSVS
 remains in the package but is absent from the reference research protocol.
-Plot traces of physical SDs, squared SDs, shape and scientific contrasts from
-`fit.bucex` if diagnostics are weak; sign-switching alone is not mixing evidence.
+PNG traces of physical SDs, scale, shape and scientific contrasts are exported
+automatically; sign-switching alone is not mixing evidence. Slopes are in °C per
+decade. `*_pit_qq_residuals.png` is an in-sample smoothed check. The calendar
+forecast/risk and scale files are explained in [../../docs/FORECASTS.md](../../docs/FORECASTS.md).
+
+Re-export a saved fit without rerunning MCMC:
+
+```bash
+python -m research.serra.report --fit PATH_TO_RUN/fit.bucex
+python -m research.serra.report --fit PATH_TO_RUN/fit.bucex --months 1 7 8 --horizon 120
+python -m research.serra.check_updates --fit PATH_TO_RUN/fit.bucex
+```
+
+`report` defaults to the saved `config.json` and PNGs. It prints the actual
+training window and never extends a saved posterior. `check_updates` compares
+fixed-origin forecasts with later bundled observations; it does not refit.
+To assimilate the new observations, run the full univariate or copula fit.
 
 ## 2. Check prior sensitivity with matched models
 

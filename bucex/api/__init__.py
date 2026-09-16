@@ -16,6 +16,7 @@ from .fit import (
     plan,
 )
 from .predict import Forecast, posterior_predict, posterior_predictive
+from .aggregate import AggregateForecast, aggregate_forecast
 
 __all__ = [
     "fit",
@@ -29,6 +30,8 @@ __all__ = [
     "make_gev_model",
     "plan",
     "Forecast",
+    "AggregateForecast",
+    "aggregate_forecast",
     "posterior_predict",
     "posterior_predictive",
 ]

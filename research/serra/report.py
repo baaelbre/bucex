@@ -19,13 +19,13 @@ def new_run(root, name):
     return path
 
 
-def save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.90):
+def save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.90, image_format="png", dpi=150):
     """Export one scientific band with readable labels and no default title."""
     with plt.rc_context({"font.size": 12, "axes.labelsize": 12, "xtick.labelsize": 11, "ytick.labelsize": 11}):
-        return _save_band(fit, values, path, dates=dates, ylabel=ylabel, level=level)
+        return _save_band(fit, values, path, dates=dates, ylabel=ylabel, level=level, image_format=image_format, dpi=dpi)
 
 
-def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.90):
+def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.90, image_format="png", dpi=150):
     """Export pointwise posterior summaries and a figure on the same scale."""
     dates = fit.time if dates is None else dates
     band = fit.posterior_summary(values, credible_interval=level)
@@ -35,7 +35,7 @@ def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", lev
     axis.plot(dates, band["median"])
     axis.set(xlabel="time", ylabel=ylabel)
     figure.tight_layout()
-    figure.savefig(path.with_suffix(".pdf"))
+    figure.savefig(path.with_suffix("."+image_format), dpi=dpi)
     plt.close(figure)
 
 
@@ -45,6 +45,8 @@ def scientific_targets(fit):
     for name in fit.channel_names if fit.is_multiseries_model else (None,):
         values = fit.component_draws("level", channel=name, combine_chains=False)
         targets[f"{name or 'series'}_level_change"] = values[..., -1] - values[..., 0]
+        slopes = fit.component_draws("slope", channel=name, combine_chains=False)
+        targets[f"{name or 'series'}_end_slope_C_per_decade"] = slopes[..., -1]*120
     if fit.is_multiseries_model:
         for left, right in (("TXx", "TXm"), ("TNn", "TNm"), ("TXm", "TNm"), ("TXx", "TNx")):
             if {left, right} <= set(fit.channel_names):
@@ -62,12 +64,15 @@ def scientific_targets(fit):
     return targets
 
 
-def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95):
+def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, save_fit=True):
     """Export auditable numerical results; figures are optional, never evidence of convergence."""
     from dataclasses import asdict
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    fit.save(directory/'fit.bucex')
+    image_format = config.get('figure_format', 'png')
+    dpi = config.get('figure_dpi', 150)
+    if save_fit:
+        fit.save(directory/'fit.bucex')
     bx.save_config(config,directory/'config.json')
     (directory/'declared_priors.json').write_text(json.dumps(asdict(fit.priors),
         default=lambda x:x.tolist() if isinstance(x,np.ndarray) else x,indent=2)+'\n')
@@ -76,6 +81,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95):
     pd.DataFrame.from_dict(fit.static_summary(level),orient='index').to_csv(directory/'parameters.csv')
     bx.save_config({key:float(v) if np.isfinite(v) else None for key,v in diagnostic['engine'].items()},directory/'engine.json')
     bx.save_config(dict(bucex_version=bx.__version__,model=fit.model.to_dict(),inference=fit.plan.to_dict(),
+        fitted_start=str(fit.time[0]),fitted_end=str(fit.time[-1]),n_months=fit.n_time,
         warnings=diagnostic['warnings'],interval='pointwise posterior credible interval',
         status='Research output; assess convergence, sensitivity and held-out forecasts before reporting.'),directory/'run.json')
     pd.DataFrame(diagnostic['pit']).to_csv(directory/'in_sample_pit.csv',index=False)
@@ -94,13 +100,14 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95):
         summary=fit.posterior_summary(values,credible_interval=level)
         pd.DataFrame(dict(time=dates,**summary)).to_csv(directory/(label+'.csv'),index=False)
         if config.get('figures',True):
-            save_band(fit,values,directory/label,dates=dates,ylabel=ylabel,level=level)
+            save_band(fit,values,directory/label,dates=dates,ylabel=ylabel,level=level,image_format=image_format,dpi=dpi)
 
     forecast = fit.forecast(horizon,draws=config.get('forecast_draws'),seed=config['seed'])
     forecast.summary(level=level).to_csv(directory/'forecast.csv',index=False)
+    predictive = fit.posterior_predictive(draws=config.get('predictive_check_draws',200),seed=config['seed'])
     names = fit.channel_names if fit.is_multiseries_model else (None,)
     for name in names:
-        label=name or 'series'
+        label=name or fit.series_name or 'series'
         prior=fit.priors.channels[name] if isinstance(fit.priors,bx.MarginalPriors) else fit.priors
         channel=fit.model.channel(name) if name else fit.model
         band(fit.component_draws('level',channel=name),label+'_level')
@@ -118,12 +125,17 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95):
             fit.component_transition_summary(channel=name).to_csv(directory/(label+'_structure_mixing.csv'))
         if channel.family=='gev':
             band(fit.return_level_draws(100,channel=name),label+'_return_level_100_blocks')
-        if risks and label in risks:
-            probability=fit.exceedance_probability_draws(risks[label],channel=name,return_labels=False)
-            band(probability,label+'_risk',ylabel=fit.event_label(risks[label],channel=name))
+        threshold = (risks or {}).get(label, (risks or {}).get('series'))
+        if threshold is not None:
+            probability=fit.exceedance_probability_draws(threshold,channel=name,return_labels=False)
+            band(probability,label+'_risk',ylabel=fit.event_label(threshold,channel=name))
         if config.get('figures',True):
-            axis=forecast.plot(channel=name) if name else forecast.plot()
-            axis.figure.savefig(directory/(label+'_forecast.pdf'),bbox_inches='tight');plt.close(axis.figure)
+            axis=forecast.plot(channel=name,level=level,history=fit.observed,history_dates=fit.time,history_points=120)
+            axis.figure.savefig(directory/(label+'_forecast.'+image_format),bbox_inches='tight',dpi=dpi);plt.close(axis.figure)
+        bx.save_prediction_report(fit,directory,channel=name,forecast=forecast,predictive=predictive,
+            threshold=threshold,level=level,draws=config.get('predictive_check_draws',200),seed=config['seed'],
+            months=config.get('forecast_months',list(range(1,13))),image_format=image_format,dpi=dpi,
+            figures=config.get('figures',True),prefix=label)
 
     if fit.is_multiseries_model:
         bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
@@ -134,7 +146,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95):
         if fit.model.copula is not None:
             fit.copula_summary(credible_interval=level).to_csv(directory/'copula_correlations.csv')
             if config.get('figures',True):
-                figure,_=fit.plot('copula');figure.savefig(directory/'copula_correlations.pdf',bbox_inches='tight');plt.close(figure)
+                figure,_=fit.plot('copula');figure.savefig(directory/('copula_correlations.'+image_format),bbox_inches='tight',dpi=dpi);plt.close(figure)
         constraints=[pair for pair in bx.UCCLE_ORDER_CONSTRAINTS if set(pair)<=set(fit.channel_names)]
         if constraints:
             for tag,prediction in [('in_sample',fit.posterior_predictive(draws=config.get('predictive_check_draws',200),seed=config['seed'])),('forecast',forecast)]:
@@ -147,3 +159,31 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95):
             pd.DataFrame(dict(time=forecast.dates,posterior_predictive_probability=probabilities.mean(axis=0))).to_csv(
                 directory/'compound_heat_forecast.csv',index=False)
     return directory
+
+
+def main():
+    """Re-export a saved fit, without refitting or changing its training dates."""
+    import argparse
+    parser=argparse.ArgumentParser(description=main.__doc__)
+    parser.add_argument('--fit',type=Path,required=True)
+    parser.add_argument('--config',type=Path,help='Defaults to config.json beside the saved fit.')
+    parser.add_argument('--output',type=Path,default=Path('results/serra'))
+    parser.add_argument('--horizon',type=int)
+    parser.add_argument('--months',type=int,nargs='+',default=list(range(1,13)))
+    parser.add_argument('--format',choices=('png','pdf','svg'),default='png')
+    args=parser.parse_args()
+    fit=bx.load_fit(args.fit)
+    config=bx.load_config(args.config or args.fit.parent/'config.json')
+    config.update(figures=True,figure_format=args.format,forecast_months=args.months)
+    if args.horizon is not None:
+        config['forecast_horizon']=args.horizon
+    # Explicitly distinguish fit provenance from the current report settings.
+    config['report_source_fit']=str(args.fit.resolve())
+    directory=new_run(args.output,'report_'+(fit.series_name or 'joint'))
+    print(f'Report only: fitted {fit.time[0]} to {fit.time[-1]}; no refit.',flush=True)
+    print(write_report(fit,directory,config=config,risks=config.get('risks'),
+        horizon=config.get('forecast_horizon',120),level=config.get('credible_interval',.95),save_fit=False))
+
+
+if __name__=='__main__':
+    main()

@@ -96,10 +96,10 @@ aggregator. Its `research/serra/config/prepare_uccle.json` contains:
 
 Paths are relative to the working directory; run from the source root.
 Change `daily_file` when a new daily CSV is available, then rerun preparation.
-Primary SERRA full configurations end in December 2022, matching the submitted
-record. An explicit `data.end` override explores the later mixed-source record
-separately; no homogenization is asserted. The loader's default remains the
-complete bundled record. Consult `bucex/data/SOURCES.md` for source windows and
+Primary SERRA full configurations now use `data.end: null`, through the latest
+bundled month (August 2026 in 1.6.5). Explicit `*_1892_2022.json` configurations
+retain the submitted record. Preparing a new daily CSV updates the monthly files;
+a saved `fit.bucex` is unchanged until refitted. No homogenization is asserted. Consult `bucex/data/SOURCES.md` for source windows and
 comparability before interpreting the extension.
 
 ```bash
