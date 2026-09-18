@@ -26,9 +26,9 @@
     "scale_time_unit": 120
   },
   "priors": {
-    "innovation": "lasso",
+    "innovation": "normal",
     "innovation_median": {
-      "level": 0.02,
+      "level": 0.01,
       "trend": 5e-05,
       "season": 0.02
     },

@@ -2,7 +2,7 @@
   "extends": "../base.json",
   "variants": [
     {
-      "name": "lasso_reference"
+      "name": "normal_reference"
     },
     {
       "name": "innovation_half",
@@ -21,8 +21,8 @@
       }
     },
     {
-      "name": "normal",
-      "innovation": "normal"
+      "name": "lasso",
+      "innovation": "lasso"
     },
     {
       "name": "triple_gamma",

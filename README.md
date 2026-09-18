@@ -1,4 +1,4 @@
-# BUCEX 1.7.0
+# BUCEX 1.7.1
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
 Declare the observation distribution, give its parameters an interpretable
@@ -24,7 +24,7 @@ model = bx.Model(
         "xi": bx.Constant(),
     },
 )
-prior = bx.fs_priors("gev", period=12, innovation="lasso")
+prior = bx.fs_priors("gev", period=12, innovation="normal")
 fit = bx.fit(y, model, priors=prior, parameterization="fs",
              engine="laplace_mh", asis=False,
              mcmc=bx.MCMC(chains=4, warmup=2000, draws=2000, seed=1700))
@@ -42,6 +42,13 @@ estimated, not numerically fixed. The original API remains valid:
 `Model(GEV(), [LocalLinearTrend(), DummySeasonal(12)])`. Existing saved fits
 remain readable. The default observation-scale prior from `fs_priors` is
 IG(2,2) on variance; shape is N(0,.3²), truncated by the declared bounds.
+Normal innovation priors are the default, with monthly SD prior medians
+(.01, .00005, .02) for level, slope and seasonality. The .01 is a prior
+median, not a fixed process SD or the normal coefficient prior SD.
+
+Version 1.7.1 corrects inefficient GEV coefficient preconditioning with a
+deterministic conditional-mode reference and exact-likelihood slice correction.
+See [the sampler fix and research decisions](docs/REVISION_GUIDE.md).
 
 ## Give scale its own evolution
 
@@ -56,7 +63,7 @@ model = bx.Model(
             [bx.LocalLinearTrend(), bx.DummySeasonal(12)],
             link="log",
             priors=bx.EvolutionPriors(
-                innovation="lasso",
+                innovation="normal",
                 innovation_median={"level": .01, "trend": .00001, "season": .01},
                 initial_slope_sd=.001,
                 seasonal_initial_sd=.3,
@@ -74,7 +81,7 @@ extension supports normal, lasso and triple-gamma innovation priors, exact
 likelihood updates, persistence, restart, simulation and forecasts.
 
 Read [parameter evolution](docs/PARAMETER_EVOLUTION.md) for units, examples,
-identification and supported combinations. Shape remains constant in 1.7.0;
+identification and supported combinations. Shape remains constant in 1.7.1;
 unsupported parameter/family combinations fail explicitly. Ancillary full
 structural models need their own mixing and scientific validation. They are
 **not part of the SERRA reference analysis**.

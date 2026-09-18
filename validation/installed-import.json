@@ -1,5 +1,15 @@
 {
-  "version": "1.7.0",
-  "installed_import_verified": true,
-  "wheel": "bucex-1.7.0-py3-none-any.whl"
+  "version": "1.7.1",
+  "import_path": "/workspace/scratch/3d36c6069a17/work/171-installed/bucex/__init__.py",
+  "normal_prior_level_median": 0.01,
+  "months": 1616,
+  "end": "2026-08-01 00:00:00",
+  "channels": [
+    "TXm",
+    "TNm",
+    "TXx",
+    "TXn",
+    "TNx",
+    "TNn"
+  ]
 }

@@ -1,3 +1,21 @@
+# 1.7.1 — 2026-09-17
+
+- Correct inefficient GEV continuous-FS coefficient preconditioning: optimize a
+  deterministic conditional-mode Gaussian reference, then retain the exact
+  likelihood/reference elliptical-slice correction. The reference never starts
+  from the current coefficient vector. Conditional copula curvature is included.
+- Keep this proposal construction in its own inference module, used by the
+  existing univariate and joint continuous kernels. Gaussian exact draws remain
+  unchanged; no ASIS or model-selection layer is added.
+- Record optimizer convergence, iterations, fallback, support repair and
+  covariance regularization beside coefficient slice cost in saved diagnostics.
+- Default to normal FS innovations and a .01 level-SD prior median; retain
+  .00005 slope and .02 seasonal medians. Existing explicit priors are preserved.
+- Update the SERRA configurations, add level-only prior sensitivity and an
+  old-level-prior comparison, and document the reviewer/paper workflow.
+- Add independent numerical integration, copula-conditional, endpoint-support
+  and long-record coefficient-mixing regression tests.
+
 # Changelog
 
 ## 1.7.0

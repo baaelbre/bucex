@@ -75,6 +75,11 @@ class Laplace:
     ``mh_steps`` is the number of full-trajectory independence-MH proposals per
     outer MCMC iteration when ``engine="laplace_mh"``.  ``draw_attempts`` is
     retained only for the explicitly approximate ``engine="laplace"`` path.
+    For continuous FS GEV coefficients, ``max_iterations`` and ``tolerance``
+    also control the deterministic conditional-mode Gaussian reference.
+    That reference is always corrected against the exact target by a slice
+    update; optimizer convergence is an efficiency diagnostic, not MCMC
+    convergence or a replacement for likelihood correction.
     """
 
     max_iterations: int = 30

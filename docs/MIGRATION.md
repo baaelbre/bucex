@@ -1,3 +1,23 @@
+# Migrating from 1.7.0 to 1.7.1
+
+No model, fit, forecast or saved-file API changes are required. The corrected
+GEV coefficient proposal is selected automatically for continuous private FS
+fits, including copula margins. Gaussian coefficient updates are unchanged.
+Re-run poorly mixed GEV fits: re-exporting an archive cannot repair its draws.
+Use fresh chains to check the fix before relying on old-chain warm starts.
+
+`fs_priors()` and the SERRA base configuration now default to **normal** rather
+than lasso innovations. Their level innovation SD prior median is **.01**
+rather than .02; slope and seasonal medians remain .00005 and .02. Explicitly
+supplied priors and priors stored in existing archives are not rewritten.
+Request `innovation="lasso"` to retain that family. For a sampler-only comparison
+with the old normal-prior TXn run, use `independent_level_002.json`.
+
+The sensitivity reference is now named `normal_reference`, and the family
+alternative is `lasso`. New `sensitivity/level.json` and `joint_level.json`
+compare .005/.01/.02 for level alone. Update job submissions that refer to old
+variant names. No PGAS, SSVS or ASIS is introduced into the research protocol.
+
 # Migrating from 1.6.5 to 1.7.0
 
 - Existing Model/Channel component declarations and fit archives remain supported.

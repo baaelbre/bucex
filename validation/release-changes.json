@@ -1,0 +1,41 @@
+{
+  "base_version": "1.7.0",
+  "version": "1.7.1",
+  "changed": [
+    "CHANGELOG.md",
+    "CITATION.cff",
+    "README.md",
+    "RELEASE_NOTES.md",
+    "START_HERE.md",
+    "bucex/__about__.py",
+    "bucex/diagnostics/posterior.py",
+    "bucex/inference/config.py",
+    "bucex/inference/fit/continuous.py",
+    "bucex/inference/fit/marginal.py",
+    "bucex/priors/fs.py",
+    "docs/INFERENCE_MATRIX.md",
+    "docs/MANUSCRIPT_ALIGNMENT.md",
+    "docs/MIGRATION.md",
+    "docs/VALIDATION.md",
+    "research/serra/README.md",
+    "research/serra/config/base.json",
+    "research/serra/config/sensitivity/joint_smoke.json",
+    "research/serra/config/sensitivity/joint_targeted.json",
+    "research/serra/config/sensitivity/paper.json",
+    "research/serra/config/sensitivity/smoke.json",
+    "research/serra/config/sensitivity/targeted.json",
+    "research/serra/models.py",
+    "tests/test_continuous_private.py",
+    "tests/test_laplace_mh.py",
+    "tests/test_scale_models.py",
+    "tests/test_serra_protocol.py"
+  ],
+  "added": [
+    "bucex/inference/fit/coefficient_reference.py",
+    "docs/REVISION_GUIDE.md",
+    "research/serra/config/independent_level_002.json",
+    "research/serra/config/sensitivity/joint_level.json",
+    "research/serra/config/sensitivity/level.json",
+    "tests/test_coefficient_reference.py"
+  ]
+}

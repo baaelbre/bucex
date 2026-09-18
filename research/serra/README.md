@@ -1,4 +1,4 @@
-# SERRA workflow — BUCEX 1.7.0
+# SERRA workflow — BUCEX 1.7.1
 
 Run commands from the extracted release directory. Install with
 `python -m pip install -e ".[test]"`. Start with [../../START_HERE.md](../../START_HERE.md).
@@ -14,7 +14,7 @@ The `*_extended.json` files remain compatibility aliases for the full record.
 
 Each channel has a dynamic local level, slope and dummy location seasonality.
 Observation scale and GEV shape are unknown but constant. Reference priors are
-continuous FS lasso; no SSVS, PGAS or dynamic-factor analysis is required.
+continuous FS normal; no SSVS, PGAS or dynamic-factor analysis is required.
 The optional constant Gaussian copula is fitted jointly. ASIS is off.
 
 `config/base.json` is the resolved scientific protocol. Its production starting
@@ -63,7 +63,7 @@ suitable machine or run the independent series separately.
 | `convergence.json`, `mcmc.csv` | R-hat, bulk/tail ESS, independent chain count, undefined diagnostics and constant draws |
 | `scientific_targets.csv`, `period_contrasts.csv` | Climate-period changes, posterior sign probabilities and paired differences; chain dimensions retained |
 | `contrast_definitions.json` | Exact dates, months, channel pairs and rate units |
-| `sampler_metrics.csv`, `engine.json` | Laplace–MH acceptance, slice cost, GEV support failures, state-update diagnostics |
+| `sampler_metrics.csv`, `engine.json` | Laplace–MH acceptance, coefficient reference convergence/fallback, slice cost, GEV support failures |
 | `*_level.*`, `*_slope_C_per_decade.*`, `*_seasonal.*`, `*_location.*` | Distinct latent components with pointwise credible bands |
 | `*_observation_scale.*`, `*_innovation_effects.csv` | Scale assumption and practical 120-month contribution of each innovation |
 | `*_period_risks.csv`, `*_risk.*` | Original-tail risk, by calendar month and period |
@@ -95,6 +95,19 @@ month-specific, seasonal and annual forecasts and risk figures.
 
 ## Core and targeted prior sensitivity
 
+Start with the focused level comparison while holding all other priors fixed:
+
+```bash
+python -m research.serra.sensitivity --config research/serra/config/sensitivity/level.json --series TXn
+```
+
+Its variants `normal_reference`, `level_half`, and `level_double` have level
+SD prior medians .01, .005, and .02. `joint_level.json` refits the joint copula
+with the same comparisons. The .01 median corresponds to N(0,.014826²)
+on the signed level coefficient. None fixes its value or excludes dynamics.
+
+The following broader checks answer different questions:
+
 ```bash
 python -m research.serra.sensitivity --config research/serra/config/sensitivity/paper.json
 python -m research.serra.sensitivity --config research/serra/config/sensitivity/joint.json
@@ -102,9 +115,9 @@ python -m research.serra.sensitivity --config research/serra/config/sensitivity/
 python -m research.serra.sensitivity --config research/serra/config/sensitivity/joint_targeted.json --variants lkj_2 lkj_4
 ```
 
-The five core variants are lasso reference, **all** innovation medians halved,
-all doubled, matched normal, matched triple-gamma. Location process SD prior
-medians are (.02, .00005, .02). Initial level is N(0,20²), initial slope is
+The five core variants are normal reference, **all** innovation medians halved,
+all doubled, matched lasso, matched triple-gamma. Location process SD prior
+medians are (.01, .00005, .02). Initial level is N(0,20²), initial slope is
 N(0,.0025²), initial seasonal coordinates are N(0,2.25²); sigma² is IG(2,2).
 Shape is N(0,.3²) on [-.5,.5]. Lasso lambda²=1; TG a=c=.5 and global multiplier
 1. Local mixing variables are inferred; the prior center is not estimated
@@ -206,6 +219,9 @@ pass an updated `--config` to request the new period contrasts only when the
 saved fit contains the complete requested periods. A genuinely different
 scale model or prior needs a new fit. Data preparation is optional: all six
 validated monthly files are bundled.
+
+For the 1.7.1 coefficient fix, interpretation of shrinkage and the manuscript
+story, read [the revision guide](../../docs/REVISION_GUIDE.md).
 
 Read `models.py` for model construction, `run.py` for fitting, `report.py` for
 public posterior APIs, `sensitivity.py` for matched refits, and `validate.py`

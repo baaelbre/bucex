@@ -2,11 +2,11 @@
   "extends": "../smoke.json",
   "variants": [
     {
-      "name": "lasso_reference"
+      "name": "normal_reference"
     },
     {
-      "name": "normal",
-      "innovation": "normal"
+      "name": "lasso",
+      "innovation": "lasso"
     },
     {
       "name": "triple_gamma",

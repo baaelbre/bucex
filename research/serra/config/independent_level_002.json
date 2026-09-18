@@ -1,0 +1,9 @@
+{
+  "extends": "independent_full.json",
+  "_comment": "Matched sampler comparison with the previous level prior; only the level innovation prior changes.",
+  "priors": {
+    "innovation_median": {
+      "level": 0.02
+    }
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "description": "Conditional coefficient-only benchmark, identical old .02-level normal prior and fixed nuisance parameters/paths. Not full-chain convergence or production timing.",
+  "source_fit": "TXN(1).zip / fit.bucex",
+  "source_fit_sha256": "fd22c675fd4f7955543944981d6dfa8ffc936e0af918cce5b66d2b4848e2dd3e",
+  "iterations_per_fixed_conditional": 1000,
+  "reference_controls": {
+    "max_iterations": 30,
+    "tolerance": 1e-05,
+    "curvature_floor": 1e-06
+  },
+  "cases": [
+    {
+      "chain": 0,
+      "draw": 1999,
+      "reference_metrics": {
+        "coefficient_reference_converged": 1.0,
+        "coefficient_reference_iterations": 6.0,
+        "coefficient_reference_fallback": 0.0,
+        "coefficient_reference_support_repaired": 0.0,
+        "coefficient_reference_regularized": 0.0
+      },
+      "reference_seconds": 0.008988089997728821,
+      "reference_to_mode_mahalanobis_local": 14.03922274598924,
+      "target_improvement_from_reference": 107.41293157915925,
+      "reference_center_level": -7.369825206055846,
+      "conditional_mode_level": -8.22847874820109,
+      "conditional_level_sd": 0.4031824103019762,
+      "kernels": {
+        "existing": {
+          "seconds": 2.286007155002153,
+          "mean_evaluations": 7.03,
+          "parameters": {
+            "alpha_c": {
+              "lag1": 0.9952883748711178,
+              "squared_jump_over_local_variance": 0.007719760020050067
+            },
+            "beta0": {
+              "lag1": 0.9942194145968103,
+              "squared_jump_over_local_variance": 0.007911158512500025
+            },
+            "s_level": {
+              "lag1": 0.9873974463758377,
+              "squared_jump_over_local_variance": 0.007881007384633194
+            },
+            "s_trend": {
+              "lag1": 0.9930240127489827,
+              "squared_jump_over_local_variance": 0.008261550604317885
+            },
+            "s_season": {
+              "lag1": 0.9868121282512407,
+              "squared_jump_over_local_variance": 0.008350911921735942
+            }
+          }
+        },
+        "mode_reference": {
+          "seconds": 0.5912137129998882,
+          "mean_evaluations": 1.084,
+          "parameters": {
+            "alpha_c": {
+              "lag1": 0.07222900477364802,
+              "squared_jump_over_local_variance": 1.5077074305593436
+            },
+            "beta0": {
+              "lag1": 0.0824097036366121,
+              "squared_jump_over_local_variance": 1.532405384480145
+            },
+            "s_level": {
+              "lag1": 0.08643815728259718,
+              "squared_jump_over_local_variance": 1.7355939002500977
+            },
+            "s_trend": {
+              "lag1": 0.08922891002508315,
+              "squared_jump_over_local_variance": 1.5537585512723469
+            },
+            "s_season": {
+              "lag1": 0.030121184500490204,
+              "squared_jump_over_local_variance": 2.0752837216041997
+            }
+          }
+        }
+      }
+    },
+    {
+      "chain": 2,
+      "draw": 0,
+      "reference_metrics": {
+        "coefficient_reference_converged": 1.0,
+        "coefficient_reference_iterations": 6.0,
+        "coefficient_reference_fallback": 0.0,
+        "coefficient_reference_support_repaired": 0.0,
+        "coefficient_reference_regularized": 0.0
+      },
+      "reference_seconds": 0.009106335004616994,
+      "reference_to_mode_mahalanobis_local": 10.792754880994629,
+      "target_improvement_from_reference": 61.09405102080791,
+      "reference_center_level": -6.761152152453122,
+      "conditional_mode_level": -7.280269193532057,
+      "conditional_level_sd": 0.38627208536424024,
+      "kernels": {
+        "existing": {
+          "seconds": 2.233240845002001,
+          "mean_evaluations": 6.38,
+          "parameters": {
+            "alpha_c": {
+              "lag1": 0.9785316477823788,
+              "squared_jump_over_local_variance": 0.01698560617942374
+            },
+            "beta0": {
+              "lag1": 0.9692668355574012,
+              "squared_jump_over_local_variance": 0.016580113096549384
+            },
+            "s_level": {
+              "lag1": 0.9833908669681384,
+              "squared_jump_over_local_variance": 0.01813804010516246
+            },
+            "s_trend": {
+              "lag1": 0.9884557777763876,
+              "squared_jump_over_local_variance": 0.014248668970618
+            },
+            "s_season": {
+              "lag1": 0.9739153484324794,
+              "squared_jump_over_local_variance": 0.016944780041567593
+            }
+          }
+        },
+        "mode_reference": {
+          "seconds": 0.594552456997917,
+          "mean_evaluations": 1.101,
+          "parameters": {
+            "alpha_c": {
+              "lag1": 0.11655178834170986,
+              "squared_jump_over_local_variance": 1.769252560877356
+            },
+            "beta0": {
+              "lag1": 0.11735330168828696,
+              "squared_jump_over_local_variance": 1.7335350489599066
+            },
+            "s_level": {
+              "lag1": 0.09252446755424795,
+              "squared_jump_over_local_variance": 1.875103282684145
+            },
+            "s_trend": {
+              "lag1": 0.08281587400930762,
+              "squared_jump_over_local_variance": 1.817454750360757
+            },
+            "s_season": {
+              "lag1": 0.14821388697272883,
+              "squared_jump_over_local_variance": 1.4774655167958886
+            }
+          }
+        }
+      }
+    },
+    {
+      "chain": 3,
+      "draw": 1999,
+      "reference_metrics": {
+        "coefficient_reference_converged": 1.0,
+        "coefficient_reference_iterations": 6.0,
+        "coefficient_reference_fallback": 0.0,
+        "coefficient_reference_support_repaired": 0.0,
+        "coefficient_reference_regularized": 0.0
+      },
+      "reference_seconds": 0.008606536997831427,
+      "reference_to_mode_mahalanobis_local": 13.233311511159371,
+      "target_improvement_from_reference": 94.01198046775153,
+      "reference_center_level": -7.516375593658744,
+      "conditional_mode_level": -8.348766538513914,
+      "conditional_level_sd": 0.331262001813425,
+      "kernels": {
+        "existing": {
+          "seconds": 2.255694396000763,
+          "mean_evaluations": 6.758,
+          "parameters": {
+            "alpha_c": {
+              "lag1": 0.9857962471593369,
+              "squared_jump_over_local_variance": 0.00873782290136046
+            },
+            "beta0": {
+              "lag1": 0.988322803481297,
+              "squared_jump_over_local_variance": 0.008964068907316505
+            },
+            "s_level": {
+              "lag1": 0.987807054284332,
+              "squared_jump_over_local_variance": 0.008456113472660506
+            },
+            "s_trend": {
+              "lag1": 0.9884248554023048,
+              "squared_jump_over_local_variance": 0.00913872411750413
+            },
+            "s_season": {
+              "lag1": 0.9897810083519799,
+              "squared_jump_over_local_variance": 0.009390746976285825
+            }
+          }
+        },
+        "mode_reference": {
+          "seconds": 0.6491940030027763,
+          "mean_evaluations": 1.133,
+          "parameters": {
+            "alpha_c": {
+              "lag1": 0.013901365936051714,
+              "squared_jump_over_local_variance": 1.8780112231665846
+            },
+            "beta0": {
+              "lag1": 0.016531630131510277,
+              "squared_jump_over_local_variance": 1.8080040678972176
+            },
+            "s_level": {
+              "lag1": 0.08621307196484919,
+              "squared_jump_over_local_variance": 1.867836034226001
+            },
+            "s_trend": {
+              "lag1": 0.016741490339547513,
+              "squared_jump_over_local_variance": 1.901445498524505
+            },
+            "s_season": {
+              "lag1": 0.01561378823481384,
+              "squared_jump_over_local_variance": 2.1358492185039224
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import numpy as np
 from scipy.linalg import cho_solve, solve_triangular
 
 from . import fs_utils as fs
+from .coefficient_reference import coefficient_reference
 
 
 @dataclass
@@ -131,9 +132,12 @@ def coefficient_step(state, conditional, obs_params, prior, mixing, laplace, rng
             curvature_floor=laplace.curvature_floor, maximum_variance=laplace.maximum_variance,
             shift_limit=10*float(np.max(obs_params['sigma'])))
     mean,root,precision = gaussian_reference(X,y,variance,pm,L)
+    metric = {}
     if state.family == 'gaussian':
         whitened = mean+root @ rng.normal(size=len(mean)); evaluations=1
     else:
+        (mean,root,precision),metric = coefficient_reference(
+            X,state.y,conditional,obs_params,pm,L,(mean,root,precision),laplace)
         current = fs.theta_vector_from_params(state.params_state,names,state.layout,tbar=tbar)
         current = np.linalg.solve(L,current-pm)
         def correction(w):
@@ -143,7 +147,7 @@ def coefficient_step(state, conditional, obs_params, prior, mixing, laplace, rng
             return ll-.5*(w@w)+.5*(delta @ precision @ delta)
         whitened,evaluations = reference_slice(current,mean,root,correction,rng)
     state.params_state.update(fs.apply_theta_draw(state.params_state,pm+L @ whitened,names,state.layout,tbar=tbar))
-    return {'coefficient_slice_evaluations': evaluations}
+    return {**metric,'coefficient_slice_evaluations': evaluations}
 
 
 def coefficient_prior(prior, names, tbar, mixing, sigma2):

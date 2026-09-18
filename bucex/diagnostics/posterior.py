@@ -240,6 +240,11 @@ def fit_diagnostics(fit):
                     ("elliptical_slice_mean_absolute_angle", "state_ess_mean_absolute_angle"),
                 ):
                     engine[label] = _finite_mean(metrics.get(metric, []))
+    for name in ('coefficient_slice_evaluations', 'coefficient_reference_converged',
+                 'coefficient_reference_iterations', 'coefficient_reference_fallback',
+                 'coefficient_reference_support_repaired', 'coefficient_reference_regularized'):
+        if name in metrics:
+            engine[name] = _finite_mean(metrics[name])
     warnings = list(fit.plan.warnings)
     if fit.n_chains < 2:
         warnings.append("A single chain cannot assess between-chain convergence; use multiple chains for scientific inference.")

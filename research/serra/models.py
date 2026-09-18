@@ -39,7 +39,7 @@ def marginal_prior(item, data, config):
     xi = (bx.UniformPrior(*p['xi_bounds']) if p.get('xi_prior', 'normal') == 'uniform'
           else bx.NormalPrior(p.get('xi_mean', 0.), p.get('xi_sd', .3)))
     return bx.fs_priors(item.family, period=config['model']['period'],
-        innovation=p.get('innovation', 'lasso'), innovation_median=p['innovation_median'],
+        innovation=p.get('innovation', 'normal'), innovation_median=p['innovation_median'],
         initial_level=bx.NormalPrior(item.transform_sign*center, p.get('baseline_sd', 20.)),
         initial_slope=bx.NormalPrior(0., p['initial_slope_sd']),
         seasonal_initial_sd=p['seasonal_initial_sd'],

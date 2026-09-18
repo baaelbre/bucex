@@ -1,0 +1,20 @@
+{
+  "extends": "paper.json",
+  "variants": [
+    {
+      "name": "normal_reference"
+    },
+    {
+      "name": "level_half",
+      "multipliers": {
+        "level": 0.5
+      }
+    },
+    {
+      "name": "level_double",
+      "multipliers": {
+        "level": 2.0
+      }
+    }
+  ]
+}

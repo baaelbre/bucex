@@ -16,6 +16,8 @@ def test_primary_record_and_periods_reach_august_2026():
     assert report['n_months'] == 1616
     assert report['contrasts']['comparison'] == ['1996-09','2026-08']
     assert report['asis'] is False
+    assert report['priors']['innovation'] == 'normal'
+    assert report['priors']['innovation_median'] == {'level':.01,'trend':.00005,'season':.02}
     assert report['copula'] == {'structure':'constant','eta':1.}
     data = bx.load_uccle_multiseries(**config['data'])
     for name in data:
@@ -50,3 +52,16 @@ def test_reviewer_shape_grid_and_constant_scale_recovery():
     joint = bx.load_config(CONFIG/'joint_recovery_full.json')
     assert joint['model']['seasonal_scale'] is False
     assert joint['simulation']['log_scale_amplitude'] == 0.
+
+
+def test_focused_level_sensitivity_changes_only_level_prior():
+    config = bx.load_config(CONFIG/'sensitivity/level.json')
+    values = []
+    for variant in config['variants']:
+        result = configured_variant(config, variant)
+        values.append(result['priors']['innovation_median']['level'])
+        assert result['priors']['innovation'] == 'normal'
+        assert result['priors']['innovation_median']['trend'] == .00005
+        assert result['priors']['innovation_median']['season'] == .02
+        assert result['priors']['initial_slope_sd'] == .0025
+    assert values == [.01, .005, .02]

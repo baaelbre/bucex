@@ -2,7 +2,7 @@
   "extends": "paper.json",
   "variants": [
     {
-      "name": "lasso_reference"
+      "name": "normal_reference"
     },
     {
       "name": "xi_uniform",

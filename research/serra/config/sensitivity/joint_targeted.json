@@ -3,7 +3,7 @@
   "analysis": "copula",
   "variants": [
     {
-      "name": "lasso_reference"
+      "name": "normal_reference"
     },
     {
       "name": "xi_uniform",

@@ -30,14 +30,14 @@ def triple_gamma_median(spike_shape=.5, tail_shape=.5):
     return float(np.exp(brentq(lambda x:cdf(x)-.5,-50.,50.,xtol=1e-9)))
 
 
-def fs_priors(family, *, period=12, innovation="lasso", innovation_median=None,
+def fs_priors(family, *, period=12, innovation="normal", innovation_median=None,
               initial_level=None, initial_slope=None, seasonal_initial_sd=2.25,
               observation_variance=None, xi_prior=None, xi_max_abs=.5,
               spike_shape=.5, tail_shape=.5):
     """Construct proper, median-matched normal/lasso/triple-gamma FS priors.
 
     ``innovation_median`` declares prior medians of physical monthly SDs
-    using keys level, trend, season. Defaults are 0.02, 0.00005, 0.02 in the
+    using keys level, trend, season. Defaults are 0.01, 0.00005, 0.02 in the
     response's units. They are starting assumptions, not estimated defaults.
     ``lasso`` fixes lambda²=1; ``triple_gamma`` fixes its global multiplier=1
     and shapes, while sampling every local mixing variable. Choose hyperprior
@@ -53,7 +53,7 @@ def fs_priors(family, *, period=12, innovation="lasso", innovation_median=None,
         raise ValueError("family must be gaussian or gev.")
     if innovation not in {"normal", "lasso", "triple_gamma"}:
         raise ValueError("innovation must be normal, lasso, or triple_gamma.")
-    medians = dict(innovation_median or {"level":.02,"trend":.00005,"season":.02})
+    medians = dict(innovation_median or {"level":.01,"trend":.00005,"season":.02})
     if set(medians) != {"level","trend","season"} or any(not np.isfinite(v) or v <= 0 for v in medians.values()):
         raise ValueError("Declare positive finite innovation medians for level, trend, and season.")
     if period is not None and (int(period) != period or period < 2):

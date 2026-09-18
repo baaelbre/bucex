@@ -1,0 +1,410 @@
+{
+  "config": {
+    "_comment": "SERRA primary model through August 2026: private monthly FS locations, constant scales/shapes, continuous shrinkage; source provenance is documented.",
+    "analysis": "independent",
+    "data": {
+      "series": [
+        "TXn"
+      ],
+      "start": "1892-01-01",
+      "end": "2026-08-01"
+    },
+    "model": {
+      "period": 12,
+      "level": "dynamic",
+      "trend": "dynamic",
+      "seasonal": "dynamic",
+      "scale_mode": "constant",
+      "seasonal_scale": false,
+      "scale_prior_sd": 0.3,
+      "scale_slope_sd": 0.1,
+      "scale_innovation_sd": 0.01,
+      "scale_time_unit": 120
+    },
+    "priors": {
+      "innovation": "normal",
+      "innovation_median": {
+        "level": 0.01,
+        "trend": 5e-05,
+        "season": 0.02
+      },
+      "initial_level_mean": 0.0,
+      "baseline_sd": 20.0,
+      "initial_slope_sd": 0.0025,
+      "seasonal_initial_sd": 2.25,
+      "observation_variance": [
+        2.0,
+        2.0
+      ],
+      "xi_prior": "normal",
+      "xi_sd": 0.3,
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ],
+      "tg_spike_shape": 0.5,
+      "tg_tail_shape": 0.5
+    },
+    "mcmc": {
+      "draws": 100,
+      "warmup": 60,
+      "chains": 4,
+      "seed": 56100,
+      "progress": true,
+      "progress_every": 40
+    },
+    "inference": {
+      "asis": false,
+      "laplace": {
+        "max_iterations": 30,
+        "tolerance": 1e-05,
+        "mh_steps": 1
+      }
+    },
+    "seed": 56101,
+    "output": "results/serra",
+    "forecast_horizon": 120,
+    "forecast_draws": 1000,
+    "credible_interval": 0.95,
+    "risks": {
+      "TXm": 25,
+      "TNm": 18,
+      "TXx": 35,
+      "TXn": 0,
+      "TNx": 25,
+      "TNn": -10
+    },
+    "copula": {
+      "structure": "constant",
+      "eta": 1.0
+    },
+    "validation": {
+      "initial": 1188,
+      "horizon": 12,
+      "step": 12,
+      "save_fits": false
+    },
+    "figures": true,
+    "predictive_check_draws": 400,
+    "prior_draws": 10000,
+    "prior_predictive_draws": 200,
+    "save_fits": true,
+    "continue_on_error": false,
+    "figure_format": "png",
+    "figure_dpi": 150,
+    "forecast_months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "contrasts": {
+      "reference": [
+        "1892-01",
+        "1921-12"
+      ],
+      "comparison": [
+        "1996-09",
+        "2026-08"
+      ],
+      "months": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rate_multiplier": 120.0,
+      "pairs": [
+        [
+          "TXx",
+          "TXm"
+        ],
+        [
+          "TXn",
+          "TXm"
+        ],
+        [
+          "TNx",
+          "TNm"
+        ],
+        [
+          "TNn",
+          "TNm"
+        ],
+        [
+          "TXm",
+          "TNm"
+        ],
+        [
+          "TXx",
+          "TNx"
+        ],
+        [
+          "TXn",
+          "TNn"
+        ]
+      ]
+    },
+    "diagnostic_thresholds": {
+      "max_rhat": 1.01,
+      "min_ess": 400,
+      "min_chains": 4
+    }
+  },
+  "n_months": 1616,
+  "start": "1892-01-01 00:00:00",
+  "end": "2026-08-01 00:00:00",
+  "metrics": {
+    "laplace_mh_acceptance.response": {
+      "mean": 0.945,
+      "per_chain": [
+        0.93,
+        0.94,
+        0.94,
+        0.97
+      ]
+    },
+    "laplace_converged.response": {
+      "mean": 1.0,
+      "per_chain": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "laplace_iterations.response": {
+      "mean": 4.05,
+      "per_chain": [
+        3.99,
+        4.12,
+        4.03,
+        4.06
+      ]
+    },
+    "laplace_initial_support_repaired.response": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "laplace_support_rejections.response": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "coefficient_reference_converged.response": {
+      "mean": 1.0,
+      "per_chain": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "coefficient_reference_iterations.response": {
+      "mean": 6.04,
+      "per_chain": [
+        6.02,
+        6.05,
+        6.07,
+        6.02
+      ]
+    },
+    "coefficient_reference_fallback.response": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "coefficient_reference_support_repaired.response": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "coefficient_reference_regularized.response": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "coefficient_slice_evaluations.response": {
+      "mean": 1.115,
+      "per_chain": [
+        1.12,
+        1.04,
+        1.11,
+        1.19
+      ]
+    },
+    "sign_error.response": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "scale_slice_evaluations.response": {
+      "mean": 5.735,
+      "per_chain": [
+        5.78,
+        5.68,
+        5.62,
+        5.86
+      ]
+    },
+    "xi_slice_evaluations.response": {
+      "mean": 5.77,
+      "per_chain": [
+        5.8,
+        5.76,
+        5.79,
+        5.73
+      ]
+    },
+    "coefficient_reference_converged": {
+      "mean": 1.0,
+      "per_chain": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "coefficient_reference_fallback": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "laplace_converged": {
+      "mean": 1.0,
+      "per_chain": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "laplace_support_rejections": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "coefficient_reference_support_repaired": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "coefficient_reference_iterations": {
+      "mean": 6.04,
+      "per_chain": [
+        6.02,
+        6.05,
+        6.07,
+        6.02
+      ]
+    },
+    "laplace_initial_support_repaired": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "laplace_iterations": {
+      "mean": 4.05,
+      "per_chain": [
+        3.99,
+        4.12,
+        4.03,
+        4.06
+      ]
+    },
+    "coefficient_slice_evaluations": {
+      "mean": 1.115,
+      "per_chain": [
+        1.12,
+        1.04,
+        1.11,
+        1.19
+      ]
+    },
+    "laplace_mh_acceptance": {
+      "mean": 0.945,
+      "per_chain": [
+        0.93,
+        0.94,
+        0.94,
+        0.97
+      ]
+    },
+    "coefficient_reference_regularized": {
+      "mean": 0.0,
+      "per_chain": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "status": "Execution and proposal check only; 60 warmup and 100 retained per chain are not a production convergence assessment.",
+  "seconds": 426.2595522289994,
+  "sampler_settings": {
+    "normal_level_prior_median": 0.01,
+    "slope_prior_median": 5e-05,
+    "seasonal_prior_median": 0.02,
+    "asis": false,
+    "scale": "constant",
+    "laplace_mh_steps": 1
+  }
+}

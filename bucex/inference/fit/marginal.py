@@ -352,7 +352,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
             if mcmc.progress and ((iteration+1) % max(1, mcmc.progress_every or 50) == 0 or iteration+1 == mcmc.iterations):
                 print(f"Private FS {plan.engine}: chain {chain+1}/{C}, iteration {iteration+1}/{mcmc.iterations}, retained {saved_draw}/{D}", flush=True)
     # Preserve per-channel diagnostics and expose pooled computational summaries.
-    for key in {name.rsplit(".", 1)[0] for name in metrics if name.startswith("laplace_")}:
+    for key in {name.rsplit(".", 1)[0] for name in metrics
+                if name.startswith(("laplace_", "coefficient_"))}:
         metrics[key] = np.mean([value for name,value in metrics.items() if name.startswith(key+".")], axis=0)
     return FitResult(
         model=model, compiled=compiled, priors=priors, y=values, state_draws=paths,
@@ -371,7 +372,9 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                   "parameter_updates": {c.name: {"mu": plan.state_update,
                       "sigma": "Gaussian evolution elliptical slice" if getattr(c.observation.scale,"mode",None)=="structural" else "exact likelihood scale updates",
                       **({"xi": "constant shape slice"} if c.family=="gev" else {})} for c in model.channels},
-                  "asis": plan.asis, "continuous_coefficient_update": "Gaussian reference elliptical slice",
+                  "asis": plan.asis,
+                  "continuous_coefficient_update": "exact Gaussian draw / conditional-mode reference elliptical slice",
+                  "coefficient_reference_initialization": "deterministic, independent of current coefficients",
                   "shared_temporal_state": False, "hierarchical_model_selection": False,
                   "joint_model": True, "joint_likelihood": True,
                   "conditional_channel_independence": model.copula is None,

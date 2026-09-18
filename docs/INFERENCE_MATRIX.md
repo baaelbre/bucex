@@ -1,4 +1,4 @@
-# Inference in 1.7.0
+# Inference in 1.7.1
 
 | Model/prior route | Sampler | Scope |
 |---|---|---|

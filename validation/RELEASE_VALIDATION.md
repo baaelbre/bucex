@@ -1,57 +1,85 @@
-# BUCEX 1.7.0 validation
+# BUCEX 1.7.1 release validation
 
-This file records software checks actually performed for this release. Short
-chains are execution checks only; their posterior values are not paper results.
+Validation separates posterior-target checks, implementation checks and
+scientific production inference. The short fit results below are **not paper
+results**, and do not certify convergence of the production study.
 
-## Automated checks
+## Executed checks
 
-- Full source regression run: **287 passed**, including new independent
-  Gaussian/GEV conditional log-scale-slope quadrature checks, analytic future
-  level/slope innovation variance, three shrinkage families, mixed copula
-  structural scale, save/reload/restart, and paired period estimands.
-- Final focused run: **33 passed**, including four additional guards for the
-  August-2026 primary window, historical climate periods, five core sensitivity
-  variants and reviewer shape grid. These overlap the full suite; do not add
-  these counts as independent tests. The final source tree contains 291 tests.
-- Installed wheel, imported outside the source checkout: **25 passed** on
-  ancillary evolution, period estimands, calendar forecasts and risks.
-- Source/wheel construction succeeded. The installed import was verified as
-  1.7.0. Historical archive compatibility is covered by the source regression.
+- Full source test suite: **301 passed**, zero failures/errors; see
+  `pytest-1.7.1-source.xml`. The one warning documents retained TN>TX source
+  records already covered by the existing data-quality report.
+  This covers existing APIs, inference contracts, Gaussian references, copula
+  math/feedback, priors, structural scale, forecasts, risks and saved archives.
+- New independent numerical checks: GEV coefficient posteriors agree with
+  one-dimensional integration at xi=-.45, 0, .45, both independent and conditional
+  on nontrivial Gaussian-copula scores. Deliberately limiting optimization to
+  one iteration still preserves the exact target. A long-record regression
+  checks that the corrected reference supports substantial coefficient moves.
+  Deterministic GEV-support repair is checked for both signs of shape.
+- An isolated wheel was built and installed outside the source tree. All nine
+  coefficient-reference tests passed against that installed package. Imported
+  version, the normal/.01 default and bundled data through August 2026 were
+  checked (`installed-import.json`, `pytest-1.7.1-installed.xml`).
+- All 43 research JSON configurations resolved. Three command-line workflows
+  completed: TXn with monthly scale and PNG reports; all-six copula smoke fit;
+  and the three level-only sensitivity variants. Archive round trips and saved
+  reference diagnostics were checked (`workflows-1.7.1.json`).
+- Full-record preflight: six channels, January 1892–August 2026, 1616 months;
+  normal priors, level median .01, constant scale and ASIS off. The full joint
+  centered state array alone is about 8.07 GB (`preflight-1.7.1.json`).
 
-Machine-readable evidence is in the three `pytest-1.7.0-*.xml` files,
-`installed-import.json`, `environment.json` and `source-manifest.json`.
-The final small metadata/plotting additions were also exercised by the runnable
-example and installed-package checks; the whole regression suite was not
-needlessly repeated after documentation/configuration-only updates.
+## TXn coefficient benchmark at the unchanged old prior
 
-## Executed workflows
+Three states from the supplied 1.7.0 TXn archive were held fixed, including
+paths, scale, shape and the old .02 level prior. Each coefficient kernel ran
+for 1000 updates at each conditional state. The production 1.7.1 reference
+converged in six optimization iterations for every case, without fallback,
+support repair or covariance regularization.
 
-See `workflows-1.7.0.json` for the complete list. Checks included:
+Level-coefficient lag-one correlation changed from .983–.988 to .086–.093;
+slope-innovation coefficient correlation from .988–.993 to .017–.089. Mean
+slice evaluations fell from 6.38–7.03 to 1.08–1.13. The old reference was
+10.79–14.04 local Mahalanobis units from the conditional mode.
 
-- Six independent summaries and a six-margin copula with report generation.
-- An actual joint LKJ sensitivity refit and a univariate normal-prior case.
-- A matched R=I held-out fold and constant-scale joint recovery.
-- All eleven generating shapes from −.5 to .5, with wider fitting support.
-- Reference, wider-support and uniform-prior July-2019 endpoint cases.
-- The general evolving-scale example, including PNG figures and forecasts.
-- A six-margin full-length fit on **1616 months, ending August 2026**, with
-  1 warm-up and 2 retained draws. Each sampled scale was constant within time;
-  163 endpoint/period/paired estimands were constructed successfully.
+These checks isolate the proposal change from prior changes. They do not
+measure full-chain ESS or prove that every posterior block mixes rapidly.
+Timing for repeated slices with a held-fixed reference excludes rebuilding it
+at every outer iteration. Original archive provenance/hash and numerical
+results are in `TXn-coefficient-benchmark.json`; the large user archive is not
+redistributed in the package. The synthetic regression/integration tests do
+not require that archive.
 
-The last check validates execution on the requested data window. It cannot
-validate mixing from two draws. Default production budgets, full recovery
-replication, held-out calibration, sensitivity and ordering adequacy remain
-research tasks. The new full structural scale option needs separate scientific
-validation for any use beyond the fixed-scale SERRA reference model.
+## Short full-record TXn execution check at the new prior
 
-## Known boundaries
+A fresh fit used all 1616 months, normal prior medians (.01,.00005,.02), constant
+scale, ASIS off, four chains, **60 warmup + 100 retained per chain**. It completed
+640 outer iterations in about 426 seconds in this environment.
 
-Latent evolution currently binds to Gaussian/GEV location and log scale.
-GEV shape remains constant. Ancillary scale uses exact-likelihood elliptical
-slice updates and private trajectories; shared-location plus structural scale,
-scale regressions and arbitrary new observation families are not implemented.
-No residual serial-dependence process, residual t copula or ordering constraint
-is added. Declared constant sigma is estimated; it is not fixed to a number.
+- Path MH acceptance: .945.
+- Mean coefficient slice evaluations: 1.115.
+- Reference convergence: 100%; mean optimization iterations: 6.04.
+- Reference fallback, support repair and covariance regularization: zero.
+- Path support rejections: zero.
 
-The tests assess numerical targets, propagation and software contracts.
-They do not establish novelty, adequate application fit, or journal acceptance.
+This short run is **not converged sufficiently for reporting**. For example,
+initial-slope R-hat was about 1.218 (bulk ESS 22); level-SD R-hat 1.033 (ESS 76);
+slope-SD R-hat 1.049 (ESS 100). A larger production budget and scientific-target
+checks remain necessary. Do not compare these posterior summaries directly
+with the old fit as a sampler-only experiment: the level prior also changed.
+Settings, per-chain computational metrics and diagnostics are retained in
+`TXn-short-run.json` and `TXn-short-run-diagnostics.csv`.
+
+## Limits
+
+No four-chain 2000+2000 full-record fit or full joint production fit was completed
+as part of this release. No new claim of prior robustness, acceleration,
+forecast calibration, coverage or publishability follows from passing tests.
+The original reviewer experiments and prior/scale comparisons remain research
+runs to execute. A constant-scale model may still fail calendar-specific fit
+checks after the sampling issue is corrected.
+
+The reference optimizer can fail or need regularization on other data. Those
+cases retain an exact-target corrected update but may mix poorly; inspect the
+new saved metrics. The Gaussian copula does not fix residual serial dependence,
+miscalibrated margins or ordering violations. See `docs/REVIEWER_MATRIX.md`.

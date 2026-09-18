@@ -51,14 +51,14 @@ def test_exact_gev_coefficient_slice_matches_quadrature():
 def test_prior_calibration_and_no_spike(family):
     prior=bx.fs_priors('gaussian',innovation=family)
     draws=bx.draw_structural_prior(prior,60000,seed=55)
-    for key,median in [('level',.02),('slope',.00005),('seasonal',.02)]:
+    for key,median in [('level',.01),('slope',.00005),('seasonal',.02)]:
         assert np.median(draws['sd.'+key])==pytest.approx(median,rel=.035)
         assert np.all(draws['sd.'+key]>0)
 
 
 def test_lasso_zero_coefficient_has_non_degenerate_gamma_conditional():
     model=bx.Model(bx.Gaussian(),[bx.LocalLinearTrend(trend_mode='off')])
-    layout=fs.infer_ncp_layout(model); prior=bx.fs_priors('gaussian',period=None)
+    layout=fs.infer_ncp_layout(model); prior=bx.fs_priors('gaussian',period=None,innovation='lasso')
     rng=np.random.default_rng(42); values=[]
     for _ in range(6000):
         tau,lam=fs.update_lasso_scales({'s_level':0.},{'level':1.},1.,prior,layout,variance_scale=1.,rng=rng)

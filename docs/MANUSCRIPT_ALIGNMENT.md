@@ -1,4 +1,4 @@
-# SERRA alignment in BUCEX 1.7.0
+# SERRA alignment in BUCEX 1.7.1
 
 The primary runs use the user's requested complete record through **August
 2026**. Update manuscript date labels accordingly: reference January
@@ -13,13 +13,13 @@ visible; no automatic homogenization claim is made.
 | Structural location | Per-channel level, slope, dummy seasonal, period 12 |
 | Primary observation scale/shape | Unknown constant sigma/xi; no monthly scale effects by default |
 | Continuous shrinkage | Median-matched lasso, normal, triple_gamma |
-| Main priors | Lasso reference medians (.02,.00005,.02); initial level N(0,20²), slope N(0,.0025²), seasonal coefficients N(0,2.25²); sigma² IG(2,2); xi N(0,.3²) truncated to [-.5,.5] |
+| Main priors | Normal reference medians (.01,.00005,.02); initial level N(0,20²), slope N(0,.0025²), seasonal coefficients N(0,2.25²); sigma² IG(2,2); xi N(0,.3²) truncated to [-.5,.5] |
 | Joint dependence | Constant Gaussian residual copula, LKJ(1); every conditional update has feedback |
 | Computation | FS NCP; Gaussian FFBS; GEV Laplace–MH; exact-likelihood coefficient updates; ASIS off |
 | Main estimands | Period-average level/location changes, average slopes, month-specific location changes; paired cross-series changes |
 | Main risks | Original-tail monthly and annual events, forecast uncertainty and compound heat |
-| Core prior sensitivity | Reference, all process medians ×.5, ×2, matched normal, matched TG; independent and joint drivers |
-| Targeted sensitivity | Initial coefficients, IG observation prior, shape family/SD/support, LKJ(2/4) |
+| Core prior sensitivity | Reference, all process medians ×.5, ×2, matched lasso, matched TG; independent and joint drivers |
+| Targeted sensitivity | Level-only (.005/.01/.02), initial coefficients, IG observation prior, shape family/SD/support, LKJ(2/4) |
 | Supplementary structure | Fixed/evolving location seasonality × constant/monthly observation scale |
 | Model comparison | Small matched rolling-origin comparisons with proper scores and paired uncertainty |
 | Reviewer validation | Shape grid, zero/weak dynamics, endpoint stress, approximate/exact benchmark, joint recovery, annual aggregation |

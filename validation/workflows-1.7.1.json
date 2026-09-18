@@ -1,0 +1,77 @@
+{
+  "configuration_files_loaded": 43,
+  "workflow_checks": [
+    {
+      "workflow": "copula",
+      "status": "passed",
+      "months": 36,
+      "draws_per_chain": 4,
+      "chains": 1,
+      "details": {
+        "engine": {
+          "coefficient_reference_converged": 1.0,
+          "coefficient_reference_fallback": 0.0,
+          "coefficient_reference_iterations": 12.25,
+          "coefficient_reference_regularized": 0.0,
+          "coefficient_reference_support_repaired": 0.0625,
+          "coefficient_slice_evaluations": 2.5833333333333335,
+          "conditional_state_mh_acceptance": 0.9375,
+          "convergence_rate": 1.0,
+          "initial_support_repair_rate": 0.0,
+          "mean_log_acceptance_ratio": null,
+          "mean_proposal_support_rejections": null,
+          "mean_support_rejections": 0.0,
+          "median_iterations": 2.0,
+          "median_relative_change": null,
+          "state_acceptance": 0.9375
+        },
+        "png_count": 0,
+        "end": "2026-08-01T00:00:00.000000000",
+        "archive_roundtrip": true
+      }
+    },
+    {
+      "workflow": "sensitivity",
+      "status": "passed",
+      "months": 36,
+      "draws_per_chain": 4,
+      "chains": 1,
+      "details": {
+        "variants": [
+          "normal_reference",
+          "level_half",
+          "level_double"
+        ]
+      }
+    },
+    {
+      "workflow": "univariate",
+      "status": "passed",
+      "months": 36,
+      "draws_per_chain": 4,
+      "chains": 1,
+      "details": {
+        "engine": {
+          "coefficient_reference_converged": 1.0,
+          "coefficient_reference_fallback": 0.0,
+          "coefficient_reference_iterations": 10.5,
+          "coefficient_reference_regularized": 0.0,
+          "coefficient_reference_support_repaired": 0.0,
+          "coefficient_slice_evaluations": 4.25,
+          "conditional_state_mh_acceptance": 1.0,
+          "convergence_rate": 1.0,
+          "initial_support_repair_rate": 0.0,
+          "mean_log_acceptance_ratio": null,
+          "mean_proposal_support_rejections": null,
+          "mean_support_rejections": 0.0,
+          "median_iterations": 2.0,
+          "median_relative_change": null,
+          "state_acceptance": 1.0
+        },
+        "png_count": 24,
+        "end": "2026-08-01T00:00:00.000000000",
+        "archive_roundtrip": true
+      }
+    }
+  ]
+}
