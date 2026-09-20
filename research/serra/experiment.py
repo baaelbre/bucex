@@ -50,6 +50,12 @@ def fit_case(data, name, config, variant, *, engine='laplace_mh'):
 
 
 def save_case(fit, prior, directory, config, *, threshold, event_index=-1):
+    with bx.publication_style(style=config.get('figure_style','manuscript'),
+                              dpi=config.get('figure_dpi',180)):
+        return _save_case(fit, prior, directory, config, threshold=threshold, event_index=event_index)
+
+
+def _save_case(fit, prior, directory, config, *, threshold, event_index=-1):
     directory.mkdir(parents=True, exist_ok=True)
     if config.get("save_fits", True):
         fit.save(directory / "fit.bucex")
@@ -59,7 +65,7 @@ def save_case(fit, prior, directory, config, *, threshold, event_index=-1):
     diagnostic = fit.diagnostics()
     bx.save_config(dict(bucex_version=bx.__version__, model=fit.model.to_dict(),
         inference=fit.plan.to_dict(), warnings=diagnostic["warnings"]), directory / "run.json")
-    level = config.get("credible_interval", .90)
+    level = config.get("credible_interval", .95)
     diagnostic["parameters"].to_csv(directory / "mcmc.csv")
     (directory / "engine.json").write_text(json.dumps(
         {key: float(value) if np.isfinite(value) else None for key, value in diagnostic["engine"].items()}, indent=2))
@@ -74,9 +80,10 @@ def save_case(fit, prior, directory, config, *, threshold, event_index=-1):
     pd.concat([prior_targets, scientific.assign(distribution="posterior")]).to_csv(
         directory / "prior_posterior_targets.csv")
     if config.get("figures", True):
-        save_band(fit, fit.component_draws("level"), directory / "level", level=level)
+        options = dict(image_format=config.get('figure_format','png'), dpi=config.get('figure_dpi',180))
+        save_band(fit, fit.component_draws("level"), directory / "level", level=level, **options)
         save_band(fit, fit.exceedance_probability_draws(threshold, return_labels=False),
-                  directory / "risk", ylabel=fit.event_label(threshold), level=level)
+                  directory / "risk", ylabel=fit.event_label(threshold), level=level, **options)
         import matplotlib.pyplot as plt
         figure, axes = plt.subplots(1, 3, figsize=(10, 3))
         for axis, component in zip(axes, ("level", "slope", "seasonal")):
@@ -86,5 +93,7 @@ def save_case(fit, prior, directory, config, *, threshold, event_index=-1):
             axis.tick_params(labelsize=11)
             axis.xaxis.label.set_size(12)
             axis.set(yticks=[0, 1], yticklabels=["prior", "posterior"], xlabel=f"{component} innovation SD")
-        figure.tight_layout(); figure.savefig(directory / "prior_posterior.pdf"); plt.close(figure)
+        figure.tight_layout()
+        bx.save_figure(figure,directory/'prior_posterior',formats=(options['image_format'],),
+                      dpi=options['dpi'],close=True)
     return scientific

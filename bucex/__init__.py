@@ -21,6 +21,7 @@ from . import observation as _observation
 from . import plotting as _plotting
 from . import priors as _priors
 from . import simulate as _simulate
+from . import reporting as _reporting
 from .api import *
 from .components import *
 from .core import *
@@ -35,6 +36,7 @@ from .observation import *
 from .plotting import *
 from .priors import *
 from .simulate import *
+from .reporting import *
 
 
 __all__ = sorted(
@@ -60,5 +62,6 @@ __all__ = sorted(
         *(_plotting.__all__),
         *(_priors.__all__),
         *(_simulate.__all__),
+        *(_reporting.__all__),
     }
 )

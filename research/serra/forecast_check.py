@@ -16,7 +16,13 @@ def main():
     directory = new_run(config["output"], "forecast_uncertainty")
     bx.save_config(config, directory / "config.json")
     if args.fit:
-        analyses = [(config["data"]["series"][0], bx.FitResult.load(args.fit), None)]
+        fit = bx.load_fit(args.fit)
+        if fit.is_multiseries_model:
+            parser.error('--fit currently requires a univariate archive; use report for joint forecasts.')
+        name = fit.series_name or config['data']['series'][0]
+        if name not in config['risks']:
+            parser.error('No risk threshold is configured for the saved fit series.')
+        analyses = [(name, fit, None)]
     else:
         data = bx.load_uccle_multiseries(**config["data"])
         analyses = ((name, *fit_case(data, name, config, {})) for name in data)
@@ -25,25 +31,28 @@ def main():
         target.mkdir()
         if prior is not None:
             save_case(fit, prior, target, config, threshold=config["risks"][name])
-        forecast = fit.forecast(config["forecast_horizon"], seed=config["seed"])
-        uncertainty = bx.forecast_uncertainty(forecast)
+        level = config.get('credible_interval', .95)
+        forecast = fit.forecast(config["forecast_horizon"], draws=config.get('forecast_draws'), seed=config["seed"])
+        uncertainty = bx.forecast_uncertainty(forecast, levels=tuple(sorted({.90, .95, .99, level})))
         uncertainty.to_csv(target / "forecast_uncertainty.csv", index=False)
         annual = forecast.aggregate()  # day-weighted means; maxima/minima of extreme blocks
-        annual.summary().to_csv(target / "annual_forecast.csv", index=False)
+        annual.summary(level=level).to_csv(target / "annual_forecast.csv", index=False)
         if fit.family == "gev":
             bx.annual_aggregation_check(forecast, config["risks"][name]).to_csv(target / "annual_aggregation.csv", index=False)
         else:
             # This threshold concerns the annual mean, not at least one hot month.
-            annual.risk_summary(config["risks"][name]).to_csv(target / "annual_mean_risk.csv", index=False)
+            annual.risk_summary(config["risks"][name], level=level).to_csv(target / "annual_mean_risk.csv", index=False)
         if config.get("figures", True):
             import matplotlib.pyplot as plt
-            figure, axis = plt.subplots(figsize=(8, 3))
-            for component in ("level", "location", "observation"):
-                rows = uncertainty[(uncertainty.target == component) & (uncertainty.nominal == .90)]
-                axis.plot(rows.horizon, rows.interval_width, label=component)
-            axis.set(xlabel="forecast horizon / months", ylabel="90% interval width / °C")
-            axis.tick_params(labelsize=11); axis.xaxis.label.set_size(12); axis.yaxis.label.set_size(12)
-            axis.legend(); figure.tight_layout(); figure.savefig(target / "forecast_widths.png", dpi=150); plt.close(figure)
+            with bx.publication_style(style=config.get('figure_style','manuscript')):
+                figure, axis = plt.subplots(figsize=(8, 3))
+                for component in ("level", "location", "observation"):
+                    rows = uncertainty[(uncertainty.target == component) & (uncertainty.nominal == level)]
+                    axis.plot(rows.horizon, rows.interval_width, label=component)
+                axis.set(xlabel="Forecast horizon / months", ylabel=f"{level:.0%} interval width / °C")
+                axis.legend(); figure.tight_layout()
+                bx.save_figure(figure,target/'forecast_widths',formats=(config.get('figure_format','png'),),
+                               dpi=config.get('figure_dpi',180),close=True)
     print(directory)
 
 

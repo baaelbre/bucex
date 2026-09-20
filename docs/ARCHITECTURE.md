@@ -15,6 +15,7 @@ Research scripts select assumptions and call the public API.
 | `inference/fit/` | Existing scalar, hierarchical and shared-state backends |
 | `core/`, `api/` | Stable fit, component, risk, predictive and persistence interfaces |
 | `diagnostics/`, `plotting/` | Mixing, calibration, residual dependence, ordering and figures |
+| `reporting/` | Compact report readers, configured manuscript panels and source manifests |
 | `io/` | Checksummed schema 2.11 archives and historical readers |
 | `datasets/` | Daily validation, monthly aggregation and loading |
 | `research/serra/` | Configured scientific workflows built on the package |
@@ -41,3 +42,5 @@ units; `inference/fit/evolution.py` updates a Gaussian structural evolution
 against a supplied likelihood callback. `diagnostics/periods.py` provides
 paired climate-period estimands. These general computations stay outside
 `research/serra`, which declares the fixed-scale paper protocol.
+
+In 1.7.2, `plotting/style.py` owns the scoped publication style and `reporting/` assembles configured panels without fitting. `diagnostics/calendar.py` owns monthly PIT and held-out coverage summaries. The study figure script selects reports and reads JSON recipes.

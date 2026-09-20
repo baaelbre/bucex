@@ -1,0 +1,480 @@
+{
+  "mode": "independent",
+  "config": {
+    "_comment": "SERRA revision protocol. Start with matched 2000+2000 budgets; increase after diagnostics. Normal priors, no SSVS/ASIS, through August 2026.",
+    "analysis": "independent",
+    "data": {
+      "series": [
+        "TXm",
+        "TNm",
+        "TXx",
+        "TXn",
+        "TNx",
+        "TNn"
+      ],
+      "start": "2023-09-01",
+      "end": "2026-08-01"
+    },
+    "model": {
+      "period": 12,
+      "level": "dynamic",
+      "trend": "dynamic",
+      "seasonal": "dynamic",
+      "scale_mode": "constant",
+      "seasonal_scale": true,
+      "scale_prior_sd": 0.3,
+      "scale_slope_sd": 0.1,
+      "scale_innovation_sd": 0.01,
+      "scale_time_unit": 120
+    },
+    "priors": {
+      "innovation": "normal",
+      "innovation_median": {
+        "level": 0.01,
+        "trend": 5e-05,
+        "season": 0.02
+      },
+      "initial_level_mean": 0.0,
+      "baseline_sd": 20.0,
+      "initial_slope_sd": 0.0025,
+      "seasonal_initial_sd": 2.25,
+      "observation_variance": [
+        2.0,
+        2.0
+      ],
+      "xi_prior": "normal",
+      "xi_sd": 0.3,
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ],
+      "tg_spike_shape": 0.5,
+      "tg_tail_shape": 0.5
+    },
+    "mcmc": {
+      "draws": 4,
+      "warmup": 4,
+      "chains": 1,
+      "seed": 56100,
+      "progress": false,
+      "progress_every": 50
+    },
+    "inference": {
+      "asis": false,
+      "laplace": {
+        "max_iterations": 30,
+        "tolerance": 1e-05,
+        "mh_steps": 1
+      }
+    },
+    "seed": 56101,
+    "output": "/workspace/scratch/3d36c6069a17/work/smoke172",
+    "forecast_horizon": 24,
+    "forecast_draws": 8,
+    "credible_interval": 0.95,
+    "risks": {
+      "TXm": 25,
+      "TNm": 18,
+      "TXx": 35,
+      "TXn": 0,
+      "TNx": 25,
+      "TNn": -10
+    },
+    "copula": {
+      "structure": "constant",
+      "eta": 1.0
+    },
+    "validation": {
+      "initial": 24,
+      "horizon": 12,
+      "step": 12,
+      "save_fits": false,
+      "draws": 8
+    },
+    "figures": false,
+    "predictive_check_draws": 4,
+    "prior_draws": 100,
+    "prior_predictive_draws": 8,
+    "save_fits": true,
+    "continue_on_error": false,
+    "figure_format": "png",
+    "figure_dpi": 180,
+    "forecast_months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "contrasts": null,
+    "diagnostic_thresholds": {
+      "max_rhat": 1.01,
+      "min_ess": 400,
+      "min_chains": 4
+    },
+    "figure_style": "manuscript",
+    "figure_colors": {
+      "TXm": "#24658a",
+      "TXx": "#24658a",
+      "TXn": "#24658a",
+      "TNm": "#a44839",
+      "TNx": "#a44839",
+      "TNn": "#a44839"
+    },
+    "trace_exports": true
+  },
+  "preflight": {
+    "version": "1.7.2",
+    "analysis": "independent",
+    "start": "2023-09-01",
+    "end": "2026-08-01",
+    "n_months": 36,
+    "channels": [
+      {
+        "name": "TXm",
+        "family": "gaussian",
+        "tail": null,
+        "model": {
+          "name": "TXm",
+          "observation": {
+            "family": "gaussian",
+            "scale": {
+              "kind": "log_scale",
+              "mode": "constant",
+              "seasonal": {
+                "period": 12,
+                "prior_sd": 0.3
+              },
+              "slope_sd": 0.1,
+              "innovation_sd": 0.01,
+              "time_unit": 120
+            }
+          },
+          "components": [
+            {
+              "type": "local_linear_trend",
+              "level_mode": "dynamic",
+              "trend_mode": "dynamic",
+              "level_name": "level",
+              "slope_name": "slope",
+              "initial_level": null,
+              "initial_slope": 0.0,
+              "initial_level_sd": null,
+              "initial_slope_sd": null
+            },
+            {
+              "type": "dummy_seasonal",
+              "period": 12,
+              "mode": "dynamic",
+              "name": "seasonal",
+              "initial_mean": null,
+              "initial_sd": null
+            }
+          ],
+          "tail": null,
+          "eta_name": "mu",
+          "description": null
+        }
+      },
+      {
+        "name": "TNm",
+        "family": "gaussian",
+        "tail": null,
+        "model": {
+          "name": "TNm",
+          "observation": {
+            "family": "gaussian",
+            "scale": {
+              "kind": "log_scale",
+              "mode": "constant",
+              "seasonal": {
+                "period": 12,
+                "prior_sd": 0.3
+              },
+              "slope_sd": 0.1,
+              "innovation_sd": 0.01,
+              "time_unit": 120
+            }
+          },
+          "components": [
+            {
+              "type": "local_linear_trend",
+              "level_mode": "dynamic",
+              "trend_mode": "dynamic",
+              "level_name": "level",
+              "slope_name": "slope",
+              "initial_level": null,
+              "initial_slope": 0.0,
+              "initial_level_sd": null,
+              "initial_slope_sd": null
+            },
+            {
+              "type": "dummy_seasonal",
+              "period": 12,
+              "mode": "dynamic",
+              "name": "seasonal",
+              "initial_mean": null,
+              "initial_sd": null
+            }
+          ],
+          "tail": null,
+          "eta_name": "mu",
+          "description": null
+        }
+      },
+      {
+        "name": "TXx",
+        "family": "gev",
+        "tail": "upper",
+        "model": {
+          "name": "TXx",
+          "observation": {
+            "family": "gev",
+            "xi_bounds": [
+              -0.5,
+              0.5
+            ],
+            "phi": "stationary",
+            "scale": {
+              "kind": "log_scale",
+              "mode": "constant",
+              "seasonal": {
+                "period": 12,
+                "prior_sd": 0.3
+              },
+              "slope_sd": 0.1,
+              "innovation_sd": 0.01,
+              "time_unit": 120
+            }
+          },
+          "components": [
+            {
+              "type": "local_linear_trend",
+              "level_mode": "dynamic",
+              "trend_mode": "dynamic",
+              "level_name": "level",
+              "slope_name": "slope",
+              "initial_level": null,
+              "initial_slope": 0.0,
+              "initial_level_sd": null,
+              "initial_slope_sd": null
+            },
+            {
+              "type": "dummy_seasonal",
+              "period": 12,
+              "mode": "dynamic",
+              "name": "seasonal",
+              "initial_mean": null,
+              "initial_sd": null
+            }
+          ],
+          "tail": "upper",
+          "eta_name": "mu",
+          "description": null
+        }
+      },
+      {
+        "name": "TXn",
+        "family": "gev",
+        "tail": "lower",
+        "model": {
+          "name": "TXn",
+          "observation": {
+            "family": "gev",
+            "xi_bounds": [
+              -0.5,
+              0.5
+            ],
+            "phi": "stationary",
+            "scale": {
+              "kind": "log_scale",
+              "mode": "constant",
+              "seasonal": {
+                "period": 12,
+                "prior_sd": 0.3
+              },
+              "slope_sd": 0.1,
+              "innovation_sd": 0.01,
+              "time_unit": 120
+            }
+          },
+          "components": [
+            {
+              "type": "local_linear_trend",
+              "level_mode": "dynamic",
+              "trend_mode": "dynamic",
+              "level_name": "level",
+              "slope_name": "slope",
+              "initial_level": null,
+              "initial_slope": 0.0,
+              "initial_level_sd": null,
+              "initial_slope_sd": null
+            },
+            {
+              "type": "dummy_seasonal",
+              "period": 12,
+              "mode": "dynamic",
+              "name": "seasonal",
+              "initial_mean": null,
+              "initial_sd": null
+            }
+          ],
+          "tail": "lower",
+          "eta_name": "mu",
+          "description": null
+        }
+      },
+      {
+        "name": "TNx",
+        "family": "gev",
+        "tail": "upper",
+        "model": {
+          "name": "TNx",
+          "observation": {
+            "family": "gev",
+            "xi_bounds": [
+              -0.5,
+              0.5
+            ],
+            "phi": "stationary",
+            "scale": {
+              "kind": "log_scale",
+              "mode": "constant",
+              "seasonal": {
+                "period": 12,
+                "prior_sd": 0.3
+              },
+              "slope_sd": 0.1,
+              "innovation_sd": 0.01,
+              "time_unit": 120
+            }
+          },
+          "components": [
+            {
+              "type": "local_linear_trend",
+              "level_mode": "dynamic",
+              "trend_mode": "dynamic",
+              "level_name": "level",
+              "slope_name": "slope",
+              "initial_level": null,
+              "initial_slope": 0.0,
+              "initial_level_sd": null,
+              "initial_slope_sd": null
+            },
+            {
+              "type": "dummy_seasonal",
+              "period": 12,
+              "mode": "dynamic",
+              "name": "seasonal",
+              "initial_mean": null,
+              "initial_sd": null
+            }
+          ],
+          "tail": "upper",
+          "eta_name": "mu",
+          "description": null
+        }
+      },
+      {
+        "name": "TNn",
+        "family": "gev",
+        "tail": "lower",
+        "model": {
+          "name": "TNn",
+          "observation": {
+            "family": "gev",
+            "xi_bounds": [
+              -0.5,
+              0.5
+            ],
+            "phi": "stationary",
+            "scale": {
+              "kind": "log_scale",
+              "mode": "constant",
+              "seasonal": {
+                "period": 12,
+                "prior_sd": 0.3
+              },
+              "slope_sd": 0.1,
+              "innovation_sd": 0.01,
+              "time_unit": 120
+            }
+          },
+          "components": [
+            {
+              "type": "local_linear_trend",
+              "level_mode": "dynamic",
+              "trend_mode": "dynamic",
+              "level_name": "level",
+              "slope_name": "slope",
+              "initial_level": null,
+              "initial_slope": 0.0,
+              "initial_level_sd": null,
+              "initial_slope_sd": null
+            },
+            {
+              "type": "dummy_seasonal",
+              "period": 12,
+              "mode": "dynamic",
+              "name": "seasonal",
+              "initial_mean": null,
+              "initial_sd": null
+            }
+          ],
+          "tail": "lower",
+          "eta_name": "mu",
+          "description": null
+        }
+      }
+    ],
+    "inference": "laplace_mh",
+    "asis": false,
+    "priors": {
+      "innovation": "normal",
+      "innovation_median": {
+        "level": 0.01,
+        "trend": 5e-05,
+        "season": 0.02
+      },
+      "initial_level_mean": 0.0,
+      "baseline_sd": 20.0,
+      "initial_slope_sd": 0.0025,
+      "seasonal_initial_sd": 2.25,
+      "observation_variance": [
+        2.0,
+        2.0
+      ],
+      "xi_prior": "normal",
+      "xi_sd": 0.3,
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ],
+      "tg_spike_shape": 0.5,
+      "tg_tail_shape": 0.5
+    },
+    "copula": "independence",
+    "mcmc": {
+      "draws": 4,
+      "warmup": 4,
+      "chains": 1,
+      "seed": 56100,
+      "progress": false,
+      "progress_every": 50
+    },
+    "contrasts": null,
+    "centered_state_storage_GB": 9.2352e-05,
+    "peak_single_fit_state_storage_GB": 1.5392e-05,
+    "note": "State arrays only; fitting/reporting need additional RAM. This check performs no inference."
+  },
+  "result": "/workspace/scratch/3d36c6069a17/work/smoke172/uccle_independent_20260920T145100_000849Z",
+  "status": "completed",
+  "purpose": "Execution only; four retained draws do not assess convergence."
+}

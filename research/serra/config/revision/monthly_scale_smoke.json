@@ -1,0 +1,27 @@
+{
+  "extends": "monthly_scale.json",
+  "data": {
+    "start": "2023-09-01"
+  },
+  "contrasts": null,
+  "mcmc": {
+    "chains": 1,
+    "warmup": 4,
+    "draws": 4,
+    "progress": false
+  },
+  "figures": false,
+  "save_fits": false,
+  "forecast_horizon": 12,
+  "forecast_draws": 8,
+  "predictive_check_draws": 4,
+  "prior_draws": 100,
+  "prior_predictive_draws": 8,
+  "validation": {
+    "initial": 24,
+    "horizon": 12,
+    "step": 12,
+    "draws": 8
+  },
+  "output": "results/serra_revision_smoke"
+}

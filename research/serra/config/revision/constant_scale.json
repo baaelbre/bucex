@@ -1,0 +1,4 @@
+{
+  "extends": "protocol.json",
+  "analysis": "independent"
+}

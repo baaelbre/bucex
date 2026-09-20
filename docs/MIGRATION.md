@@ -1,3 +1,20 @@
+# Migrating from 1.7.1 to 1.7.2
+
+No inference or archive-schema migration is required. Existing 1.7.1 fit files
+remain readable. Re-report saved fits to obtain the manuscript style, monthly
+PIT diagnostics and small compressed trace tables. Initial slopes now appear
+in trace plots, and seasonal scale coefficients are included in convergence
+screening. Neither change alters the posterior draws.
+
+Research configurations are already included in `config/revision/`. Start with
+`START_HERE.md`. The default level-innovation SD prior median remains .01, with
+normal continuous shrinkage and ASIS off. Constant scale remains available.
+
+The main reporter now honours `save_fits: false`. Endpoint and forecast-width
+intervals follow the declared `credible_interval`; old exports keep their old
+bounds. Use `report --level 0.95` to recompute report intervals from saved draws.
+The figure assembler rejects conflicting interval levels and duplicate fits.
+
 # Migrating from 1.7.0 to 1.7.1
 
 No model, fit, forecast or saved-file API changes are required. The corrected

@@ -1,5 +1,21 @@
 # 1.7.1 — 2026-09-17
 
+## 1.7.2 — 2026-09-20
+
+- Add a scoped manuscript plotting style and multi-format figure saving.
+- Add `ReportCollection` and recipe-based publication figures from compact CSV
+  reports; reject ambiguous fits, mislabelled intervals and risk thresholds.
+- Export unthinned chain tables, including initial level/slope, physical process
+  SDs, observation scale/shape and scientific-target traces.
+- Add calendar-month PIT/normal-score diagnostics and held-out month-specific
+  coverage tables, preserving counts and PIT boundary observations.
+- Make endpoint intervals and forecast-width plots follow `credible_interval`.
+- Honor `save_fits: false` in ordinary research reports; include scale parameters
+  in convergence screening; preserve a saved fit's channel name in forecast checks.
+- Add matched revision configurations and the manuscript figure driver. Copula
+  CLI accepts `--scale`; model comparisons accept `--series`.
+- Keep the 1.7.1 inference kernels, archive schema and normal-prior defaults.
+
 - Correct inefficient GEV continuous-FS coefficient preconditioning: optimize a
   deterministic conditional-mode Gaussian reference, then retain the exact
   likelihood/reference elliptical-slice correction. The reference never starts

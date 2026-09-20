@@ -95,7 +95,7 @@
   "save_fits": true,
   "continue_on_error": false,
   "figure_format": "png",
-  "figure_dpi": 150,
+  "figure_dpi": 180,
   "forecast_months": [
     1,
     2,
@@ -169,5 +169,15 @@
     "max_rhat": 1.01,
     "min_ess": 400,
     "min_chains": 4
-  }
+  },
+  "figure_style": "manuscript",
+  "figure_colors": {
+    "TXm": "#24658a",
+    "TXx": "#24658a",
+    "TXn": "#24658a",
+    "TNm": "#a44839",
+    "TNx": "#a44839",
+    "TNn": "#a44839"
+  },
+  "trace_exports": true
 }

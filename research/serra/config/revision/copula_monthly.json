@@ -1,0 +1,4 @@
+{
+  "extends": "monthly_scale.json",
+  "analysis": "copula"
+}

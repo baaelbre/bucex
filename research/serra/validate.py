@@ -110,6 +110,11 @@ def validate(config):
         score_table.to_csv(target / "scores.csv", index=False)
         pd.concat(pits).to_csv(target / "held_out_pit.csv", index=False)
         coverage_table.to_csv(target / "coverage_by_case.csv", index=False)
+        bx.coverage_by_month(coverage_table).to_csv(target / 'coverage_by_month.csv',index=False)
+        monthly_pits = []
+        for name, group in pd.concat(pits).groupby('channel'):
+            monthly_pits.append(bx.pit_by_month(group.pit,group.time).assign(channel=name))
+        pd.concat(monthly_pits,ignore_index=True).to_csv(target/'held_out_pit_by_month.csv',index=False)
         score_table.groupby(["channel", "score", "setting"], dropna=False)["value"].agg(
             mean="mean", n="size").to_csv(target / "score_summary.csv")
         coverage_table.groupby(["channel", "kind", "nominal"])["covered"].agg(

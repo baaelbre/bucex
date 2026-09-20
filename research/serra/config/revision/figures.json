@@ -1,0 +1,152 @@
+{
+  "style": "manuscript",
+  "dpi": 180,
+  "formats": [
+    "png"
+  ],
+  "series_order": [
+    "TXm",
+    "TXx",
+    "TXn",
+    "TNm",
+    "TNx",
+    "TNn"
+  ],
+  "colors": {
+    "TXm": "#24658a",
+    "TXx": "#24658a",
+    "TXn": "#24658a",
+    "TNm": "#a44839",
+    "TNx": "#a44839",
+    "TNn": "#a44839"
+  },
+  "recipes": [
+    {
+      "name": "levels",
+      "kind": "bands",
+      "table": "level",
+      "ylabel": "Latent level / °C",
+      "caption": "Posterior level medians and pointwise intervals on the original temperature scale."
+    },
+    {
+      "name": "slopes",
+      "kind": "bands",
+      "table": "slope_C_per_decade",
+      "ylabel": "Slope / °C per decade",
+      "zero": true,
+      "caption": "Posterior local slopes, scaled by 120 monthly time steps. These are not direct acceleration estimates."
+    },
+    {
+      "name": "monthly_residual_spread",
+      "kind": "monthly_pit",
+      "caption": "Calendar-month SD of normal scores of smoothed PITs. Descriptive in-sample diagnostics; counts and boundary PITs are exported."
+    },
+    {
+      "name": "residual_dependence",
+      "kind": "dependence",
+      "series": [
+        "TXm",
+        "TNm",
+        "TXx",
+        "TXn",
+        "TNx",
+        "TNn"
+      ],
+      "pairs": [
+        [
+          "TXm",
+          "TNm"
+        ],
+        [
+          "TXx",
+          "TNx"
+        ],
+        [
+          "TXn",
+          "TNn"
+        ]
+      ],
+      "caption": "Exploratory normal-score correlations. These are not posterior estimates of a copula correlation matrix."
+    },
+    {
+      "name": "monthly_risks",
+      "kind": "risks",
+      "center": "median",
+      "events": [
+        {
+          "series": "TXm",
+          "month": 7,
+          "threshold": 25,
+          "direction": ">",
+          "color": "#a44839"
+        },
+        {
+          "series": "TXx",
+          "month": 7,
+          "threshold": 35,
+          "direction": ">",
+          "color": "#a44839"
+        },
+        {
+          "series": "TXn",
+          "month": 1,
+          "threshold": 0,
+          "direction": "<",
+          "color": "#24658a"
+        },
+        {
+          "series": "TNn",
+          "month": 1,
+          "threshold": -10,
+          "direction": "<",
+          "color": "#24658a"
+        }
+      ],
+      "caption": "Posterior median conditional threshold probabilities in the selected month, with pointwise intervals."
+    },
+    {
+      "name": "qq_scores",
+      "kind": "qq",
+      "caption": "Normal-score QQ plots from smoothed in-sample PITs. Finite plotting scores clip PITs at 1e-10 and 1-1e-10."
+    },
+    {
+      "name": "forecast_uncertainty",
+      "kind": "forecast",
+      "series": [
+        "TXm",
+        "TXx"
+      ],
+      "month": 7,
+      "caption": "July predictive observation and latent-location intervals, and their widths. Bands include future state uncertainty."
+    },
+    {
+      "name": "source_TXn_parameter_traces",
+      "kind": "traces",
+      "series": [
+        "TXn"
+      ],
+      "caption": "Retained-chain parameter traces and autocorrelations. New reports include initial slopes and physical innovation magnitudes. A placeholder indicates missing draw exports."
+    },
+    {
+      "name": "source_TNm_pit_qq_residuals",
+      "kind": "pit_diagnostics",
+      "series": [
+        "TNm"
+      ],
+      "caption": "Pooled TNm smoothed-PIT, QQ, residual-time and serial-ACF diagnostics."
+    },
+    {
+      "name": "monthly_scales",
+      "kind": "scales",
+      "caption": "Observation scales by calendar month. For evolving scales, each point describes the last observed occurrence of that month; inspect source dates."
+    },
+    {
+      "name": "annual_forecasts",
+      "kind": "bands",
+      "table": "forecast_year",
+      "x": "year",
+      "ylabel": "Annual summary / °C",
+      "caption": "Complete-year predictions: day-weighted means for Gaussian summaries, maxima or minima for extreme summaries."
+    }
+  ]
+}

@@ -8,12 +8,16 @@ import pandas as pd
 
 from .predictive import (plot_predictive_diagnostics, plot_chain_traces,
                         plot_forecast_months, plot_scale_calendar, plot_calendar_risk_curves)
+from .calendar import plot_pit_calendar, plot_monthly_score_sd
+from .traces import parameter_trace_draws, trace_frame
+from .style import publication_style
+from ..diagnostics.calendar import pit_by_month
 
 
 def save_prediction_report(fit, directory, *, channel=None, forecast=None, predictive=None,
                            threshold=None, level=.95, draws=400, seed=None,
                            months=tuple(range(1, 13)), image_format="png", dpi=150,
-                           figures=True, prefix=None):
+                           figures=True, prefix=None, style="manuscript", trace_exports=True, primary=None):
     """Save slope, scale, trace, PIT/Q-Q, calendar forecast and risk summaries.
 
     PNG is the default. Tables accompany figures. Annual/seasonal forecasts
@@ -21,6 +25,17 @@ def save_prediction_report(fit, directory, *, channel=None, forecast=None, predi
     integrate monthly observation noise, conditional on future state paths.
     This function never refits, changes the data window, or certifies convergence.
     """
+    with publication_style(style=style, dpi=dpi, primary=primary):
+        return _save_prediction_report(fit, directory, channel=channel, forecast=forecast,
+            predictive=predictive, threshold=threshold, level=level, draws=draws,
+            seed=seed, months=months, image_format=image_format, dpi=dpi,
+            figures=figures, prefix=prefix, trace_exports=trace_exports)
+
+
+def _save_prediction_report(fit, directory, *, channel=None, forecast=None, predictive=None,
+                            threshold=None, level=.95, draws=400, seed=None,
+                            months=tuple(range(1, 13)), image_format="png", dpi=180,
+                            figures=True, prefix=None, trace_exports=True):
     import matplotlib.pyplot as plt
     if image_format not in {"png", "pdf", "svg"}:
         raise ValueError("image_format must be png, pdf, or svg.")
@@ -64,18 +79,25 @@ def save_prediction_report(fit, directory, *, channel=None, forecast=None, predi
     level_draws = fit.component_draws("level", channel=channel, combine_chains=False)
     targets["level change / °C"] = level_draws[..., -1]-level_draws[..., 0]
     table(fit.contrast_diagnostics(targets, credible_interval=level).reset_index(), "target_mcmc")
+    trace_draws = parameter_trace_draws(fit, channel=channel)
+    if trace_exports:
+        for name, values in (("parameter", trace_draws), ("target", targets)):
+            if values:
+                file = path/f"{label}_{name}_traces.csv.gz"
+                trace_frame(values).to_csv(file, index=False, compression="gzip")
+                written.append(file.name)
     if figures:
         save(plot_chain_traces(targets)[0], "target_traces")
-        suffix = f".{channel}" if fit.is_multiseries_model else ""
-        names = [name for name, values in fit.parameter_draws.items()
-                 if np.asarray(values).ndim == 2 and
-                 (not suffix or name.endswith(suffix) or name.startswith(f"sd.channel.{channel}.")) and
-                 (name.startswith("sd.") or name in ["sigma"+suffix, "xi"+suffix,
-                     "scale_slope"+suffix, "scale_rw_sd"+suffix])]
-        if names:
-            save(plot_chain_traces({name:fit.parameter(name, combine_chains=False) for name in names})[0], "parameter_traces")
+        if trace_draws:
+            save(plot_chain_traces(trace_draws)[0], "parameter_traces")
         save(plot_predictive_diagnostics(predictive, observed, channel=channel, in_sample=True)[0], "pit_qq_residuals")
-    table(pd.DataFrame(dict(time=fit.time, pit=predictive.pit(observed, channel=channel))), "smoothed_pit")
+    pit = predictive.pit(observed, channel=channel)
+    table(pd.DataFrame(dict(time=fit.time, pit=pit)), "smoothed_pit")
+    monthly = pit_by_month(pit, fit.time)
+    table(monthly, "pit_by_month")
+    if figures:
+        save(plot_pit_calendar(pit, fit.time)[0], "pit_by_month")
+        save(plot_monthly_score_sd(monthly)[0], "normal_score_by_month")
     figure, _, scales = plot_scale_calendar(fit, channel=channel, level=level)
     table(scales, "scale_by_month")
     if figures:
@@ -87,6 +109,10 @@ def save_prediction_report(fit, directory, *, channel=None, forecast=None, predi
     scale_targets = {f"month {month:02d} scale / °C": sigma_chains[..., np.flatnonzero(dates.month == month)[-1]]
                      for month in range(1, 13) if np.any(dates.month == month)}
     table(fit.contrast_diagnostics(scale_targets, credible_interval=level).reset_index(), "scale_mcmc")
+    if trace_exports and scale_targets:
+        file = path/f"{label}_scale_traces.csv.gz"
+        trace_frame(scale_targets).to_csv(file, index=False, compression="gzip")
+        written.append(file.name)
     if figures:
         selected = {key:value for key,value in scale_targets.items() if int(key[6:8]) in (1,4,7,10)}
         if selected:
@@ -144,6 +170,7 @@ def save_prediction_report(fit, directory, *, channel=None, forecast=None, predi
     notes = dict(channel=channel or fit.series_name, fitted_start=str(fit.time[0]),
         fitted_end=str(fit.time[-1]), forecast_start=str(forecast.dates[0]), forecast_end=str(forecast.dates[-1]),
         posterior_chains=fit.n_chains, posterior_draws_per_chain=fit.draws_per_chain,
+        interval_level=level, threshold=threshold,
         figures=written, slope_unit="degrees C per decade (120 monthly slope units)",
         aggregation="Gaussian monthly means: day-weighted; upper/lower GEV blocks: max/min. Complete periods only; DJF labelled by ending year.",
         intervals=f"{level:.0%} pointwise; aggregate observation bands are predictive intervals.",

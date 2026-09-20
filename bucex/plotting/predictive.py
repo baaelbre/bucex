@@ -8,18 +8,33 @@ from scipy.special import ndtri
 
 
 def plot_predictive_diagnostics(prediction, observed, *, channel=None, in_sample=False,
-                                max_lag=24, bins=10):
+                                max_lag=24, bins=10, title=None):
     """PIT, normal-score Q-Q, residual time plot and ACF.
 
     In-sample PITs use smoothed states and are descriptive checks, not forecast
     calibration tests. No IID reference envelope or uniformity p-value is
     implied. The ACF is for normal scores of the mixture PIT, not a sampler ACF.
     """
-    import matplotlib.pyplot as plt
     pit = prediction.pit(observed, channel=channel)
-    if np.any(~np.isfinite(pit)):
-        raise ValueError("Predictive diagnostic PITs must be finite.")
-    z = ndtri(np.clip(pit, 1e-10, 1-1e-10))
+    return plot_pit_diagnostics(pit, prediction.dates, in_sample=in_sample,
+                                max_lag=max_lag, bins=bins, title=title)
+
+
+def plot_pit_diagnostics(pit, dates, *, in_sample=False, max_lag=24, bins=10, title=None):
+    """The same diagnostic panels from saved PIT values; no refit is needed.
+
+    ``in_sample`` distinguishes intended use, not a different mathematical test.
+    Titles are optional; distinguish smoothing from held-out prediction in the
+    caption. Boundary PITs are counted in histograms and clipped only for scores.
+    """
+    import matplotlib.pyplot as plt
+    from ..diagnostics.calendar import pit_normal_scores
+    pit = np.asarray(pit, dtype=float)
+    z = pit_normal_scores(pit)
+    if len(dates) != len(pit):
+        raise ValueError("dates must have one entry per PIT.")
+    if int(bins) != bins or bins < 2 or int(max_lag) != max_lag or max_lag < 1:
+        raise ValueError("bins >= 2 and max_lag >= 1 must be integers.")
     figure, axes = plt.subplots(2, 2, figsize=(10, 7))
     axis = axes[0, 0]
     axis.hist(pit, bins=np.linspace(0, 1, bins+1), color="C0", alpha=.7)
@@ -30,7 +45,7 @@ def plot_predictive_diagnostics(prediction, observed, *, channel=None, in_sample
     limits = [min(theoretical.min(), z.min()), max(theoretical.max(), z.max())]
     axes[0, 1].plot(limits, limits, color="black", lw=1)
     axes[0, 1].set(xlabel="standard normal quantile", ylabel="normal-score residual quantile")
-    axes[1, 0].plot(prediction.dates, z, lw=.6)
+    axes[1, 0].plot(dates, z, lw=.6)
     axes[1, 0].axhline(0, color="black", lw=.6)
     axes[1, 0].set(xlabel="time", ylabel="normal-score residual")
     centered = z-z.mean()
@@ -40,7 +55,8 @@ def plot_predictive_diagnostics(prediction, observed, *, channel=None, in_sample
     axes[1, 1].bar(lags, acf, color="C0", alpha=.7)
     axes[1, 1].axhline(0, color="black", lw=.6)
     axes[1, 1].set(xlabel="lag / monthly blocks", ylabel="residual autocorrelation")
-    figure.suptitle("In-sample smoothed predictive checks" if in_sample else "Held-out predictive checks", fontsize=12)
+    if title:
+        figure.suptitle(title, fontsize=12)
     figure.tight_layout()
     return figure, axes
 
@@ -52,6 +68,7 @@ def plot_chain_traces(draws, *, max_lag=50):
     coefficient sign flips alone are not evidence of effective magnitude mixing.
     """
     import matplotlib.pyplot as plt
+    from .style import PUBLICATION_COLORS
     if not draws:
         raise ValueError("Provide at least one chain array.")
     figure, axes = plt.subplots(len(draws), 2, squeeze=False, figsize=(10, 2.05*len(draws)),
@@ -61,13 +78,14 @@ def plot_chain_traces(draws, *, max_lag=50):
         if values.ndim != 2:
             raise ValueError("Each trace must have shape (chain, retained draw).")
         for chain, x in enumerate(values):
-            row[0].plot(x, lw=.7, label=f"chain {chain+1}")
+            color = PUBLICATION_COLORS[chain % len(PUBLICATION_COLORS)]
+            row[0].plot(x, lw=.65, alpha=.75, color=color, label=f"chain {chain+1}", rasterized=True)
             centered = x-x.mean()
             variance = centered @ centered
             lags = np.arange(min(max_lag, len(x)-1)+1)
             acf = [1 if lag == 0 else centered[:-lag] @ centered[lag:]/variance if variance > 0
                    else np.nan for lag in lags]
-            row[1].plot(lags, acf, lw=.9)
+            row[1].plot(lags, acf, lw=.9, color=color)
         row[0].set_ylabel(label)
         row[1].axhline(0, color="black", lw=.5)
         row[1].set(ylim=(-1, 1.05), ylabel="ACF")

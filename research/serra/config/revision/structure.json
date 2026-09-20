@@ -1,0 +1,22 @@
+{
+  "extends": "protocol.json",
+  "analysis": "independent",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "fixed_location_seasonality",
+      "seasonal": "static"
+    },
+    {
+      "name": "monthly_scale",
+      "seasonal_scale": true
+    },
+    {
+      "name": "fixed_location_seasonality_monthly_scale",
+      "seasonal": "static",
+      "seasonal_scale": true
+    }
+  ]
+}

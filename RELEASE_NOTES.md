@@ -1,33 +1,51 @@
-# BUCEX 1.7.1
+# BUCEX 1.7.2 - publication workflow
 
-This release fixes inefficient continuous-FS GEV coefficient preconditioning
-identified in TXn. A deterministic conditional-mode Gaussian reference replaces
-the response-centered reference; the exact likelihood/reference slice correction
-remains. The shared kernel covers independent and copula-conditioned GEV margins.
-Gaussian direct coefficient draws are unchanged. No ASIS is required by the fix.
+This release makes the manuscript figure style reproducible through the public
+package API and integrates the revised research configurations. It preserves
+the 1.7.1 inference kernels, archive schema and normal innovation priors.
 
-Normal innovations are now the `fs_priors()` and SERRA default. The level
-innovation **SD prior median is .01**, previously .02. The slope and seasonal
-medians remain .00005 and .02. Explicit priors and saved-fit priors are not
-rewritten. All primary records still reach August 2026.
+## New public APIs
 
-Reference construction lives in its own inference module with saved optimizer,
-fallback, support-repair and covariance-regularization metrics. Existing model,
-latent-parameter, fitting, diagnostics, forecast, risk and archive APIs remain
-available. No PGAS or conference directory is introduced.
+- `publication_style()` is a scoped Matplotlib context, with legible fonts,
+  blue/red/ochre colours, restrained bands and no import-time style changes.
+- `save_figure()` saves PNG, PDF or SVG consistently.
+- `ReportCollection` reads compact report exports and rejects ambiguous input.
+- `save_publication_figures()` assembles configured manuscript panels, records
+  input checksums and preserves the interval level actually exported.
+- `pit_by_month()` and `coverage_by_month()` preserve counts and distinguish
+  overlapping forecast cases from distinct dates.
+- `parameter_trace_draws()`, `trace_frame()` and `traces_from_frame()` retain
+  chain identity for portable trace/ACF figures.
 
-New configurations are `independent_level_002.json` for the previous normal
-level prior under the fixed sampler, and `sensitivity/level.json` plus
-`joint_level.json` for .005/.01/.02 medians with other priors fixed. The main
-sensitivity reference is now `normal_reference`; `lasso` is an alternative.
-Update job commands selecting the old `lasso_reference` name.
+## Reporting fixes
 
-Start with [START_HERE.md](START_HERE.md), then read
-[the revision guide](docs/REVISION_GUIDE.md),
-[migration](docs/MIGRATION.md),
-[validation](validation/RELEASE_VALIDATION.md) and
-[remaining reviewer studies](docs/REVIEWER_MATRIX.md).
+Initial slopes and levels now appear in parameter traces. Reports save small
+compressed draw tables, including physical process SDs, so trace figures no
+longer depend on access to the large latent-state archive. Monthly PIT plots
+and normal-score dispersion tables accompany pooled diagnostics. Scale
+parameters are included in convergence screening.
 
-The defect affects efficiency. Previous poorly mixed fits need refitting;
-regenerating reports cannot repair them. Tests and short execution checks do
-not certify convergence of production fits or publication readiness.
+Endpoint and forecast-width exports now follow `credible_interval`, normally
+95%. Old 1.7.1 endpoint tables and forecast-width figures remain at 90% and
+must not be relabelled. `save_fits: false` is now honoured by the main reporter.
+Forecast checks use the saved fit's series name, rather than blindly assigning
+the first configured series. Copula fitting accepts a marginal `--scale`
+override, and model comparisons accept `--series`.
+
+## Research scope
+
+The primary baseline keeps constant unknown scales and shapes. Repeating
+monthly scales are a targeted adequacy extension. Normal FS shrinkage remains
+the reference; six independent analyses and matched joint R=I/copula routes
+remain available. No new stochastic volatility, factor model, selection
+method or sampler was introduced for this patch release.
+
+The nine figure recipes from the rewritten manuscript are included, plus
+monthly scales and annual forecasts. Existing summary CSVs reproduce all
+manuscript panels except a trace panel when draws were omitted from the old
+ZIPs. Missing data are shown as placeholders; no traces are fabricated.
+
+See `START_HERE.md`, `docs/FIGURES.md` and `docs/PUBLICATION_RUNS.md`.
+Execution evidence is recorded in `validation/RELEASE_VALIDATION.md`. Scientific
+acceptance still requires satisfactory full runs, sensitivity and validation;
+this release does not claim those experiments have been completed.

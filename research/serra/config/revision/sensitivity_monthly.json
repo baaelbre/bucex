@@ -1,0 +1,68 @@
+{
+  "extends": "monthly_scale.json",
+  "_comment": "Run named subsets with --variants. LKJ variants are in the joint file only.",
+  "variants": [
+    {
+      "name": "normal_reference"
+    },
+    {
+      "name": "level_half",
+      "multipliers": {
+        "level": 0.5
+      }
+    },
+    {
+      "name": "level_double",
+      "multipliers": {
+        "level": 2.0
+      }
+    },
+    {
+      "name": "innovation_half",
+      "multipliers": {
+        "level": 0.5,
+        "trend": 0.5,
+        "season": 0.5
+      }
+    },
+    {
+      "name": "innovation_double",
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0,
+        "season": 2.0
+      }
+    },
+    {
+      "name": "initial_slope_half",
+      "initial_slope_multiplier": 0.5
+    },
+    {
+      "name": "initial_slope_double",
+      "initial_slope_multiplier": 2.0
+    },
+    {
+      "name": "xi_uniform",
+      "xi_prior": "uniform"
+    },
+    {
+      "name": "xi_sd_0.2",
+      "xi_sd": 0.2
+    },
+    {
+      "name": "xi_wider_support",
+      "xi_bounds": [
+        -0.75,
+        0.75
+      ]
+    },
+    {
+      "name": "monthly_scale_prior_half",
+      "scale_prior_sd": 0.15
+    },
+    {
+      "name": "monthly_scale_prior_double",
+      "scale_prior_sd": 0.6
+    }
+  ]
+}

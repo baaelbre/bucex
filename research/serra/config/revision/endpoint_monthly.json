@@ -1,0 +1,8 @@
+{
+  "extends": "../endpoint/paper.json",
+  "model": {
+    "seasonal_scale": true
+  },
+  "forecast_draws": 4000,
+  "output": "results/serra_revision"
+}

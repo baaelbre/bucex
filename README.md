@@ -1,4 +1,4 @@
-# BUCEX 1.7.1
+# BUCEX 1.7.2
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
 Declare the observation distribution, give its parameters an interpretable
@@ -50,6 +50,32 @@ Version 1.7.1 corrects inefficient GEV coefficient preconditioning with a
 deterministic conditional-mode reference and exact-likelihood slice correction.
 See [the sampler fix and research decisions](docs/REVISION_GUIDE.md).
 
+## Publication figures and reports in 1.7.2
+
+The inference kernels and prior defaults are unchanged from 1.7.1. This release
+adds a reproducible figure workflow, consistent interval reporting, calendar
+PIT/coverage diagnostics, and compact parameter-chain exports including initial
+slopes. Existing 1.7.1 fits can be re-reported without refitting.
+
+```python
+with bx.publication_style():
+    figure, axis = fit.plot("level", credible_interval=.95)
+    bx.save_figure(figure, "figures/TXx_level", formats=("png", "pdf"))
+
+# Figure recipes and the series palette belong to the study configuration.
+spec = bx.load_config("research/serra/config/revision/figures.json")
+reports = bx.ReportCollection.from_directories("results/my_independent_run",
+                                               series=spec["series_order"])
+bx.save_publication_figures(reports, "figures/manuscript",
+    recipes=spec["recipes"], colors=spec["colors"], formats=("png",))
+```
+
+The figure exporter uses existing numerical summaries, preserves their declared
+interval level, and records source checksums. Missing trace data produce a
+labelled placeholder; they are never reconstructed from a trace image. Use
+`strict=True` for a final export. See [figure recipes](docs/FIGURES.md) and the
+[publication run sequence](docs/PUBLICATION_RUNS.md).
+
 ## Give scale its own evolution
 
 Use the same component language for a log-scale predictor:
@@ -81,7 +107,7 @@ extension supports normal, lasso and triple-gamma innovation priors, exact
 likelihood updates, persistence, restart, simulation and forecasts.
 
 Read [parameter evolution](docs/PARAMETER_EVOLUTION.md) for units, examples,
-identification and supported combinations. Shape remains constant in 1.7.1;
+identification and supported combinations. Shape remains constant in 1.7.2;
 unsupported parameter/family combinations fail explicitly. Ancillary full
 structural models need their own mixing and scientific validation. They are
 **not part of the SERRA reference analysis**.

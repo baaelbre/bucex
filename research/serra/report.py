@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import bucex as bx
+from bucex.plotting.style import styled_report
 
 
 def new_run(root, name):
@@ -19,20 +20,19 @@ def new_run(root, name):
     return path
 
 
-def save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.90, image_format="png", dpi=150):
+def save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.95, image_format="png", dpi=180, color=None):
     """Export one scientific band with readable labels and no default title."""
-    with plt.rc_context({"font.size": 12, "axes.labelsize": 12, "xtick.labelsize": 11, "ytick.labelsize": 11}):
-        return _save_band(fit, values, path, dates=dates, ylabel=ylabel, level=level, image_format=image_format, dpi=dpi)
+    return _save_band(fit, values, path, dates=dates, ylabel=ylabel, level=level, image_format=image_format, dpi=dpi, color=color)
 
 
-def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.90, image_format="png", dpi=150):
+def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", level=0.95, image_format="png", dpi=180, color=None):
     """Export pointwise posterior summaries and a figure on the same scale."""
     dates = fit.time if dates is None else dates
     band = fit.posterior_summary(values, credible_interval=level)
     pd.DataFrame({"time": dates, **band}).to_csv(path.with_suffix(".csv"), index=False)
     figure, axis = plt.subplots(figsize=(8, 3))
-    axis.fill_between(dates, band["lower"], band["upper"], alpha=0.2)
-    axis.plot(dates, band["median"])
+    axis.fill_between(dates, band["lower"], band["upper"], alpha=0.2, color=color)
+    axis.plot(dates, band["median"], color=color)
     axis.set(xlabel="time", ylabel=ylabel)
     figure.tight_layout()
     figure.savefig(path.with_suffix("."+image_format), dpi=dpi)
@@ -41,7 +41,8 @@ def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", lev
 
 def convergence_parameters(table, n_chains):
     """Screen scientific parameters; fixed shrinkage hyperparameters remain in mcmc.csv."""
-    names = [name for name in table.index if str(name).startswith(('sd.', 'initial.', 'sigma', 'xi', 'copula.'))]
+    names = [name for name in table.index if str(name).startswith(
+        ('sd.', 'initial.', 'sigma', 'xi', 'copula.', 'scale.', 'scale_slope', 'scale_rw_sd', 'evolution.'))]
     return table.loc[names].assign(chains=n_chains)
 
 
@@ -77,14 +78,15 @@ def scientific_targets(fit, config=None):
     return targets
 
 
+@styled_report
 def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, save_fit=True):
     """Export auditable numerical results; figures are optional, never evidence of convergence."""
     from dataclasses import asdict
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     image_format = config.get('figure_format', 'png')
-    dpi = config.get('figure_dpi', 150)
-    if save_fit:
+    dpi = config.get('figure_dpi', 180)
+    if save_fit and config.get('save_fits', True):
         fit.save(directory/'fit.bucex')
     bx.save_config(config,directory/'config.json')
     (directory/'declared_priors.json').write_text(json.dumps(asdict(fit.priors),
@@ -96,6 +98,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     bx.save_config(dict(bucex_version=bx.__version__,model=fit.model.to_dict(),inference=fit.plan.to_dict(),
         fitted_start=str(fit.time[0]),fitted_end=str(fit.time[-1]),n_months=fit.n_time,
         warnings=diagnostic['warnings'],interval='pointwise posterior credible interval',
+        credible_interval=level,figure_style=config.get('figure_style','manuscript'),
         status='Research output; assess convergence, sensitivity and held-out forecasts before reporting.'),directory/'run.json')
     pd.DataFrame(diagnostic['pit']).to_csv(directory/'in_sample_pit.csv',index=False)
     targets = scientific_targets(fit, config)
@@ -122,7 +125,8 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         summary=fit.posterior_summary(values,credible_interval=level)
         pd.DataFrame(dict(time=dates,**summary)).to_csv(directory/(label+'.csv'),index=False)
         if config.get('figures',True):
-            save_band(fit,values,directory/label,dates=dates,ylabel=ylabel,level=level,image_format=image_format,dpi=dpi)
+            save_band(fit,values,directory/label,dates=dates,ylabel=ylabel,level=level,image_format=image_format,dpi=dpi,
+                      color=config.get('figure_colors',{}).get(label.split('_')[0]))
 
     forecast = fit.forecast(horizon,draws=config.get('forecast_draws'),seed=config['seed'])
     forecast.summary(level=level).to_csv(directory/'forecast.csv',index=False)
@@ -169,7 +173,9 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         bx.save_prediction_report(fit,directory,channel=name,forecast=forecast,predictive=predictive,
             threshold=threshold,level=level,draws=config.get('predictive_check_draws',200),seed=config['seed'],
             months=config.get('forecast_months',list(range(1,13))),image_format=image_format,dpi=dpi,
-            figures=config.get('figures',True),prefix=label)
+            figures=config.get('figures',True),prefix=label,
+            style=config.get('figure_style','manuscript'),
+            trace_exports=config.get('trace_exports',True),primary=config.get('figure_colors',{}).get(label))
 
     if fit.is_multiseries_model:
         bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
@@ -205,10 +211,18 @@ def main():
     parser.add_argument('--horizon',type=int)
     parser.add_argument('--months',type=int,nargs='+',default=list(range(1,13)))
     parser.add_argument('--format',choices=('png','pdf','svg'),default='png')
+    parser.add_argument('--style',choices=('manuscript','default'),default='manuscript')
+    parser.add_argument('--dpi',type=int,default=180)
+    parser.add_argument('--level',type=float,help='Recompute intervals at this level from saved draws.')
     args=parser.parse_args()
     fit=bx.load_fit(args.fit)
     config=bx.load_config(args.config or args.fit.parent/'config.json')
-    config.update(figures=True,figure_format=args.format,forecast_months=args.months)
+    config.update(figures=True,figure_format=args.format,forecast_months=args.months,
+                  figure_style=args.style,figure_dpi=args.dpi)
+    if args.level is not None:
+        if not 0 < args.level < 1:
+            parser.error('--level must lie in (0,1).')
+        config['credible_interval']=args.level
     if args.horizon is not None:
         config['forecast_horizon']=args.horizon
     # Explicitly distinguish fit provenance from the current report settings.

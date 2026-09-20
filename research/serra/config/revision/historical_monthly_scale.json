@@ -1,0 +1,12 @@
+{
+  "extends": "monthly_scale.json",
+  "data": {
+    "end": "2022-12-01"
+  },
+  "contrasts": {
+    "comparison": [
+      "1993-01",
+      "2022-12"
+    ]
+  }
+}

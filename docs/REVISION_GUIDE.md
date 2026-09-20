@@ -49,7 +49,7 @@ These are conditional-kernel measurements with paths and nuisance parameters
 fixed, not full-chain ESS or a production speed-up estimate. Constructing the
 reference costs time at every outer iteration. Full chains can still exhibit
 dependence between paths, coefficients, scale and shape. See
-`validation/RELEASE_VALIDATION.md` for executed checks and their limits.
+the archived 1.7.1 release validation for these historical measurements. The current `validation/RELEASE_VALIDATION.md` records only checks executed for 1.7.2.
 
 ## What .01 means
 
@@ -149,10 +149,7 @@ revision persuasive; adding optional models alone does not establish novelty.
 
 ## Run order
 
-Follow `START_HERE.md`: fresh TXn; matched .02-prior fit if isolating the sampler
-change; focused .005/.01/.02 sensitivity; remaining margins; constant/monthly
-scale checks; matched joint independence/copula fits; held-out predictions and
-remaining reviewer experiments. Judge physical SDs and scientific-target
+For the current six available 1.7.1 independent runs, follow `START_HERE.md`: TNm with monthly scales first; remaining margins; matched joint independence/copula fits; targeted prior and structural sensitivity; held-out predictions and reviewer experiments. Existing draws can be re-reported without refitting just to update figures. Judge physical SDs and scientific-target
 diagnostics, not signed coefficients alone.
 
 All primary data extend to August 2026. Annual forecasts and validation must

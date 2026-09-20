@@ -1,7 +1,10 @@
 """Plots for the unified fit and forecast objects."""
+from .style import PUBLICATION_COLORS, publication_style, save_figure
+from .calendar import plot_pit_calendar, plot_monthly_score_sd
+from .traces import parameter_trace_draws, trace_frame, traces_from_frame
 from .dependence import plot_copula, plot_ordering
 from .report import save_prediction_report
-from .predictive import (plot_predictive_diagnostics, plot_chain_traces,
+from .predictive import (plot_predictive_diagnostics, plot_pit_diagnostics, plot_chain_traces,
     plot_forecast_months, plot_scale_calendar, plot_calendar_risk_curves)
 from .shared import plot_shared, plot_departures, plot_channel_component
 from .core import (
@@ -28,6 +31,9 @@ from .core import (
 )
 
 __all__ = [
+    "PUBLICATION_COLORS", "publication_style", "save_figure",
+    "plot_pit_calendar", "plot_monthly_score_sd",
+    "parameter_trace_draws", "trace_frame", "traces_from_frame", "plot_pit_diagnostics",
     "save_prediction_report",
     "plot_predictive_diagnostics", "plot_chain_traces", "plot_forecast_months",
     "plot_scale_calendar", "plot_calendar_risk_curves",

@@ -1,6 +1,7 @@
 """Posterior, predictive and calibration diagnostics."""
 from .comparison import paired_block_comparison
 from .calibration import PITResult, empirical_coverage, pit_diagnostics
+from .calendar import pit_normal_scores, pit_by_month, coverage_by_month
 from .contrasts import summarize_draws
 from .cv import LFOResult, leave_future_out, rolling_origin_splits
 from .experiments import (
@@ -28,6 +29,7 @@ from .scores import (
 )
 
 __all__ = [
+    "pit_normal_scores", "pit_by_month", "coverage_by_month",
     "paired_block_comparison",
     "residual_dependence_check",
     "residual_serial_check", "ess_tail",

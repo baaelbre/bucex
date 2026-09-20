@@ -1,263 +1,1462 @@
-{
-  "version": "1.7.1",
-  "sha256": {
-    ".gitignore": "65ba7602332040e4d6f7f9ac0e44a904bc794c709e712f3042c8182d56e16a1a",
-    "CHANGELOG.md": "2ba2beb0c85acf32f349ef5a45adfb92bb9cc6c2aacd07887985135006de898b",
-    "CITATION.cff": "f9e641d4f235b47aa9a1452745eb45b0cf20e475cc830849cbff77115010dc6b",
-    "LICENSE": "3c63941b9ee652cb25b6f3eb1411ce284f5393881e5e50dbf46e9cc7df577e72",
-    "MANIFEST.in": "ecf12f3ed88324126aaa1b8161d36f39574aa2517f0be9722aab740d48bb13b7",
-    "README.md": "4f189f92f5f9b9e201e145e2e3c13bd88ff21a30a00cf7ae8b6924bb54ca676e",
-    "RELEASE_NOTES.md": "356a451d345d187245560ac5d83b208bf480ee50c2959acc833bbc5909e07ab9",
-    "START_HERE.md": "9defe7566c08eb2cf91927f44ab1739534e171888c6b7b804c284c9a90d01902",
-    "bucex/__about__.py": "ac7aa83aa6b72f1597beb0669e79b62c3995f489663046f9a8e9b0e5da23ddf9",
-    "bucex/__init__.py": "b603c128521a133ea082165e9d92f82947d87274f01f2f39b07b6eab09f72b40",
-    "bucex/api/__init__.py": "1734308f5e4896f97a82c660b671a10348d762e86139dfbd972a1124a003829f",
-    "bucex/api/aggregate.py": "4748cf39d7536c1029fb96704fe5cb4a324ff5289b7e06de2b1eb45e5a48c34a",
-    "bucex/api/fit.py": "dc51c238dfdb8dcffe3719d06ec1c145e5cb4c2d991867deefc17c343aa266ef",
-    "bucex/api/predict.py": "78fbad142ab5c3bb4ca615675c096aa3918a86056f92333c3fbdf377991d8292",
-    "bucex/cli.py": "9f21ec0a0ce668b2bb6993a4d65a52303a9c2ac2d57f9326875713f982d162d2",
-    "bucex/components/__init__.py": "ff5f26411948a970e95721e63a68de6550e5097016a8ebc6166b62b1317589e9",
-    "bucex/components/base.py": "dc820633bce2c1f9619726958e4a4647bf560a688b06991f287be4a15a521c28",
-    "bucex/components/compose.py": "a141a2b95e20a0ca3df8ebdf0fa0b571eba04df783aa69d54ed09c58c0001be7",
-    "bucex/components/regression.py": "03cd797e99ffa8efa851938f7ef71f81dee6e46c182188e57ba21f61fe7567f9",
-    "bucex/components/seasonal.py": "675ff69f8b1fde26c346bd9b02b198793f5f3be598c346d4a321daa913a8f26f",
-    "bucex/components/trend.py": "8feaf075a4db074a4c8394c123c355cad9631cc876fc9707af576efba63581b8",
-    "bucex/config.py": "50f2230b6d9b992d640e08564d766c51dd5ea311bc6782f777a533005f671d67",
-    "bucex/core/__init__.py": "2d9a90f1d110d5db7b0681e71fadf0c870efcc97fb19a42675df574e816facc1",
-    "bucex/core/calendar.py": "acf2633038b9e5f2e900851db1557f0255138ce964b2f0d4c49d4c35a74201aa",
-    "bucex/core/fit.py": "dd604b235e2d72b2eeb1290abe1c3a5a2e32131a1ae9ecea96b5bae69d032b29",
-    "bucex/core/numerics.py": "05bfc8cb7313a0d9ad9398c206fbfce08dfb63838e6091b448daaf3a1becd544",
-    "bucex/core/shared_results.py": "86d594f78673b0c7f59032df917d0a761bbd88c576cdb28ddeeaeecb7de38948",
-    "bucex/data/README.md": "233bdd1c76567cb6c5dfb22388700ede1d70e979653c8072ef01c98b589cca7e",
-    "bucex/data/SOURCES.md": "e1c98525e0d2ac04585b3d8bab5e4b82b1345dfe2aa705aa8292f69ed042f7d4",
-    "bucex/data/TNm.csv": "563b427e6af02b13636744951677fc706258efa2bb741301844b0c12e9ff38c0",
-    "bucex/data/TNn.csv": "790dfc9c88365b579ad0c4e7f5283cccbad9817335874b9f31a5578a0ab3c695",
-    "bucex/data/TNx.csv": "b119027c8cf42cc539a78a6238638d3fd9ce228a270717c13849ab76867489fb",
-    "bucex/data/TXm.csv": "4e5b5ea7197788143ec72a252134ed3ffa55242916ad7ec6e27406ea7d78a076",
-    "bucex/data/TXn.csv": "7b5f22ebee92a3cce8ec660204de1597a21f193970c18f9e174421f3a7958d69",
-    "bucex/data/TXx.csv": "d3d1bda232c97003eadb2626f097c0ad5f01b5687f597bebad022db4613e1146",
-    "bucex/data/quality_report.json": "4a8879c7cab84e7b422cd5de8ae9b6abb5e0f8adfa3bf982cbe289e10638599e",
-    "bucex/datasets/__init__.py": "f0fe0b8861062eaba19df9c4f05c790906686c7943c950a35cb4d8adb4d9ee00",
-    "bucex/datasets/uccle.py": "f4f5f0fbe1f58910ee7f5f2e86cf45a8f6644a3f1485a7b9ff35206268692930",
-    "bucex/dependence/__init__.py": "013e4971849084e7dc039dd417d5c5316aa25fc7e6b04c02ebf69b567b77f0ca",
-    "bucex/dependence/gaussian.py": "b702ecafd8db9f24e453d981b48a7d8bc27b5fc79627ad2d715590abe7c28e5a",
-    "bucex/dependence/probability.py": "26fd9a93dfce4744f0fa26dd34d16eeb1a46846d698db110764190c2f49e4a60",
-    "bucex/dependence/seasonal.py": "1bd8c7022a902258f989d55048151b7b055db8c9a3ca320f9d2a2f3eb48ba58b",
-    "bucex/diagnostics/__init__.py": "4d40761358af962b5dc3c1abaea5e78f2694c8a6e17a0b82b5362ec07b6c81fd",
-    "bucex/diagnostics/calibration.py": "333e3f6b44df76ad907c71c54e6c09f03a964e82770f7999f9dfe9313026801c",
-    "bucex/diagnostics/comparison.py": "177a20d1abb7b8afb4c280aa88caa2e14b3afc1f658e589019990debff574fa9",
-    "bucex/diagnostics/contrasts.py": "84d9c14af5eb69141835b1fd1f97c8729c82c15045cc0f471dd65bbfa01d39e6",
-    "bucex/diagnostics/cv.py": "d5f06d2925628ca7ba63b3fe64199cb6c781df35f3ef62b610785738a25d54fc",
-    "bucex/diagnostics/dependence.py": "9cd497a08b57e030b93af35bfd18702a2d4626178e31230857b742fd1d233183",
-    "bucex/diagnostics/experiments.py": "18819e305af17a520c274461fdd0e98cd6115fba6deca9ffa9f5c4abaf8eb435",
-    "bucex/diagnostics/ordering.py": "65f940ebae9ce9af1a4b0c0cf652737409b517cf158520ac6d3f5ec473a7779f",
-    "bucex/diagnostics/periods.py": "b79bb1bb10161d2010d22cc5f7dceb14dfc3640e8ba38a86d7f4c3ec7c65029f",
-    "bucex/diagnostics/posterior.py": "957a53ff24308d7011c2b6f13edf763e13c9bc0790047327b5ec8c620f4b9a8f",
-    "bucex/diagnostics/residuals.py": "0ecfbff2807f828e1aa2c5133e32a9c7d70ce583ce7692f66af367120272d392",
-    "bucex/diagnostics/scores.py": "39a09cfe9fe46b33772fdfac227aebe6522542eb9c742230b9f3ace4ec8cb8bf",
-    "bucex/inference/__init__.py": "4badaafa1407b4bbcea1949f8d8d6d1e8fcf4819dc915a052278e04b154391d0",
-    "bucex/inference/config.py": "773eee3ff107859638e14252d94cf6848aec8b63b2f68deabd970637db5b3ced",
-    "bucex/inference/fit/__init__.py": "c871d16aef2bbd75a52e737e9afee1f021373d0a60be98c3ee57b5371e452923",
-    "bucex/inference/fit/_fs_output.py": "d574c6fbfaca58c47f5e919a2577e52d7c731c2ad4e0e0f115f4b316fb58a95f",
-    "bucex/inference/fit/_progress.py": "0ce8424dc34b8ced83aa2c1898f45fef1df8b46ee2cf851f39373585f8a665dc",
-    "bucex/inference/fit/coefficient_reference.py": "7f7bd74ccbe6e083f01e563c5768f123c4beb4592588c020141e41f275e9be60",
-    "bucex/inference/fit/conditional_margin.py": "39b6a1fa2236a63742ed382f9e37f615e54295ac9b91e4699177fa3360c16bd2",
-    "bucex/inference/fit/continuous.py": "52c3544c8172fcb632d7a93940cb333f678610269c62aa75d534788aa20d2dd6",
-    "bucex/inference/fit/disturbance.py": "f31497451ddfaa75b4bfc1c0d85bc4881953bcbad2da789b5890f00883a24f08",
-    "bucex/inference/fit/evolution.py": "e2ed850b351fb90ea3fca4753ce1e95c7d30006998746337adfa3e9d668d264d",
-    "bucex/inference/fit/fs_gaussian.py": "dc47b050f38855356d598af56b8eeaaf29466dbd9cf7cf6cdaeee59352cb8659",
-    "bucex/inference/fit/fs_gev.py": "2532b764cc463e8f19fad1b91d0aa3840d694e0e4dc2d2b32469617f7e7582e3",
-    "bucex/inference/fit/fs_utils.py": "376a514f3a363c58dc6a4b38251d5cd0ca4c4e9213188d2fd393dcdfad2ffb33",
-    "bucex/inference/fit/hierarchical.py": "6771fbb748be1aa9c7dfad14505549acd5c0f13183756378a0967cdcc3456ff7",
-    "bucex/inference/fit/marginal.py": "032e1d92dd4e80314165a647615c2cf5332b9d4c383302ccda70a64a868229a5",
-    "bucex/inference/fit/marginal_adapter.py": "fd5d7d4cdae86ccfa9abe89b7dd82b16fe4a897852f32f25d6a21528d91d68bd",
-    "bucex/inference/fit/model_space.py": "c35ab4ceefad70a4e1f040435d6f97b6d31963ff94fee02abba17e89ce832ba4",
-    "bucex/inference/fit/phi.py": "a6820e57400d9d8cac2dd04702b1376602b9ca05c12bb4fff549a8100c9e64cf",
-    "bucex/inference/fit/scale_path.py": "4c1f31d697982a3f1039b141a86768504e8a87f49935a2c18e19645b05559e8f",
-    "bucex/inference/fit/shared.py": "233dee82f3589172deb8d2c9d524b2fa8e2c464b3a66d3a2002b5e8974d01907",
-    "bucex/inference/fit/shared_slice.py": "a7b102b6a8f6869f541dc887401aa3f633a1c191234ff5694791225bbadb6d8a",
-    "bucex/inference/fit/utils.py": "6083bb8b8740d14026245987fbbef0b1df596bb1b98b67dbd1b8b5771ddfacf5",
-    "bucex/inference/plan.py": "73cded5d368bb1b580f18728951792bc0437bc1f79d277928ff0d98f994eb3ed",
-    "bucex/inference/state/__init__.py": "f9733ac1763e8fd0468fad19fad68c78cf1f9cda9ac7c99a401dd2f76d3621af",
-    "bucex/inference/state/kalman.py": "b65a3aa3d6629dd202fe26ea0fa7d177b4c61f5f666b968ff63d9044bc1760fd",
-    "bucex/inference/state/laplace.py": "23641759d041b5d779ab2ba7d12ec502fd96c6b0234b274f9cef5ae37c1670c8",
-    "bucex/io/__init__.py": "26322184a598293e1ce0444bf0be1aa483938903417d63be9fc2fc47f81de3f1",
-    "bucex/io/posterior.py": "d3a287778aeff4c61d035127be5cb2ea44ced9588c11889c834348cf65b3e7b1",
-    "bucex/models/__init__.py": "27633f44cb24e41370f176f9303dbe2e641a081d3925353ea526b5f4735d08dc",
-    "bucex/models/base.py": "8549323dd2d2aa86b3067ff46ba9471521bdd82a78df2f9f368d82adfa7ab2bf",
-    "bucex/models/compiler.py": "8cd5b1d98ae6bbe267809f334320de70cc0f6c55f5dc0abe3465c02567925223",
-    "bucex/models/multiseries.py": "1d77d1748b046a2389ee4cc6aa7ebeee0d584a99e30702d7ef5523446fc9c3bb",
-    "bucex/models/multiseries_compiler.py": "b807b24dda8af8d643c5762b89f4e7dcec87b459744d33337c12ab1b8673863a",
-    "bucex/models/shared.py": "00e9fd050dfb6f24220c1ef342eecb641725f3f6bcc72588219d032906c1230a",
-    "bucex/models/shared_compiler.py": "ee2e1d6e0b9f174461a8de65c3afdc466a6ce47c37b6d4cfea1e6c9c7970dc80",
-    "bucex/models/structural.py": "70c45d31d4a48668641b0bc9caf1c406b5c14a6c2120c33c69b0797b924e2ef7",
-    "bucex/observation/__init__.py": "8e2b6a7e687ea63b426bcf3fbf791a62ef85a818a332e461398bab9a5118e2d6",
-    "bucex/observation/base.py": "7042665f6bb2db012e26f0cf6efc0859aa4e759f68c738bd85939033e4394faa",
-    "bucex/observation/gaussian.py": "c6aca3ac278b698813e87a8313e3becd9886b16669f526dc35ebee5c5fbfc531",
-    "bucex/observation/gev.py": "dbc145b979110700ccb5322027a72ac7125b347bf3342543b5fa363f3fd0e576",
-    "bucex/observation/scale.py": "df6bd35f9ddc842cd4b101a8fc0231a1965930f41a0ade9f3b937c93bd5e3956",
-    "bucex/parameters.py": "31b1d1a1e032a2ddd3a59d9872b0027a953ebfe4a441e1b26f039f08e144ba50",
-    "bucex/plotting/__init__.py": "857378f6b68a3b21ab78121825c6b5ceb8a585feeef035926ffc023178208f26",
-    "bucex/plotting/core.py": "7cfdfc7fa0373ea73820deafbd2b0098bc2f8a43ac186bdc5a908e3fad771dd8",
-    "bucex/plotting/dependence.py": "01e005444b3a8a535e35052a8b50b332b374d73b1fc2857187146ac79a02e662",
-    "bucex/plotting/parameters.py": "1a0f9e4a356285680956fc8e88d72d59b8cbbe4006fc7b2c45f4ba65e2d34021",
-    "bucex/plotting/predictive.py": "6a65d2c2612a6a7a011b64021d5fa7ab825b6c7724e8ade923125d625c0b24cd",
-    "bucex/plotting/report.py": "acd61f389595af5e5c2d102b8c32ca80a940428b2cd9bd5bd99ba41cfd56d8c8",
-    "bucex/plotting/shared.py": "376ec4372ae0e8785bf8437597101a5609730b1eab9f186565ebb5e4397645e1",
-    "bucex/priors/__init__.py": "b53e232dd439889b8025832b9c94607ba62085c2195c4582a54486ae9b2f32f1",
-    "bucex/priors/calibration.py": "fd3119b45373d7c97f5a113e774032ed3ae1f9cd09f13f8c1804ad21b2022ffd",
-    "bucex/priors/evolution.py": "53340aa5b5ebe794f543068dfe702e582239109ddbb171a367da1dc4807c2d82",
-    "bucex/priors/fs.py": "38051c40c9ce55bf2d86008b1c85814a62b812b1cd063b3a275c787f3925a0d8",
-    "bucex/priors/hierarchical.py": "6cf2dca9446a4ee587a7cecdd479488ee770d8f4ec9aef05c02b6734d5889f82",
-    "bucex/priors/joint.py": "69fe57ea4e6cedb53bd22e89781a945c678075dac7963c463da9d9a10464dabf",
-    "bucex/priors/marginal.py": "24bf1b24c626a45366e6215dc96f0d2b955b9ab97b250d66bc5bb680cf6676d8",
-    "bucex/priors/process.py": "28835e41724d9302cffdf863d4f432450b0164dfb3721fb7a79a7eee01d03d6c",
-    "bucex/priors/resolve.py": "9dbb8b69d0d51b0311487063d1abe0057f4bdcb2f907e3e724f3b3b5d9e97f77",
-    "bucex/priors/structural.py": "b1fcde795fbeb1b6eca798ef9cf3c5b6eaeaf495b71c1e889fdc5f7f75bcbe58",
-    "bucex/simulate/__init__.py": "754c6943b7713315b8029540de3102942b2c556338f916318e174cfb45cfd6a5",
-    "bucex/simulate/general.py": "8e2e237a90e8e033bdc5a4bf21016b1d6f2ca39d8cd24a552df586168db62f56",
-    "data/README.md": "49594ed15fc95740ca240f97dad3b2d4d51d34be1a85274a478bfc34a098d9ae",
-    "data/Uccle_31_08_26.csv": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38",
-    "docs/ARCHITECTURE.md": "102c5a21e5552b4551f976b2213e0401142819ef107c141e73c1a66540bca228",
-    "docs/COPULA_AND_ORDERING.md": "92904d9ae27ae24f19909ed33888469ec9e2fd19aeda656a0b9b837736c6c090",
-    "docs/FORECASTS.md": "d7ac8793cab65078ba138c4f9a2ce81d47cf04a1e21863e500c36e49076cb1c9",
-    "docs/HIERARCHICAL_MODEL.md": "e1ef82b7ff7aac8f3caf623880f6ab6721b31cf36d69108de1f654f1f96ef463",
-    "docs/INFERENCE_MATRIX.md": "a4f4a76827ba93cda06e8492809159fce852a81deac517467ce2166f7414e0b0",
-    "docs/LOG_SCALE.md": "fc8e75fbb187c93fb526a502ad657ebc335fcf6e3dbb5a003d76da93e00fecbe",
-    "docs/MANUSCRIPT_ALIGNMENT.md": "23a71168ee169539907c9cb275343baf9af6663c496455539b6c6e56c97659c6",
-    "docs/MIGRATION.md": "807f7af9afc4093e1a7e8e183a9b3953b14437453cd64fe201336386112fe817",
-    "docs/PARAMETER_EVOLUTION.md": "79c80853b12fbe7924253819b25352e0f1ab7e92d76c05a31fecefd570dfe49a",
-    "docs/PREDICTIVE_VALIDATION.md": "d721ac5bc4c3d0e04ddd0f358060cdbfad4da531dbfdb766ed0adfe9b2c2c0b5",
-    "docs/REVIEWER_MATRIX.md": "9d15729926f0a6d856f19a1609c20ee6db055a540174f80d7dc40f02af6cccbe",
-    "docs/REVISION_GUIDE.md": "d3b07274a791699930600ebe8d31b4973f1f57ac472347414ca1bed4bf4b69f6",
-    "docs/SHARED_COMPONENTS.md": "e8ee3e839e15456cc66af1da28b33ab53264fc8f48497da452bac7916ed72c67",
-    "docs/UCCLE.md": "9ad52831d65c596bd2b2ceb1e48eeed9ebd79b32d1b74ae4731500f8587a8b64",
-    "docs/VALIDATION.md": "b1f4d144e5d4c9f32cfec4502c84d2874d0d67ce793b9d722477f34b3c016d6c",
-    "docs/examples/parameter_evolution.py": "0a6a02f7f8a9dfadb562ef8dac9df3a7a94aa4daf1a9188cfea4273f60bcc411",
-    "pyproject.toml": "462bfdda3a15bbe20555e5fbd36973c77180617524018677dc2ebaae39d65d3e",
-    "research/README.md": "0631feb838c57cbe12a65c5f58da76b50a8c340afa56a5c8fe936448155be043",
-    "research/__init__.py": "3beda92439cdd50e73213dacdc4bcbec009f0820ff952db2dff05c2870ff14c6",
-    "research/serra/README.md": "96901fe02fcea6bbfbbf25676e9e033297164464d0712ca853da065fc1ebb386",
-    "research/serra/__init__.py": "373abc16f93270175d78d192098a58b92141321e07d3058b4df8f48c796ce271",
-    "research/serra/check_updates.py": "a6bf23a15ecedcf04c9d12565b36cd8fd7ef688629adcca21eb49045fd045ce7",
-    "research/serra/compare.py": "4edf2b0554c8442a0cf3824380f4509b8ca0acf001b2fe04ce0f8e91fe591125",
-    "research/serra/config/base.json": "ec4834943c321cae94c13b05c68b4b9c0f190af87386369b8219540567540b94",
-    "research/serra/config/copula_1892_2022.json": "784fce75dd21bcae7f90b46da8114df0c6a5f775e6908de5d16b2048f2840259",
-    "research/serra/config/copula_extended.json": "bf759e2bb7ed7a10965220643498e4b7b9e09f9c32c0a2faf57ffdbd28bfc4f8",
-    "research/serra/config/copula_full.json": "bc70bdd9529e231a7a2b722d63550ee9c217b88e41f4acbd179629f7e18a298f",
-    "research/serra/config/copula_seasonal_full.json": "9f03cd99b47335833637a78a00f32e5f7365986293b49355dd4f11e8f684a206",
-    "research/serra/config/copula_smoke.json": "6b00855d1877126d85b4a1d50d321ecb154600938c7f0b3e85047bb0b8456a8e",
-    "research/serra/config/endpoint/laplace_benchmark.json": "e8ccc69fe168be3f690d324279c417492e83fab8b8c7879968a51ba5e88690ff",
-    "research/serra/config/endpoint/paper.json": "0fcc4d4e874af756c554097400bbb3bf144d5b9b960bc62348d7ce5867c77164",
-    "research/serra/config/endpoint/smoke.json": "c319aabda9c5ae53ad0615a83acb20dbe86ac5d4517363ece1b02cdee49129ff",
-    "research/serra/config/forecast/paper.json": "3d6b493f65cfe104acead4ab45e7b3bcb3c6150fdfb5a6861a79ccc53fc1a944",
-    "research/serra/config/forecast/smoke.json": "de605a67387a9dc5db1d18817c584ef05d0e7ee57f4e950c5d0f9973d1b857aa",
-    "research/serra/config/independence_full.json": "29dfd956616a1bb4160fbad940d4aa56f0b4aac589057f6b39141fa522ed18ec",
-    "research/serra/config/independence_smoke.json": "0c8fe6fe3a8e6e01c0b6442f815597f1bab308a57cdbd1b398d5c09d39d25d5b",
-    "research/serra/config/independent_1892_2022.json": "726a11635af5e898d25c581588f53af29a723d4ea6edc0f00082133c36817ca9",
-    "research/serra/config/independent_extended.json": "5c21d125dc6e9dcb4aee3bbd417ede8bfde05042782ef92a06258929cd79e430",
-    "research/serra/config/independent_full.json": "946d07e24d23683c951d350bd376a039b74446307180f8e36520000e9ba7c692",
-    "research/serra/config/independent_level_002.json": "2e314dbee337a9f510f6637ee20e6fe795dffc5a19c67b91fd90f64e0e5a2f7b",
-    "research/serra/config/independent_smoke.json": "56ce0c5294927be8d831fe406b497685cf3aa0bc3f0eba6893182ce65071b235",
-    "research/serra/config/joint_recovery_full.json": "7d10b9bc7094f3d0450d32804535cf895d852977c5b15c52efa0b4bcd03c17e2",
-    "research/serra/config/joint_recovery_smoke.json": "34f9300cc334f150c9f7b40e4b777b37ba93fdb3dde991ff3eeeb307e52212a0",
-    "research/serra/config/model_comparison_full.json": "77c17d87be169884050c3fc03557fc67106dda00e24ae50ccaeb286240c744e9",
-    "research/serra/config/model_comparison_smoke.json": "e2f0866044c51dd4244360bdecca17b834bdea33ce7e7892d29450c27942f416",
-    "research/serra/config/prepare_uccle.json": "e9b918887ba765162195f7a2b945e6cc6fa42a02ca662e928abedaa6212974a4",
-    "research/serra/config/sensitivity/joint.json": "1211aed23f3186aea1003a512c60b8b1fcb3b9a7589d4095392c70559fddde94",
-    "research/serra/config/sensitivity/joint_level.json": "322e61387180f0eb5291b03a121718643140de327cfb567852c06f7b67415498",
-    "research/serra/config/sensitivity/joint_smoke.json": "f15aafa8c355e807f981006ce5b1726700f1191237192d7140e1f9a8e6b0199c",
-    "research/serra/config/sensitivity/joint_structure.json": "e995db2333af01832b81f7f9325cec55d25b80d797cd928e50fb587a33458653",
-    "research/serra/config/sensitivity/joint_targeted.json": "f8a8521ae10faffabbcbf8832f3565045e8ca42f958adaaca03ad45998b00628",
-    "research/serra/config/sensitivity/level.json": "cce43d053566ff30556d9a884f56fc60b1ccf4883c1973395532a63bea4d0586",
-    "research/serra/config/sensitivity/paper.json": "8b6b48f7189bb79a01c76eb21b8a6a50b5874444e7c602cb39f7ab35d0dcfae7",
-    "research/serra/config/sensitivity/smoke.json": "96f216c80884e31564fa19698d7ebcc98c03d5bfac464df0d45cd28cc81767f7",
-    "research/serra/config/sensitivity/structure.json": "4ad2f3d70f99aec8e3e9f10f718173fceb9b94fa1b2bca30a615099162e4a26a",
-    "research/serra/config/sensitivity/targeted.json": "25fb9de2f0f938041b921eb23d23655fdec2f7eb239f9af93e5806c0135f7197",
-    "research/serra/config/simulation/endpoint_paper.json": "379520811e6ea1c179065fa63935c8803ca2ac6a08c68607cd6180b7576d403d",
-    "research/serra/config/simulation/endpoint_smoke.json": "9e4e72bb1489c4b594ecf873fcdb960e57c5e94f36e0f760d530679435559577",
-    "research/serra/config/simulation/laplace_benchmark.json": "447118f7701419904b13c01293d1bf93ed9c5fc8b8910ff540929f856e2f6d2b",
-    "research/serra/config/simulation/paper.json": "5dd8a7238e0e1f1c6b42b35b503f6f725c2d4237bb8f2319fe023d30d0623349",
-    "research/serra/config/simulation/smoke.json": "b11e34788fc8240d691931e2cfcec3502d6f4173e1ee3c3e6a3a815d73576de1",
-    "research/serra/config/simulation/weak_paper.json": "40e377859d31da94a2549dc87aee9663fbe2bcfc45cb11ea199ab8751fdd55a4",
-    "research/serra/config/simulation/weak_smoke.json": "79cda27b40b6a2356c17a7dd381d23f7ef6bf32e132cdf78380a7a60ad2a586b",
-    "research/serra/config/simulation/zero_paper.json": "d5f48e0388408d49d13d6bcc79133716120eab8a440a34c613606bfae981db7d",
-    "research/serra/config/simulation/zero_smoke.json": "0cd083e3acf0049155a94456f842247e2157a49f6273f5b2e47b1225641a4cd7",
-    "research/serra/config/smoke.json": "dbe276b5a18cec8c8502ba4510b5259f2e8de6ddd750c5b67e64040e6fc33391",
-    "research/serra/copula.py": "6cdc5429486ddf1f50b77a4cc24797c1138de0e0773fa7ca55b01a818e967409",
-    "research/serra/endpoint.py": "535b50962e0a8d3982f4a435cceafdb0348e48279b011805c86f9c6d9a7aa4dc",
-    "research/serra/experiment.py": "f8cb0d025bab3e9bd81384f12ff72b757de9300cfa9a2728116738a128ce5a28",
-    "research/serra/forecast_check.py": "196e1a8925f3c3efd6afb76a2d9f9d0397d898a15532098f390602a683a4691b",
-    "research/serra/joint_recovery.py": "d60d5aa289cc9ae8a9e200ed27edc10d8c000fb172a6da7c1141d5e457ea92db",
-    "research/serra/model_comparison.py": "0a03583eafd2b6be4896426f80a60ce0b420636d9fa1d81ae4a5311379d55f04",
-    "research/serra/models.py": "ad4991668889cbdf0bd4d51597209323e28289475c5bf80130d61160683c9a23",
-    "research/serra/preflight.py": "73c7bf5481500a14ed57a0bf68118a9f1409dca816dde766bb86548da6e8c10f",
-    "research/serra/prepare_uccle.py": "0ecb65e26cd8d6f81d80f48e5b1fc5494a3466c74c5e04901f1141f72561467e",
-    "research/serra/report.py": "d923e00aedad62ad84c27d6ce1220d16661201debd8d1c63faf4b3a99486f194",
-    "research/serra/run.py": "515ef9c96f687bfd134c8e255117d002c0303ddd7c12ed52f55286654f62ff8c",
-    "research/serra/sensitivity.py": "8d39b4f0b740e60cea0ee4ade3b9a21afc8c2dd4b5f249cbda3839928d974883",
-    "research/serra/simulate.py": "a30f49b6b0513f1d013cf63db99d8754e59368b2e16684c7a52011d49c0f8807",
-    "research/serra/univariate.py": "aaff02c5ae1a14f7c93924d26373b92cb2d3aa28805d0edfe0d091f4260cf6fa",
-    "research/serra/validate.py": "c19945db59a4b8f94a52124cabcd4640550f29ec9165106e47aff1950b3ad77d",
-    "setup.py": "f30963c28f2aeefac65533fbcaa7bdf546dd6b43fa410e9cd1c149e5eea5e107",
-    "tests/__init__.py": "b5b267465fbcc7cd869217badad4464eaa90c857c82c4f5298baa46e26806e85",
-    "tests/_gaussian_reference.py": "7b91c4c84174b263288fff94f5c64556452d82d4f0e36521e46e770e26231ccf",
-    "tests/fixtures/README.md": "550d8c91f76ff79d1db1c60d1927c8c2d3e45c305128b82ea8b689e6f8e1a0ae",
-    "tests/fixtures/v1_5_2_gaussian.bucex": "cd0263dee0f4de8b98a4dcb2f4fb5ebd972d31d0658c7d41ec8c64084d8be465",
-    "tests/fixtures/v1_5_2_gev.bucex": "0c3038406412e72b5613edeb8736383983ea23e1bc54df0c6451407637430d5e",
-    "tests/test_calendar_forecasts.py": "6610c03b394a8507659f250d13f6a74efa9cdedabf76ec6f5b6b3c6f6e4fe433",
-    "tests/test_calendar_risk.py": "f91b6a7988dadb27688034ce3d44750db6c93ab4fa25b7956a1c48c54d0f1bc6",
-    "tests/test_centered_variance_updates.py": "cb000fab536cb821d6a4a63e80f5eba6f35a8db92dd75b4514dfd1bbdded2247",
-    "tests/test_coefficient_reference.py": "0d430332412ca52f5dc4578383320f390dece36b63c7feb320375db6bfcf7a87",
-    "tests/test_continuous_private.py": "994f988f8081e3794782d7c7d5c4913724f3952e5badac9fa21208aeadb57674",
-    "tests/test_contrast_diagnostics.py": "ac4cfaec63ec4b880925115d72b0806334d3c809bf17bcff6e6219a7efc85f61",
-    "tests/test_copula_inference.py": "3fa148e9b181d616fe6064a04f8955e0121d23cc321132e26c3944d8d937909e",
-    "tests/test_copula_math.py": "eef4af2c9104dadccea4ef9ec3486ed27f378f7f314adbea8a00ee55287f1ae5",
-    "tests/test_copula_prediction.py": "32f8771c0db33e097e61f96acc3fd61371c28495c0011b006168a951af0f94eb",
-    "tests/test_copula_reference.py": "1dbefdc57853d30fdb8fdd710bc918476863b3ef7eabe408612b03a19c301714",
-    "tests/test_exact_support_and_failures.py": "ecd4fc2f7b371ce9c8239bf36d7042bf6ee19117ff2d02b5484eb7ab9af2110e",
-    "tests/test_experiment_prior_math.py": "32d268539ea36b60164aebc96d8e1d6d879b450306b5929fd4267b7a3d175fa2",
-    "tests/test_hierarchical_exact.py": "34573dd7e1fbbe85f20e12bf54e9c3b21a8698c2bc124f7139400d44bdf3a56a",
-    "tests/test_hierarchical_models.py": "756010d6269b5aabd2e700e519c4851ee0bdd8d31dafddfe15003f91d9748843",
-    "tests/test_hierarchical_warm_starts.py": "0cf27cba6ad02d2929791abf5e353a9e7a499eeb54f01289edc7ac365659bc74",
-    "tests/test_historical_archives.py": "9ce13acd199b2c1b63a92946134147b093185374e4c73c422d1816b7047402a1",
-    "tests/test_integrated_framework.py": "f489b2c58d5960191c5948aa6b744071091d22548dd6a011ec051e6102cf2105",
-    "tests/test_laplace_mh.py": "9a8e750ffb0ac9734fc1e19431b04e969638b07e07667524111cca5a001d81f0",
-    "tests/test_marginal_copula_fs.py": "1faacb6df6a45374fc3a5865e1d2790f9c03ac591a5668d2391955d9e5862dc5",
-    "tests/test_marginal_gaussian_reference.py": "c6f8aaadb32655ed5befb9cdac8c8cf9c4602e5d6e2e01a8190461a849e50181",
-    "tests/test_marginal_gev_reference.py": "58873dfc845ddc320974323b28d3cf8cb35e9c0ce6f385fe06619f93a1464a87",
-    "tests/test_model_and_engines.py": "af6a3fa7059cddfe303db2060e55b90cedc350ced8e6ea620314506b51633235",
-    "tests/test_ordering_diagnostics.py": "a75cb1d6b916ebd54f314b69621fc3f38207a076d0d8baa0c7f6080e32646805",
-    "tests/test_parameter_evolution.py": "86defc8df79930a12c006f464511611525ee8b5f2fab5c2d1de95977844652f9",
-    "tests/test_period_estimands.py": "f2bd1e911edbea23b07a48085e916e153d48e9b22cc8b834027e37acb55450cb",
-    "tests/test_plotting_and_warm_starts.py": "e6b28afb9b16bf52eead011c019f2a796157a3e0e998dbc9ac097c03ab192cab",
-    "tests/test_prior_builders.py": "d51cc027c0b2652c15eb6590cdb3dde02a291e9c2a8c2028f21e44a777fe3379",
-    "tests/test_results_and_data.py": "6ea618d4e7e5eafc20888d03149e1ba8a1c1875acbb62ab434cd38580f8f1e8e",
-    "tests/test_reviewer_experiments.py": "81951fb5d226285440e5db764615121722f72a4dc4401bb1a24a113a1c1b13ae",
-    "tests/test_scale_models.py": "bf3f11204c77b1af0a5589076a399a552933da1db07b7eb7f84a1d97e9d87076",
-    "tests/test_score_comparison.py": "62167a577a6bb63db435397e83c7e8d11ce19be157845cc92083193ce48367eb",
-    "tests/test_seasonal_patterns.py": "bcc0967ea1a28b03d111b8d08633b6f8be48e9c4671602557c36ece4dcbbc045",
-    "tests/test_seasonal_views.py": "97bea8c1776c00e40e6b82a7eb90c2cf208dd6f3f5b1474b449281072ea051e7",
-    "tests/test_serra_protocol.py": "6eca82d06ad4935dc0d290a9e71b043d2972e0a84c8ee2b448197138b84c8603",
-    "tests/test_shared_components.py": "2e80e4b6746619aeb5593a437e780e31a3a90607ccc0d004a2e44227f7c97ec6",
-    "tests/test_shared_initial_covariance.py": "520c3708ea93effc2835361e916128b6f69d0c72b2de04007e39d70e4f7efc22",
-    "tests/test_shared_sampler.py": "71db2112f4a043443f11e89fe90f7cab27920686a80bf407313d7ff4115d9ad2",
-    "tests/test_shared_slice.py": "03d1559f5bf657f6a87908a37e6ee9991d7f062f52f28c00a0f3a1106e6c165a",
-    "tests/test_shrinkage_and_diagnostics.py": "5c79e434a0d88f24098e66d3c53dee9cb8d45d1a66f0b01215cebd3b61248a11",
-    "tests/test_structural_numerics_and_prediction.py": "fb463acd7c7f44ad040cd88251d793f5d9c48b0cf0216044fdb523d5ed4ccfe4",
-    "tests/test_uccle_means.py": "50eeb3130773420442ea234776fd9adfe5c597ea897ad2e29a1fd2f0c262dbd4",
-    "tests/test_uccle_monthly.py": "ef4605fdbacae4e75d61b162b6fd9db6336fd195cbf7c7fd31ffaecc8763a2d1",
-    "validation/RELEASE_VALIDATION.md": "72f26fdc3c2e243d14809da01b0d183cd437824fdf99a4546112256c0b38f2e2",
-    "validation/TXn-coefficient-benchmark.json": "a126ff894aea724683c7a83eb4e31f491e45cd324140e65d1a8d5d714536b748",
-    "validation/TXn-short-run-diagnostics.csv": "efe4805256df6556c11d6dfbd437c440c2e20651b1c4c0df7c1eee3557954f6b",
-    "validation/TXn-short-run.json": "e253a47b3c97fafc32f2ceb1bb4462dbba5196f6fc9734e5d49f6a33adbb4267",
-    "validation/environment.json": "b68d2679cdb73e10f4f7fb56f3dac7b42ea4daf08f48ff3a1fd8191315e5f85e",
-    "validation/installed-import.json": "c9ffb88b5dbfcf7d88caff9808018131c762d9434e0dc3f140a9ba8c6c8319e7",
-    "validation/preflight-1.7.1.json": "70d78e3c37f61ddc379aa48496c193a436351e467e014cd879771cab572de972",
-    "validation/pytest-1.7.1-installed.xml": "afaa14c5d0e87a2552a3ff0ba1a287f16278802ecbf213bef8c72e44c65efe16",
-    "validation/pytest-1.7.1-reference.xml": "7832a6712841080dda8adde38eb8768b070e192079645d4db9b316889be65077",
-    "validation/pytest-1.7.1-source.xml": "c32e31c3da4ebf9b122f932d66dfaaefa1826b9ecc59be4890f8181bd83e037d",
-    "validation/release-changes.json": "4c6d2d57659887131b756982bac04613f7875976c156d611bf152214efabc354",
-    "validation/workflows-1.7.1.json": "ac2d42f1b4dba259b3836e7c8dbc33531913fde66d2e4bb01dd3e67f948855a8"
+[
+  {
+    "path": ".gitignore",
+    "bytes": 389,
+    "sha256": "65ba7602332040e4d6f7f9ac0e44a904bc794c709e712f3042c8182d56e16a1a"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "bytes": 5482,
+    "sha256": "c585c74b2a9b6269ef9a5c7ceaae64b8a71c53f95a51ac490a6ac098bb72535f"
+  },
+  {
+    "path": "CITATION.cff",
+    "bytes": 363,
+    "sha256": "a29f33cf1be15e78fba3f90edd1012c6c442874945323ff21605f94f60d02b8a"
+  },
+  {
+    "path": "LICENSE",
+    "bytes": 1070,
+    "sha256": "3c63941b9ee652cb25b6f3eb1411ce284f5393881e5e50dbf46e9cc7df577e72"
+  },
+  {
+    "path": "MANIFEST.in",
+    "bytes": 423,
+    "sha256": "ecf12f3ed88324126aaa1b8161d36f39574aa2517f0be9722aab740d48bb13b7"
+  },
+  {
+    "path": "README.md",
+    "bytes": 6036,
+    "sha256": "19f45707edca6c9c855f8393fdd70b4215f7973f090466d1b4d1b9b18b229128"
+  },
+  {
+    "path": "RELEASE_NOTES.md",
+    "bytes": 2757,
+    "sha256": "b313ea19869ed6a53f501db754f3695f0d68882a3a561a8f721788b46bbb5a1f"
+  },
+  {
+    "path": "START_HERE.md",
+    "bytes": 4317,
+    "sha256": "6899288e2d7727148f2f0358dcca8d9130dd685744b372bdfcbc274a276c6c8d"
+  },
+  {
+    "path": "bucex/__about__.py",
+    "bytes": 22,
+    "sha256": "979b30e5df53f1da52db9084d6130e6d17ccc89d9d169dcd78cc1a2707d8af51"
+  },
+  {
+    "path": "bucex/__init__.py",
+    "bytes": 1875,
+    "sha256": "5945135965e818d14cbd5dc4cb394b0dd9120e022680c74e25a2fe3b480f20f9"
+  },
+  {
+    "path": "bucex/api/__init__.py",
+    "bytes": 872,
+    "sha256": "1734308f5e4896f97a82c660b671a10348d762e86139dfbd972a1124a003829f"
+  },
+  {
+    "path": "bucex/api/aggregate.py",
+    "bytes": 11716,
+    "sha256": "4748cf39d7536c1029fb96704fe5cb4a324ff5289b7e06de2b1eb45e5a48c34a"
+  },
+  {
+    "path": "bucex/api/fit.py",
+    "bytes": 45061,
+    "sha256": "dc51c238dfdb8dcffe3719d06ec1c145e5cb4c2d991867deefc17c343aa266ef"
+  },
+  {
+    "path": "bucex/api/predict.py",
+    "bytes": 54247,
+    "sha256": "78fbad142ab5c3bb4ca615675c096aa3918a86056f92333c3fbdf377991d8292"
+  },
+  {
+    "path": "bucex/cli.py",
+    "bytes": 5783,
+    "sha256": "9f21ec0a0ce668b2bb6993a4d65a52303a9c2ac2d57f9326875713f982d162d2"
+  },
+  {
+    "path": "bucex/components/__init__.py",
+    "bytes": 1184,
+    "sha256": "ff5f26411948a970e95721e63a68de6550e5097016a8ebc6166b62b1317589e9"
+  },
+  {
+    "path": "bucex/components/base.py",
+    "bytes": 1409,
+    "sha256": "dc820633bce2c1f9619726958e4a4647bf560a688b06991f287be4a15a521c28"
+  },
+  {
+    "path": "bucex/components/compose.py",
+    "bytes": 4878,
+    "sha256": "a141a2b95e20a0ca3df8ebdf0fa0b571eba04df783aa69d54ed09c58c0001be7"
+  },
+  {
+    "path": "bucex/components/regression.py",
+    "bytes": 5242,
+    "sha256": "03cd797e99ffa8efa851938f7ef71f81dee6e46c182188e57ba21f61fe7567f9"
+  },
+  {
+    "path": "bucex/components/seasonal.py",
+    "bytes": 4041,
+    "sha256": "675ff69f8b1fde26c346bd9b02b198793f5f3be598c346d4a321daa913a8f26f"
+  },
+  {
+    "path": "bucex/components/trend.py",
+    "bytes": 7715,
+    "sha256": "8feaf075a4db074a4c8394c123c355cad9631cc876fc9707af576efba63581b8"
+  },
+  {
+    "path": "bucex/config.py",
+    "bytes": 3077,
+    "sha256": "50f2230b6d9b992d640e08564d766c51dd5ea311bc6782f777a533005f671d67"
+  },
+  {
+    "path": "bucex/core/__init__.py",
+    "bytes": 197,
+    "sha256": "2d9a90f1d110d5db7b0681e71fadf0c870efcc97fb19a42675df574e816facc1"
+  },
+  {
+    "path": "bucex/core/calendar.py",
+    "bytes": 3037,
+    "sha256": "acf2633038b9e5f2e900851db1557f0255138ce964b2f0d4c49d4c35a74201aa"
+  },
+  {
+    "path": "bucex/core/fit.py",
+    "bytes": 75231,
+    "sha256": "dd604b235e2d72b2eeb1290abe1c3a5a2e32131a1ae9ecea96b5bae69d032b29"
+  },
+  {
+    "path": "bucex/core/numerics.py",
+    "bytes": 7856,
+    "sha256": "05bfc8cb7313a0d9ad9398c206fbfce08dfb63838e6091b448daaf3a1becd544"
+  },
+  {
+    "path": "bucex/core/shared_results.py",
+    "bytes": 7523,
+    "sha256": "86d594f78673b0c7f59032df917d0a761bbd88c576cdb28ddeeaeecb7de38948"
+  },
+  {
+    "path": "bucex/data/README.md",
+    "bytes": 1212,
+    "sha256": "233bdd1c76567cb6c5dfb22388700ede1d70e979653c8072ef01c98b589cca7e"
+  },
+  {
+    "path": "bucex/data/SOURCES.md",
+    "bytes": 8558,
+    "sha256": "e1c98525e0d2ac04585b3d8bab5e4b82b1345dfe2aa705aa8292f69ed042f7d4"
+  },
+  {
+    "path": "bucex/data/TNm.csv",
+    "bytes": 45741,
+    "sha256": "563b427e6af02b13636744951677fc706258efa2bb741301844b0c12e9ff38c0"
+  },
+  {
+    "path": "bucex/data/TNn.csv",
+    "bytes": 25160,
+    "sha256": "790dfc9c88365b579ad0c4e7f5283cccbad9817335874b9f31a5578a0ab3c695"
+  },
+  {
+    "path": "bucex/data/TNx.csv",
+    "bytes": 25291,
+    "sha256": "b119027c8cf42cc539a78a6238638d3fd9ce228a270717c13849ab76867489fb"
+  },
+  {
+    "path": "bucex/data/TXm.csv",
+    "bytes": 45461,
+    "sha256": "4e5b5ea7197788143ec72a252134ed3ffa55242916ad7ec6e27406ea7d78a076"
+  },
+  {
+    "path": "bucex/data/TXn.csv",
+    "bytes": 25199,
+    "sha256": "7b5f22ebee92a3cce8ec660204de1597a21f193970c18f9e174421f3a7958d69"
+  },
+  {
+    "path": "bucex/data/TXx.csv",
+    "bytes": 25786,
+    "sha256": "d3d1bda232c97003eadb2626f097c0ad5f01b5687f597bebad022db4613e1146"
+  },
+  {
+    "path": "bucex/data/quality_report.json",
+    "bytes": 515,
+    "sha256": "4a8879c7cab84e7b422cd5de8ae9b6abb5e0f8adfa3bf982cbe289e10638599e"
+  },
+  {
+    "path": "bucex/datasets/__init__.py",
+    "bytes": 760,
+    "sha256": "f0fe0b8861062eaba19df9c4f05c790906686c7943c950a35cb4d8adb4d9ee00"
+  },
+  {
+    "path": "bucex/datasets/uccle.py",
+    "bytes": 24635,
+    "sha256": "f4f5f0fbe1f58910ee7f5f2e86cf45a8f6644a3f1485a7b9ff35206268692930"
+  },
+  {
+    "path": "bucex/dependence/__init__.py",
+    "bytes": 855,
+    "sha256": "013e4971849084e7dc039dd417d5c5316aa25fc7e6b04c02ebf69b567b77f0ca"
+  },
+  {
+    "path": "bucex/dependence/gaussian.py",
+    "bytes": 22463,
+    "sha256": "b702ecafd8db9f24e453d981b48a7d8bc27b5fc79627ad2d715590abe7c28e5a"
+  },
+  {
+    "path": "bucex/dependence/probability.py",
+    "bytes": 4229,
+    "sha256": "26fd9a93dfce4744f0fa26dd34d16eeb1a46846d698db110764190c2f49e4a60"
+  },
+  {
+    "path": "bucex/dependence/seasonal.py",
+    "bytes": 5755,
+    "sha256": "1bd8c7022a902258f989d55048151b7b055db8c9a3ca320f9d2a2f3eb48ba58b"
+  },
+  {
+    "path": "bucex/diagnostics/__init__.py",
+    "bytes": 2185,
+    "sha256": "14f5b5e093cd0d7023d5191ade97ed4200aaa078f20306d833d03008d15487c9"
+  },
+  {
+    "path": "bucex/diagnostics/calendar.py",
+    "bytes": 3395,
+    "sha256": "9d5c588606a37def84a8cad15dadc61274d42ca0c3df14a6a46c855316905752"
+  },
+  {
+    "path": "bucex/diagnostics/calibration.py",
+    "bytes": 4098,
+    "sha256": "333e3f6b44df76ad907c71c54e6c09f03a964e82770f7999f9dfe9313026801c"
+  },
+  {
+    "path": "bucex/diagnostics/comparison.py",
+    "bytes": 2161,
+    "sha256": "177a20d1abb7b8afb4c280aa88caa2e14b3afc1f658e589019990debff574fa9"
+  },
+  {
+    "path": "bucex/diagnostics/contrasts.py",
+    "bytes": 3205,
+    "sha256": "84d9c14af5eb69141835b1fd1f97c8729c82c15045cc0f471dd65bbfa01d39e6"
+  },
+  {
+    "path": "bucex/diagnostics/cv.py",
+    "bytes": 9943,
+    "sha256": "d5f06d2925628ca7ba63b3fe64199cb6c781df35f3ef62b610785738a25d54fc"
+  },
+  {
+    "path": "bucex/diagnostics/dependence.py",
+    "bytes": 5601,
+    "sha256": "9cd497a08b57e030b93af35bfd18702a2d4626178e31230857b742fd1d233183"
+  },
+  {
+    "path": "bucex/diagnostics/experiments.py",
+    "bytes": 25345,
+    "sha256": "18819e305af17a520c274461fdd0e98cd6115fba6deca9ffa9f5c4abaf8eb435"
+  },
+  {
+    "path": "bucex/diagnostics/ordering.py",
+    "bytes": 7393,
+    "sha256": "65f940ebae9ce9af1a4b0c0cf652737409b517cf158520ac6d3f5ec473a7779f"
+  },
+  {
+    "path": "bucex/diagnostics/periods.py",
+    "bytes": 5289,
+    "sha256": "b79bb1bb10161d2010d22cc5f7dceb14dfc3640e8ba38a86d7f4c3ec7c65029f"
+  },
+  {
+    "path": "bucex/diagnostics/posterior.py",
+    "bytes": 10666,
+    "sha256": "957a53ff24308d7011c2b6f13edf763e13c9bc0790047327b5ec8c620f4b9a8f"
+  },
+  {
+    "path": "bucex/diagnostics/residuals.py",
+    "bytes": 383,
+    "sha256": "0ecfbff2807f828e1aa2c5133e32a9c7d70ce583ce7692f66af367120272d392"
+  },
+  {
+    "path": "bucex/diagnostics/scores.py",
+    "bytes": 6817,
+    "sha256": "39a09cfe9fe46b33772fdfac227aebe6522542eb9c742230b9f3ace4ec8cb8bf"
+  },
+  {
+    "path": "bucex/inference/__init__.py",
+    "bytes": 740,
+    "sha256": "4badaafa1407b4bbcea1949f8d8d6d1e8fcf4819dc915a052278e04b154391d0"
+  },
+  {
+    "path": "bucex/inference/config.py",
+    "bytes": 5584,
+    "sha256": "773eee3ff107859638e14252d94cf6848aec8b63b2f68deabd970637db5b3ced"
+  },
+  {
+    "path": "bucex/inference/fit/__init__.py",
+    "bytes": 492,
+    "sha256": "c871d16aef2bbd75a52e737e9afee1f021373d0a60be98c3ee57b5371e452923"
+  },
+  {
+    "path": "bucex/inference/fit/_fs_output.py",
+    "bytes": 502,
+    "sha256": "d574c6fbfaca58c47f5e919a2577e52d7c731c2ad4e0e0f115f4b316fb58a95f"
+  },
+  {
+    "path": "bucex/inference/fit/_progress.py",
+    "bytes": 6606,
+    "sha256": "0ce8424dc34b8ced83aa2c1898f45fef1df8b46ee2cf851f39373585f8a665dc"
+  },
+  {
+    "path": "bucex/inference/fit/coefficient_reference.py",
+    "bytes": 5587,
+    "sha256": "7f7bd74ccbe6e083f01e563c5768f123c4beb4592588c020141e41f275e9be60"
+  },
+  {
+    "path": "bucex/inference/fit/conditional_margin.py",
+    "bytes": 3791,
+    "sha256": "39b6a1fa2236a63742ed382f9e37f615e54295ac9b91e4699177fa3360c16bd2"
+  },
+  {
+    "path": "bucex/inference/fit/continuous.py",
+    "bytes": 14034,
+    "sha256": "52c3544c8172fcb632d7a93940cb333f678610269c62aa75d534788aa20d2dd6"
+  },
+  {
+    "path": "bucex/inference/fit/disturbance.py",
+    "bytes": 29458,
+    "sha256": "f31497451ddfaa75b4bfc1c0d85bc4881953bcbad2da789b5890f00883a24f08"
+  },
+  {
+    "path": "bucex/inference/fit/evolution.py",
+    "bytes": 7578,
+    "sha256": "e2ed850b351fb90ea3fca4753ce1e95c7d30006998746337adfa3e9d668d264d"
+  },
+  {
+    "path": "bucex/inference/fit/fs_gaussian.py",
+    "bytes": 26118,
+    "sha256": "dc47b050f38855356d598af56b8eeaaf29466dbd9cf7cf6cdaeee59352cb8659"
+  },
+  {
+    "path": "bucex/inference/fit/fs_gev.py",
+    "bytes": 63522,
+    "sha256": "2532b764cc463e8f19fad1b91d0aa3840d694e0e4dc2d2b32469617f7e7582e3"
+  },
+  {
+    "path": "bucex/inference/fit/fs_utils.py",
+    "bytes": 92978,
+    "sha256": "376a514f3a363c58dc6a4b38251d5cd0ca4c4e9213188d2fd393dcdfad2ffb33"
+  },
+  {
+    "path": "bucex/inference/fit/hierarchical.py",
+    "bytes": 52042,
+    "sha256": "6771fbb748be1aa9c7dfad14505549acd5c0f13183756378a0967cdcc3456ff7"
+  },
+  {
+    "path": "bucex/inference/fit/marginal.py",
+    "bytes": 24254,
+    "sha256": "032e1d92dd4e80314165a647615c2cf5332b9d4c383302ccda70a64a868229a5"
+  },
+  {
+    "path": "bucex/inference/fit/marginal_adapter.py",
+    "bytes": 4822,
+    "sha256": "fd5d7d4cdae86ccfa9abe89b7dd82b16fe4a897852f32f25d6a21528d91d68bd"
+  },
+  {
+    "path": "bucex/inference/fit/model_space.py",
+    "bytes": 27642,
+    "sha256": "c35ab4ceefad70a4e1f040435d6f97b6d31963ff94fee02abba17e89ce832ba4"
+  },
+  {
+    "path": "bucex/inference/fit/phi.py",
+    "bytes": 32146,
+    "sha256": "a6820e57400d9d8cac2dd04702b1376602b9ca05c12bb4fff549a8100c9e64cf"
+  },
+  {
+    "path": "bucex/inference/fit/scale_path.py",
+    "bytes": 2707,
+    "sha256": "4c1f31d697982a3f1039b141a86768504e8a87f49935a2c18e19645b05559e8f"
+  },
+  {
+    "path": "bucex/inference/fit/shared.py",
+    "bytes": 30451,
+    "sha256": "233dee82f3589172deb8d2c9d524b2fa8e2c464b3a66d3a2002b5e8974d01907"
+  },
+  {
+    "path": "bucex/inference/fit/shared_slice.py",
+    "bytes": 7488,
+    "sha256": "a7b102b6a8f6869f541dc887401aa3f633a1c191234ff5694791225bbadb6d8a"
+  },
+  {
+    "path": "bucex/inference/fit/utils.py",
+    "bytes": 892,
+    "sha256": "6083bb8b8740d14026245987fbbef0b1df596bb1b98b67dbd1b8b5771ddfacf5"
+  },
+  {
+    "path": "bucex/inference/plan.py",
+    "bytes": 12008,
+    "sha256": "73cded5d368bb1b580f18728951792bc0437bc1f79d277928ff0d98f994eb3ed"
+  },
+  {
+    "path": "bucex/inference/state/__init__.py",
+    "bytes": 689,
+    "sha256": "f9733ac1763e8fd0468fad19fad68c78cf1f9cda9ac7c99a401dd2f76d3621af"
+  },
+  {
+    "path": "bucex/inference/state/kalman.py",
+    "bytes": 8880,
+    "sha256": "b65a3aa3d6629dd202fe26ea0fa7d177b4c61f5f666b968ff63d9044bc1760fd"
+  },
+  {
+    "path": "bucex/inference/state/laplace.py",
+    "bytes": 23237,
+    "sha256": "23641759d041b5d779ab2ba7d12ec502fd96c6b0234b274f9cef5ae37c1670c8"
+  },
+  {
+    "path": "bucex/io/__init__.py",
+    "bytes": 256,
+    "sha256": "26322184a598293e1ce0444bf0be1aa483938903417d63be9fc2fc47f81de3f1"
+  },
+  {
+    "path": "bucex/io/posterior.py",
+    "bytes": 9152,
+    "sha256": "d3a287778aeff4c61d035127be5cb2ea44ced9588c11889c834348cf65b3e7b1"
+  },
+  {
+    "path": "bucex/models/__init__.py",
+    "bytes": 748,
+    "sha256": "27633f44cb24e41370f176f9303dbe2e641a081d3925353ea526b5f4735d08dc"
+  },
+  {
+    "path": "bucex/models/base.py",
+    "bytes": 5747,
+    "sha256": "8549323dd2d2aa86b3067ff46ba9471521bdd82a78df2f9f368d82adfa7ab2bf"
+  },
+  {
+    "path": "bucex/models/compiler.py",
+    "bytes": 16893,
+    "sha256": "8cd5b1d98ae6bbe267809f334320de70cc0f6c55f5dc0abe3465c02567925223"
+  },
+  {
+    "path": "bucex/models/multiseries.py",
+    "bytes": 12448,
+    "sha256": "1d77d1748b046a2389ee4cc6aa7ebeee0d584a99e30702d7ef5523446fc9c3bb"
+  },
+  {
+    "path": "bucex/models/multiseries_compiler.py",
+    "bytes": 18622,
+    "sha256": "b807b24dda8af8d643c5762b89f4e7dcec87b459744d33337c12ab1b8673863a"
+  },
+  {
+    "path": "bucex/models/shared.py",
+    "bytes": 6560,
+    "sha256": "00e9fd050dfb6f24220c1ef342eecb641725f3f6bcc72588219d032906c1230a"
+  },
+  {
+    "path": "bucex/models/shared_compiler.py",
+    "bytes": 14578,
+    "sha256": "ee2e1d6e0b9f174461a8de65c3afdc466a6ce47c37b6d4cfea1e6c9c7970dc80"
+  },
+  {
+    "path": "bucex/models/structural.py",
+    "bytes": 7274,
+    "sha256": "70c45d31d4a48668641b0bc9caf1c406b5c14a6c2120c33c69b0797b924e2ef7"
+  },
+  {
+    "path": "bucex/observation/__init__.py",
+    "bytes": 912,
+    "sha256": "8e2b6a7e687ea63b426bcf3fbf791a62ef85a818a332e461398bab9a5118e2d6"
+  },
+  {
+    "path": "bucex/observation/base.py",
+    "bytes": 2315,
+    "sha256": "7042665f6bb2db012e26f0cf6efc0859aa4e759f68c738bd85939033e4394faa"
+  },
+  {
+    "path": "bucex/observation/gaussian.py",
+    "bytes": 3319,
+    "sha256": "c6aca3ac278b698813e87a8313e3becd9886b16669f526dc35ebee5c5fbfc531"
+  },
+  {
+    "path": "bucex/observation/gev.py",
+    "bytes": 9266,
+    "sha256": "dbc145b979110700ccb5322027a72ac7125b347bf3342543b5fa363f3fd0e576"
+  },
+  {
+    "path": "bucex/observation/scale.py",
+    "bytes": 7599,
+    "sha256": "df6bd35f9ddc842cd4b101a8fc0231a1965930f41a0ade9f3b937c93bd5e3956"
+  },
+  {
+    "path": "bucex/parameters.py",
+    "bytes": 4165,
+    "sha256": "31b1d1a1e032a2ddd3a59d9872b0027a953ebfe4a441e1b26f039f08e144ba50"
+  },
+  {
+    "path": "bucex/plotting/__init__.py",
+    "bytes": 2042,
+    "sha256": "e354fe494a2499da1b543270eebc841becb81a705a26da78cb3bf0118699c58e"
+  },
+  {
+    "path": "bucex/plotting/calendar.py",
+    "bytes": 1878,
+    "sha256": "0898ec6ee078f915929187d5802c76fb5d513e4e743ae6b86f787e3a6e065349"
+  },
+  {
+    "path": "bucex/plotting/core.py",
+    "bytes": 64825,
+    "sha256": "7cfdfc7fa0373ea73820deafbd2b0098bc2f8a43ac186bdc5a908e3fad771dd8"
+  },
+  {
+    "path": "bucex/plotting/dependence.py",
+    "bytes": 2979,
+    "sha256": "01e005444b3a8a535e35052a8b50b332b374d73b1fc2857187146ac79a02e662"
+  },
+  {
+    "path": "bucex/plotting/parameters.py",
+    "bytes": 1080,
+    "sha256": "1a0f9e4a356285680956fc8e88d72d59b8cbbe4006fc7b2c45f4ba65e2d34021"
+  },
+  {
+    "path": "bucex/plotting/predictive.py",
+    "bytes": 11224,
+    "sha256": "801b7da65cbf36ae92a2d382a8c10f8691e02cbaeb5551afb96bdf36f08e277a"
+  },
+  {
+    "path": "bucex/plotting/report.py",
+    "bytes": 10545,
+    "sha256": "8a97790a1c7287aec9ee6e052dc71b5d646092fff23727174cebe305864df1fd"
+  },
+  {
+    "path": "bucex/plotting/shared.py",
+    "bytes": 2688,
+    "sha256": "376ec4372ae0e8785bf8437597101a5609730b1eab9f186565ebb5e4397645e1"
+  },
+  {
+    "path": "bucex/plotting/style.py",
+    "bytes": 4311,
+    "sha256": "15b30f11c8a5ae0f12f29948bfcb021036538a0487fdba217be93421d7b0e8f5"
+  },
+  {
+    "path": "bucex/plotting/traces.py",
+    "bytes": 3031,
+    "sha256": "5ba11d0abbb522269816208d6b3e5f9eeb4eb06c15011e579a351a48ad6fe59a"
+  },
+  {
+    "path": "bucex/priors/__init__.py",
+    "bytes": 3323,
+    "sha256": "b53e232dd439889b8025832b9c94607ba62085c2195c4582a54486ae9b2f32f1"
+  },
+  {
+    "path": "bucex/priors/calibration.py",
+    "bytes": 5461,
+    "sha256": "fd3119b45373d7c97f5a113e774032ed3ae1f9cd09f13f8c1804ad21b2022ffd"
+  },
+  {
+    "path": "bucex/priors/evolution.py",
+    "bytes": 2249,
+    "sha256": "53340aa5b5ebe794f543068dfe702e582239109ddbb171a367da1dc4807c2d82"
+  },
+  {
+    "path": "bucex/priors/fs.py",
+    "bytes": 4291,
+    "sha256": "38051c40c9ce55bf2d86008b1c85814a62b812b1cd063b3a275c787f3925a0d8"
+  },
+  {
+    "path": "bucex/priors/hierarchical.py",
+    "bytes": 13782,
+    "sha256": "6cf2dca9446a4ee587a7cecdd479488ee770d8f4ec9aef05c02b6734d5889f82"
+  },
+  {
+    "path": "bucex/priors/joint.py",
+    "bytes": 6448,
+    "sha256": "69fe57ea4e6cedb53bd22e89781a945c678075dac7963c463da9d9a10464dabf"
+  },
+  {
+    "path": "bucex/priors/marginal.py",
+    "bytes": 1016,
+    "sha256": "24bf1b24c626a45366e6215dc96f0d2b955b9ab97b250d66bc5bb680cf6676d8"
+  },
+  {
+    "path": "bucex/priors/process.py",
+    "bytes": 17488,
+    "sha256": "28835e41724d9302cffdf863d4f432450b0164dfb3721fb7a79a7eee01d03d6c"
+  },
+  {
+    "path": "bucex/priors/resolve.py",
+    "bytes": 5109,
+    "sha256": "9dbb8b69d0d51b0311487063d1abe0057f4bdcb2f907e3e724f3b3b5d9e97f77"
+  },
+  {
+    "path": "bucex/priors/structural.py",
+    "bytes": 49847,
+    "sha256": "b1fcde795fbeb1b6eca798ef9cf3c5b6eaeaf495b71c1e889fdc5f7f75bcbe58"
+  },
+  {
+    "path": "bucex/reporting/__init__.py",
+    "bytes": 218,
+    "sha256": "cd0521b961c59cf042f6db71f02066cd40fdc7af9400215b3797586399d8d303"
+  },
+  {
+    "path": "bucex/reporting/data.py",
+    "bytes": 5936,
+    "sha256": "a53543c03db8a37a6cebe9db8ed5fc5df458ce7f87c67f7e02fab50f06678bd9"
+  },
+  {
+    "path": "bucex/reporting/figures.py",
+    "bytes": 4179,
+    "sha256": "e0853dddc42326eaeda08de0368a1577ff019a55b5c2b070d6b4c64a704cc268"
+  },
+  {
+    "path": "bucex/reporting/panels.py",
+    "bytes": 10911,
+    "sha256": "f3be897582cfded9c088d8a1d60c735f2e7bdefe6907d06d476de9b648c2a9d2"
+  },
+  {
+    "path": "bucex/simulate/__init__.py",
+    "bytes": 131,
+    "sha256": "754c6943b7713315b8029540de3102942b2c556338f916318e174cfb45cfd6a5"
+  },
+  {
+    "path": "bucex/simulate/general.py",
+    "bytes": 7154,
+    "sha256": "8e2e237a90e8e033bdc5a4bf21016b1d6f2ca39d8cd24a552df586168db62f56"
+  },
+  {
+    "path": "data/README.md",
+    "bytes": 1229,
+    "sha256": "49594ed15fc95740ca240f97dad3b2d4d51d34be1a85274a478bfc34a098d9ae"
+  },
+  {
+    "path": "data/Uccle_31_08_26.csv",
+    "bytes": 1220591,
+    "sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+  },
+  {
+    "path": "docs/ARCHITECTURE.md",
+    "bytes": 3168,
+    "sha256": "0dca96d2c1b25e147e9181b1bfa8b6eccb0a6493db54e3b9d9e66e14203f2fe6"
+  },
+  {
+    "path": "docs/COPULA_AND_ORDERING.md",
+    "bytes": 8223,
+    "sha256": "92904d9ae27ae24f19909ed33888469ec9e2fd19aeda656a0b9b837736c6c090"
+  },
+  {
+    "path": "docs/FIGURES.md",
+    "bytes": 5209,
+    "sha256": "321760022b7830cb32c1e62be4340d2324607fa3245022e5d3a80a3638847de2"
+  },
+  {
+    "path": "docs/FORECASTS.md",
+    "bytes": 10403,
+    "sha256": "d7ac8793cab65078ba138c4f9a2ce81d47cf04a1e21863e500c36e49076cb1c9"
+  },
+  {
+    "path": "docs/HIERARCHICAL_MODEL.md",
+    "bytes": 1815,
+    "sha256": "e1ef82b7ff7aac8f3caf623880f6ab6721b31cf36d69108de1f654f1f96ef463"
+  },
+  {
+    "path": "docs/INFERENCE_MATRIX.md",
+    "bytes": 3426,
+    "sha256": "bc1b6d17f283107e97a6bf4af7a7aa53be5df273de4fdb3816af97cf78bb4940"
+  },
+  {
+    "path": "docs/LOG_SCALE.md",
+    "bytes": 3331,
+    "sha256": "fc8e75fbb187c93fb526a502ad657ebc335fcf6e3dbb5a003d76da93e00fecbe"
+  },
+  {
+    "path": "docs/MANUSCRIPT_ALIGNMENT.md",
+    "bytes": 1668,
+    "sha256": "a24b76128ce351fedda2da25fa4bedb0c56b66e27a8f76e1629103a9c523140e"
+  },
+  {
+    "path": "docs/MIGRATION.md",
+    "bytes": 6685,
+    "sha256": "ab7d67f5c4ffd8610e3896755ecd20f4ff0bb81254a9f27afed779854dc1a141"
+  },
+  {
+    "path": "docs/PARAMETER_EVOLUTION.md",
+    "bytes": 7199,
+    "sha256": "79c80853b12fbe7924253819b25352e0f1ab7e92d76c05a31fecefd570dfe49a"
+  },
+  {
+    "path": "docs/PREDICTIVE_VALIDATION.md",
+    "bytes": 4866,
+    "sha256": "d721ac5bc4c3d0e04ddd0f358060cdbfad4da531dbfdb766ed0adfe9b2c2c0b5"
+  },
+  {
+    "path": "docs/PUBLICATION_RUNS.md",
+    "bytes": 19838,
+    "sha256": "8c52347b5157009c57b09c5b8b9559f5b802ba7985e1e04da428e9d2e14dcea9"
+  },
+  {
+    "path": "docs/REVIEWER_MATRIX.md",
+    "bytes": 5450,
+    "sha256": "9d15729926f0a6d856f19a1609c20ee6db055a540174f80d7dc40f02af6cccbe"
+  },
+  {
+    "path": "docs/REVISION_GUIDE.md",
+    "bytes": 8678,
+    "sha256": "18658206eb5b8533ff375a3361828541d0ec4a6cdea6d6778c4ef98618548d63"
+  },
+  {
+    "path": "docs/SHARED_COMPONENTS.md",
+    "bytes": 12931,
+    "sha256": "e8ee3e839e15456cc66af1da28b33ab53264fc8f48497da452bac7916ed72c67"
+  },
+  {
+    "path": "docs/UCCLE.md",
+    "bytes": 4821,
+    "sha256": "9ad52831d65c596bd2b2ceb1e48eeed9ebd79b32d1b74ae4731500f8587a8b64"
+  },
+  {
+    "path": "docs/VALIDATION.md",
+    "bytes": 501,
+    "sha256": "d637115cde48eb4ff205cbf790a5b664e1a757803125aa4a7b7f42141c358c68"
+  },
+  {
+    "path": "docs/examples/parameter_evolution.py",
+    "bytes": 1750,
+    "sha256": "0a6a02f7f8a9dfadb562ef8dac9df3a7a94aa4daf1a9188cfea4273f60bcc411"
+  },
+  {
+    "path": "pyproject.toml",
+    "bytes": 1220,
+    "sha256": "462bfdda3a15bbe20555e5fbd36973c77180617524018677dc2ebaae39d65d3e"
+  },
+  {
+    "path": "research/README.md",
+    "bytes": 374,
+    "sha256": "0631feb838c57cbe12a65c5f58da76b50a8c340afa56a5c8fe936448155be043"
+  },
+  {
+    "path": "research/__init__.py",
+    "bytes": 65,
+    "sha256": "3beda92439cdd50e73213dacdc4bcbec009f0820ff952db2dff05c2870ff14c6"
+  },
+  {
+    "path": "research/serra/README.md",
+    "bytes": 2696,
+    "sha256": "e32bfc279817135c42ef55afde3a017520bb76f4cc29ddde854f9476c1f3da0f"
+  },
+  {
+    "path": "research/serra/__init__.py",
+    "bytes": 35,
+    "sha256": "373abc16f93270175d78d192098a58b92141321e07d3058b4df8f48c796ce271"
+  },
+  {
+    "path": "research/serra/check_updates.py",
+    "bytes": 4316,
+    "sha256": "a6bf23a15ecedcf04c9d12565b36cd8fd7ef688629adcca21eb49045fd045ce7"
+  },
+  {
+    "path": "research/serra/compare.py",
+    "bytes": 2467,
+    "sha256": "4edf2b0554c8442a0cf3824380f4509b8ca0acf001b2fe04ce0f8e91fe591125"
+  },
+  {
+    "path": "research/serra/config/base.json",
+    "bytes": 3073,
+    "sha256": "5c35c114a4978b9a6d2c3fd1d59e599fee328eab11fd92af0e8be8f4cfa868a2"
+  },
+  {
+    "path": "research/serra/config/copula_1892_2022.json",
+    "bytes": 264,
+    "sha256": "784fce75dd21bcae7f90b46da8114df0c6a5f775e6908de5d16b2048f2840259"
+  },
+  {
+    "path": "research/serra/config/copula_extended.json",
+    "bytes": 197,
+    "sha256": "bf759e2bb7ed7a10965220643498e4b7b9e09f9c32c0a2faf57ffdbd28bfc4f8"
+  },
+  {
+    "path": "research/serra/config/copula_full.json",
+    "bytes": 53,
+    "sha256": "bc70bdd9529e231a7a2b722d63550ee9c217b88e41f4acbd179629f7e18a298f"
+  },
+  {
+    "path": "research/serra/config/copula_seasonal_full.json",
+    "bytes": 121,
+    "sha256": "9f03cd99b47335833637a78a00f32e5f7365986293b49355dd4f11e8f684a206"
+  },
+  {
+    "path": "research/serra/config/copula_smoke.json",
+    "bytes": 54,
+    "sha256": "6b00855d1877126d85b4a1d50d321ecb154600938c7f0b3e85047bb0b8456a8e"
+  },
+  {
+    "path": "research/serra/config/endpoint/laplace_benchmark.json",
+    "bytes": 163,
+    "sha256": "e8ccc69fe168be3f690d324279c417492e83fab8b8c7879968a51ba5e88690ff"
+  },
+  {
+    "path": "research/serra/config/endpoint/paper.json",
+    "bytes": 505,
+    "sha256": "0fcc4d4e874af756c554097400bbb3bf144d5b9b960bc62348d7ce5867c77164"
+  },
+  {
+    "path": "research/serra/config/endpoint/smoke.json",
+    "bytes": 506,
+    "sha256": "c319aabda9c5ae53ad0615a83acb20dbe86ac5d4517363ece1b02cdee49129ff"
+  },
+  {
+    "path": "research/serra/config/forecast/paper.json",
+    "bytes": 85,
+    "sha256": "3d6b493f65cfe104acead4ab45e7b3bcb3c6150fdfb5a6861a79ccc53fc1a944"
+  },
+  {
+    "path": "research/serra/config/forecast/smoke.json",
+    "bytes": 160,
+    "sha256": "de605a67387a9dc5db1d18817c584ef05d0e7ee57f4e950c5d0f9973d1b857aa"
+  },
+  {
+    "path": "research/serra/config/independence_full.json",
+    "bytes": 59,
+    "sha256": "29dfd956616a1bb4160fbad940d4aa56f0b4aac589057f6b39141fa522ed18ec"
+  },
+  {
+    "path": "research/serra/config/independence_smoke.json",
+    "bytes": 60,
+    "sha256": "0c8fe6fe3a8e6e01c0b6442f815597f1bab308a57cdbd1b398d5c09d39d25d5b"
+  },
+  {
+    "path": "research/serra/config/independent_1892_2022.json",
+    "bytes": 269,
+    "sha256": "726a11635af5e898d25c581588f53af29a723d4ea6edc0f00082133c36817ca9"
+  },
+  {
+    "path": "research/serra/config/independent_extended.json",
+    "bytes": 202,
+    "sha256": "5c21d125dc6e9dcb4aee3bbd417ede8bfde05042782ef92a06258929cd79e430"
+  },
+  {
+    "path": "research/serra/config/independent_full.json",
+    "bytes": 58,
+    "sha256": "946d07e24d23683c951d350bd376a039b74446307180f8e36520000e9ba7c692"
+  },
+  {
+    "path": "research/serra/config/independent_level_002.json",
+    "bytes": 229,
+    "sha256": "2e314dbee337a9f510f6637ee20e6fe795dffc5a19c67b91fd90f64e0e5a2f7b"
+  },
+  {
+    "path": "research/serra/config/independent_smoke.json",
+    "bytes": 59,
+    "sha256": "56ce0c5294927be8d831fe406b497685cf3aa0bc3f0eba6893182ce65071b235"
+  },
+  {
+    "path": "research/serra/config/joint_recovery_full.json",
+    "bytes": 407,
+    "sha256": "7d10b9bc7094f3d0450d32804535cf895d852977c5b15c52efa0b4bcd03c17e2"
+  },
+  {
+    "path": "research/serra/config/joint_recovery_smoke.json",
+    "bytes": 361,
+    "sha256": "34f9300cc334f150c9f7b40e4b777b37ba93fdb3dde991ff3eeeb307e52212a0"
+  },
+  {
+    "path": "research/serra/config/model_comparison_full.json",
+    "bytes": 931,
+    "sha256": "77c17d87be169884050c3fc03557fc67106dda00e24ae50ccaeb286240c744e9"
+  },
+  {
+    "path": "research/serra/config/model_comparison_smoke.json",
+    "bytes": 470,
+    "sha256": "e2f0866044c51dd4244360bdecca17b834bdea33ce7e7892d29450c27942f416"
+  },
+  {
+    "path": "research/serra/config/prepare_uccle.json",
+    "bytes": 91,
+    "sha256": "e9b918887ba765162195f7a2b945e6cc6fa42a02ca662e928abedaa6212974a4"
+  },
+  {
+    "path": "research/serra/config/revision/constant_scale.json",
+    "bytes": 62,
+    "sha256": "9762d0e552a71b31831b77be9bbbe5147a89c2ec36e921cbfa5252562aa9692b"
+  },
+  {
+    "path": "research/serra/config/revision/copula_constant.json",
+    "bytes": 63,
+    "sha256": "c7613862dc48c54f57432baa39de6a82296f917ecf05af68dd13ad6af171d4c1"
+  },
+  {
+    "path": "research/serra/config/revision/copula_monthly.json",
+    "bytes": 62,
+    "sha256": "957d73ef1dd3446f46802ce192621268e07f7fade710d5c8cb82d8a401cb2dd2"
+  },
+  {
+    "path": "research/serra/config/revision/copula_monthly_final.json",
+    "bytes": 94,
+    "sha256": "dca5f30baf7e93fc4abab72bd5f3173a8bb7f5d6ab88a8f5cb4afbb727a3c3a9"
+  },
+  {
+    "path": "research/serra/config/revision/copula_monthly_smoke.json",
+    "bytes": 68,
+    "sha256": "8ab21c3f9c8f6d243f41f6e0222e9cf1edce2c60cf45e280bc0fe8a9bc248231"
+  },
+  {
+    "path": "research/serra/config/revision/endpoint_monthly.json",
+    "bytes": 151,
+    "sha256": "ace40979acb2400d0432c889704158baf9cfba40b2c2f90a67f7e8d407cd61fc"
+  },
+  {
+    "path": "research/serra/config/revision/figures.json",
+    "bytes": 3958,
+    "sha256": "6d33d5af82ab69d57902813d8cfdf70744197497a8a7fa2389568154a3880b3e"
+  },
+  {
+    "path": "research/serra/config/revision/forecast_TXx_20y.json",
+    "bytes": 116,
+    "sha256": "8fc0ef9348d1101ae7ab7e45e46066da8d72acf2e4badbffa3451a1d8d697501"
+  },
+  {
+    "path": "research/serra/config/revision/historical_monthly_scale.json",
+    "bytes": 160,
+    "sha256": "a7fcc9a30aa9a5388319756ee0cc772637bdd6c1cfe949490a2ed0584220abf5"
+  },
+  {
+    "path": "research/serra/config/revision/independence_constant.json",
+    "bytes": 62,
+    "sha256": "55e058fcec88a207e2d37d7ad8bbcd618d3b7519cd6640d83f7323bc84a6c4af"
+  },
+  {
+    "path": "research/serra/config/revision/independence_monthly.json",
+    "bytes": 62,
+    "sha256": "fccc218876dfc56604843fff609104585d48f4d9b448ae3091048f82277b3763"
+  },
+  {
+    "path": "research/serra/config/revision/joint_recovery_pilot.json",
+    "bytes": 569,
+    "sha256": "c97af49ee7c39cb6d7bff9a1e79b577036e07db728c3e3841d75162148f31bce"
+  },
+  {
+    "path": "research/serra/config/revision/model_comparison.json",
+    "bytes": 1099,
+    "sha256": "97f210e5285f2519c4ce1b2462beabb0e467e584946aeb230041d0934fc56bca"
+  },
+  {
+    "path": "research/serra/config/revision/monthly_scale.json",
+    "bytes": 107,
+    "sha256": "57800c450c4126b9ce6345ad2e1bbc826f7616db4055fdf3a0d411402ca7586a"
+  },
+  {
+    "path": "research/serra/config/revision/monthly_scale_final.json",
+    "bytes": 93,
+    "sha256": "236e825207c125c5f3ce8a731a7ef4ec4435afb76f2b15894059d336cced718d"
+  },
+  {
+    "path": "research/serra/config/revision/monthly_scale_smoke.json",
+    "bytes": 502,
+    "sha256": "c38364cd7cddb7793bbaee4d12fe263593748422be7bcd2acbffecf632cfb71d"
+  },
+  {
+    "path": "research/serra/config/revision/protocol.json",
+    "bytes": 1621,
+    "sha256": "813f98595679ccd3548c64ea5acab84225d82e3da69fdfca1936f3c1d058cd33"
+  },
+  {
+    "path": "research/serra/config/revision/sensitivity_copula_monthly.json",
+    "bytes": 1320,
+    "sha256": "f8b866c0ae550057e6810c69af4c9fae38dec53ac758ca1f75ca5490c52f0375"
+  },
+  {
+    "path": "research/serra/config/revision/sensitivity_monthly.json",
+    "bytes": 1250,
+    "sha256": "0c6741352f10a28feff950f82ab4eea789c307ea509be00621b0d36dc739bcc7"
+  },
+  {
+    "path": "research/serra/config/revision/structure.json",
+    "bytes": 406,
+    "sha256": "ecaf47d3feb203de81550c26ba4d9b3a5a749d085dcebe516828115e3d016884"
+  },
+  {
+    "path": "research/serra/config/sensitivity/joint.json",
+    "bytes": 54,
+    "sha256": "1211aed23f3186aea1003a512c60b8b1fcb3b9a7589d4095392c70559fddde94"
+  },
+  {
+    "path": "research/serra/config/sensitivity/joint_level.json",
+    "bytes": 54,
+    "sha256": "322e61387180f0eb5291b03a121718643140de327cfb567852c06f7b67415498"
+  },
+  {
+    "path": "research/serra/config/sensitivity/joint_smoke.json",
+    "bytes": 201,
+    "sha256": "f15aafa8c355e807f981006ce5b1726700f1191237192d7140e1f9a8e6b0199c"
+  },
+  {
+    "path": "research/serra/config/sensitivity/joint_structure.json",
+    "bytes": 58,
+    "sha256": "e995db2333af01832b81f7f9325cec55d25b80d797cd928e50fb587a33458653"
+  },
+  {
+    "path": "research/serra/config/sensitivity/joint_targeted.json",
+    "bytes": 1008,
+    "sha256": "f8a8521ae10faffabbcbf8832f3565045e8ca42f958adaaca03ad45998b00628"
+  },
+  {
+    "path": "research/serra/config/sensitivity/level.json",
+    "bytes": 284,
+    "sha256": "cce43d053566ff30556d9a884f56fc60b1ccf4883c1973395532a63bea4d0586"
+  },
+  {
+    "path": "research/serra/config/sensitivity/paper.json",
+    "bytes": 528,
+    "sha256": "8b6b48f7189bb79a01c76eb21b8a6a50b5874444e7c602cb39f7ab35d0dcfae7"
+  },
+  {
+    "path": "research/serra/config/sensitivity/smoke.json",
+    "bytes": 310,
+    "sha256": "96f216c80884e31564fa19698d7ebcc98c03d5bfac464df0d45cd28cc81767f7"
+  },
+  {
+    "path": "research/serra/config/sensitivity/structure.json",
+    "bytes": 374,
+    "sha256": "4ad2f3d70f99aec8e3e9f10f718173fceb9b94fa1b2bca30a615099162e4a26a"
+  },
+  {
+    "path": "research/serra/config/sensitivity/targeted.json",
+    "bytes": 819,
+    "sha256": "25fb9de2f0f938041b921eb23d23655fdec2f7eb239f9af93e5806c0135f7197"
+  },
+  {
+    "path": "research/serra/config/simulation/endpoint_paper.json",
+    "bytes": 226,
+    "sha256": "379520811e6ea1c179065fa63935c8803ca2ac6a08c68607cd6180b7576d403d"
+  },
+  {
+    "path": "research/serra/config/simulation/endpoint_smoke.json",
+    "bytes": 226,
+    "sha256": "9e4e72bb1489c4b594ecf873fcdb960e57c5e94f36e0f760d530679435559577"
+  },
+  {
+    "path": "research/serra/config/simulation/laplace_benchmark.json",
+    "bytes": 278,
+    "sha256": "447118f7701419904b13c01293d1bf93ed9c5fc8b8910ff540929f856e2f6d2b"
+  },
+  {
+    "path": "research/serra/config/simulation/paper.json",
+    "bytes": 748,
+    "sha256": "5dd8a7238e0e1f1c6b42b35b503f6f725c2d4237bb8f2319fe023d30d0623349"
+  },
+  {
+    "path": "research/serra/config/simulation/smoke.json",
+    "bytes": 747,
+    "sha256": "b11e34788fc8240d691931e2cfcec3502d6f4173e1ee3c3e6a3a815d73576de1"
+  },
+  {
+    "path": "research/serra/config/simulation/weak_paper.json",
+    "bytes": 156,
+    "sha256": "40e377859d31da94a2549dc87aee9663fbe2bcfc45cb11ea199ab8751fdd55a4"
+  },
+  {
+    "path": "research/serra/config/simulation/weak_smoke.json",
+    "bytes": 156,
+    "sha256": "79cda27b40b6a2356c17a7dd381d23f7ef6bf32e132cdf78380a7a60ad2a586b"
+  },
+  {
+    "path": "research/serra/config/simulation/zero_paper.json",
+    "bytes": 150,
+    "sha256": "d5f48e0388408d49d13d6bcc79133716120eab8a440a34c613606bfae981db7d"
+  },
+  {
+    "path": "research/serra/config/simulation/zero_smoke.json",
+    "bytes": 150,
+    "sha256": "0cd083e3acf0049155a94456f842247e2157a49f6273f5b2e47b1225641a4cd7"
+  },
+  {
+    "path": "research/serra/config/smoke.json",
+    "bytes": 651,
+    "sha256": "dbe276b5a18cec8c8502ba4510b5259f2e8de6ddd750c5b67e64040e6fc33391"
+  },
+  {
+    "path": "research/serra/copula.py",
+    "bytes": 1571,
+    "sha256": "aea26258a623d91916c915c3a33af5b2020058c0768648e62cc110945202b5ac"
+  },
+  {
+    "path": "research/serra/endpoint.py",
+    "bytes": 3875,
+    "sha256": "23dda015e9751312764b9936bec72cdd8d7986e4cfa795b8c0a851ec00dbd96f"
+  },
+  {
+    "path": "research/serra/experiment.py",
+    "bytes": 5387,
+    "sha256": "bf1759e0e8aaefa3bd4c61e52490a869e276fb06c112d4ec153ad76e446f7641"
+  },
+  {
+    "path": "research/serra/figures.py",
+    "bytes": 1994,
+    "sha256": "9d1f54b1986003c2173f56dbecd6aacf62f729f41cfa3312c46baabd28b4797f"
+  },
+  {
+    "path": "research/serra/forecast_check.py",
+    "bytes": 3279,
+    "sha256": "ad26148d850610421d9fe56972df0b277905f448d4d3128ab96dc7a9efe33ac1"
+  },
+  {
+    "path": "research/serra/joint_recovery.py",
+    "bytes": 6457,
+    "sha256": "d60d5aa289cc9ae8a9e200ed27edc10d8c000fb172a6da7c1141d5e457ea92db"
+  },
+  {
+    "path": "research/serra/model_comparison.py",
+    "bytes": 1850,
+    "sha256": "9937791bcbcb11233e615c6f9cd9b23fa16e590e2dbd7261ad3300a75ff094cc"
+  },
+  {
+    "path": "research/serra/models.py",
+    "bytes": 4331,
+    "sha256": "ad4991668889cbdf0bd4d51597209323e28289475c5bf80130d61160683c9a23"
+  },
+  {
+    "path": "research/serra/preflight.py",
+    "bytes": 2071,
+    "sha256": "73c7bf5481500a14ed57a0bf68118a9f1409dca816dde766bb86548da6e8c10f"
+  },
+  {
+    "path": "research/serra/prepare_uccle.py",
+    "bytes": 736,
+    "sha256": "0ecb65e26cd8d6f81d80f48e5b1fc5494a3466c74c5e04901f1141f72561467e"
+  },
+  {
+    "path": "research/serra/report.py",
+    "bytes": 15099,
+    "sha256": "8e910e567084eaea3edd048d12f2627a93681c7b7cbec820b1d713f1e53e0734"
+  },
+  {
+    "path": "research/serra/run.py",
+    "bytes": 3068,
+    "sha256": "515ef9c96f687bfd134c8e255117d002c0303ddd7c12ed52f55286654f62ff8c"
+  },
+  {
+    "path": "research/serra/sensitivity.py",
+    "bytes": 4491,
+    "sha256": "8d39b4f0b740e60cea0ee4ade3b9a21afc8c2dd4b5f249cbda3839928d974883"
+  },
+  {
+    "path": "research/serra/simulate.py",
+    "bytes": 4521,
+    "sha256": "a30f49b6b0513f1d013cf63db99d8754e59368b2e16684c7a52011d49c0f8807"
+  },
+  {
+    "path": "research/serra/univariate.py",
+    "bytes": 1053,
+    "sha256": "aaff02c5ae1a14f7c93924d26373b92cb2d3aa28805d0edfe0d091f4260cf6fa"
+  },
+  {
+    "path": "research/serra/validate.py",
+    "bytes": 8133,
+    "sha256": "23b8fe70a3459498ce870e138bab8a9d5ec842823fcc73a05580020771e1866a"
+  },
+  {
+    "path": "setup.py",
+    "bytes": 122,
+    "sha256": "f30963c28f2aeefac65533fbcaa7bdf546dd6b43fa410e9cd1c149e5eea5e107"
+  },
+  {
+    "path": "tests/__init__.py",
+    "bytes": 48,
+    "sha256": "b5b267465fbcc7cd869217badad4464eaa90c857c82c4f5298baa46e26806e85"
+  },
+  {
+    "path": "tests/_gaussian_reference.py",
+    "bytes": 1751,
+    "sha256": "7b91c4c84174b263288fff94f5c64556452d82d4f0e36521e46e770e26231ccf"
+  },
+  {
+    "path": "tests/fixtures/README.md",
+    "bytes": 678,
+    "sha256": "550d8c91f76ff79d1db1c60d1927c8c2d3e45c305128b82ea8b689e6f8e1a0ae"
+  },
+  {
+    "path": "tests/fixtures/v1_5_2_gaussian.bucex",
+    "bytes": 8096,
+    "sha256": "cd0263dee0f4de8b98a4dcb2f4fb5ebd972d31d0658c7d41ec8c64084d8be465"
+  },
+  {
+    "path": "tests/fixtures/v1_5_2_gev.bucex",
+    "bytes": 8585,
+    "sha256": "0c3038406412e72b5613edeb8736383983ea23e1bc54df0c6451407637430d5e"
+  },
+  {
+    "path": "tests/test_calendar_forecasts.py",
+    "bytes": 6696,
+    "sha256": "6610c03b394a8507659f250d13f6a74efa9cdedabf76ec6f5b6b3c6f6e4fe433"
+  },
+  {
+    "path": "tests/test_calendar_risk.py",
+    "bytes": 1733,
+    "sha256": "f91b6a7988dadb27688034ce3d44750db6c93ab4fa25b7956a1c48c54d0f1bc6"
+  },
+  {
+    "path": "tests/test_centered_variance_updates.py",
+    "bytes": 4132,
+    "sha256": "cb000fab536cb821d6a4a63e80f5eba6f35a8db92dd75b4514dfd1bbdded2247"
+  },
+  {
+    "path": "tests/test_coefficient_reference.py",
+    "bytes": 4458,
+    "sha256": "0d430332412ca52f5dc4578383320f390dece36b63c7feb320375db6bfcf7a87"
+  },
+  {
+    "path": "tests/test_continuous_private.py",
+    "bytes": 9178,
+    "sha256": "994f988f8081e3794782d7c7d5c4913724f3952e5badac9fa21208aeadb57674"
+  },
+  {
+    "path": "tests/test_contrast_diagnostics.py",
+    "bytes": 1947,
+    "sha256": "ac4cfaec63ec4b880925115d72b0806334d3c809bf17bcff6e6219a7efc85f61"
+  },
+  {
+    "path": "tests/test_copula_inference.py",
+    "bytes": 8049,
+    "sha256": "3fa148e9b181d616fe6064a04f8955e0121d23cc321132e26c3944d8d937909e"
+  },
+  {
+    "path": "tests/test_copula_math.py",
+    "bytes": 11553,
+    "sha256": "eef4af2c9104dadccea4ef9ec3486ed27f378f7f314adbea8a00ee55287f1ae5"
+  },
+  {
+    "path": "tests/test_copula_prediction.py",
+    "bytes": 6671,
+    "sha256": "32f8771c0db33e097e61f96acc3fd61371c28495c0011b006168a951af0f94eb"
+  },
+  {
+    "path": "tests/test_copula_reference.py",
+    "bytes": 10659,
+    "sha256": "1dbefdc57853d30fdb8fdd710bc918476863b3ef7eabe408612b03a19c301714"
+  },
+  {
+    "path": "tests/test_exact_support_and_failures.py",
+    "bytes": 3792,
+    "sha256": "ecd4fc2f7b371ce9c8239bf36d7042bf6ee19117ff2d02b5484eb7ab9af2110e"
+  },
+  {
+    "path": "tests/test_experiment_prior_math.py",
+    "bytes": 4960,
+    "sha256": "32d268539ea36b60164aebc96d8e1d6d879b450306b5929fd4267b7a3d175fa2"
+  },
+  {
+    "path": "tests/test_hierarchical_exact.py",
+    "bytes": 6023,
+    "sha256": "34573dd7e1fbbe85f20e12bf54e9c3b21a8698c2bc124f7139400d44bdf3a56a"
+  },
+  {
+    "path": "tests/test_hierarchical_models.py",
+    "bytes": 8937,
+    "sha256": "756010d6269b5aabd2e700e519c4851ee0bdd8d31dafddfe15003f91d9748843"
+  },
+  {
+    "path": "tests/test_hierarchical_warm_starts.py",
+    "bytes": 8266,
+    "sha256": "0cf27cba6ad02d2929791abf5e353a9e7a499eeb54f01289edc7ac365659bc74"
+  },
+  {
+    "path": "tests/test_historical_archives.py",
+    "bytes": 1106,
+    "sha256": "9ce13acd199b2c1b63a92946134147b093185374e4c73c422d1816b7047402a1"
+  },
+  {
+    "path": "tests/test_integrated_framework.py",
+    "bytes": 8655,
+    "sha256": "f489b2c58d5960191c5948aa6b744071091d22548dd6a011ec051e6102cf2105"
+  },
+  {
+    "path": "tests/test_laplace_mh.py",
+    "bytes": 5489,
+    "sha256": "17aa09309b6cc699f5ed9c9368c7cd165f7c9d34860e02bd196445bd5112b5f9"
+  },
+  {
+    "path": "tests/test_marginal_copula_fs.py",
+    "bytes": 6546,
+    "sha256": "1faacb6df6a45374fc3a5865e1d2790f9c03ac591a5668d2391955d9e5862dc5"
+  },
+  {
+    "path": "tests/test_marginal_gaussian_reference.py",
+    "bytes": 3065,
+    "sha256": "c6f8aaadb32655ed5befb9cdac8c8cf9c4602e5d6e2e01a8190461a849e50181"
+  },
+  {
+    "path": "tests/test_marginal_gev_reference.py",
+    "bytes": 1794,
+    "sha256": "58873dfc845ddc320974323b28d3cf8cb35e9c0ce6f385fe06619f93a1464a87"
+  },
+  {
+    "path": "tests/test_model_and_engines.py",
+    "bytes": 6137,
+    "sha256": "af6a3fa7059cddfe303db2060e55b90cedc350ced8e6ea620314506b51633235"
+  },
+  {
+    "path": "tests/test_ordering_diagnostics.py",
+    "bytes": 3252,
+    "sha256": "a75cb1d6b916ebd54f314b69621fc3f38207a076d0d8baa0c7f6080e32646805"
+  },
+  {
+    "path": "tests/test_parameter_evolution.py",
+    "bytes": 5873,
+    "sha256": "86defc8df79930a12c006f464511611525ee8b5f2fab5c2d1de95977844652f9"
+  },
+  {
+    "path": "tests/test_period_estimands.py",
+    "bytes": 1770,
+    "sha256": "f2bd1e911edbea23b07a48085e916e153d48e9b22cc8b834027e37acb55450cb"
+  },
+  {
+    "path": "tests/test_plotting_and_warm_starts.py",
+    "bytes": 7478,
+    "sha256": "e6b28afb9b16bf52eead011c019f2a796157a3e0e998dbc9ac097c03ab192cab"
+  },
+  {
+    "path": "tests/test_prior_builders.py",
+    "bytes": 1829,
+    "sha256": "d51cc027c0b2652c15eb6590cdb3dde02a291e9c2a8c2028f21e44a777fe3379"
+  },
+  {
+    "path": "tests/test_publication_reporting.py",
+    "bytes": 7481,
+    "sha256": "bc7d8ca743315d13f3a9e9a59bf983fd8a4e5cc2833549747f06a0e1a610bb8a"
+  },
+  {
+    "path": "tests/test_results_and_data.py",
+    "bytes": 7624,
+    "sha256": "6ea618d4e7e5eafc20888d03149e1ba8a1c1875acbb62ab434cd38580f8f1e8e"
+  },
+  {
+    "path": "tests/test_reviewer_experiments.py",
+    "bytes": 4340,
+    "sha256": "81951fb5d226285440e5db764615121722f72a4dc4401bb1a24a113a1c1b13ae"
+  },
+  {
+    "path": "tests/test_scale_models.py",
+    "bytes": 5445,
+    "sha256": "4ffeb22e2af6b6bca2a8b27ddae058d5ec72bd44fc27832bcce0e2256d302f25"
+  },
+  {
+    "path": "tests/test_score_comparison.py",
+    "bytes": 828,
+    "sha256": "62167a577a6bb63db435397e83c7e8d11ce19be157845cc92083193ce48367eb"
+  },
+  {
+    "path": "tests/test_seasonal_patterns.py",
+    "bytes": 3322,
+    "sha256": "bcc0967ea1a28b03d111b8d08633b6f8be48e9c4671602557c36ece4dcbbc045"
+  },
+  {
+    "path": "tests/test_seasonal_views.py",
+    "bytes": 3122,
+    "sha256": "97bea8c1776c00e40e6b82a7eb90c2cf208dd6f3f5b1474b449281072ea051e7"
+  },
+  {
+    "path": "tests/test_serra_protocol.py",
+    "bytes": 3219,
+    "sha256": "6eca82d06ad4935dc0d290a9e71b043d2972e0a84c8ee2b448197138b84c8603"
+  },
+  {
+    "path": "tests/test_shared_components.py",
+    "bytes": 8684,
+    "sha256": "2e80e4b6746619aeb5593a437e780e31a3a90607ccc0d004a2e44227f7c97ec6"
+  },
+  {
+    "path": "tests/test_shared_initial_covariance.py",
+    "bytes": 3355,
+    "sha256": "520c3708ea93effc2835361e916128b6f69d0c72b2de04007e39d70e4f7efc22"
+  },
+  {
+    "path": "tests/test_shared_sampler.py",
+    "bytes": 10477,
+    "sha256": "71db2112f4a043443f11e89fe90f7cab27920686a80bf407313d7ff4115d9ad2"
+  },
+  {
+    "path": "tests/test_shared_slice.py",
+    "bytes": 4736,
+    "sha256": "03d1559f5bf657f6a87908a37e6ee9991d7f062f52f28c00a0f3a1106e6c165a"
+  },
+  {
+    "path": "tests/test_shrinkage_and_diagnostics.py",
+    "bytes": 4678,
+    "sha256": "5c79e434a0d88f24098e66d3c53dee9cb8d45d1a66f0b01215cebd3b61248a11"
+  },
+  {
+    "path": "tests/test_structural_numerics_and_prediction.py",
+    "bytes": 6157,
+    "sha256": "fb463acd7c7f44ad040cd88251d793f5d9c48b0cf0216044fdb523d5ed4ccfe4"
+  },
+  {
+    "path": "tests/test_uccle_means.py",
+    "bytes": 368,
+    "sha256": "50eeb3130773420442ea234776fd9adfe5c597ea897ad2e29a1fd2f0c262dbd4"
+  },
+  {
+    "path": "tests/test_uccle_monthly.py",
+    "bytes": 6995,
+    "sha256": "ef4605fdbacae4e75d61b162b6fd9db6336fd195cbf7c7fd31ffaecc8763a2d1"
+  },
+  {
+    "path": "validation/RELEASE_VALIDATION.md",
+    "bytes": 2637,
+    "sha256": "5c222db0988d7a25ae6513f8a977ebd3e6344f6c740774263f77f687e6cd9bcb"
+  },
+  {
+    "path": "validation/environment.json",
+    "bytes": 291,
+    "sha256": "32891fa161d655cc564dc37f4f8715ab35b6f939464f5370a6ef4e3048b41b8a"
+  },
+  {
+    "path": "validation/figure-export.json",
+    "bytes": 209,
+    "sha256": "211e7d135b0d5a62fd200874f102389c39891d92b5b102eabed4a3cc683f291d"
+  },
+  {
+    "path": "validation/installed-import.json",
+    "bytes": 179,
+    "sha256": "376b7b68fc8b8b1746f784b4a8e3af2af821d93edd01337a190c31f182e23156"
+  },
+  {
+    "path": "validation/pytest-1.7.2-final-targeted.xml",
+    "bytes": 1946,
+    "sha256": "7ac4e32c9f42cce527e2928122a31a8e066b282a972e213d567232a4df7835ad"
+  },
+  {
+    "path": "validation/pytest-1.7.2-final.xml",
+    "bytes": 42385,
+    "sha256": "3c9e8a37595acb8bdede606e1e538dee80b98721871b18427d8087300349f1bb"
+  },
+  {
+    "path": "validation/pytest-1.7.2-installed.xml",
+    "bytes": 2972,
+    "sha256": "115fe589d3f23b4931c4d49d6e34e9a283f75fdc7367954a48b2d13b7432918f"
+  },
+  {
+    "path": "validation/pytest-1.7.2-reporting.xml",
+    "bytes": 1572,
+    "sha256": "aca3204233adfb87ba4ed9f65946fa800a89d2a368a49b287959103a9b7c541f"
+  },
+  {
+    "path": "validation/pytest-1.7.2-source.xml",
+    "bytes": 43274,
+    "sha256": "4418a467b7831c05b0e5289ba99115515d157fb39f059bec2ecdd2223ba16a20"
+  },
+  {
+    "path": "validation/release-changes.json",
+    "bytes": 3112,
+    "sha256": "fd8f2e0b26928d1fa5a9070f90567ea3d0ef4fbca00d9c3a8e7a35e24e3b12a7"
+  },
+  {
+    "path": "validation/revision-preflights.json",
+    "bytes": 165516,
+    "sha256": "cf1451a9c64d96e37be90d4640afd18fefe939f716f4a1274055ea6e8bd2823a"
+  },
+  {
+    "path": "validation/smoke-copula.json",
+    "bytes": 12150,
+    "sha256": "909b01e4ac53f9918ff3bbfc8d0069685b75410cc7cbd084bb7fa74ec29bc8d5"
+  },
+  {
+    "path": "validation/smoke-independent.json",
+    "bytes": 12129,
+    "sha256": "23a39e1b4a314514d614e85f4052eef54e9d3721bd1daed4c801bcd3c71db62d"
+  },
+  {
+    "path": "validation/workflows-1.7.2.json",
+    "bytes": 3884,
+    "sha256": "4afc76d013147201bc7500237cf638ec4b6af66a91c37a3ff71d2e58a8f4c7f2"
   }
-}
+]

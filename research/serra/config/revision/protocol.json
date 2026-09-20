@@ -1,0 +1,84 @@
+{
+  "extends": "../base.json",
+  "_comment": "SERRA revision protocol. Start with matched 2000+2000 budgets; increase after diagnostics. Normal priors, no SSVS/ASIS, through August 2026.",
+  "data": {
+    "series": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
+    ],
+    "start": "1892-01-01",
+    "end": "2026-08-01"
+  },
+  "priors": {
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.01,
+      "trend": 5e-05,
+      "season": 0.02
+    },
+    "initial_level_mean": 0.0,
+    "baseline_sd": 20.0,
+    "initial_slope_sd": 0.0025,
+    "seasonal_initial_sd": 2.25,
+    "observation_variance": [
+      2.0,
+      2.0
+    ],
+    "xi_prior": "normal",
+    "xi_sd": 0.3,
+    "xi_bounds": [
+      -0.5,
+      0.5
+    ]
+  },
+  "model": {
+    "period": 12,
+    "level": "dynamic",
+    "trend": "dynamic",
+    "seasonal": "dynamic",
+    "scale_mode": "constant",
+    "seasonal_scale": false,
+    "scale_prior_sd": 0.3
+  },
+  "inference": {
+    "asis": false
+  },
+  "copula": {
+    "structure": "constant",
+    "eta": 1.0
+  },
+  "mcmc": {
+    "chains": 4,
+    "warmup": 2000,
+    "draws": 2000
+  },
+  "forecast_draws": 4000,
+  "forecast_horizon": 120,
+  "figure_format": "png",
+  "save_fits": true,
+  "output": "results/serra_revision",
+  "contrasts": {
+    "reference": [
+      "1892-01",
+      "1921-12"
+    ],
+    "comparison": [
+      "1996-09",
+      "2026-08"
+    ]
+  },
+  "validation": {
+    "initial": 1188,
+    "horizon": 12,
+    "step": 12,
+    "draws": 4000,
+    "save_fits": false
+  },
+  "figure_style": "manuscript",
+  "figure_dpi": 180,
+  "trace_exports": true
+}

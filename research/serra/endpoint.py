@@ -13,6 +13,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True)
     config = bx.load_config(parser.parse_args().config)
+    level = config.get('credible_interval', .95)
+    if not 0 < level < 1:
+        raise ValueError('credible_interval must lie in (0,1).')
+    lower_q, upper_q = (1-level)/2, (1+level)/2
     data = bx.load_uccle_multiseries(**config["data"])
     event = config["event"]
     indices = np.flatnonzero(pd.to_datetime(data.index).to_period("M") == pd.Period(event["date"], "M"))
@@ -36,16 +40,18 @@ def main():
             # Quantities for every neighboring month reveal propagated approximation differences.
             window = np.arange(max(0, index-12), min(fit.n_time, index+13))
             location = fit.eta_draws(original_scale=True)[:, window]
-            quantiles = np.quantile(location, [.05, .5, .95], axis=0)
-            pd.DataFrame(dict(time=fit.time[window], lower=quantiles[0], median=quantiles[1], upper=quantiles[2])).to_csv(target / "event_window.csv", index=False)
+            quantiles = np.quantile(location, [lower_q, .5, upper_q], axis=0)
+            pd.DataFrame(dict(time=fit.time[window], lower=quantiles[0], median=quantiles[1], upper=quantiles[2],
+                             interval_level=level)).to_csv(target / "event_window.csv", index=False)
             pd.concat(results).to_csv(directory / "endpoint_comparison.csv", index=False)
             # Train strictly before July 2019; no event information enters this fit.
             prefit, _ = fit_case(data.iloc[:index], event["series"], local, variant, engine=engine)
             prediction = prefit.forecast(1, dates=data.index[index:index+1], seed=config["seed"])
             probability = 1-prediction.conditional_cdf(np.asarray([event["value"]]))[:,0]
             pd.DataFrame({"mean_probability": [probability.mean()],
-                          "lower_probability": [np.quantile(probability,.05)],
-                          "upper_probability": [np.quantile(probability,.95)],
+                          "lower_probability": [np.quantile(probability,lower_q)],
+                          "upper_probability": [np.quantile(probability,upper_q)],
+                          "interval_level": [level],
                           "log_score": prediction.log_score(np.asarray([event["value"]]))}).to_csv(
                               target / "pre_event_forecast.csv", index=False)
             prefit.diagnostics()["parameters"].to_csv(target / "pre_event_mcmc.csv")

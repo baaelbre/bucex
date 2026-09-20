@@ -1,0 +1,52 @@
+{
+  "extends": "protocol.json",
+  "comparison": {
+    "margins": [
+      {
+        "name": "reference"
+      },
+      {
+        "name": "fixed_location_seasonality",
+        "seasonal": "static"
+      },
+      {
+        "name": "monthly_scale",
+        "seasonal_scale": true
+      },
+      {
+        "name": "fixed_location_seasonality_monthly_scale",
+        "seasonal": "static",
+        "seasonal_scale": true
+      },
+      {
+        "name": "linear_location_monthly_scale",
+        "level": "static",
+        "trend": "static",
+        "seasonal": "static",
+        "seasonal_scale": true
+      }
+    ],
+    "dependence": [
+      {
+        "name": "independence_monthly",
+        "analysis": "joint",
+        "seasonal_scale": true
+      },
+      {
+        "name": "copula_monthly",
+        "analysis": "copula",
+        "seasonal_scale": true
+      },
+      {
+        "name": "harmonic_monthly",
+        "analysis": "copula",
+        "seasonal_scale": true,
+        "copula": {
+          "structure": "harmonic",
+          "eta": 1.0,
+          "prior_sd": 0.25
+        }
+      }
+    ]
+  }
+}

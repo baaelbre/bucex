@@ -1,0 +1,7 @@
+{
+  "extends": "protocol.json",
+  "analysis": "independent",
+  "model": {
+    "seasonal_scale": true
+  }
+}

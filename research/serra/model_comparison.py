@@ -36,5 +36,9 @@ if __name__=='__main__':
     parser.add_argument('--config',type=Path,default=Path('research/serra/config/model_comparison_smoke.json'))
     parser.add_argument('--stage',choices=['margins','dependence'],default='margins')
     parser.add_argument('--candidates',nargs='+')
+    parser.add_argument('--series',nargs='+',choices=tuple(bx.UCCLE_INFO))
     args=parser.parse_args()
-    print(run(bx.load_config(args.config),stage=args.stage,candidates=args.candidates))
+    config=bx.load_config(args.config)
+    if args.series:
+        config['data']['series']=args.series
+    print(run(config,stage=args.stage,candidates=args.candidates))

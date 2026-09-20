@@ -1,0 +1,7 @@
+{
+  "extends": "copula_monthly.json",
+  "mcmc": {
+    "warmup": 4000,
+    "draws": 4000
+  }
+}
