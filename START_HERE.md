@@ -80,7 +80,7 @@ the large archive but does not run MCMC or change the fitted model.
 For a final figure export, add `--strict` so missing inputs stop execution.
 See [figure recipes](docs/FIGURES.md) for selecting panels and changing style.
 
-## Sensitivity and validation
+## Sensitivity
 
 ```text
 python -m research.serra.sensitivity --config research/serra/config/revision/sensitivity_monthly.json --series TNm --variants normal_reference level_half level_double
@@ -94,3 +94,11 @@ priors, held-out comparisons, endpoint checks and recovery simulations.
 Check execution locally with `revision/monthly_scale_smoke.json` and
 `revision/copula_monthly_smoke.json` before scheduling expensive work. These
 36-month, four-draw fits cannot provide scientific evidence.
+
+
+## Validation
+
+In report.py, posterior predictive observations are generated from the fitted model and compared to the original data, through PP and QQ plots. 
+```text
+python -m research.serra.validation --config research/serra/config/revision/validation.json
+```
