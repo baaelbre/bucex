@@ -1,6 +1,6 @@
-# Start with BUCEX 1.7.3
+# Start with BUCEX 1.7.4
 
-Extract the archive and open a terminal inside `bucex-1.7.3`, beside
+Extract the archive and open a terminal inside `bucex-1.7.4`, beside
 `pyproject.toml`. The commands work in Windows PowerShell, Linux and macOS.
 
 ```text
@@ -8,9 +8,24 @@ python -m pip install -e ".[plot]"
 python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-Expect version **1.7.3**. The package now supports process-parallel chains.
+Expect version **1.7.4**. The package supports process-parallel chains and now
+includes the manuscript's descriptive data exploration in the SERRA workflow.
 Existing fits remain readable; the normal-prior defaults and statistical
 transition kernels are unchanged. No new chains are needed solely for plots.
+
+## 0. Generate exploratory Figures 1 and 2
+
+```text
+python -m research.serra.explore
+```
+
+This uses all six monthly series through the latest available month (August
+2026 in this release), and writes PNG/PDF figures and the underlying CSVs below
+`results/serra_exploration/`. The script prints the exact run directory. Copy
+its two `figures/exploratory_*.png` files into the manuscript's `figures/` folder.
+No chains are run. Edit periods, colours and layout in
+`research/serra/config/revision/exploration.json`; see
+[EXPLORATION.md](docs/EXPLORATION.md) for the calculations and package API.
 
 ## 1. Check execution once
 

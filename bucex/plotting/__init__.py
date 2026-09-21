@@ -1,5 +1,6 @@
 """Plots for the unified fit and forecast objects."""
 from .style import PUBLICATION_COLORS, publication_style, save_figure
+from .exploration import plot_exploratory_cycles, plot_exploratory_spread
 from .calendar import plot_pit_calendar, plot_monthly_score_sd
 from .traces import parameter_trace_draws, trace_frame, traces_from_frame
 from .dependence import plot_copula, plot_ordering
@@ -32,6 +33,7 @@ from .core import (
 
 __all__ = [
     "PUBLICATION_COLORS", "publication_style", "save_figure",
+    "plot_exploratory_cycles", "plot_exploratory_spread",
     "plot_pit_calendar", "plot_monthly_score_sd",
     "parameter_trace_draws", "trace_frame", "traces_from_frame", "plot_pit_diagnostics",
     "save_prediction_report",

@@ -1,0 +1,41 @@
+{
+  "unchanged_scientific_modules": [
+    {
+      "module": "inference",
+      "python_files": 27
+    },
+    {
+      "module": "models",
+      "python_files": 8
+    },
+    {
+      "module": "components",
+      "python_files": 6
+    },
+    {
+      "module": "priors",
+      "python_files": 10
+    },
+    {
+      "module": "observation",
+      "python_files": 5
+    },
+    {
+      "module": "core",
+      "python_files": 5
+    },
+    {
+      "module": "api",
+      "python_files": 4
+    },
+    {
+      "module": "io",
+      "python_files": 2
+    },
+    {
+      "module": "datasets",
+      "python_files": 2
+    }
+  ],
+  "bundled_data": "byte-identical to 1.7.3"
+}

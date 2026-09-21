@@ -1,3 +1,16 @@
+# Migrating from 1.7.3 to 1.7.4
+
+No model, prior, sampler or archive migration is needed. The release adds
+`explore_monthly`, `MonthlyExploration`, and descriptive plotting functions.
+Run `python -m research.serra.explore` to generate manuscript Figures 1 and 2;
+the standalone manuscript script is no longer needed. The same filenames,
+periods, calendar-month means and detrended IQR definitions are retained.
+
+Edit `research/serra/config/revision/exploration.json` for input data, periods,
+eras and figure appearance. The figures are independent of fitted-model
+reports and MCMC. Existing `research.serra.figures` commands remain valid for
+posterior figures. See [EXPLORATION.md](EXPLORATION.md).
+
 # Migrating from 1.7.2 to 1.7.3
 
 `MCMC` adds `chain_workers=1`. Set it to four for process-parallel chains;

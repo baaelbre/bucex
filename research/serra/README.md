@@ -1,4 +1,4 @@
-# SERRA research with BUCEX 1.7.3
+# SERRA research with BUCEX 1.7.4
 
 Start with [START_HERE](../../START_HERE.md). Complete sequential commands and
 output interpretation are in [the publication run guide](../../docs/PUBLICATION_RUNS.md).
@@ -11,6 +11,7 @@ configurations contain study choices. No conference-specific scripts are needed.
 
 | Stage | Script | Principal revision configuration |
 |---|---|---|
+| Exploratory Figures 1 and 2 | `explore` | `revision/exploration.json` |
 | Focused prior/posterior and forecast comparison | `prior_assessment` | `priors/pilot.json`; start with `--stage plan` |
 | Resolve assumptions/resources | `preflight` | `revision/monthly_scale.json` |
 | Constant-scale baseline | `univariate` | `revision/constant_scale.json` |
@@ -24,7 +25,7 @@ configurations contain study choices. No conference-specific scripts are needed.
 | Forecast widths | `forecast_check` | `revision/forecast_TXx_20y.json` |
 | Historical source comparison | `univariate` | `revision/historical_monthly_scale.json` |
 | Re-report saved draws | `report` | Saved run config or explicit report configuration |
-| Manuscript figures | `figures` | `revision/figures.json` |
+| Fitted-model manuscript figures | `figures` | `revision/figures.json` |
 
 Use `python -m research.serra.SCRIPT --help`. `univariate`, `sensitivity` and
 `model_comparison` accept `--series`. The copula's `--scale` controls marginal
@@ -40,6 +41,15 @@ The script creates a new timestamped result directory and prints it. Keep the
 resolved configuration and `.bucex` fit locally. For initial review, share small
 CSVs/JSONs, PNGs and `*_traces.csv.gz`. Reporting does not re-estimate the posterior.
 A new likelihood, prior, data window or dependence model does.
+
+## Descriptive exploration before fitting
+
+Run `python -m research.serra.explore` to generate the manuscript's observed
+seasonal cycles and detrended monthly IQRs. The script delegates to
+`bucex.explore_monthly(...).save(...)`; it contains no statistical calculations
+or plotting code. Periods, eras and appearance are configured in JSON. It
+records the actual data span and exports both source and summary tables.
+See [EXPLORATION.md](../../docs/EXPLORATION.md).
 
 ## Focused innovation-prior work
 

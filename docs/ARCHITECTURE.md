@@ -19,6 +19,7 @@ Research scripts select assumptions and call the public API.
 | `reporting/` | Compact report readers, configured manuscript panels and source manifests |
 | `io/` | Checksummed schema 2.11 archives and historical readers |
 | `datasets/` | Daily validation, monthly aggregation and loading |
+| `exploration.py` | General monthly empirical cycles, detrended IQRs and sample accounting |
 | `research/serra/` | Configured scientific workflows built on the package |
 | `tests/`, `validation/` | Independent numerical/API checks and execution evidence |
 
@@ -45,6 +46,16 @@ paired climate-period estimands. These general computations stay outside
 `research/serra`, which declares the fixed-scale paper protocol.
 
 In 1.7.2, `plotting/style.py` owns the scoped publication style and `reporting/` assembles configured panels without fitting. `diagnostics/calendar.py` owns monthly PIT and held-out coverage summaries. The study figure script selects reports and reads JSON recipes.
+
+## Descriptive exploration in 1.7.4
+
+`exploration.py` computes observed calendar-month means/quartiles and separate
+within-month linear detrending summaries. `MonthlyExploration` exposes these
+tables and delegates plotting to `plotting/exploration.py` and persistence to
+`reporting/exploration.py`. Data values keep their original signs. No fitting,
+prior calibration or inferential interval is introduced. The SERRA `explore`
+driver selects input series and explicit time windows from JSON, then calls
+this API. The plotting style is scoped and Matplotlib is imported on demand.
 
 ## Execution and assessment in 1.7.3
 

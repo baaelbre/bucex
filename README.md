@@ -1,4 +1,4 @@
-# BUCEX 1.7.3
+# BUCEX 1.7.4
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
 Declare the observation distribution, give its parameters an interpretable
@@ -9,6 +9,20 @@ single series or related series with residual dependence.
 python -m pip install -e ".[test]"
 python -m pytest
 ```
+
+## Exploratory manuscript figures in 1.7.4
+
+Figures 1 and 2 are now part of the SERRA workflow, built on the general
+`explore_monthly` API. They use observed monthly values and require no fitting:
+
+```bash
+python -m research.serra.explore
+```
+
+The JSON configuration declares comparison periods, detrending eras, colours
+and output formats. Both PNG and PDF are written with numerical CSVs and a
+source snapshot. See [EXPLORATION.md](docs/EXPLORATION.md) for definitions and
+the reusable API. Prior defaults and inference kernels are unchanged.
 
 ## Parallel chains and focused prior assessment in 1.7.3
 

@@ -1,4 +1,4 @@
-# What to run next: SERRA revision with BUCEX 1.7.3
+# What to run next: SERRA revision with BUCEX 1.7.4
 
 For the immediate prior-calibration task, start with [PRIOR_ASSESSMENT.md](PRIOR_ASSESSMENT.md). The broader stages below remain available; they are not prerequisites for that focused comparison. Research configs now use four process workers for four chains.
 
@@ -25,9 +25,22 @@ python -c "import bucex; print(bucex.__version__); print(bucex.__file__)"
 python -m research.serra.preflight --config research/serra/config/revision/monthly_scale.json
 ```
 
-Expect version **1.7.3**, 1,616 months, endpoint **2026-08-01**, period 12, normal priors, ASIS off, and `seasonal_scale: true`. The date labels identify monthly blocks: August's label is 1 August, not a claim that daily observations stop on that date.
+Expect version **1.7.4**, 1,616 months, endpoint **2026-08-01**, period 12, normal priors, ASIS off, and `seasonal_scale: true`. The date labels identify monthly blocks: August's label is 1 August, not a claim that daily observations stop on that date.
 
 The shared `revision/protocol.json` retains prior medians 0.01 for level, 0.00005 for slope and 0.02 for location seasonality; the initial-slope SD is 0.0025 per month. Shape is normal with SD 0.3 on [-0.5, 0.5]. Monthly log-scale contrasts have prior SD 0.3. Scale varies by calendar month and repeats across years; it has no secular trend or random walk.
+
+## Generate descriptive Figures 1 and 2
+
+```text
+python -m research.serra.explore
+```
+
+The configuration is `revision/exploration.json`. Output consists of PNG/PDF
+figures, plotted numerical tables and original observations in a timestamped
+directory below `results/serra_exploration/`. No posterior is fitted. This
+replaces the manuscript-only `rebuild_exploration.py`; the existing `figures`
+entry point continues to handle fitted-model reports. See
+[EXPLORATION.md](EXPLORATION.md) for calculations, periods and styling.
 
 ## 2. Run monthly scales first
 

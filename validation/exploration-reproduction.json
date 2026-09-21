@@ -1,0 +1,14 @@
+{
+  "version": "1.7.4",
+  "reference": "SERRA manuscript bundle of 20 September 2026, original standalone exploration exports",
+  "comparison": {
+    "exploratory_seasonal_cycles": {
+      "rows": 144,
+      "max_absolute_difference": 7.105427357601002e-15
+    },
+    "exploratory_monthly_spread": {
+      "rows": 216,
+      "max_absolute_difference": 4.440892098500626e-16
+    }
+  }
+}

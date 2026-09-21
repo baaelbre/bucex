@@ -1,37 +1,32 @@
-# BUCEX 1.7.3 — parallel chains and focused prior assessment
+# BUCEX 1.7.4 — descriptive exploration in the SERRA workflow
 
-This release adds process-parallel MCMC and a compact posterior/predictive
-comparison of innovation priors. Scientific defaults, model declarations,
-FS transition kernels, likelihoods and the archive schema are preserved.
+Generate exploratory Figures 1 and 2 from the package checkout:
 
-- `MCMC(chain_workers=4)` runs independent chains in spawned processes. The
-  Python default is serial; research configurations request four workers.
-- All five inference backends use one executor. Seed streams and chain order
-  are preserved across worker counts, with correctly combined diagnostics,
-  initial states and archives. Numerical thread pools use one thread per chain.
-- Execution metadata records workers, process IDs and complete seed states.
-  Failed workers raise without returning an incomplete posterior.
-- `prior_assessment` uses one JSON candidate list for full-record sensitivity
-  and matched historical forecasts. Stages can run separately.
-- The TNm pilot compares reference, half-level, and half-level/half-slope normal
-  priors with four 500+500 chains and three five-year forecast blocks.
-  Full-record data end in August 2026. All six independent margins can use the
-  workflow; process-parallel execution also supports the joint copula fits.
-- `innovation_prior_diagnostics` describes posterior displacement and interval
-  contraction. `compare_predictive_scores` pairs forecast cases and treats a
-  small number of origins descriptively. Neither selects a prior.
-- `SensitivityReport` builds manuscript-style PNGs and comparison tables from
-  CSVs: innovation intervals, level/slope/risk overlays, scientific contrasts,
-  held-out forecasts, scores, PITs and monthly coverage.
-- Compact traces and path summaries remain available without large archives.
-  Validation records actual cutoffs, predictive bands, observed values and
-  convergence per origin. Figures can be regenerated without MCMC.
+```bash
+python -m pip install -e ".[plot]"
+python -m research.serra.explore
+```
 
-The short-chain budgets screen execution and sensitivity; they do not guarantee
-convergence. No simulation study or final scientific assessment was run for
-this release. The strongest apparent acceleration is not a selection criterion.
-Use predictive adequacy and sensitivity to guide a defensible prior choice.
+The command uses the six monthly Uccle summaries, currently available through
+August 2026, and writes manuscript-style PNG/PDF figures, source observations,
+numerical tables and metadata in a fresh results/serra_exploration directory.
+No posterior fitting is needed. Existing figure filenames are preserved.
 
-Start with [START_HERE.md](START_HERE.md). API details and interpretation are in
-[docs/PRIOR_ASSESSMENT.md](docs/PRIOR_ASSESSMENT.md). Executed software checks
-are listed in [validation/RELEASE_VALIDATION.md](validation/RELEASE_VALIDATION.md).
+- Figure 1: observed calendar-month means and empirical interquartile bands
+  for 1892–1921 and September 1996–August 2026.
+- Figure 2: residual interquartile ranges after separate linear detrending by
+  calendar month in 1892–1936, 1937–1981 and 1982–August 2026.
+- `explore_monthly` accepts other monthly Series/DataFrames; it is independent
+  of Uccle and of any Gaussian/GEV model. It validates dates, records sample
+  counts and leaves original observations unchanged.
+- `MonthlyExploration` exposes tables, plots and a small report writer. The
+  statistical, plotting and persistence responsibilities remain modular.
+- `revision/exploration.json` controls windows, response order, colours,
+  linestyles, panel layout, units and output formats.
+- Existing MCMC, priors, forecasts, copulas and archive formats are unchanged.
+  The `figures` script continues to rebuild figures from fitted-model reports.
+
+These exploratory summaries do not constitute model validation or posterior
+inference. Final scientific fits and their convergence remain a separate task.
+Read docs/EXPLORATION.md and validation/RELEASE_VALIDATION.md for the API and
+checks actually executed for this release.

@@ -8,6 +8,7 @@ from __future__ import annotations
 from .__about__ import __version__
 from .parameters import Constant, Latent
 from .config import config_title, load_config, save_config
+from .exploration import MonthlyExploration, explore_monthly
 from . import api as _api
 from . import components as _components
 from . import core as _core
@@ -49,6 +50,8 @@ __all__ = sorted(
         "config_title",
         "load_config",
         "save_config",
+        "MonthlyExploration",
+        "explore_monthly",
         *(_api.__all__),
         *(_components.__all__),
         *(_core.__all__),

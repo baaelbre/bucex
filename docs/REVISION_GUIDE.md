@@ -49,7 +49,7 @@ These are conditional-kernel measurements with paths and nuisance parameters
 fixed, not full-chain ESS or a production speed-up estimate. Constructing the
 reference costs time at every outer iteration. Full chains can still exhibit
 dependence between paths, coefficients, scale and shape. See
-the archived 1.7.1 release validation for these historical measurements. The current `validation/RELEASE_VALIDATION.md` records only checks executed for 1.7.3.
+the archived 1.7.1 release validation for these historical measurements. The current `validation/RELEASE_VALIDATION.md` records only checks executed for 1.7.4.
 
 ## What .01 means
 

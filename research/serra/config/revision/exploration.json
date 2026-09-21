@@ -1,0 +1,31 @@
+{
+  "data": {
+    "series": ["TXm", "TXx", "TXn", "TNm", "TNx", "TNn"],
+    "start": "1892-01-01",
+    "end": null
+  },
+  "periods": {
+    "1892–1921": ["1892-01", "1921-12"],
+    "Sep 1996–Aug 2026": ["1996-09", "2026-08"]
+  },
+  "eras": {
+    "1892–1936": ["1892-01", "1936-12"],
+    "1937–1981": ["1937-01", "1981-12"],
+    "1982–2026": ["1982-01", "2026-08"]
+  },
+  "min_count": 3,
+  "figures": {
+    "formats": ["png", "pdf"],
+    "style": "manuscript",
+    "dpi": 200,
+    "columns": 3,
+    "figsize": [10.6, 6.4],
+    "units": "°C",
+    "period_colors": ["#707881", "#24658a"],
+    "period_linestyles": ["--", "-"],
+    "era_colors": ["#8b9198", "#24658a", "#a44839"],
+    "era_linestyles": ["--", "-.", "-"],
+    "titles": {}
+  },
+  "output": "results/serra_exploration"
+}

@@ -1,0 +1,58 @@
+{
+  "release": "1.7.4",
+  "date": "2026-09-21",
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.39",
+    "dependencies": {
+      "numpy": "2.3.5",
+      "scipy": "1.17.0",
+      "pandas": "2.2.3",
+      "matplotlib": "3.10.8",
+      "pytest": "9.1.1",
+      "setuptools": "84.0.0",
+      "threadpoolctl": "3.6.0"
+    }
+  },
+  "source_suite": {
+    "passed": 346,
+    "warnings": 1
+  },
+  "installed_checks": {
+    "passed": 55,
+    "warnings": 1,
+    "import_location": "separately installed wheel, outside source package"
+  },
+  "exploration_command": "python -m research.serra.explore",
+  "exploration_config": "research/serra/config/revision/exploration.json",
+  "observations": {
+    "start": "1892-01-01",
+    "end": "2026-08-01",
+    "months": 1616,
+    "series": [
+      "TXm",
+      "TXx",
+      "TXn",
+      "TNm",
+      "TNx",
+      "TNn"
+    ],
+    "sha256": "bab6ca50181befb0ec1386a0ebcf82a0c6e43e91d27015982926f0a99b20091b"
+  },
+  "outputs": [
+    "README.md",
+    "config.json",
+    "data/exploratory_monthly_spread.csv",
+    "data/exploratory_seasonal_cycles.csv",
+    "data/monthly_observations.csv",
+    "exploration_metadata.json",
+    "figures/exploratory_monthly_spread.pdf",
+    "figures/exploratory_monthly_spread.png",
+    "figures/exploratory_seasonal_cycles.pdf",
+    "figures/exploratory_seasonal_cycles.png"
+  ],
+  "png_visual_inspection": "passed for both figures",
+  "tables_only_without_matplotlib": "passed using installed wheel",
+  "posterior_fits_for_exploration": false,
+  "full_scientific_model_runs": false
+}

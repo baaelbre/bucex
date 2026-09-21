@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.7.4 — 2026-09-21
+
+- Integrate exploratory manuscript Figures 1 and 2 into `research.serra.explore`.
+- Add the general `explore_monthly` / `MonthlyExploration` API for empirical
+  seasonal cycles and within-month, within-era detrended interquartile ranges.
+- Keep numerical calculations, scoped plotting and report persistence in
+  separate package modules; research code only loads data and selects settings.
+- Declare date windows, colours, panel layout and PNG/PDF formats in JSON.
+- Export source observations, sample/missing counts, plotted CSVs and metadata.
+  Reject duplicate months, unavailable windows and insufficient samples.
+- Preserve original temperatures, prior defaults, parallel-chain execution,
+  inference kernels and existing fitted-model figure commands.
+
 ## 1.7.3 — 2026-09-21
 
 - Add `MCMC(chain_workers=...)` through one process executor used by all five

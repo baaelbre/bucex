@@ -1,0 +1,199 @@
+{
+  "_comment": "Two additional settings only; reuse both completed settings through research.serra.refine_priors. TNm: 2 full-record fits and 6 historical refits.",
+  "analysis": "independent",
+  "assessment": {
+    "baseline": "level_half_slope_quarter"
+  },
+  "continue_on_error": false,
+  "contrasts": {
+    "comparison": [
+      "1996-09",
+      "2026-08"
+    ],
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "pairs": [
+      [
+        "TXx",
+        "TXm"
+      ],
+      [
+        "TXn",
+        "TXm"
+      ],
+      [
+        "TNx",
+        "TNm"
+      ],
+      [
+        "TNn",
+        "TNm"
+      ],
+      [
+        "TXm",
+        "TNm"
+      ],
+      [
+        "TXx",
+        "TNx"
+      ],
+      [
+        "TXn",
+        "TNn"
+      ]
+    ],
+    "rate_multiplier": 120.0,
+    "reference": [
+      "1892-01",
+      "1921-12"
+    ]
+  },
+  "copula": {
+    "eta": 1.0,
+    "structure": "constant"
+  },
+  "credible_interval": 0.95,
+  "data": {
+    "end": "2026-08-01",
+    "series": [
+      "TNm"
+    ],
+    "start": "1892-01-01"
+  },
+  "diagnostic_thresholds": {
+    "max_rhat": 1.01,
+    "min_chains": 4,
+    "min_ess": 400
+  },
+  "figure_colors": {
+    "TNm": "#a44839",
+    "TNn": "#a44839",
+    "TNx": "#a44839",
+    "TXm": "#24658a",
+    "TXn": "#24658a",
+    "TXx": "#24658a"
+  },
+  "figure_dpi": 180,
+  "figure_format": "png",
+  "figure_style": "manuscript",
+  "figures": true,
+  "forecast_draws": 4000,
+  "forecast_horizon": 120,
+  "forecast_months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "inference": {
+    "asis": false,
+    "laplace": {
+      "max_iterations": 30,
+      "mh_steps": 1,
+      "tolerance": 1e-05
+    }
+  },
+  "mcmc": {
+    "chain_workers": 4,
+    "chains": 4,
+    "draws": 1000,
+    "progress": true,
+    "progress_every": 100,
+    "seed": 56100,
+    "warmup": 1000
+  },
+  "model": {
+    "level": "dynamic",
+    "period": 12,
+    "scale_innovation_sd": 0.01,
+    "scale_mode": "constant",
+    "scale_prior_sd": 0.3,
+    "scale_slope_sd": 0.1,
+    "scale_time_unit": 120,
+    "seasonal": "dynamic",
+    "seasonal_scale": true,
+    "trend": "dynamic"
+  },
+  "output": "results/serra_priors_refine2",
+  "predictive_check_draws": 400,
+  "prior_draws": 20000,
+  "prior_predictive_draws": 0,
+  "priors": {
+    "baseline_sd": 20.0,
+    "initial_level_mean": 0.0,
+    "initial_slope_sd": 0.0025,
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.01,
+      "season": 0.02,
+      "trend": 5e-05
+    },
+    "observation_variance": [
+      2.0,
+      2.0
+    ],
+    "seasonal_initial_sd": 2.25,
+    "tg_spike_shape": 0.5,
+    "tg_tail_shape": 0.5,
+    "xi_bounds": [
+      -0.5,
+      0.5
+    ],
+    "xi_prior": "normal",
+    "xi_sd": 0.3
+  },
+  "risks": {
+    "TNm": 18,
+    "TNn": -10,
+    "TNx": 25,
+    "TXm": 25,
+    "TXn": 0,
+    "TXx": 35
+  },
+  "save_fits": false,
+  "seed": 56101,
+  "trace_exports": true,
+  "validation": {
+    "draws": 2000,
+    "horizon": 60,
+    "initial": 1308,
+    "save_fits": false,
+    "step": 120
+  },
+  "variants": [
+    {
+      "name": "level_half_slope_quarter",
+      "multipliers": {
+        "level": 0.5,
+        "trend": 0.25
+      }
+    },
+    {
+      "name": "level_slope_quarter",
+      "multipliers": {
+        "level": 0.25,
+        "trend": 0.25
+      }
+    }
+  ]
+}
