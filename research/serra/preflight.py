@@ -28,9 +28,12 @@ def inspect(config):
         asis=config['inference']['asis'], priors=config['priors'],
         copula=config.get('copula') if config['analysis']=='copula' else 'independence',
         mcmc=config['mcmc'], contrasts=periods,
+        chain_execution=dict(workers=min(mcmc.chain_workers,mcmc.chains),
+            requested_workers=mcmc.chain_workers, start_method='spawn' if min(mcmc.chain_workers,mcmc.chains)>1 else 'serial',
+            numerical_threads_per_chain=1),
         centered_state_storage_GB=bytes_per_state*sum(dimensions)/1e9,
         peak_single_fit_state_storage_GB=bytes_per_state*(sum(dimensions) if joint else max(dimensions))/1e9,
-        note='State arrays only; fitting/reporting need additional RAM. This check performs no inference.')
+        note='State arrays only; process workers and result assembly need additional RAM, including transfer copies. This check performs no inference.')
 
 
 if __name__ == '__main__':

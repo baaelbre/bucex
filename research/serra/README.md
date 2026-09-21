@@ -1,4 +1,4 @@
-# SERRA research with BUCEX 1.7.2
+# SERRA research with BUCEX 1.7.3
 
 Start with [START_HERE](../../START_HERE.md). Complete sequential commands and
 output interpretation are in [the publication run guide](../../docs/PUBLICATION_RUNS.md).
@@ -11,6 +11,7 @@ configurations contain study choices. No conference-specific scripts are needed.
 
 | Stage | Script | Principal revision configuration |
 |---|---|---|
+| Focused prior/posterior and forecast comparison | `prior_assessment` | `priors/pilot.json`; start with `--stage plan` |
 | Resolve assumptions/resources | `preflight` | `revision/monthly_scale.json` |
 | Constant-scale baseline | `univariate` | `revision/constant_scale.json` |
 | Repeating monthly scales | `univariate` | `revision/monthly_scale.json` |
@@ -39,3 +40,13 @@ The script creates a new timestamped result directory and prints it. Keep the
 resolved configuration and `.bucex` fit locally. For initial review, share small
 CSVs/JSONs, PNGs and `*_traces.csv.gz`. Reporting does not re-estimate the posterior.
 A new likelihood, prior, data window or dependence model does.
+
+## Focused innovation-prior work
+
+`prior_assessment.py` orchestrates the existing fit/validation drivers. One
+candidate list is used in both stages; `bucex.SensitivityReport` owns table and
+figure comparison. `--stage sensitivity`, `--stage predictive` and `--stage
+report` can run separately using the same saved assessment directory. Default
+pilot: TNm, three normal-prior settings, four process workers, 500+500
+iterations per chain and three historical five-year forecast blocks. No
+simulation study is invoked. See [the new guide](../../docs/PRIOR_ASSESSMENT.md).

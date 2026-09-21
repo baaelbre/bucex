@@ -1,0 +1,18 @@
+{
+  "extends": "../revision/monthly_scale.json",
+  "_comment": "Focused normal-prior assessment; three candidates, TNm first, 3 full-record fits and 9 historical refits. No simulation study.",
+  "data": {"series": ["TNm"]},
+  "mcmc": {"chains": 4, "chain_workers": 4, "warmup": 500, "draws": 500, "progress_every": 100},
+  "variants": [
+    {"name": "normal_reference"},
+    {"name": "level_half", "multipliers": {"level": 0.5}},
+    {"name": "level_slope_half", "multipliers": {"level": 0.5, "trend": 0.5}}
+  ],
+  "assessment": {"baseline": "normal_reference"},
+  "validation": {"initial": 1308, "horizon": 60, "step": 120, "draws": 2000, "save_fits": false},
+  "prior_draws": 20000,
+  "prior_predictive_draws": 0,
+  "save_fits": false,
+  "figures": true,
+  "output": "results/serra_priors"
+}

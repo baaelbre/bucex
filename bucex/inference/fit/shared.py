@@ -13,6 +13,8 @@ from dataclasses import asdict, replace
 from time import perf_counter
 from typing import Any, Mapping
 
+from ..chains import independent_chains, chain_seeds, chain_position
+
 import numpy as np
 
 from ...core.fit import FitResult
@@ -220,6 +222,7 @@ def _noncentered_scale_step(y, path, params, name, prior, width, compiled, inver
     return path, False
 
 
+@independent_chains()
 def sample_shared_posterior(
     y: Array, compiled: Any, priors: JointPriors | None, plan: Any, *,
     mcmc: MCMC, laplace: Laplace, dates=None, initial_parameters=None,
@@ -252,7 +255,7 @@ def sample_shared_posterior(
     chains = None if initial_parameters is None else initial_parameters.get("chains")
     if chains is not None and len(chains) != mcmc.chains:
         raise ValueError("Initial chains must contain one entry per requested chain.")
-    seeds = np.random.SeedSequence(mcmc.seed).spawn(mcmc.chains)
+    seeds = chain_seeds(mcmc.seed, mcmc.chains)
     shape = (mcmc.chains, mcmc.draws)
     state_draws = np.empty((*shape, compiled.n_time + 1, compiled.state_dim))
     log_posterior, log_likelihood = np.empty(shape), np.empty(shape)
@@ -447,7 +450,8 @@ def sample_shared_posterior(
                 ) from error
             every = mcmc.progress_every or max(mcmc.iterations // 20, 1)
             if mcmc.progress and ((iteration + 1) % every == 0 or iteration + 1 == mcmc.iterations):
-                print(f"shared {plan.engine}: chain {chain + 1}/{mcmc.chains}, iteration {iteration + 1}/{mcmc.iterations}, saved {saved}/{mcmc.draws}, elapsed {perf_counter() - started:.1f}s", flush=True)
+                display_chain, display_total = chain_position(chain+1, mcmc.chains)
+                print(f"shared {plan.engine}: chain {display_chain}/{display_total}, iteration {iteration + 1}/{mcmc.iterations}, saved {saved}/{mcmc.draws}, elapsed {perf_counter() - started:.1f}s", flush=True)
         for key, (accepted, attempted) in counts.items():
             acceptance.setdefault(key, np.full(mcmc.chains, np.nan))[chain] = accepted / attempted if attempted else np.nan
         for name, prior in priors.process.items():

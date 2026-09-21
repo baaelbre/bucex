@@ -1,4 +1,4 @@
-# BUCEX 1.7.2
+# BUCEX 1.7.3
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
 Declare the observation distribution, give its parameters an interpretable
@@ -9,6 +9,25 @@ single series or related series with residual dependence.
 python -m pip install -e ".[test]"
 python -m pytest
 ```
+
+## Parallel chains and focused prior assessment in 1.7.3
+
+Use `MCMC(chains=4, chain_workers=4, ...)` for four independent process workers.
+The default Python API remains serial. Spawned workers preserve chain order,
+seed streams, diagnostics and posterior pairing for scalar, marginal/copula,
+hierarchical and shared-state fits. Put custom script entry points under an
+`if __name__ == "__main__":` guard; provided research drivers already do this.
+
+```text
+python -m research.serra.prior_assessment --stage plan
+python -m research.serra.prior_assessment --stage all
+```
+
+One JSON candidate list drives prior/posterior sensitivity and matched
+historical forecasts. The pilot uses TNm, three priors and three forecast
+origins; it is not a simulation study. See [START_HERE](START_HERE.md) and
+[the API and assessment guide](docs/PRIOR_ASSESSMENT.md). Normal innovation
+prior defaults and the statistical transition kernels remain unchanged.
 
 ## One series, explicit parameter structure
 

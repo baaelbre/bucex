@@ -8,9 +8,10 @@ from .models import joint_model, fit_options
 from .report import new_run, write_report, scientific_targets, convergence_parameters
 
 
-def run(config, *, variants=None):
+def run(config, *, variants=None, directory=None):
     data = bx.load_uccle_multiseries(**config['data'])
-    directory = new_run(config['output'], 'sensitivity_'+config['analysis'])
+    directory = new_run(config['output'], 'sensitivity_'+config['analysis']) if directory is None else Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
     bx.save_config(config, directory/'config.json')
     selected = config['variants']
     if variants:
@@ -49,6 +50,8 @@ def run(config, *, variants=None):
                 summary = fit.contrast_diagnostics(quantities, credible_interval=local['credible_interval'])
                 summary['probability_positive'] = [(quantities[k] > 0).mean() for k in summary.index]
                 summary.to_csv(target/'period_and_endpoint_targets.csv')
+                if local.get('trace_exports', True):
+                    bx.trace_frame(quantities).to_csv(target/'target_traces.csv.gz', index=False)
                 diagnostics = convergence_parameters(fit.diagnostics()['parameters'], fit.n_chains)
                 assessment = bx.convergence_assessment({'parameters':diagnostics, 'scientific_targets':summary},
                     **local.get('diagnostic_thresholds', {}))

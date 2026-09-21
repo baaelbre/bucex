@@ -2,11 +2,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from numbers import Integral
 
 
 @dataclass(frozen=True)
 class MCMC:
-    """Retained draws, warmup and chain configuration."""
+    """Retained draws, warmup and independent-chain execution.
+
+    ``chain_workers=1`` runs serially; larger values use spawned processes,
+    capped at ``chains``. Seeded chains do not depend on the worker count.
+    Put script entry points behind an ``if __name__ == '__main__'`` guard.
+    """
 
     draws: int = 1000
     warmup: int = 1000
@@ -16,8 +22,12 @@ class MCMC:
     progress: bool = False
     progress_every: int | None = None
     adapt: bool = True
+    chain_workers: int = 1
 
     def __post_init__(self) -> None:
+        if isinstance(self.chain_workers, bool) or not isinstance(self.chain_workers, Integral) or self.chain_workers < 1:
+            raise ValueError("chain_workers must be a positive integer.")
+        object.__setattr__(self, "chain_workers", int(self.chain_workers))
         if int(self.draws) < 1 or int(self.warmup) < 0 or int(self.thin) < 1:
             raise ValueError("draws and thin must be positive; warmup must be non-negative.")
         if int(self.chains) < 1:

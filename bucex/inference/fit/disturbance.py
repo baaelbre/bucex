@@ -5,6 +5,8 @@ from dataclasses import asdict
 from time import perf_counter
 from typing import Any
 
+from ..chains import independent_chains, chain_seeds, chain_position
+
 import numpy as np
 
 from ...models.compiler import CompiledModel
@@ -388,6 +390,7 @@ def _initial_path(
     return initial.path
 
 
+@independent_chains()
 def sample_posterior(
     y: Array,
     compiled: CompiledModel,
@@ -470,8 +473,7 @@ def sample_posterior(
     final_step_names = list(mh_parameter_names)
     final_steps: dict[str, list[float]] = {name: [] for name in final_step_names}
 
-    seed_sequence = np.random.SeedSequence(mcmc.seed)
-    chain_sequences = seed_sequence.spawn(chains)
+    chain_sequences = chain_seeds(mcmc.seed, chains)
     total_iterations = mcmc.iterations
     recorded_initial_parameters: list[dict[str, float]] = []
     recorded_initial_indicators: list[dict[str, int]] = []

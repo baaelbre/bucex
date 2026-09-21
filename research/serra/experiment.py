@@ -64,7 +64,9 @@ def _save_case(fit, prior, directory, config, *, threshold, event_index=-1):
         default=lambda value: value.tolist(), indent=2) + "\n")
     diagnostic = fit.diagnostics()
     bx.save_config(dict(bucex_version=bx.__version__, model=fit.model.to_dict(),
-        inference=fit.plan.to_dict(), warnings=diagnostic["warnings"]), directory / "run.json")
+        inference=fit.plan.to_dict(), warnings=diagnostic["warnings"],
+        execution=fit.sampler_diagnostics.get('execution'),
+        fitted_start=str(fit.time[0]), fitted_end=str(fit.time[-1]), n_months=fit.n_time), directory / "run.json")
     level = config.get("credible_interval", .95)
     diagnostic["parameters"].to_csv(directory / "mcmc.csv")
     (directory / "engine.json").write_text(json.dumps(
@@ -72,13 +74,23 @@ def _save_case(fit, prior, directory, config, *, threshold, event_index=-1):
     comparison = bx.compare_innovation_priors(fit, prior,
         size=config.get("prior_draws", 2000), seed=config["seed"], level=level)
     comparison.to_csv(directory / "prior_posterior.csv", index=False)
+    bx.innovation_prior_diagnostics(comparison).to_csv(directory / 'prior_updates.csv', index=False)
     scientific = bx.scientific_summary(fit, threshold, event_index=event_index, level=level)
     scientific.to_csv(directory / "scientific_targets.csv")
-    prior_targets = bx.prior_predictive_targets(fit.model, prior, fit.n_time, threshold,
-        tail="lower" if fit.transform_sign < 0 else "upper", size=config.get("prior_predictive_draws", 100),
-        seed=config["seed"], event_index=event_index, level=level)
-    pd.concat([prior_targets, scientific.assign(distribution="posterior")]).to_csv(
-        directory / "prior_posterior_targets.csv")
+    if config.get('prior_predictive_draws', 100) > 0:
+        prior_targets = bx.prior_predictive_targets(fit.model, prior, fit.n_time, threshold,
+            tail="lower" if fit.transform_sign < 0 else "upper", size=config.get("prior_predictive_draws", 100),
+            seed=config["seed"], event_index=event_index, level=level)
+        pd.concat([prior_targets, scientific.assign(distribution="posterior")]).to_csv(
+            directory / "prior_posterior_targets.csv")
+    paths = {'level': fit.component_draws('level'),
+             'slope': 120 * fit.component_draws('slope'),
+             'risk': fit.exceedance_probability_draws(threshold, return_labels=False)}
+    for label, values in paths.items():
+        band = fit.posterior_summary(values, credible_interval=level)
+        pd.DataFrame({'time': fit.time, **band}).to_csv(directory / (label+'.csv'), index=False)
+    if config.get('trace_exports', True):
+        bx.trace_frame(bx.parameter_trace_draws(fit)).to_csv(directory/'parameter_traces.csv.gz', index=False)
     if config.get("figures", True):
         options = dict(image_format=config.get('figure_format','png'), dpi=config.get('figure_dpi',180))
         save_band(fit, fit.component_draws("level"), directory / "level", level=level, **options)

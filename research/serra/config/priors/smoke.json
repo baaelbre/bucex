@@ -1,0 +1,11 @@
+{
+  "extends": "pilot.json",
+  "_comment": "Execution check only. Very short chains cannot support scientific conclusions.",
+  "data": {"start": "2020-01-01"},
+  "contrasts": null,
+  "mcmc": {"chains": 2, "chain_workers": 2, "warmup": 2, "draws": 4, "progress": false},
+  "validation": {"initial": 48, "horizon": 12, "step": 12, "draws": 20},
+  "prior_draws": 500,
+  "forecast_draws": 20,
+  "output": "results/serra_priors_smoke"
+}

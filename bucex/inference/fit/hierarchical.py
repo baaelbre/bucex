@@ -13,6 +13,8 @@ from dataclasses import asdict, dataclass, replace
 from time import perf_counter
 from typing import Any, Mapping
 
+from ..chains import independent_chains, chain_seeds, chain_position
+
 import numpy as np
 
 from ...__about__ import __version__
@@ -925,6 +927,7 @@ def _initial_hierarchy(
     return probabilities, slab
 
 
+@independent_chains()
 def sample_hierarchical_posterior(
     y: Array,
     compiled: CompiledMultiSeriesModel,
@@ -960,7 +963,7 @@ def sample_hierarchical_posterior(
     block_by_name = {
         block.name: block for block in compiled.blocks if block.kind == "channel"
     }
-    seed_sequences = np.random.SeedSequence(mcmc.seed).spawn(mcmc.chains)
+    seed_sequences = chain_seeds(mcmc.seed, mcmc.chains)
     state_draws = np.zeros(
         (mcmc.chains, mcmc.draws, values.shape[0] + 1, compiled.state_dim)
     )

@@ -1,0 +1,8 @@
+{
+  "extends": "pilot.json",
+  "_comment": "Optional follow-up after screening: six five-year forecast blocks and longer chains. Inspect diagnostics before drawing conclusions.",
+  "mcmc": {"warmup": 1000, "draws": 1000},
+  "validation": {"initial": 1248, "horizon": 60, "step": 60, "draws": 4000},
+  "save_fits": true,
+  "output": "results/serra_priors_confirm"
+}

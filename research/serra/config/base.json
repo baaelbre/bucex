@@ -55,7 +55,8 @@
     "chains": 4,
     "seed": 56100,
     "progress": true,
-    "progress_every": 50
+    "progress_every": 50,
+    "chain_workers": 4
   },
   "inference": {
     "asis": false,

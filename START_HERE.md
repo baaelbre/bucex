@@ -1,104 +1,131 @@
-# Start with BUCEX 1.7.2
+# Start with BUCEX 1.7.3
 
-Extract the release and open a terminal in `bucex-1.7.2`, beside
-`pyproject.toml`. Commands work in Windows PowerShell, Linux and macOS.
+Extract the archive and open a terminal inside `bucex-1.7.3`, beside
+`pyproject.toml`. The commands work in Windows PowerShell, Linux and macOS.
 
 ```text
 python -m pip install -e ".[plot]"
 python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-Version 1.7.2 preserves the 1.7.1 inference kernels and prior defaults. You do
-**not** need new chains just to change figures. A change to observation scale,
-dependence, priors or the training data does require a new fit.
+Expect version **1.7.3**. The package now supports process-parallel chains.
+Existing fits remain readable; the normal-prior defaults and statistical
+transition kernels are unchanged. No new chains are needed solely for plots.
 
-## Your next scientific run
-
-Keep your six existing constant-scale fits as the baseline. Check the monthly
-scale extension first for TNm, with all location innovation priors unchanged:
+## 1. Check execution once
 
 ```text
-python -m research.serra.preflight --config research/serra/config/revision/monthly_scale.json
-python -m research.serra.univariate --config research/serra/config/revision/monthly_scale.json --series TNm
+python -m research.serra.prior_assessment --config research/serra/config/priors/smoke.json --stage all
 ```
 
-This uses January 1892 to August 2026, normal FS priors, physical innovation-SD
-prior medians (.01, .00005, .02), initial-slope SD .0025 per month, constant
-unknown shape, and repeating monthly scales. The default starting budget is
-four chains, 2,000 warmup and 2,000 retained draws per chain; it does not promise
-convergence. ASIS and discrete selection are off.
+This checks the complete pipeline on 2020–August 2026 with two workers and
+very short chains. It generates comparison CSVs and PNGs. Its posterior and
+predictive results are **execution checks, not scientific evidence**.
 
-Inspect `convergence.json`, initial-slope and process-SD traces, scale estimates,
-`TNm_pit_by_month.csv/png`, `TNm_normal_score_by_month.png`, slopes and risks.
-Smoothed PITs describe in-sample fit; use held-out predictions for calibration.
-If satisfactory, run the other five:
+## 2. Inspect the focused study
 
 ```text
-python -m research.serra.univariate --config research/serra/config/revision/monthly_scale.json --series TXm TXx TXn TNx TNn
+python -m research.serra.prior_assessment --stage plan
 ```
 
-## Matched joint fits
+The default `config/priors/pilot.json` uses TNm, January 1892–August 2026,
+normal FS priors and repeating monthly observation scales. It requests four
+chains in four processes, each with 500 warmup and 500 retained draws.
+
+| Candidate | Level SD prior median | Slope SD prior median | Seasonal SD prior median |
+|---|---:|---:|---:|
+| `normal_reference` | .010 | .000050 | .020 |
+| `level_half` | .005 | .000050 | .020 |
+| `level_slope_half` | .005 | .000025 | .020 |
+
+These are medians of the **physical innovation SD**, not normal coefficient
+prior SDs. Other priors remain fixed, including initial-slope SD .0025 per
+month and monthly log-scale contrast prior SD .3. There is no SSVS or ASIS.
+
+Historical fits stop in December 2000, 2010 and 2020 and predict the next five
+years without conditioning on those held-out observations. Full-record
+sensitivity uses all observations through August 2026. `--stage plan` runs no
+MCMC and prints the resolved dates, candidates and number of fits.
+
+## 3. Run the assessment
+
+For both stages in one command:
 
 ```text
-python -m research.serra.preflight --config research/serra/config/revision/copula_monthly.json
-python -m research.serra.copula --config research/serra/config/revision/copula_monthly.json --independence
-python -m research.serra.copula --config research/serra/config/revision/copula_monthly.json
+python -m research.serra.prior_assessment --stage all
 ```
 
-The two joint fits use the same marginal specification. The latter estimates a
-constant residual Gaussian correlation matrix and updates margins jointly.
-The stored state array is about 8.07 GB at this draw count; computation and
-reporting need additional memory. Constant-scale alternatives are
-`revision/constant_scale.json`, `revision/independence_constant.json` and
-`revision/copula_constant.json`. Independent marginal analyses remain usable
-if joint inference is not yet reliable.
+This performs three full-record sensitivity fits plus nine historical refits.
+Candidates and forecast origins run sequentially; only the chains run in
+parallel. The script prints one `Assessment directory` at the start.
 
-## Figures from existing results, without refitting
-
-For compact reports already supplied:
+Alternatively run stages separately:
 
 ```text
-python -m research.serra.figures --reports PATH_TO_SIX_SERIES_REPORT_ROOT
+python -m research.serra.prior_assessment --stage sensitivity
+python -m research.serra.prior_assessment --run YOUR_ASSESSMENT_DIRECTORY --stage predictive
 ```
 
-Or give six explicit series directories after `--reports`. A dated directory
-contains coordinated manuscript PNGs and `figure_manifest.json`. Add
-`--formats png pdf` for vector versions. Figure names match the rewritten
-manuscript, including its two appendix panels. A missing trace CSV creates a
-clearly marked placeholder; the other figures still render.
+Replace `YOUR_ASSESSMENT_DIRECTORY` with the path printed by the first command.
+An existing run retains its saved settings and completed stages. Changed
+priors, data, or MCMC budgets belong in a new run. Interrupted stages retain
+partial files and are not silently mixed with a rerun.
 
-To obtain the newly exported compact parameter traces from a saved fit:
+## 4. Read the comparison
+
+The `comparison/` directory contains:
+
+| Output | What to inspect |
+|---|---|
+| `convergence.csv` | Full-record and per-origin numerical status; inspect detailed chain tables when flagged |
+| `prior_updates.csv`, `TNm_prior_posterior.png` | Prior/posterior medians, intervals, displacement and width ratios |
+| `scientific_targets.csv`, `TNm_scientific_targets.png` | Warming, latent slope contrasts and their sensitivity |
+| `TNm_level.png`, `TNm_slope.png`, `TNm_risk.png` | How smoothness and scientific conclusions change together |
+| `scores_by_origin.csv`, `predictive_comparison.csv` | Paired CRPS and negative log predictive density; all and early/later horizons |
+| `TNm_forecasts.png`, `TNm_forecast_scores.png` | Actual held-out observations, predictive intervals and each origin's scores |
+| `coverage_by_month.csv`, `TNm_forecast_coverage.png` | Seasonal coverage, retaining sample counts |
+| `pit_by_month.csv`, `TNm_forecast_pit.png` | Held-out predictive calibration |
+
+All forecast scores are losses: **lower is better**. A positive paired
+`improvement` means the candidate improves on the reference. Three forecast
+blocks give a descriptive screen; no precision is invented by treating their
+months as independent replicates. Full trace CSVs and per-fit diagnostics are
+kept under `sensitivity/` and `predictive/`. The pilot avoids large `.bucex`
+archives; set `save_fits` to true if you want to retain those as well.
+
+Prefer stronger shrinkage when prediction and coverage remain comparable.
+Posterior displacement is not a quantity to maximize. A narrow or smoother
+trajectory alone does not establish acceleration. Keep the sensitivity of
+period slope differences visible. Short-chain convergence warnings are not
+waived by this workflow.
+
+## 5. Continue selectively
+
+Run another response with the same settings:
 
 ```text
-python -m research.serra.report --fit PATH_TO_TXn/fit.bucex --format png --level 0.95
+python -m research.serra.prior_assessment --series TXm --stage all
+python -m research.serra.prior_assessment --series TXx --stage all
 ```
 
-Use the newly printed report directory in the figure command. Re-reporting
-also creates monthly diagnostics and includes initial-slope traces. It reads
-the large archive but does not run MCMC or change the fitted model.
+The same driver works for all six summaries. Set the series list in JSON or
+pass several names after `--series`. Avoid transferring TNm's preferred prior
+to all extrema without checking their own forecasts and diagnostics.
 
-For a final figure export, add `--strict` so missing inputs stop execution.
-See [figure recipes](docs/FIGURES.md) for selecting panels and changing style.
+`config/priors/confirm.json` is an optional larger check with six forecast
+blocks and 1,000 warmup/1,000 retained draws per chain. It does not run unless
+explicitly requested. You can limit it to two candidates with `--variants
+normal_reference level_half`. Increase MCMC only where diagnostics require it.
 
-## Sensitivity
+Rebuild comparison tables and figures without fitting:
 
 ```text
-python -m research.serra.sensitivity --config research/serra/config/revision/sensitivity_monthly.json --series TNm --variants normal_reference level_half level_double
+python -m research.serra.prior_assessment --run YOUR_ASSESSMENT_DIRECTORY --stage report
 ```
 
-Compare period warming, slopes, calibration and risks. Do not select a prior
-just because a curve looks smooth. The [complete run guide](docs/PUBLICATION_RUNS.md)
-covers fixed/evolving seasonality, shape bounds and priors, monthly-scale
-priors, held-out comparisons, endpoint checks and recovery simulations.
-
-Check execution locally with `revision/monthly_scale_smoke.json` and
-`revision/copula_monthly_smoke.json` before scheduling expensive work. These
-36-month, four-draw fits cannot provide scientific evidence.
-
-
-## Validation
-
-In report.py, posterior predictive observations are generated from the fitted model and compared to the original data, through PP and QQ plots. 
-```text
-python -m research.serra.validation --config research/serra/config/revision/validation.json
-```
+The existing univariate and copula scripts remain available. Their base JSON
+now requests four chain workers. The Python API defaults to one worker; set
+`MCMC(chain_workers=4)` explicitly in your own code. Keep `if __name__ ==
+"__main__":` around custom script entry points; all provided drivers have it.
+See [the parallel/prior guide](docs/PRIOR_ASSESSMENT.md) for API details and
+[the publication run guide](docs/PUBLICATION_RUNS.md) for the broader revision.

@@ -8,6 +8,8 @@ target the joint likelihood. There is no two-stage/cut approximation.
 from dataclasses import asdict
 from types import SimpleNamespace
 
+from ..chains import independent_chains, chain_seeds, chain_position
+
 import numpy as np
 
 from ...__about__ import __version__
@@ -205,6 +207,7 @@ def _observation_step(state, conditional, coefficients, scale, phase, prior, rng
     return coefficients, effects, metric
 
 
+@independent_chains()
 def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates=None, initial_parameters=None):
     if not isinstance(priors, MarginalPriors):
         raise TypeError("Use MarginalPriors(channels={name: fs_prior}).")
@@ -232,7 +235,7 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
     phases = [s.phases(T, dates) if s else np.zeros(T, int) for s in scales]
     initial = dict(initial_parameters or {})
     restart = initial.pop("__fs_marginal__", None)
-    seeds = np.random.SeedSequence(mcmc.seed).spawn(C)
+    seeds = chain_seeds(mcmc.seed, C)
     def correlation_for(parameters):
         if model.copula is None:
             return np.eye(K)
@@ -350,7 +353,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                     metrics[key][chain,saved_draw] = value
                 saved_draw += 1
             if mcmc.progress and ((iteration+1) % max(1, mcmc.progress_every or 50) == 0 or iteration+1 == mcmc.iterations):
-                print(f"Private FS {plan.engine}: chain {chain+1}/{C}, iteration {iteration+1}/{mcmc.iterations}, retained {saved_draw}/{D}", flush=True)
+                display_chain, display_total = chain_position(chain+1, C)
+                print(f"Private FS {plan.engine}: chain {display_chain}/{display_total}, iteration {iteration+1}/{mcmc.iterations}, retained {saved_draw}/{D}", flush=True)
     # Preserve per-channel diagnostics and expose pooled computational summaries.
     for key in {name.rsplit(".", 1)[0] for name in metrics
                 if name.startswith(("laplace_", "coefficient_"))}:

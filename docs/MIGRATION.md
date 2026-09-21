@@ -1,3 +1,32 @@
+# Migrating from 1.7.2 to 1.7.3
+
+`MCMC` adds `chain_workers=1`. Set it to four for process-parallel chains;
+execution uses `spawn` on every platform. Each process runs the same backend
+and retains the existing chain seed. Within the same runtime, changing worker
+count preserves seeded draws and chain ordering. Bitwise identity across BLAS,
+NumPy or platform versions is not promised. BLAS thread pools are limited to
+one thread per chain, including serial execution, to avoid oversubscription
+and worker-count-dependent numerical reductions.
+
+Existing Python calls remain serial unless opted in. The research base JSON
+now requests four workers, capped by chain count. Custom executable scripts
+must use an `if __name__ == "__main__":` guard. Matplotlib remains an optional
+`plot` dependency; threadpoolctl is now a small core dependency. Workers need
+additional memory during fitting and result assembly. Hierarchical
+`channel_workers` is a separate within-chain option; normally leave it at one
+when using parallel chains.
+
+All existing model, forecast and archive APIs remain valid. Stored priors and
+scientific defaults are unchanged; no archive migration is required. Execution
+metadata records requested/effective workers, worker PIDs and complete seed
+states. Worker failures raise, without returning an incomplete posterior.
+
+`prior_assessment` adds a focused, configurable workflow over the existing
+`sensitivity` and `validate` drivers. It saves compact traces, level/slope/risk
+paths, forecast cases and origin-level diagnostics even when large fit archives
+are disabled. `SensitivityReport` re-reads those exports without MCMC.
+See [PRIOR_ASSESSMENT.md](PRIOR_ASSESSMENT.md).
+
 # Migrating from 1.7.1 to 1.7.2
 
 No inference or archive-schema migration is required. Existing 1.7.1 fit files

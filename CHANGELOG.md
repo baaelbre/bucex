@@ -1,4 +1,23 @@
-# 1.7.1 — 2026-09-17
+# Changelog
+
+## 1.7.3 — 2026-09-21
+
+- Add `MCMC(chain_workers=...)` through one process executor used by all five
+  inference backends. Preserve seed streams, chain order, diagnostics, warm
+  starts and archives; cap numerical thread pools to prevent oversubscription.
+- Add a focused normal-prior assessment driver with one candidate list for
+  posterior sensitivity and historical forecasts, using JSON-only settings.
+- Export slope/risk/level paths and compact traces independently of large fit
+  storage; record execution settings in reports and held-out fits.
+- Add `innovation_prior_diagnostics`, `compare_predictive_scores` and
+  `SensitivityReport`, with manuscript-style comparison figures and strict
+  forecast-case matching. Small numbers of origins receive descriptive
+  comparisons, not misleadingly precise bootstrap intervals.
+- Save historical predictive bands, held-out observations, horizons, calendar
+  coverage/PIT diagnostics and convergence by forecast origin.
+- Keep scientific priors and transition kernels unchanged. New pilot settings
+  use four parallel chains and 500+500 iterations as an explicit screening
+  budget; no simulation study or automatic prior selection is run.
 
 ## 1.7.2 — 2026-09-20
 
@@ -16,6 +35,8 @@
   CLI accepts `--scale`; model comparisons accept `--series`.
 - Keep the 1.7.1 inference kernels, archive schema and normal-prior defaults.
 
+## 1.7.1 — 2026-09-17
+
 - Correct inefficient GEV continuous-FS coefficient preconditioning: optimize a
   deterministic conditional-mode Gaussian reference, then retain the exact
   likelihood/reference elliptical-slice correction. The reference never starts
@@ -31,8 +52,6 @@
   old-level-prior comparison, and document the reviewer/paper workflow.
 - Add independent numerical integration, copula-conditional, endpoint-support
   and long-record coefficient-mixing regression tests.
-
-# Changelog
 
 ## 1.7.0
 

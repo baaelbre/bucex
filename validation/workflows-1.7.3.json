@@ -1,0 +1,193 @@
+{
+  "bucex_version": "1.7.3",
+  "date": "2026-09-21",
+  "environment": {
+    "python": "3.12.14",
+    "platform": "Linux",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "pandas": "2.2.3"
+  },
+  "source_tests": 333,
+  "installed_tests": 23,
+  "workflow": {
+    "stages": {
+      "baseline": "normal_reference",
+      "bucex_version": "1.7.3",
+      "predictive": "completed",
+      "sensitivity": "completed"
+    },
+    "series": [
+      "TNm",
+      "TXn"
+    ],
+    "start": "2020-01-01",
+    "end": "2026-08-01",
+    "chains": 2,
+    "chain_workers": 2,
+    "warmup": 2,
+    "draws": 4,
+    "candidates": [
+      "normal_reference",
+      "level_half",
+      "level_slope_half"
+    ],
+    "posterior_fits": 6,
+    "predictive_fits": 12,
+    "pngs": 18,
+    "convergence_status_counts": {
+      "needs_review": 18
+    },
+    "folds": [
+      {
+        "candidate": "level_half",
+        "series": "TNm",
+        "folds": [
+          {
+            "origin": 48,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2023-12-01 00:00:00",
+            "forecast_start": "2024-01-01 00:00:00",
+            "forecast_end": "2024-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          },
+          {
+            "origin": 60,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2024-12-01 00:00:00",
+            "forecast_start": "2025-01-01 00:00:00",
+            "forecast_end": "2025-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          }
+        ]
+      },
+      {
+        "candidate": "level_half",
+        "series": "TXn",
+        "folds": [
+          {
+            "origin": 48,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2023-12-01 00:00:00",
+            "forecast_start": "2024-01-01 00:00:00",
+            "forecast_end": "2024-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          },
+          {
+            "origin": 60,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2024-12-01 00:00:00",
+            "forecast_start": "2025-01-01 00:00:00",
+            "forecast_end": "2025-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          }
+        ]
+      },
+      {
+        "candidate": "level_slope_half",
+        "series": "TNm",
+        "folds": [
+          {
+            "origin": 48,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2023-12-01 00:00:00",
+            "forecast_start": "2024-01-01 00:00:00",
+            "forecast_end": "2024-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          },
+          {
+            "origin": 60,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2024-12-01 00:00:00",
+            "forecast_start": "2025-01-01 00:00:00",
+            "forecast_end": "2025-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          }
+        ]
+      },
+      {
+        "candidate": "level_slope_half",
+        "series": "TXn",
+        "folds": [
+          {
+            "origin": 48,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2023-12-01 00:00:00",
+            "forecast_start": "2024-01-01 00:00:00",
+            "forecast_end": "2024-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          },
+          {
+            "origin": 60,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2024-12-01 00:00:00",
+            "forecast_start": "2025-01-01 00:00:00",
+            "forecast_end": "2025-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          }
+        ]
+      },
+      {
+        "candidate": "normal_reference",
+        "series": "TNm",
+        "folds": [
+          {
+            "origin": 48,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2023-12-01 00:00:00",
+            "forecast_start": "2024-01-01 00:00:00",
+            "forecast_end": "2024-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          },
+          {
+            "origin": 60,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2024-12-01 00:00:00",
+            "forecast_start": "2025-01-01 00:00:00",
+            "forecast_end": "2025-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          }
+        ]
+      },
+      {
+        "candidate": "normal_reference",
+        "series": "TXn",
+        "folds": [
+          {
+            "origin": 48,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2023-12-01 00:00:00",
+            "forecast_start": "2024-01-01 00:00:00",
+            "forecast_end": "2024-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          },
+          {
+            "origin": 60,
+            "training_start": "2020-01-01 00:00:00",
+            "training_end": "2024-12-01 00:00:00",
+            "forecast_start": "2025-01-01 00:00:00",
+            "forecast_end": "2025-12-01 00:00:00",
+            "horizon": 12,
+            "numerical_status": "needs_review"
+          }
+        ]
+      }
+    ]
+  },
+  "limits": [
+    "Execution checks only: short runs are not scientific results.",
+    "No full Uccle pilot, simulation study, or preferred-prior selection was executed.",
+    "Process execution tested with spawn on Linux; Windows/macOS were not independently exercised."
+  ]
+}

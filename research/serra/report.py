@@ -96,6 +96,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     pd.DataFrame.from_dict(fit.static_summary(level),orient='index').to_csv(directory/'parameters.csv')
     bx.save_config({key:float(v) if np.isfinite(v) else None for key,v in diagnostic['engine'].items()},directory/'engine.json')
     bx.save_config(dict(bucex_version=bx.__version__,model=fit.model.to_dict(),inference=fit.plan.to_dict(),
+        execution=fit.sampler_diagnostics.get('execution'),
         fitted_start=str(fit.time[0]),fitted_end=str(fit.time[-1]),n_months=fit.n_time,
         warnings=diagnostic['warnings'],interval='pointwise posterior credible interval',
         credible_interval=level,figure_style=config.get('figure_style','manuscript'),

@@ -12,6 +12,7 @@ Research scripts select assumptions and call the public API.
 | `inference/fit/marginal.py` | Private continuous/optional SSVS updates, seasonal scale, shape and residual correlation |
 | `inference/fit/continuous.py`, `scale_path.py` | Whitened coefficient updates, rescaling ASIS, secular scale paths |
 | `inference/fit/marginal_adapter.py` | Scalar API and restart adaptation |
+| `inference/chains.py` | Shared process executor, legacy seed preservation, thread limits and chain assembly |
 | `inference/fit/` | Existing scalar, hierarchical and shared-state backends |
 | `core/`, `api/` | Stable fit, component, risk, predictive and persistence interfaces |
 | `diagnostics/`, `plotting/` | Mixing, calibration, residual dependence, ordering and figures |
@@ -44,3 +45,18 @@ paired climate-period estimands. These general computations stay outside
 `research/serra`, which declares the fixed-scale paper protocol.
 
 In 1.7.2, `plotting/style.py` owns the scoped publication style and `reporting/` assembles configured panels without fitting. `diagnostics/calendar.py` owns monthly PIT and held-out coverage summaries. The study figure script selects reports and reads JSON recipes.
+
+## Execution and assessment in 1.7.3
+
+`MCMC.chain_workers` is an execution option, not a model setting. Each backend
+uses the same `independent_chains` policy; transition and likelihood code never
+creates a process pool. Seed contexts supply the original child streams and
+chain positions to either the serial loop or a spawned single-chain worker.
+Diagnostics and initial states retain the chain axis when results are merged.
+
+`diagnostics/sensitivity.py` provides descriptive prior/posterior comparisons
+and strict pairing of predictive losses. `reporting/sensitivity.py` reads
+explicitly mapped report directories and preserves warning and source
+information; `sensitivity_plots.py` renders the common manuscript style.
+`research/serra/prior_assessment.py` only declares the study stages, delegates
+fitting/validation, checkpoints stage status and requests reports.

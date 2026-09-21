@@ -1,51 +1,37 @@
-# BUCEX 1.7.2 - publication workflow
+# BUCEX 1.7.3 — parallel chains and focused prior assessment
 
-This release makes the manuscript figure style reproducible through the public
-package API and integrates the revised research configurations. It preserves
-the 1.7.1 inference kernels, archive schema and normal innovation priors.
+This release adds process-parallel MCMC and a compact posterior/predictive
+comparison of innovation priors. Scientific defaults, model declarations,
+FS transition kernels, likelihoods and the archive schema are preserved.
 
-## New public APIs
+- `MCMC(chain_workers=4)` runs independent chains in spawned processes. The
+  Python default is serial; research configurations request four workers.
+- All five inference backends use one executor. Seed streams and chain order
+  are preserved across worker counts, with correctly combined diagnostics,
+  initial states and archives. Numerical thread pools use one thread per chain.
+- Execution metadata records workers, process IDs and complete seed states.
+  Failed workers raise without returning an incomplete posterior.
+- `prior_assessment` uses one JSON candidate list for full-record sensitivity
+  and matched historical forecasts. Stages can run separately.
+- The TNm pilot compares reference, half-level, and half-level/half-slope normal
+  priors with four 500+500 chains and three five-year forecast blocks.
+  Full-record data end in August 2026. All six independent margins can use the
+  workflow; process-parallel execution also supports the joint copula fits.
+- `innovation_prior_diagnostics` describes posterior displacement and interval
+  contraction. `compare_predictive_scores` pairs forecast cases and treats a
+  small number of origins descriptively. Neither selects a prior.
+- `SensitivityReport` builds manuscript-style PNGs and comparison tables from
+  CSVs: innovation intervals, level/slope/risk overlays, scientific contrasts,
+  held-out forecasts, scores, PITs and monthly coverage.
+- Compact traces and path summaries remain available without large archives.
+  Validation records actual cutoffs, predictive bands, observed values and
+  convergence per origin. Figures can be regenerated without MCMC.
 
-- `publication_style()` is a scoped Matplotlib context, with legible fonts,
-  blue/red/ochre colours, restrained bands and no import-time style changes.
-- `save_figure()` saves PNG, PDF or SVG consistently.
-- `ReportCollection` reads compact report exports and rejects ambiguous input.
-- `save_publication_figures()` assembles configured manuscript panels, records
-  input checksums and preserves the interval level actually exported.
-- `pit_by_month()` and `coverage_by_month()` preserve counts and distinguish
-  overlapping forecast cases from distinct dates.
-- `parameter_trace_draws()`, `trace_frame()` and `traces_from_frame()` retain
-  chain identity for portable trace/ACF figures.
+The short-chain budgets screen execution and sensitivity; they do not guarantee
+convergence. No simulation study or final scientific assessment was run for
+this release. The strongest apparent acceleration is not a selection criterion.
+Use predictive adequacy and sensitivity to guide a defensible prior choice.
 
-## Reporting fixes
-
-Initial slopes and levels now appear in parameter traces. Reports save small
-compressed draw tables, including physical process SDs, so trace figures no
-longer depend on access to the large latent-state archive. Monthly PIT plots
-and normal-score dispersion tables accompany pooled diagnostics. Scale
-parameters are included in convergence screening.
-
-Endpoint and forecast-width exports now follow `credible_interval`, normally
-95%. Old 1.7.1 endpoint tables and forecast-width figures remain at 90% and
-must not be relabelled. `save_fits: false` is now honoured by the main reporter.
-Forecast checks use the saved fit's series name, rather than blindly assigning
-the first configured series. Copula fitting accepts a marginal `--scale`
-override, and model comparisons accept `--series`.
-
-## Research scope
-
-The primary baseline keeps constant unknown scales and shapes. Repeating
-monthly scales are a targeted adequacy extension. Normal FS shrinkage remains
-the reference; six independent analyses and matched joint R=I/copula routes
-remain available. No new stochastic volatility, factor model, selection
-method or sampler was introduced for this patch release.
-
-The nine figure recipes from the rewritten manuscript are included, plus
-monthly scales and annual forecasts. Existing summary CSVs reproduce all
-manuscript panels except a trace panel when draws were omitted from the old
-ZIPs. Missing data are shown as placeholders; no traces are fabricated.
-
-See `START_HERE.md`, `docs/FIGURES.md` and `docs/PUBLICATION_RUNS.md`.
-Execution evidence is recorded in `validation/RELEASE_VALIDATION.md`. Scientific
-acceptance still requires satisfactory full runs, sensitivity and validation;
-this release does not claim those experiments have been completed.
+Start with [START_HERE.md](START_HERE.md). API details and interpretation are in
+[docs/PRIOR_ASSESSMENT.md](docs/PRIOR_ASSESSMENT.md). Executed software checks
+are listed in [validation/RELEASE_VALIDATION.md](validation/RELEASE_VALIDATION.md).

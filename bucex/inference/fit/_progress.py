@@ -4,6 +4,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from ..chains import chain_position
+
 import numpy as np
 
 
@@ -143,6 +145,7 @@ def mcmc_progress_line(
 ) -> str:
     """Format one informative, log-friendly MCMC progress line."""
 
+    chain, chains = chain_position(chain, chains)
     completed = int(completed)
     total = max(int(total), 1)
     warmup = max(int(warmup), 0)

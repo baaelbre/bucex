@@ -13,6 +13,7 @@ from ..__about__ import __version__
 from ..components import DummySeasonal, LocalLinearTrend
 from ..core.fit import BulkTailFit, FitResult, combine_fits
 from ..inference.fit._fs_output import FSOutput
+from ..inference.chains import independent_chains, chain_seeds
 from ..inference.config import (
     GibbsConfig,
     HierarchicalSampler,
@@ -193,12 +194,7 @@ def _resolve_tail(tail: str | None, transform_sign: float) -> float:
 
 
 def _chain_seeds(seed: int | None, chains: int) -> list[int]:
-    if chains == 1 and seed is not None:
-        return [int(seed)]
-    return [
-        int(sequence.generate_state(1)[0])
-        for sequence in np.random.SeedSequence(seed).spawn(int(chains))
-    ]
+    return chain_seeds(seed, chains, integer=True)
 
 
 def _canonical_fs_parameters(draws: Mapping[str, Array]) -> dict[str, Array]:
@@ -423,6 +419,7 @@ def _stack_fs_chains(
     )
 
 
+@independent_chains(integer_seeds=True)
 def _fit_fruehwirth_schnatter(
     y: Array,
     *,
