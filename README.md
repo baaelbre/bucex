@@ -1,4 +1,4 @@
-# BUCEX 1.8.0
+# BUCEX 1.8.1
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
 Declare interpretable latent components for observation parameters, fit one
@@ -21,19 +21,24 @@ the existing marginal prior API. Ordinary univariate analysis remains supported.
 import bucex as bx
 
 # channel_priors maps the declared response names to their FS priors.
-shared = bx.SharedShrinkage(medians={"level": .0025, "slope": .0000125})
+shared = bx.SharedShrinkage(
+    medians={"level": .0025, "slope": .0000125, "seasonal": .02})
 priors = bx.MarginalPriors(channel_priors, shrinkage=shared)
 ```
 
 See [the API and statistical specification](docs/SHARED_SHRINKAGE.md) for a
 complete model example and the exact conditional update. Conditional priors are
-normal; integrating their common scale gives a normal scale mixture.
+normal; integrating their common scale gives a normal scale mixture. The
+current SERRA specification pools level, slope and seasonal innovation
+shrinkage separately. Seasonal pooling regularizes changes in the seasonal
+pattern; it does not share the initial pattern or monthly observation scales.
 
 ## What to run for SERRA
 
 Start with [START_HERE](START_HERE.md). It gives commands for a four-process
 smoke check, the fixed-half/fixed-quarter/pooled-quarter/pooled-half comparison,
-matched historical predictions, confirmation and final candidate fits. The
+matched historical predictions, two-versus-three-component pooling, seasonal
+anchor sensitivity, structural adequacy, reviewer checks and final fits. The
 record ends in August 2026; the forecast comparisons include the 2019 record.
 No full simulation study is part of this workflow. A smooth posterior is not
 by itself evidence of reliable acceleration or adequate predictive coverage.

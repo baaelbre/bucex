@@ -25,8 +25,13 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
         fig, axes = plt.subplots(1,len(components),figsize=(5*len(components),3.5),squeeze=False,layout='constrained')
         for ax, component in zip(axes[0], components):
             for i, variant in enumerate(names):
+                selected = data[(data.variant==variant)&(data.component==component)]
+                if selected.empty:
+                    ax.text(.02, i, 'not pooled', transform=ax.get_yaxis_transform(),
+                            color='.45', fontsize=10, va='center')
+                    continue
                 for distribution, offset, alpha in [('prior',-.13,.4),('posterior',.13,1.)]:
-                    row = data[(data.variant==variant)&(data.component==component)&(data.distribution==distribution)].iloc[0]
+                    row = selected[selected.distribution==distribution].iloc[0]
                     ax.errorbar(row['median'],i+offset,
                         xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],
                         fmt='s' if distribution=='prior' else 'o',color=colors[variant],alpha=alpha,

@@ -1,10 +1,11 @@
-# SERRA research with BUCEX 1.8.0
+# SERRA research with BUCEX 1.8.1
 
 Use [START_HERE](../../START_HERE.md) for the current commands and output guide.
 The common-specification workflow fits all six summaries through August 2026,
 with private FS locations, repeating monthly observation scales and a joint
-Gaussian copula. Optional shared level/slope hyperpriors pool regularization;
-they do not impose a common realized warming trajectory.
+Gaussian copula. Separate shared level, slope and seasonal hyperpriors pool
+regularization; they do not impose common realized trajectories or initial
+seasonal patterns. Repeating monthly observation scales remain distinct.
 
 | Task | Driver | Configuration |
 |---|---|---|
@@ -12,9 +13,14 @@ they do not impose a common realized warming trajectory.
 | Inspect the candidates/dates before fitting | `prior_assessment --stage plan` | `hierarchy/pilot.json` |
 | Full-record prior sensitivity | `prior_assessment --stage sensitivity` | `hierarchy/pilot.json` |
 | Continue with matched historical forecasts | `prior_assessment --stage predictive --run PATH` | Resolved settings from the saved assessment |
+| Compare seasonal pooling and half/double seasonal anchors | `prior_assessment --stage sensitivity` | `hierarchy/seasonality.json` |
+| Match residual independence and copula dependence | `prior_assessment --stage all` | `hierarchy/dependence.json` |
+| Check constant scales and fixed location seasonality | `prior_assessment --stage all` | `hierarchy/adequacy.json` |
+| Check initial slope, shape, scale, correlation and hyperpriors | `prior_assessment --stage sensitivity --variants ...` | `hierarchy/reviewer_sensitivity.json` |
 | Confirm quarter/half anchor robustness | `prior_assessment --stage all` | `hierarchy/confirm.json` |
 | Inspect final resource/model settings | `preflight` | `hierarchy/final.json` |
 | Fit the candidate paper model | `copula` | `hierarchy/final.json` |
+| Fit the alternative half-anchor paper model | `copula` | `hierarchy/final_half.json` |
 | Same hierarchy with R=I | `copula --independence` | `hierarchy/final.json` |
 | Six separate common fixed-prior analyses | `univariate` | `hierarchy/independent.json` |
 | Matched fixed-prior copula fallback | `copula` | `hierarchy/fixed_half.json` |
@@ -51,8 +57,11 @@ to upload large `.bucex` archives just to inspect convergence or sensitivity.
 
 ## Targeted supplementary work
 
-The following existing tools remain available when needed to answer a concrete
-reviewer question; none is automatically invoked by the new pilot:
+Current matched checks use `hierarchy/seasonality.json`, `adequacy.json`,
+`dependence.json` and selected groups from `reviewer_sensitivity.json`; their
+exact commands are in START_HERE. They share the current quarter-anchor
+reference. If another reference is chosen, propagate its resolved priors before
+new comparison fits. Existing tools also remain available when needed:
 
 - `sensitivity` with `revision/structure.json` for fixed/evolving seasonality;
   `revision/sensitivity_monthly.json` and `sensitivity_copula_monthly.json` for

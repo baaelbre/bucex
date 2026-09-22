@@ -17,7 +17,7 @@ Research scripts select assumptions and call the public API.
 | `core/`, `api/` | Stable fit, component, risk, predictive and persistence interfaces |
 | `diagnostics/`, `plotting/` | Mixing, calibration, residual dependence, ordering and figures |
 | `reporting/` | Compact report readers, configured manuscript panels and source manifests |
-| `io/` | Checksummed schema 2.11 archives and historical readers |
+| `io/` | Checksummed schema 2.12 archives and historical readers |
 | `datasets/` | Daily validation, monthly aggregation and loading |
 | `exploration.py` | General monthly empirical cycles, detrended IQRs and sample accounting |
 | `research/serra/` | Configured scientific workflows built on the package |
@@ -87,3 +87,9 @@ matched forecast case. `calendar_origin_splits` resolves explicit training dates
 Research declarations assemble these public APIs in `serra/models.py`; one
 candidate list drives posterior and predictive studies in `prior_assessment.py`.
 The optional field leaves ordinary univariate priors and existing fits intact.
+
+In 1.8.1, the research default selects all three supported components (level,
+slope and seasonal). No conditional-density change is needed. Study configs
+declare two-component pooling, seasonal anchor variations and fixed-seasonality
+checks explicitly. The comparison plot layer handles absent pooled components;
+it never inserts a fake posterior for a component that was not estimated.

@@ -1,0 +1,345 @@
+{
+  "version": "1.8.1",
+  "manifest": {
+    "baseline": "fixed_half",
+    "bucex_version": "1.8.1",
+    "predictive": "completed",
+    "sensitivity": "completed"
+  },
+  "plan": {
+    "candidates": [
+      {
+        "analysis": "copula",
+        "copula": {
+          "eta": 1.0,
+          "structure": "constant"
+        },
+        "innovation_median": {
+          "level": 0.005,
+          "season": 0.02,
+          "trend": 2.5e-05
+        },
+        "model": {
+          "level": "dynamic",
+          "period": 12,
+          "scale_innovation_sd": 0.01,
+          "scale_mode": "constant",
+          "scale_prior_sd": 0.3,
+          "scale_slope_sd": 0.1,
+          "scale_time_unit": 120,
+          "seasonal": "dynamic",
+          "seasonal_scale": true,
+          "trend": "dynamic"
+        },
+        "name": "fixed_half",
+        "priors": {
+          "baseline_sd": 20.0,
+          "initial_level_mean": 0.0,
+          "initial_slope_sd": 0.0025,
+          "innovation": "normal",
+          "innovation_median": {
+            "level": 0.005,
+            "season": 0.02,
+            "trend": 2.5e-05
+          },
+          "observation_variance": [
+            2.0,
+            2.0
+          ],
+          "seasonal_initial_sd": 2.25,
+          "shared_shrinkage": null,
+          "tg_spike_shape": 0.5,
+          "tg_tail_shape": 0.5,
+          "xi_bounds": [
+            -0.5,
+            0.5
+          ],
+          "xi_prior": "normal",
+          "xi_sd": 0.3
+        },
+        "shared_shrinkage": null
+      },
+      {
+        "analysis": "copula",
+        "copula": {
+          "eta": 1.0,
+          "structure": "constant"
+        },
+        "innovation_median": {
+          "level": 0.0025,
+          "season": 0.02,
+          "trend": 1.25e-05
+        },
+        "model": {
+          "level": "dynamic",
+          "period": 12,
+          "scale_innovation_sd": 0.01,
+          "scale_mode": "constant",
+          "scale_prior_sd": 0.3,
+          "scale_slope_sd": 0.1,
+          "scale_time_unit": 120,
+          "seasonal": "dynamic",
+          "seasonal_scale": true,
+          "trend": "dynamic"
+        },
+        "name": "fixed_quarter",
+        "priors": {
+          "baseline_sd": 20.0,
+          "initial_level_mean": 0.0,
+          "initial_slope_sd": 0.0025,
+          "innovation": "normal",
+          "innovation_median": {
+            "level": 0.0025,
+            "season": 0.02,
+            "trend": 1.25e-05
+          },
+          "observation_variance": [
+            2.0,
+            2.0
+          ],
+          "seasonal_initial_sd": 2.25,
+          "shared_shrinkage": null,
+          "tg_spike_shape": 0.5,
+          "tg_tail_shape": 0.5,
+          "xi_bounds": [
+            -0.5,
+            0.5
+          ],
+          "xi_prior": "normal",
+          "xi_sd": 0.3
+        },
+        "shared_shrinkage": null
+      },
+      {
+        "analysis": "copula",
+        "copula": {
+          "eta": 1.0,
+          "structure": "constant"
+        },
+        "innovation_median": {
+          "level": 0.0025,
+          "season": 0.02,
+          "trend": 1.25e-05
+        },
+        "model": {
+          "level": "dynamic",
+          "period": 12,
+          "scale_innovation_sd": 0.01,
+          "scale_mode": "constant",
+          "scale_prior_sd": 0.3,
+          "scale_slope_sd": 0.1,
+          "scale_time_unit": 120,
+          "seasonal": "dynamic",
+          "seasonal_scale": true,
+          "trend": "dynamic"
+        },
+        "name": "pooled_quarter",
+        "priors": {
+          "baseline_sd": 20.0,
+          "initial_level_mean": 0.0,
+          "initial_slope_sd": 0.0025,
+          "innovation": "normal",
+          "innovation_median": {
+            "level": 0.0025,
+            "season": 0.02,
+            "trend": 1.25e-05
+          },
+          "observation_variance": [
+            2.0,
+            2.0
+          ],
+          "seasonal_initial_sd": 2.25,
+          "shared_shrinkage": {
+            "components": [
+              "level",
+              "slope",
+              "seasonal"
+            ],
+            "log_sd": 0.6931471805599453
+          },
+          "tg_spike_shape": 0.5,
+          "tg_tail_shape": 0.5,
+          "xi_bounds": [
+            -0.5,
+            0.5
+          ],
+          "xi_prior": "normal",
+          "xi_sd": 0.3
+        },
+        "shared_shrinkage": {
+          "components": [
+            "level",
+            "slope",
+            "seasonal"
+          ],
+          "log_sd": 0.6931471805599453
+        }
+      },
+      {
+        "analysis": "copula",
+        "copula": {
+          "eta": 1.0,
+          "structure": "constant"
+        },
+        "innovation_median": {
+          "level": 0.005,
+          "season": 0.02,
+          "trend": 2.5e-05
+        },
+        "model": {
+          "level": "dynamic",
+          "period": 12,
+          "scale_innovation_sd": 0.01,
+          "scale_mode": "constant",
+          "scale_prior_sd": 0.3,
+          "scale_slope_sd": 0.1,
+          "scale_time_unit": 120,
+          "seasonal": "dynamic",
+          "seasonal_scale": true,
+          "trend": "dynamic"
+        },
+        "name": "pooled_half",
+        "priors": {
+          "baseline_sd": 20.0,
+          "initial_level_mean": 0.0,
+          "initial_slope_sd": 0.0025,
+          "innovation": "normal",
+          "innovation_median": {
+            "level": 0.005,
+            "season": 0.02,
+            "trend": 2.5e-05
+          },
+          "observation_variance": [
+            2.0,
+            2.0
+          ],
+          "seasonal_initial_sd": 2.25,
+          "shared_shrinkage": {
+            "components": [
+              "level",
+              "slope",
+              "seasonal"
+            ],
+            "log_sd": 0.6931471805599453
+          },
+          "tg_spike_shape": 0.5,
+          "tg_tail_shape": 0.5,
+          "xi_bounds": [
+            -0.5,
+            0.5
+          ],
+          "xi_prior": "normal",
+          "xi_sd": 0.3
+        },
+        "shared_shrinkage": {
+          "components": [
+            "level",
+            "slope",
+            "seasonal"
+          ],
+          "log_sd": 0.6931471805599453
+        }
+      }
+    ],
+    "effective_chain_workers": 4,
+    "fitted_end": "2026-08-01",
+    "fitted_start": "2023-01-01",
+    "folds": [
+      {
+        "forecast_end": "2026-08-01",
+        "forecast_start": "2025-09-01",
+        "training_end": "2025-08-01"
+      }
+    ],
+    "mcmc": {
+      "chain_workers": 4,
+      "chains": 4,
+      "draws": 4,
+      "progress": true,
+      "progress_every": 4,
+      "seed": 56100,
+      "warmup": 3
+    },
+    "n_months": 44,
+    "note": "Short runs screen sensitivity and prediction. Convergence flags remain active; no simulation study or automatic prior selection.",
+    "posterior_fits": 4,
+    "predictive_fits": 4,
+    "series": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
+    ],
+    "version": "1.8.1"
+  },
+  "posterior_status": [
+    {
+      "variant": "fixed_half",
+      "series": "joint",
+      "status": "completed",
+      "numerical_status": "needs_review"
+    },
+    {
+      "variant": "fixed_quarter",
+      "series": "joint",
+      "status": "completed",
+      "numerical_status": "needs_review"
+    },
+    {
+      "variant": "pooled_quarter",
+      "series": "joint",
+      "status": "completed",
+      "numerical_status": "needs_review"
+    },
+    {
+      "variant": "pooled_half",
+      "series": "joint",
+      "status": "completed",
+      "numerical_status": "needs_review"
+    }
+  ],
+  "comparison_tables": [
+    "compound_heat_scores.csv",
+    "compound_heat_scores_by_origin.csv",
+    "compound_heat_scores_comparison.csv",
+    "convergence.csv",
+    "coverage.csv",
+    "coverage_by_month.csv",
+    "coverage_summary.csv",
+    "event_counts.csv",
+    "joint_log_scores.csv",
+    "joint_log_scores_by_origin.csv",
+    "joint_log_scores_comparison.csv",
+    "joint_mcmc.csv",
+    "joint_scientific_targets.csv",
+    "mcmc.csv",
+    "paths.csv",
+    "pit.csv",
+    "pit_by_month.csv",
+    "predictions.csv",
+    "predictive_comparison.csv",
+    "prior_posterior.csv",
+    "prior_updates.csv",
+    "scientific_targets.csv",
+    "score_summary.csv",
+    "scores.csv",
+    "scores_by_origin.csv",
+    "shared_shrinkage.csv",
+    "shared_shrinkage_forecasts.csv",
+    "shared_shrinkage_updates.csv"
+  ],
+  "png_count": 635,
+  "scope": "Short-record execution check, not scientific convergence.",
+  "pooled_quarter_shared_components": [
+    "level",
+    "seasonal",
+    "slope"
+  ],
+  "pooled_half_shared_components": [
+    "level",
+    "seasonal",
+    "slope"
+  ]
+}

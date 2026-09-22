@@ -1,6 +1,6 @@
 {
   "extends": "../revision/monthly_scale.json",
-  "_comment": "All six responses, same copula likelihood and monthly scales. Compare fixed medians with two learned common medians; no simulation study.",
+  "_comment": "All six responses, same copula likelihood and monthly scales. Compare fixed medians with three learned common medians (level, slope, seasonal). No simulation study.",
   "analysis": "copula",
   "priors": {
     "innovation": "normal",
@@ -12,7 +12,8 @@
     "shared_shrinkage": {
       "components": [
         "level",
-        "slope"
+        "slope",
+        "seasonal"
       ],
       "log_sd": 0.6931471805599453
     }
@@ -68,5 +69,5 @@
   "forecast_draws": 1000,
   "predictive_check_draws": 100,
   "figures": true,
-  "output": "results/serra_hierarchy"
+  "output": "results/serra_181_hierarchy"
 }

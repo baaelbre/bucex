@@ -31,5 +31,5 @@
   "forecast_draws": 40,
   "predictive_check_draws": 20,
   "prior_draws": 500,
-  "output": "results/serra_hierarchy_smoke"
+  "output": "results/serra_181_hierarchy_smoke"
 }

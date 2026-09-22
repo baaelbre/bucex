@@ -1,6 +1,6 @@
 {
   "extends": "pilot.json",
-  "_comment": "Confirm shared-shrinkage anchor robustness after the pilot. Increase draws further only if diagnostics require it.",
+  "_comment": "Confirm level/slope anchor robustness with all three innovation hyperparameters learned. Seasonal hyperprior anchor remains .02.",
   "variants": [
     {
       "name": "pooled_quarter"
@@ -22,5 +22,5 @@
   },
   "forecast_draws": 4000,
   "predictive_check_draws": 400,
-  "output": "results/serra_hierarchy_confirm"
+  "output": "results/serra_181_hierarchy_confirm"
 }

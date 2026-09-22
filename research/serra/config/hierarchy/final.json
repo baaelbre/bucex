@@ -1,6 +1,6 @@
 {
   "extends": "pilot.json",
-  "_comment": "Candidate publication specification, not an assertion that this model has passed diagnostics. Fits pooled_quarter; variants are used only by prior_assessment.",
+  "_comment": "Candidate publication fit with shared level, slope and seasonal innovation hyperparameters. Quarter level/slope anchors; seasonal anchor .02. Requires adequacy and convergence checks.",
   "mcmc": {
     "warmup": 2000,
     "draws": 4000
@@ -8,5 +8,5 @@
   "save_fits": true,
   "forecast_draws": 4000,
   "predictive_check_draws": 400,
-  "output": "results/serra_hierarchy_final"
+  "output": "results/serra_181_hierarchy_final"
 }

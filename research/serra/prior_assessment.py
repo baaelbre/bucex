@@ -42,7 +42,9 @@ def study_plan(config):
         fitted_end=str(data.index[-1].date()), n_months=len(data), series=list(data.columns),
         candidates=[dict(name=v['name'], analysis=case['analysis'],
             innovation_median=case['priors']['innovation_median'],
-            shared_shrinkage=case['priors'].get('shared_shrinkage')) for v, case in zip(variants, cases)],
+            shared_shrinkage=case['priors'].get('shared_shrinkage'),
+            model=case['model'], priors=case['priors'], copula=case.get('copula'))
+            for v, case in zip(variants, cases)],
         mcmc=config['mcmc'], effective_chain_workers=min(mcmc.chains,mcmc.chain_workers),
         posterior_fits=n_fits, predictive_fits=n_fits*len(splits),
         folds=[dict(training_end=str(data.index[train.stop-1].date()),

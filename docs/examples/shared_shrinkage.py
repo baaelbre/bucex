@@ -18,7 +18,7 @@ def main():
     model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula())
     priors = bx.MarginalPriors(
         {c.name: bx.fs_priors(c.family, period=12, innovation='normal') for c in channels},
-        shrinkage=bx.SharedShrinkage(medians={'level': .0025, 'slope': .0000125}),
+        shrinkage=bx.SharedShrinkage(medians={'level': .0025, 'slope': .0000125, 'seasonal': .02}),
     )
     fit = bx.fit(y, model, priors=priors, parameterization='fs',
                  mcmc=bx.MCMC(chains=4, chain_workers=4, warmup=3, draws=4, seed=180))

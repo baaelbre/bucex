@@ -1,0 +1,79 @@
+{
+  "extends": "pilot.json",
+  "_comment": "One-at-a-time supplementary prior checks around pooled_quarter. Select the documented subset with --variants; no factorial model search.",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "initial_slope_half",
+      "initial_slope_multiplier": 0.5
+    },
+    {
+      "name": "initial_slope_double",
+      "initial_slope_multiplier": 2.0
+    },
+    {
+      "name": "xi_normal_tighter",
+      "xi_sd": 0.15
+    },
+    {
+      "name": "xi_normal_wider",
+      "xi_sd": 0.6
+    },
+    {
+      "name": "xi_uniform",
+      "xi_prior": "uniform",
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "name": "monthly_scale_prior_half",
+      "scale_prior_sd": 0.15
+    },
+    {
+      "name": "monthly_scale_prior_double",
+      "scale_prior_sd": 0.6
+    },
+    {
+      "name": "lkj_2",
+      "copula": {
+        "eta": 2.0
+      }
+    },
+    {
+      "name": "lkj_4",
+      "copula": {
+        "eta": 4.0
+      }
+    },
+    {
+      "name": "hyperprior_tighter",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope",
+          "seasonal"
+        ],
+        "log_sd": 0.4054651081081644
+      }
+    },
+    {
+      "name": "hyperprior_wider",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope",
+          "seasonal"
+        ],
+        "log_sd": 1.0986122886681098
+      }
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "output": "results/serra_181_reviewer_sensitivity"
+}

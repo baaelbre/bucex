@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.8.1 — 2026-09-22
+
+- Pool seasonal innovation shrinkage alongside level and slope in the current
+  SERRA specification, using three distinct shared hyperparameters. Preserve
+  each response's initial seasonal pattern, process SDs and latent trajectory.
+- Keep explicit level/slope-only pooling and fixed-prior univariate analyses.
+  General `SharedShrinkage` declarations still select components explicitly;
+  the joint sampler and archive schema are unchanged.
+- Add matched seasonal-pooling and seasonal-anchor comparisons, residual
+  independence/copula comparisons, structural adequacy and focused reviewer
+  prior checks. Historical forecasts learn each hierarchy on training data.
+- Handle omitted pooled components in sensitivity figures as `not pooled`,
+  rather than failing or displaying a fictitious zero hyperparameter.
+- Include model, observation and copula settings in dry-run study plans.
+  Provide a complete command sequence and output interpretation in START_HERE.
+- Extend seasonal hierarchy, parallel/archive, fixed-seasonality and workflow
+  regression coverage. Software verification is separate from publication
+  convergence and predictive adequacy on the full record.
+
 ## 1.8.0 — 2026-09-22
 
 - Add `SharedShrinkage` to `MarginalPriors` for uncertain common FS normal-prior

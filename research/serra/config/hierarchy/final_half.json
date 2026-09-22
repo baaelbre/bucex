@@ -1,0 +1,12 @@
+{
+  "extends": "final.json",
+  "_comment": "Alternative final three-component hierarchy if half rather than quarter level/slope anchors are selected. Seasonal hyperprior anchor stays .02.",
+  "priors": {
+    "innovation_median": {
+      "level": 0.005,
+      "trend": 2.5e-05,
+      "season": 0.02
+    }
+  },
+  "output": "results/serra_181_hierarchy_final_half"
+}

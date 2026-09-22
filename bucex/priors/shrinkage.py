@@ -28,7 +28,7 @@ class SharedShrinkage:
 
     Example::
 
-        SharedShrinkage(medians={"level": .0025, "slope": .0000125})
+        SharedShrinkage(medians={"level": .0025, "slope": .0000125, "seasonal": .02})
 
     Components omitted from ``medians`` keep their declared channel priors.
     ``log_sd=log(2)`` places about 95% of each hyperprior between one quarter

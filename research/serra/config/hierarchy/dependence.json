@@ -1,0 +1,18 @@
+{
+  "extends": "pilot.json",
+  "_comment": "Compare R=I and estimated constant Gaussian copula with the same three-component shrinkage hierarchy.",
+  "variants": [
+    {
+      "name": "independence",
+      "analysis": "joint"
+    },
+    {
+      "name": "copula",
+      "analysis": "copula"
+    }
+  ],
+  "assessment": {
+    "baseline": "independence"
+  },
+  "output": "results/serra_181_dependence"
+}

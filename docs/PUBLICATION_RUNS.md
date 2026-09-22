@@ -1,6 +1,6 @@
 # SERRA publication experiments
 
-For BUCEX 1.8.0, use [START_HERE](../START_HERE.md) and
+For BUCEX 1.8.1, use [START_HERE](../START_HERE.md) and
 [SHARED_SHRINKAGE.md](SHARED_SHRINKAGE.md) for the current focused common-prior
 and joint-copula workflow. Those commands supersede the sequencing below.
 The earlier configurations are retained unchanged for reproduction and for

@@ -29,7 +29,7 @@ def _sample() -> np.ndarray:
 
 
 def test_public_phi_api_defaults_aliases_and_roundtrips():
-    assert bx.__version__ == "1.8.0"
+    assert bx.__version__ == "1.8.1"
     assert bx.GEV().phi == "stationary"
     assert bx.GEV(phi="linear").phi == "linear"
     assert bx.GEV(phi="random_walk").phi == "rw"

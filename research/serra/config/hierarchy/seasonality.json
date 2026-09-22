@@ -1,0 +1,35 @@
+{
+  "extends": "pilot.json",
+  "_comment": "Matched seasonal hierarchy check: compare all-three pooling with level/slope-only pooling and half/double seasonal anchors. Level/slope anchors, initial seasonality and observation scales stay fixed.",
+  "variants": [
+    {
+      "name": "pooled_quarter"
+    },
+    {
+      "name": "pooled_level_slope",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope"
+        ],
+        "log_sd": 0.6931471805599453
+      }
+    },
+    {
+      "name": "season_anchor_half",
+      "multipliers": {
+        "season": 0.5
+      }
+    },
+    {
+      "name": "season_anchor_double",
+      "multipliers": {
+        "season": 2.0
+      }
+    }
+  ],
+  "assessment": {
+    "baseline": "pooled_quarter"
+  },
+  "output": "results/serra_181_seasonality"
+}

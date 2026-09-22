@@ -1,28 +1,38 @@
-# BUCEX 1.8.0 — common innovation shrinkage with joint inference
+# BUCEX 1.8.1 — hierarchical shrinkage for level, slope and seasonality
 
-The new `SharedShrinkage` prior learns common normal-prior medians for selected
-FS innovation coefficients while retaining separate trajectories and process
-SDs for every response. It integrates with `MarginalPriors`, the joint Gaussian
-copula sampler, parallel chains, archives and warm starts. No SSVS or factor
-model is needed; the existing univariate API is preserved.
+The current SERRA specification estimates three shared shrinkage
+hyperparameters: one each for level, slope and seasonal innovations. Each
+response retains its own innovation SDs and latent components. Seasonal pooling
+regularizes changes to the repeating seasonal pattern, while the initial
+pattern and monthly observation scales remain response-specific.
 
-The SERRA workflow now compares fixed-half, fixed-quarter, pooled-quarter and
-pooled-half priors under the same copula likelihood, monthly observation scales
-and data window through August 2026. Common scales are updated from training
-data in each historical forecast fit. One origin covers 2016–2020, including
-the 2019 record. The new reports distinguish unconditional individual priors
-from shared hyperpriors and export both sets of posterior diagnostics.
+The existing `SharedShrinkage` API and exact joint FS/copula sampler already
+support these components. This release makes three-component pooling the
+research default and adds its sensitivity checks; it introduces no new sampler
+approximation. Two-component pooling, fixed normal priors and separate
+univariate fits remain available. Saved 1.8.0 fits keep their original meaning;
+installing 1.8.1 does not add seasonal pooling to an existing posterior.
 
-Monthly observation-scale contrasts and initial seasonal vectors are included
-in scalar convergence diagnostics; monthly scale effects also appear in trace
-exports. Forecast reports retain threshold-event counts, marginal and joint
-scores, compound-event scores, seasonal calibration and numerical warnings.
+The three default hyperprior anchors are .0025, .0000125 and .02 for level,
+slope and seasonality. These anchor uncertain prior medians of individual
+innovation SDs; they are neither fixed process SDs nor posterior estimates.
+Each shared median has a lognormal hyperprior with log SD `log(2)`.
 
-Read [START_HERE](START_HERE.md) for the exact commands, and
-[SHARED_SHRINKAGE.md](docs/SHARED_SHRINKAGE.md) for equations and API examples.
-The pilot is deliberately short. Smoothness and narrow intervals do not certify
-adequacy, learning or acceleration. Publication conclusions still require the
-specified convergence, sensitivity and predictive checks on the full record.
+`START_HERE.md` now supplies the complete command sequence: exploration, smoke
+test, fixed/pooled half/quarter comparison, historical prediction, seasonal
+pooling and anchor sensitivity, copula comparison, constant-scale and fixed
+seasonality checks, focused reviewer prior checks, confirmation, final fits
+and manuscript figures. Optional follow-ups are marked. Full-record
+configurations end in August 2026 and use four local worker processes, without
+requiring Slurm.
 
-Validation actually performed for this release is recorded in
-[RELEASE_VALIDATION.md](validation/RELEASE_VALIDATION.md).
+Mixed two- and three-component comparison figures label an absent shared
+seasonal parameter as `not pooled`. Dry-run plans now expose structural,
+observation-prior and copula settings as well as innovation anchors.
+
+Read [START_HERE](START_HERE.md) for commands and
+[SHARED_SHRINKAGE.md](docs/SHARED_SHRINKAGE.md) for the model and public API.
+The software checks are recorded in
+[RELEASE_VALIDATION.md](validation/RELEASE_VALIDATION.md). Short smoke chains
+check execution only; publication conclusions still require convergence,
+predictive adequacy and sensitivity checks on the full temperature record.

@@ -1,4 +1,4 @@
-# Shared innovation shrinkage in BUCEX 1.8.0
+# Shared innovation shrinkage in BUCEX 1.8.1
 
 The hierarchy learns how strongly to regularize a set of related structural
 series. It shares prior scales, while every series keeps its own level, slope,
@@ -60,7 +60,7 @@ priors = bx.MarginalPriors(
         "maximum": bx.fs_priors("gev", period=12, innovation="normal"),
     },
     shrinkage=bx.SharedShrinkage(
-        medians={"level": .0025, "slope": .0000125},
+        medians={"level": .0025, "slope": .0000125, "seasonal": .02},
         log_sd=.6931471805599453,
     ),
 )
@@ -79,12 +79,27 @@ future = fit.forecast(60, draws=2000, seed=174)
 Omit `shrinkage=` to retain ordinary independent marginal priors. Omit
 `copula=` to remove residual correlation while retaining the hierarchy.
 `medians` can select level, slope and/or seasonal innovations. The research
-configuration pools only level and slope; initial slopes and all seasonal
-innovation priors remain as declared per channel. Each pooled component needs
+configuration now pools all three, with a separate shared median for each.
+Selecting only `level` and `slope` retains the 1.8.0 research specification.
+Initial slopes and initial seasonal patterns remain as declared per channel.
+Each pooled component needs
 at least two channels with that innovation active. Fixed-zero innovations do
 not contribute to its hyperparameter conditional. Components must use
 continuous, zero-mean normal FS priors; combining this hierarchy with SSVS or
 local-mixture priors is rejected explicitly.
+
+The seasonal hyperparameter governs **evolution of the seasonal pattern**.
+Shrinking it towards zero approaches fixed repeating seasonality, not an
+absence of seasonality: initial monthly effects can still be large and differ
+across responses. It neither pools the initial seasonal vector nor the
+observation scale. Repeating monthly observation scales describe seasonal
+weather dispersion and retain their separate priors. The level, slope and
+seasonal shared medians are never constrained to be equal to one another.
+
+These are hierarchical shrinkage hyperparameters. The signed FS coefficients
+have conditional normal priors; integrating over the shared medians produces
+normal scale mixtures. This is partial pooling of regularization, not a shared
+seasonal state or a deterministic common smoothness parameter.
 
 The univariate `Model`, `fs_priors` and `fit` signatures are unchanged. A single
 series cannot learn a cross-series hierarchy through a univariate fit.
@@ -113,7 +128,8 @@ one-dimensional density. Paths are conditionally standardized in FS
 coordinates, so they do not supply additional scale-normalization terms here.
 No plug-in marginal fits or empirical-Bayes hyperparameter estimates are used.
 
-The saved `shrinkage.shared.level` and `shrinkage.shared.slope` draws remain
+The saved `shrinkage.shared.level`, `shrinkage.shared.slope` and
+`shrinkage.shared.seasonal` draws remain
 paired with channel states, observation parameters and copula parameters.
 Forecasting uses those posterior draws and new future state innovations;
 static hyperparameters are not independently redrawn for each future month.
@@ -124,7 +140,8 @@ same observed record is a modeling choice whose sensitivity remains relevant.
 
 Chains can run in parallel. Seed streams and chain ordering match serial
 execution. Archives retain the hierarchy and shared-scale draws; warm starts
-restore those scales with the states and observation parameters. New archives use schema 2.12.0. Old archives
+restore those scales with the states and observation parameters. The archive
+schema remains 2.12.0, as in 1.8.0. Old archives
 without this field retain their original independent-prior meaning; older
 BUCEX versions are not expected to read the new hierarchy.
 
@@ -143,11 +160,22 @@ per-response tables select the correct channel. Exact forecast case matching
 is required. Monthly log-scale contrasts are now included in scalar R-hat/ESS
 and parameter traces rather than omitted because they form a vector.
 
-Follow [START_HERE](../START_HERE.md) for smoke, pilot and confirmation commands.
+Follow [START_HERE](../START_HERE.md) for the full experiment commands. The
+seasonal study compares three-component pooling against level/slope-only
+pooling, then halves and doubles the seasonal hyperprior anchor (.01 and .04
+versus .02) while holding the level/slope anchors fixed. The adequacy study
+also compares fixed location seasonality; that case has no seasonal innovation
+and therefore declares only level/slope pooling. Comparison figures mark
+absent hyperparameters as `not pooled`; their absence is not a posterior at
+zero. All historical fits re-estimate their hierarchy using training data only.
+
 A useful final common specification requires:
 
 - Stable scientific targets across the quarter and half hyperprior anchors,
   allowing for Monte Carlo error, without requiring identical nuisance SDs.
+- Robustness to seasonal pooling and its anchor, particularly for month-specific
+  risk and late-period seasonality. Pooling should be supported by prediction
+  and sensitivity, not selected solely for narrower intervals.
 - Useful chain movement and adequate ESS for scientific targets and nuisance
   parameters, including initial slopes, monthly scales and common medians.
 - Acceptable held-out marginal and joint prediction, seasonal coverage and

@@ -1,57 +1,70 @@
-# BUCEX 1.8.0 validation
+# BUCEX 1.8.1 release verification
 
-Executed on Python 3.12.14, NumPy 2.3.5, SciPy 1.17.0
-and pandas 2.2.3. These checks validate software behavior, not
-publication conclusions or scientific convergence.
+Verification date: 22 September 2026. These checks establish software execution
+and regression behavior. No publication-length temperature analysis was run.
 
-## Regression and install checks
+## Checks performed
 
-- Complete source regression: 357 passed; two tests still asserted version
-  1.7.4 when pytest collected them. Their assertions now expect 1.8.0.
-- Focused check: 16 passed, including both corrected version assertions, the
-  new hierarchy tests, and the added joint-report regression.
-- Installed-wheel check outside the source tree: 49 passed. Import resolved to
-  the installed 1.8.0 package, archive schema 2.12.0. This also exercises the
-  corrections, hierarchy, process-parallel equivalence, historical archives,
-  seasonal scale/copula margins, and public fit/restart contracts.
-- Across these runs, **360 distinct tests have a passing latest result**;
-  there are no unresolved failures. The raw XML files and reconciliation
-  details are retained in `verification-1.8.0.json`. No statistical tolerance
-  was weakened to obtain these results.
-- The existing bundled-data check reports two retained daily TN > TX pairs;
-  their handling is unchanged and documented in the dataset quality report.
+| Check | Result |
+|---|---|
+| Complete source test suite | 370 passed, no failures or skips |
+| Installed-wheel shared/seasonal shrinkage and historical archive tests | 26 passed, no failures or skips |
+| Installed package versus verified source | All 126 package files match byte for byte |
+| START_HERE research command argument syntax | 32 commands parsed successfully |
+| Full configured six-response smoke workflow | Four posterior fits and four historical refits completed; four process-parallel chains |
+| Seasonal hierarchy workflow | Four posterior fits and four historical refits completed with short chains |
+| Structural adequacy workflow | Three posterior fits and three historical refits completed with short chains |
+| Dependence workflow | Two posterior fits and two historical refits completed with short chains |
+| Figure inspection | Three-component shared-prior panels and mixed two/three-component panels rendered; absent seasonal hyperparameter labelled `not pooled` |
 
-## New numerical contracts
+The complete smoke used the distributed `hierarchy/smoke.json` unchanged:
+January 2023–August 2026, 3 warmup and 4 retained iterations per chain, with one
+12-month historical block. It produced 635 PNG figures plus compact tables.
+Both pooled candidates exported level, slope and seasonal shared medians.
+All four candidates correctly retained `needs_review` convergence status.
 
-The shared-scale conditional is compared to an independently expressed product
-of normal densities and checked against numerical quadrature. The test retains
-the scale normalizing constant and verifies the slice update. Joint prior draws
-use one common hyperparameter per draw; conditional squared coefficients have
-the reference normal moment and responses share prior magnitude dependence.
-Static innovations are excluded from the hyperparameter update. Unsupported
-SSVS/local-mixture combinations fail explicitly.
+The additional seasonal, adequacy and dependence execution checks used their
+distributed variant definitions with the same short data/forecast window,
+2 chains, 2 warmup and 4 retained draws, serial execution and no figure export.
+They check reporting when a pooled component is absent, fixed repeating
+seasonality, constant observation scale, and fixed R=I. These tiny chains are
+not evidence for any model or prior choice.
 
-Mixed Gaussian/minimum-GEV fits with seasonal scales check conditional updates,
-R=I equivalence, serial/parallel chain identity, distinct chain seeds, save/load
-and warm restart, finite predictive density, unconditional prior comparisons,
-and inclusion of monthly scale and shared-median diagnostics. Compact report
-tests prevent response-label mixing and duplicate global hyperparameter tables.
+The source tests include exact hyperparameter conditional calculations,
+seasonal coefficient mapping and integrated prior draws, separate channel
+innovation SDs, parallel/serial parity, archive round trips, warm starts,
+fixed-seasonality forecasts, configuration isolation and comparison plots.
+All six production-plan data windows resolve to 1,616 monthly observations
+ending in August 2026, with the declared historical cutoffs.
 
-## Research execution
+## Evidence and reproduction
 
-`hierarchy/smoke.json --stage all` completed four full-record and four historical
-joint fits, each with six responses and four process workers. It generated
-635 PNGs, including 55 comparison figures. Shared-scale interval figures were
-visually checked. All convergence summaries correctly remain `needs_review`
-for this deliberately tiny run. No full posterior archives are requested by
-the pilot; numerical tables and compressed traces are retained.
+- `pytest-1.8.1-source.xml`: complete source test result.
+- `pytest-1.8.1-wheel.xml`: installed-wheel targeted regression result.
+- `wheel-source-parity.json`: verified package file list.
+- `cli-commands.json`: research commands checked for argument syntax.
+- `smoke-1.8.1.json`: resolved smoke plan, stage status and compact output list.
+- `workflow-1.8.1-checks.json`: resolved additional short-check plans and status.
 
-The pilot plan resolves January 1892–August 2026 (1,616 months), four candidates,
-four full-record fits and sixteen historical refits. The explicit origins
-include the 2016–2020 forecast block. Final preflight estimates 16.14 GB for
-centered state arrays alone; process transfers, merging and diagnostics require
-additional memory. The standalone shared-shrinkage API example also completed.
+From the extracted source directory:
 
-No full-record production chains, prior winner or substantive acceleration
-claim were produced for this release. Run START_HERE.md before interpreting
-this model as the final paper specification.
+```bash
+python -m pip install -e ".[test]"
+python -m pytest
+python -m research.serra.prior_assessment --config research/serra/config/hierarchy/smoke.json --stage all
+```
+
+The test environment used Python 3.12.14, NumPy 2.3.5, SciPy 1.17.0,
+pandas 2.2.3, Matplotlib 3.10.8, threadpoolctl 3.6.0 and pytest 9.1.1 on Linux.
+The package's declared Python support remains >=3.10; this release was not
+executed on every supported Python version or on biobot itself.
+
+The source suite emitted the existing data-quality warning for two reported
+daily TN > TX pairs; those observations remain retained and documented. Some
+smoke plots emitted a pandas/Matplotlib scalar-conversion FutureWarning, without
+preventing figure generation. No inference failure was observed in these checks.
+
+For scientific conclusions, follow START_HERE: inspect convergence and Monte
+Carlo precision, compare prior assumptions and historical forecasts, and assess
+seasonal calibration, residual dependence, ordering and risk. Software test
+success does not establish acceleration or predictive adequacy on the record.

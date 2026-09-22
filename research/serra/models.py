@@ -72,7 +72,7 @@ def joint_model(data, config):
         aliases = {'level': 'level', 'slope': 'trend', 'seasonal': 'season'}
         hierarchy = bx.SharedShrinkage(
             medians={c: config['priors']['innovation_median'][aliases[c]]
-                     for c in settings.get('components', ['level', 'slope'])},
+                     for c in settings.get('components', ['level', 'slope', 'seasonal'])},
             log_sd=settings.get('log_sd', np.log(2.)))
     return model, bx.MarginalPriors(
         {c.name: marginal_prior(c, data, config) for c in channels}, shrinkage=hierarchy)

@@ -1,0 +1,28 @@
+{
+  "extends": "pilot.json",
+  "_comment": "Targeted adequacy checks. Fixed location seasonality keeps its initial pattern and explicitly removes its inactive innovation hyperparameter.",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "constant_scale",
+      "seasonal_scale": false
+    },
+    {
+      "name": "fixed_location_seasonality",
+      "seasonal": "static",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope"
+        ],
+        "log_sd": 0.6931471805599453
+      }
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "output": "results/serra_181_adequacy"
+}

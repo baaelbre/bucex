@@ -23,7 +23,7 @@ def mixed_problem(copula=None):
                         index=pd.date_range('2000-01-01', periods=20, freq='MS'))
     priors = bx.MarginalPriors({name:bx.fs_priors(family,period=4) for name,family in
                                [('mean','gaussian'),('minimum','gev')]},
-        shrinkage=bx.SharedShrinkage(medians={'level':.02,'slope':.0001}))
+        shrinkage=bx.SharedShrinkage(medians={'level':.02,'slope':.0001,'seasonal':.02}))
     return data,model,priors
 
 
@@ -106,7 +106,7 @@ def test_parallel_mixed_copula_restart_and_chain_diagnostics(tmp_path):
     options['mcmc']=replace(options['mcmc'],chain_workers=1)
     serial=bx.fit(data,model,**options)
     np.testing.assert_array_equal(parallel.state_draws,serial.state_draws)
-    for component in ['level','slope']:
+    for component in ['level','slope','seasonal']:
         key='shrinkage.shared.'+component
         np.testing.assert_array_equal(parallel.parameter_draws[key],serial.parameter_draws[key])
         assert np.all(parallel.parameter_draws[key]>0)
@@ -114,17 +114,27 @@ def test_parallel_mixed_copula_restart_and_chain_diagnostics(tmp_path):
     diagnostics=parallel.diagnostics()['parameters']
     assert 'scale.seasonal.mean[01]' in diagnostics.index
     assert 'shrinkage.shared.level' in diagnostics.index
+    assert 'shrinkage.shared.seasonal' in diagnostics.index
     traces=bx.parameter_trace_draws(parallel,channel='mean')
     assert any(k.startswith('scale.seasonal.mean[') for k in traces)
     path=tmp_path/'shared.bucex'; parallel.save(path)
     restored=bx.load_fit(path)
     assert restored.priors.shrinkage==priors.shrinkage
     np.testing.assert_array_equal(restored.parameter_draws['shrinkage.shared.level'],parallel.parameter_draws['shrinkage.shared.level'])
+    np.testing.assert_array_equal(restored.parameter_draws['shrinkage.shared.seasonal'],parallel.parameter_draws['shrinkage.shared.seasonal'])
     restarted=bx.fit(data,model,priors=restored.priors,init=restored,mcmc=bx.MCMC(chains=1,warmup=1,draws=2,seed=81))
     future=restarted.forecast(4,seed=23)
     assert np.all(np.isfinite(future.joint_log_score(data.to_numpy()[-4:])))
     directory=bx.save_shared_shrinkage_report(parallel,tmp_path/'report',figures=False)
     assert (directory/'shared_shrinkage_traces.csv.gz').exists()
+    assert set(pd.read_csv(directory/'shared_shrinkage.csv').component)=={'level','slope','seasonal'}
+    for name in parallel.channel_names:
+        comparison=bx.compare_innovation_priors(parallel,channel=name,size=500,seed=114)
+        prior_season=bx.draw_marginal_prior(priors,500,seed=114)['channels'][name]['sd.seasonal']
+        row=comparison.query("component == 'seasonal' and distribution == 'prior' and scale == 'SD'").iloc[0]
+        assert row['median']==np.median(prior_season)
+    assert not np.array_equal(parallel.parameter_draws['sd.channel.mean.seasonal'],
+                              parallel.parameter_draws['sd.channel.minimum.seasonal'])
 
 
 def test_only_active_channels_in_hyperconditional():
@@ -152,6 +162,10 @@ def test_declared_calendar_origins_include_2019_and_no_silent_drops():
     assert plan['n_months']==1616 and plan['fitted_end']=='2026-08-01'
     assert plan['posterior_fits']==4 and plan['predictive_fits']==16
     assert plan['effective_chain_workers']==4
+    for candidate in plan['candidates']:
+        if candidate['name'].startswith('pooled'):
+            assert candidate['shared_shrinkage']['components']==['level','slope','seasonal']
+            assert candidate['innovation_median']['season']==.02
     assert plan['folds'][2]['forecast_start']=='2016-01-01'
     assert plan['folds'][2]['forecast_end']=='2020-12-01'
     dates=pd.date_range('2000-01-01',periods=36,freq='MS')
