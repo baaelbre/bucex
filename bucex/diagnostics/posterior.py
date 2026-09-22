@@ -163,7 +163,11 @@ def fit_diagnostics(fit):
     acceptance = fit.sampler_diagnostics.get("acceptance", {})
     update_methods = fit.sampler_diagnostics.get("update_methods", {})
     rows = []
+    scalar_draws = dict(fit.parameter_draws)
     for name, values in fit.parameter_draws.items():
+        if values.ndim == 3 and name.startswith(("scale.seasonal", "initial.")):
+            scalar_draws.update({f"{name}[{j+1:02d}]": values[..., j] for j in range(values.shape[-1])})
+    for name, values in scalar_draws.items():
         if values.ndim != 2:
             continue
         constant = bool(

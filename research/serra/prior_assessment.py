@@ -9,13 +9,11 @@ import bucex as bx
 from .experiment import configured_variant
 from .report import new_run
 from .sensitivity import run as sensitivity
-from .validate import validate
+from .validate import validate, validation_splits
 
 
 def study_plan(config):
     """Resolve actual dates and work counts before starting any chains."""
-    if config['analysis'] != 'independent':
-        raise ValueError('This focused prior workflow uses independent margins; use the existing copula scripts for joint fits.')
     variants = config['variants']
     names = [v['name'] for v in variants]
     if not names or len(names) != len(set(names)) or any(not re.fullmatch(r'[A-Za-z][A-Za-z0-9_-]*', n) for n in names):
@@ -25,15 +23,28 @@ def study_plan(config):
         raise ValueError('Include the declared baseline among the selected variants.')
     data = bx.load_uccle_multiseries(**config['data'])
     settings = config['validation']
-    splits = tuple(bx.rolling_origin_splits(len(data), **{k: settings[k] for k in ('initial','horizon','step')}))
+    splits = validation_splits(data, settings)
     if not splits:
         raise ValueError('No complete forecast block fits in this data window.')
     mcmc = bx.MCMC(**config['mcmc'])
+    cases = [configured_variant(config, v) for v in variants]
+    from .models import joint_model, channel, marginal_prior
+    for case in cases:
+        if case['analysis'] in {'joint', 'copula'}:
+            joint_model(data, case)
+        elif case['analysis'] == 'independent':
+            for name in data:
+                marginal_prior(channel(name, data, case), data, case)
+        else:
+            raise ValueError('Analysis must be independent, joint or copula.')
+    n_fits = sum(1 if case['analysis'] in {'joint', 'copula'} else len(data.columns) for case in cases)
     return dict(version=bx.__version__, fitted_start=str(data.index[0].date()),
         fitted_end=str(data.index[-1].date()), n_months=len(data), series=list(data.columns),
-        candidates=[dict(name=v['name'], innovation_median=configured_variant(config,v)['priors']['innovation_median']) for v in variants],
+        candidates=[dict(name=v['name'], analysis=case['analysis'],
+            innovation_median=case['priors']['innovation_median'],
+            shared_shrinkage=case['priors'].get('shared_shrinkage')) for v, case in zip(variants, cases)],
         mcmc=config['mcmc'], effective_chain_workers=min(mcmc.chains,mcmc.chain_workers),
-        posterior_fits=len(names)*len(data.columns), predictive_fits=len(names)*len(data.columns)*len(splits),
+        posterior_fits=n_fits, predictive_fits=n_fits*len(splits),
         folds=[dict(training_end=str(data.index[train.stop-1].date()),
                     forecast_start=str(data.index[test.start].date()), forecast_end=str(data.index[test.stop-1].date())) for train,test in splits],
         note='Short runs screen sensitivity and prediction. Convergence flags remain active; no simulation study or automatic prior selection.')
@@ -46,8 +57,12 @@ def report(directory):
     mappings = {}
     for stage, key in (('sensitivity','posterior_runs'),('predictive','predictive_runs')):
         if manifest.get(stage) == 'completed':
-            mappings[key] = {v['name']: {name: directory/stage/v['name']/name for name in config['data']['series']}
-                             for v in config['variants']}
+            mappings[key] = {}
+            for v in config['variants']:
+                case = configured_variant(config, v)
+                joint = case['analysis'] in {'joint', 'copula'}
+                mappings[key][v['name']] = {name: directory/stage/v['name']/('joint' if joint else name)
+                                           for name in config['data']['series']}
     if not mappings:
         raise ValueError('No completed assessment stage is available to report.')
     return bx.SensitivityReport(**mappings, baseline=config['assessment']['baseline']).save(
@@ -106,16 +121,17 @@ def main():
     parser.add_argument('--stage',choices=['plan','sensitivity','predictive','report','all'],default='plan')
     parser.add_argument('--series',nargs='+',choices=tuple(bx.UCCLE_INFO))
     parser.add_argument('--variants',nargs='+')
+    parser.add_argument('--baseline', help='Reference candidate when selecting a subset of variants.')
     args = parser.parse_args()
     if args.run:
-        if args.config or args.series or args.variants:
+        if args.config or args.series or args.variants or args.baseline:
             parser.error('--run reuses its saved config; do not also give --config, --series or --variants.')
         if args.stage == 'plan':
             print(json.dumps(study_plan(bx.load_config(args.run/'config.json')),indent=2))
         else:
             print(run(stage=args.stage,directory=args.run))
         return
-    config = bx.load_config(args.config or Path('research/serra/config/priors/pilot.json'))
+    config = bx.load_config(args.config or Path('research/serra/config/hierarchy/pilot.json'))
     if args.series:
         config['data']['series'] = args.series
     if args.variants:
@@ -123,6 +139,8 @@ def main():
         if unknown:
             parser.error(f'Unknown variants: {sorted(unknown)}')
         config['variants'] = [v for v in config['variants'] if v['name'] in args.variants]
+    if args.baseline:
+        config['assessment']['baseline'] = args.baseline
     if args.stage == 'plan':
         print(json.dumps(study_plan(config),indent=2))
     else:

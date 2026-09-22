@@ -1,0 +1,35 @@
+{
+  "extends": "pilot.json",
+  "_comment": "Execution only: four process-parallel chains, short record, all candidates and a held-out year. Not scientific evidence.",
+  "data": {
+    "start": "2023-01-01",
+    "end": "2026-08-01"
+  },
+  "mcmc": {
+    "warmup": 3,
+    "draws": 4,
+    "progress_every": 4
+  },
+  "validation": {
+    "training_ends": [
+      "2025-08"
+    ],
+    "horizon": 12,
+    "draws": 40
+  },
+  "contrasts": {
+    "reference": [
+      "2023-01",
+      "2023-12"
+    ],
+    "comparison": [
+      "2025-09",
+      "2026-08"
+    ]
+  },
+  "forecast_horizon": 12,
+  "forecast_draws": 40,
+  "predictive_check_draws": 20,
+  "prior_draws": 500,
+  "output": "results/serra_hierarchy_smoke"
+}

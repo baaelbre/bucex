@@ -20,9 +20,15 @@ def parameter_trace_draws(fit, *, channel=None):
     names = [f"initial.{prefix}level", f"initial.{prefix}slope"]
     names += [f"sd.{prefix}{c}" for c in ("level", "slope", "seasonal")]
     names += [key+suffix for key in ("sigma", "xi", "scale_slope", "scale_rw_sd")]
-    return {name: fit.parameter(name, combine_chains=False)
-            for name in names if name in fit.parameter_draws
-            and np.asarray(fit.parameter_draws[name]).ndim == 2}
+    result = {name: fit.parameter(name, combine_chains=False)
+              for name in names if name in fit.parameter_draws
+              and np.asarray(fit.parameter_draws[name]).ndim == 2}
+    key = "scale.seasonal" + suffix
+    if key in fit.parameter_draws:
+        values = fit.parameter(key, combine_chains=False)
+        if values.ndim == 3:
+            result.update({f"{key}[{j+1:02d}]": values[..., j] for j in range(values.shape[-1])})
+    return result
 
 
 def trace_frame(draws):

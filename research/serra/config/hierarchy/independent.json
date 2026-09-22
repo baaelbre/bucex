@@ -1,0 +1,14 @@
+{
+  "extends": "final.json",
+  "_comment": "Six univariate normal-FS fits with the same fixed half-scale priors and monthly observation scales; no learned cross-series hierarchy.",
+  "analysis": "independent",
+  "priors": {
+    "shared_shrinkage": null,
+    "innovation_median": {
+      "level": 0.005,
+      "trend": 2.5e-05,
+      "season": 0.02
+    }
+  },
+  "output": "results/serra_independent_half"
+}

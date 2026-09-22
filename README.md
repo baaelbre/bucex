@@ -1,47 +1,61 @@
-# BUCEX 1.7.4
+# BUCEX 1.8.0
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
-Declare the observation distribution, give its parameters an interpretable
-structure, choose priors, and use the same fitting and posterior APIs for a
-single series or related series with residual dependence.
+Declare interpretable latent components for observation parameters, fit one
+series or a joint model, and retain the same diagnostics, forecast and risk API.
 
 ```bash
-python -m pip install -e ".[test]"
-python -m pytest
+python -m pip install -e ".[plot]"
+python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-## Exploratory manuscript figures in 1.7.4
+## Shared innovation shrinkage
 
-Figures 1 and 2 are now part of the SERRA workflow, built on the general
-`explore_monthly` API. They use observed monthly values and require no fitting:
+Use `MarginalPriors(channels, shrinkage=SharedShrinkage(...))` to learn common
+normal-prior scales for selected FS innovations. Series keep distinct process
+SDs and trajectories. Copula dependence and shared regularization are estimated
+jointly; neither is a shared latent warming factor. Omitting `shrinkage` retains
+the existing marginal prior API. Ordinary univariate analysis remains supported.
+
+```python
+import bucex as bx
+
+# channel_priors maps the declared response names to their FS priors.
+shared = bx.SharedShrinkage(medians={"level": .0025, "slope": .0000125})
+priors = bx.MarginalPriors(channel_priors, shrinkage=shared)
+```
+
+See [the API and statistical specification](docs/SHARED_SHRINKAGE.md) for a
+complete model example and the exact conditional update. Conditional priors are
+normal; integrating their common scale gives a normal scale mixture.
+
+## What to run for SERRA
+
+Start with [START_HERE](START_HERE.md). It gives commands for a four-process
+smoke check, the fixed-half/fixed-quarter/pooled-quarter/pooled-half comparison,
+matched historical predictions, confirmation and final candidate fits. The
+record ends in August 2026; the forecast comparisons include the 2019 record.
+No full simulation study is part of this workflow. A smooth posterior is not
+by itself evidence of reliable acceleration or adequate predictive coverage.
+
+```bash
+python -m research.serra.prior_assessment --config research/serra/config/hierarchy/smoke.json --stage all
+python -m research.serra.prior_assessment --config research/serra/config/hierarchy/pilot.json --stage plan
+```
+
+Four independent chains use `MCMC(chains=4, chain_workers=4, ...)`. No cluster
+scheduler is required. The default Python API remains serial; guard standalone
+parallel-script entry points with `if __name__ == "__main__":`.
+
+Generate observed-data Figures 1 and 2 without fitting:
 
 ```bash
 python -m research.serra.explore
 ```
 
-The JSON configuration declares comparison periods, detrending eras, colours
-and output formats. Both PNG and PDF are written with numerical CSVs and a
-source snapshot. See [EXPLORATION.md](docs/EXPLORATION.md) for definitions and
-the reusable API. Prior defaults and inference kernels are unchanged.
-
-## Parallel chains and focused prior assessment in 1.7.3
-
-Use `MCMC(chains=4, chain_workers=4, ...)` for four independent process workers.
-The default Python API remains serial. Spawned workers preserve chain order,
-seed streams, diagnostics and posterior pairing for scalar, marginal/copula,
-hierarchical and shared-state fits. Put custom script entry points under an
-`if __name__ == "__main__":` guard; provided research drivers already do this.
-
-```text
-python -m research.serra.prior_assessment --stage plan
-python -m research.serra.prior_assessment --stage all
-```
-
-One JSON candidate list drives prior/posterior sensitivity and matched
-historical forecasts. The pilot uses TNm, three priors and three forecast
-origins; it is not a simulation study. See [START_HERE](START_HERE.md) and
-[the API and assessment guide](docs/PRIOR_ASSESSMENT.md). Normal innovation
-prior defaults and the statistical transition kernels remain unchanged.
+The existing manuscript-style plotting, parameter-evolution, copula, risk and
+archive APIs remain available. Run the software tests with
+`python -m pip install -e ".[test]"` followed by `python -m pytest`.
 
 ## One series, explicit parameter structure
 

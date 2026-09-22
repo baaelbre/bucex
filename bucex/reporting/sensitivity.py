@@ -52,6 +52,7 @@ class SensitivityReport:
         intervals = set()
         events = {}
         windows = {}
+        joint_seen = set()
 
         def add(label, data, variant, channel):
             if 'channel' in data and not data.channel.eq(channel).all():
@@ -62,20 +63,29 @@ class SensitivityReport:
             for channel, directory in channels.items():
                 directory = Path(directory)
                 config = json.loads((directory/'config.json').read_text(encoding='utf-8'))
+                joint = config.get('analysis') in {'joint', 'copula'}
                 intervals.add(config['credible_interval'])
                 event = config.get('risks', {}).get(channel)
                 if channel in events and events[channel] != event:
                     raise ValueError("Risk comparisons require identical thresholds for each response.")
                 events[channel] = event
-                for label, filename in (("prior_posterior", "prior_posterior.csv"),
+                for label, filename in (("prior_posterior", f"{channel}_prior_posterior.csv" if joint else "prior_posterior.csv"),
                                         ("scientific_targets", "period_and_endpoint_targets.csv"),
                                         ("mcmc", "mcmc.csv")):
                     data = self._read(directory/filename)
                     if label != 'prior_posterior' and 'quantity' not in data:
                         data = data.rename(columns={data.columns[0]: 'quantity'})
+                    if joint and label == 'scientific_targets':
+                        data = data[data.quantity.str.startswith(channel+'.') |
+                                    data.quantity.isin([channel+'_level_change', channel+'_end_slope_C_per_decade'])]
+                    elif joint and label == 'mcmc':
+                        scalar_names = data.quantity.str.split('[', regex=False).str[0]
+                        data = data[data.quantity.str.contains('channel.'+channel+'.', regex=False) |
+                                    scalar_names.str.endswith('.'+channel)]
                     add(label, data, variant, channel)
                 for quantity in ('level', 'slope', 'risk'):
-                    path = directory/(quantity+'.csv')
+                    stem = 'slope_C_per_decade' if joint and quantity == 'slope' else quantity
+                    path = directory/((channel+'_' if joint else '')+stem+'.csv')
                     if not path.exists():
                         continue
                     data = self._read(path)
@@ -88,6 +98,18 @@ class SensitivityReport:
                 checks.append(dict(stage='posterior', variant=variant, channel=channel,
                     origin='full_record', numerical_status=assessment['status'],
                     issues=len(assessment.get('issues', []))))
+                unique = ('posterior', variant, str(directory.resolve()))
+                if joint and unique not in joint_seen:
+                    joint_seen.add(unique)
+                    for label, filename in (('shared_shrinkage','shared_shrinkage.csv'),
+                                            ('joint_scientific_targets','period_and_endpoint_targets.csv'),
+                                            ('joint_mcmc','mcmc.csv')):
+                        path = directory/filename
+                        if path.exists():
+                            data = self._read(path)
+                            if label != 'shared_shrinkage' and 'quantity' not in data:
+                                data = data.rename(columns={data.columns[0]:'quantity'})
+                            collected.setdefault(label, []).append(data.assign(variant=variant))
         if len(intervals) > 1:
             raise ValueError("Posterior runs use different credible interval levels.")
         for variant, channels in self.predictive_runs.items():
@@ -95,17 +117,47 @@ class SensitivityReport:
                 directory = Path(directory)
                 for label, filename in (("scores", "scores.csv"), ("coverage", "coverage_by_case.csv"),
                                         ("pit", "held_out_pit.csv"), ("predictions", "predictions.csv")):
-                    add(label, self._read(directory/filename), variant, channel)
+                    data = self._read(directory/filename)
+                    if 'channel' in data:
+                        data = data[data.channel == channel]
+                        if data.empty:
+                            raise ValueError(f'{variant}/{channel}: no matching held-out cases.')
+                    add(label, data, variant, channel)
                 folds = self._read(directory/'folds.csv')
                 for fold in folds.to_dict('records'):
                     assessment = json.loads((directory/f"convergence_{fold['origin']}.json").read_text(encoding='utf-8'))
                     checks.append(dict(stage='predictive', variant=variant, channel=channel,
                         origin=fold['origin'], numerical_status=assessment['status'],
                         issues=len(assessment.get('issues', [])), **{k: v for k, v in fold.items() if k not in {'origin', 'numerical_status'}}))
+                unique = ('predictive', variant, str(directory.resolve()))
+                if unique not in joint_seen:
+                    joint_seen.add(unique)
+                    for label, filename in (('joint_log_scores','joint_log_scores.csv'),
+                                            ('compound_heat_scores','compound_heat_scores.csv'),
+                                            ('event_counts','event_counts.csv')):
+                        if (directory/filename).exists():
+                            collected.setdefault(label, []).append(self._read(directory/filename).assign(variant=variant))
+                    for fold in folds.to_dict('records'):
+                        path = directory/f"shared_shrinkage_{fold['origin']}.csv"
+                        if path.exists():
+                            collected.setdefault('shared_shrinkage_forecasts', []).append(
+                                self._read(path).assign(variant=variant, origin=fold['origin']))
         result = {key: pd.concat(values, ignore_index=True) for key, values in collected.items()}
         result['convergence'] = pd.DataFrame(checks)
         if 'prior_posterior' in result:
             result['prior_updates'] = innovation_prior_diagnostics(result['prior_posterior'])
+        if 'shared_shrinkage' in result:
+            result['shared_shrinkage_updates'] = innovation_prior_diagnostics(result['shared_shrinkage'])
+        for label, metric, value in (('joint_log_scores', 'joint_log', 'score'),
+                                     ('compound_heat_scores', 'compound_brier', 'brier')):
+            if label in result:
+                data = result[label].copy()
+                data['horizon'] = data.groupby(['variant','origin'], sort=False).cumcount()+1
+                data = data.assign(channel='joint', setting=np.nan, value=data[value], score=metric)
+                if self.baseline in set(data.variant):
+                    result[label+'_comparison'] = compare_predictive_scores(data, baseline=self.baseline, seed=173)
+                result[label+'_by_origin'] = data.groupby(['variant','origin'], sort=False).value.agg(
+                    mean=lambda x: float(np.mean(x.to_numpy())), n='size').reset_index()
         if 'scores' in result:
             scores = result['scores'].copy()
             result['predictive_comparison'] = compare_predictive_scores(scores, baseline=self.baseline, seed=173)
@@ -144,7 +196,8 @@ class SensitivityReport:
             sources=self.sources, tables=list(tables), figures=images,
             interpretation=[
                 'All forecast scores are losses: smaller is better; paired improvement is baseline minus candidate.',
-                'Three forecast origins support descriptive screening, not precise model-ranking uncertainty.',
+                'Few forecast origins support descriptive screening, not precise model-ranking uncertainty.',
+                'Shared hyperpriors are integrated in marginal prior intervals; the six responses are not six independent datasets.',
                 'Prior/posterior displacement and contraction are descriptive, not objectives to maximize.',
                 'Continuous SD intervals above zero are not posterior selection probabilities.',
                 'Smooth paths do not by themselves establish acceleration; inspect period slope contrasts and their sensitivity.',

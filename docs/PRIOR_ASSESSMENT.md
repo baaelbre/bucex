@@ -1,3 +1,10 @@
+# Prior assessment: current and earlier workflows
+
+The current all-six-response hierarchy workflow is documented in
+[START_HERE](../START_HERE.md) and [SHARED_SHRINKAGE.md](SHARED_SHRINKAGE.md).
+The original single-response 1.7.x assessment below remains available with
+`config/priors/pilot.json`; it is not the default recommendation for 1.8.0.
+
 # Parallel chains and focused prior assessment
 
 This workflow asks which of a few declared innovation priors gives useful

@@ -1,0 +1,72 @@
+{
+  "extends": "../revision/monthly_scale.json",
+  "_comment": "All six responses, same copula likelihood and monthly scales. Compare fixed medians with two learned common medians; no simulation study.",
+  "analysis": "copula",
+  "priors": {
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.0025,
+      "trend": 1.25e-05,
+      "season": 0.02
+    },
+    "shared_shrinkage": {
+      "components": [
+        "level",
+        "slope"
+      ],
+      "log_sd": 0.6931471805599453
+    }
+  },
+  "mcmc": {
+    "chains": 4,
+    "chain_workers": 4,
+    "warmup": 500,
+    "draws": 500,
+    "progress_every": 100
+  },
+  "variants": [
+    {
+      "name": "fixed_half",
+      "shared_shrinkage": null,
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0
+      }
+    },
+    {
+      "name": "fixed_quarter",
+      "shared_shrinkage": null
+    },
+    {
+      "name": "pooled_quarter"
+    },
+    {
+      "name": "pooled_half",
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0
+      }
+    }
+  ],
+  "assessment": {
+    "baseline": "fixed_half"
+  },
+  "validation": {
+    "training_ends": [
+      "2000-12",
+      "2010-12",
+      "2015-12",
+      "2020-12"
+    ],
+    "horizon": 60,
+    "draws": 2000,
+    "save_fits": false
+  },
+  "prior_draws": 20000,
+  "prior_predictive_draws": 0,
+  "save_fits": false,
+  "forecast_draws": 1000,
+  "predictive_check_draws": 100,
+  "figures": true,
+  "output": "results/serra_hierarchy"
+}

@@ -11,6 +11,7 @@ from .hierarchical import (
     resolve_hierarchical_priors,
 )
 from .marginal import MarginalPriors
+from .shrinkage import SharedShrinkage
 from .joint import JointPriors, default_joint_priors, resolve_joint_priors
 from .process import (
     ExponentialSD,
@@ -67,7 +68,7 @@ from .structural import (
 
 __all__ = [
     "fs_priors", "triple_gamma_median",
-    "MarginalPriors",
+    "MarginalPriors", "SharedShrinkage",
     "Priors",
     "JointPriors",
     "default_joint_priors",

@@ -1,0 +1,13 @@
+{
+  "extends": "final.json",
+  "_comment": "Joint copula fallback with fixed half-scale normal priors; matches independent.json marginal specifications.",
+  "priors": {
+    "shared_shrinkage": null,
+    "innovation_median": {
+      "level": 0.005,
+      "trend": 2.5e-05,
+      "season": 0.02
+    }
+  },
+  "output": "results/serra_copula_fixed_half"
+}

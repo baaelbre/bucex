@@ -1,0 +1,26 @@
+{
+  "extends": "pilot.json",
+  "_comment": "Confirm shared-shrinkage anchor robustness after the pilot. Increase draws further only if diagnostics require it.",
+  "variants": [
+    {
+      "name": "pooled_quarter"
+    },
+    {
+      "name": "pooled_half",
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0
+      }
+    }
+  ],
+  "assessment": {
+    "baseline": "pooled_quarter"
+  },
+  "mcmc": {
+    "warmup": 1000,
+    "draws": 2000
+  },
+  "forecast_draws": 4000,
+  "predictive_check_draws": 400,
+  "output": "results/serra_hierarchy_confirm"
+}

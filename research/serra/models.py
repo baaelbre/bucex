@@ -33,6 +33,8 @@ def channel(name, data, config):
 def marginal_prior(item, data, config):
     """Proper continuous priors; no estimated/data-centred hyperparameters."""
     p = config['priors']
+    if p.get('shared_shrinkage') is not None and config['analysis'] == 'independent':
+        raise ValueError('Shared shrinkage requires a joint fit of the series; use analysis=joint or copula.')
     center = p.get('initial_level_mean', 0.)
     if isinstance(center, dict):
         center = center[item.name]
@@ -64,7 +66,16 @@ def joint_model(data, config):
         copula = bx.SeasonalGaussianCopula(structure=structure,
             period=config['model']['period'], **settings)
     model = bx.MultiSeriesModel(channels, copula=copula)
-    return model, bx.MarginalPriors({c.name: marginal_prior(c, data, config) for c in channels})
+    settings = config['priors'].get('shared_shrinkage')
+    hierarchy = None
+    if settings is not None:
+        aliases = {'level': 'level', 'slope': 'trend', 'seasonal': 'season'}
+        hierarchy = bx.SharedShrinkage(
+            medians={c: config['priors']['innovation_median'][aliases[c]]
+                     for c in settings.get('components', ['level', 'slope'])},
+            log_sd=settings.get('log_sd', np.log(2.)))
+    return model, bx.MarginalPriors(
+        {c.name: marginal_prior(c, data, config) for c in channels}, shrinkage=hierarchy)
 
 
 def inference_options(config):

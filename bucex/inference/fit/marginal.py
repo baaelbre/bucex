@@ -27,6 +27,7 @@ from .fs_utils import (
 )
 from .model_space import sample_structural_regression, sample_structural_regression_exact
 from .continuous import ShrinkageState, continuous_step
+from .shrinkage import SharedShrinkageState
 
 
 def marginal_plan(compiled, *, engine="auto", parameterization="auto", asis=False):
@@ -293,6 +294,10 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
             cp.update(restart["copula"])
             for state, mixture in zip(states,mixing):
                 if mixture is not None: mixture.restore(restart.get("mixing",{}),state.name)
+        shared = None
+        if priors.shrinkage is not None:
+            start_scales = {**initial, **((restart or {}).get("mixing", {}))}
+            shared = SharedShrinkageState.initialize(priors.shrinkage, states, rng, start_scales)
         saved_draw = 0
         for iteration in range(mcmc.iterations):
             correlation = correlation_for(cp)
@@ -306,6 +311,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                 mean, variance = conditional_score_parameters(scores, correlation, j, model.transform_signs[j])
                 conditional = ConditionalMargin(state.model.observation, mean, variance)
                 prior = priors.channels[state.name]
+                if shared is not None:
+                    prior = priors.shrinkage.conditional_prior(prior, shared.medians)
                 if prior.ssvs is not None:
                     metric = _structure_step(state, conditional, _observation_params(state, effects[j], phases[j]), prior, laplace, rng)
                 else:
@@ -316,6 +323,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                 row_metrics.update({f"{key}.{state.name}": value for key,value in {**metric, **obs_metric}.items()})
                 scores[:,j] = model.transform_signs[j] * conditional.scores(
                     state.y, mu_from_ncp(state.z_path, state.params_state, state.layout), _observation_params(state, effects[j], phases[j]))
+            if shared is not None:
+                row_metrics.update(shared.update(rng))
             if model.copula and model.copula.estimated:
                 for name in cp:
                     def target(value):
@@ -331,6 +340,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
             retain = iteration >= mcmc.warmup and (iteration-mcmc.warmup) % mcmc.thin == 0
             if retain:
                 current = dict(cp)
+                if shared is not None:
+                    current.update(shared.parameter_values())
                 total = float(np.sum(gaussian_copula_logpdf(scores, correlation)))
                 for j, (state, block) in enumerate(zip(states, compiled.blocks)):
                     paths[chain,saved_draw,:,block.state_slice] = map_ncp_to_centered(state.z_path, state.params_state, state.layout)
@@ -380,6 +391,10 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                   "continuous_coefficient_update": "exact Gaussian draw / conditional-mode reference elliptical slice",
                   "coefficient_reference_initialization": "deterministic, independent of current coefficients",
                   "shared_temporal_state": False, "hierarchical_model_selection": False,
+                  "hierarchical_innovations": priors.shrinkage is not None,
+                  "shared_shrinkage": None if priors.shrinkage is None else asdict(priors.shrinkage),
+                  "shared_shrinkage_members": {} if shared is None else {c: [s.name for s in members] for c, members in shared.members.items()},
+                  "innovation_marginal_prior": "normal scale mixture" if priors.shrinkage else "declared channel priors",
                   "joint_model": True, "joint_likelihood": True,
                   "conditional_channel_independence": model.copula is None,
                   "copula_feedback": model.copula is not None,

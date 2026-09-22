@@ -28,10 +28,19 @@ def calibration(forecast, observed, *, channel=None):
     return pd.concat(rows, ignore_index=True)
 
 
+def validation_splits(data, settings):
+    if settings.get("training_ends") is not None:
+        return tuple(bx.calendar_origin_splits(data.index, settings["training_ends"], horizon=settings["horizon"]))
+    return tuple(bx.rolling_origin_splits(len(data), **{k: settings[k] for k in ("initial", "horizon", "step")}))
+
+
 def validate(config, *, directory=None):
     data = bx.load_uccle_multiseries(**config["data"])
     settings = config["validation"]
-    initial = data.iloc[:settings["initial"]]
+    splits = validation_splits(data, settings)
+    if not splits:
+        raise ValueError("No complete held-out fold fits inside the supplied record.")
+    initial = data.iloc[:splits[0][0].stop]
     directory = new_run(config["output"], f"validation_{config['analysis']}") if directory is None else Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     bx.save_config(config, directory / "config.json")
@@ -45,13 +54,11 @@ def validate(config, *, directory=None):
     else:
         model, prior = joint_model(initial, config)
         analyses.append(("joint", data, model, prior, None))
-    splits = tuple(bx.rolling_origin_splits(len(data), **{k: settings[k] for k in ("initial", "horizon", "step")}))
-    if not splits:
-        raise ValueError("No complete held-out fold fits inside the supplied record.")
     for label, values, model, prior, tail in analyses:
         target = directory / label
         target.mkdir(exist_ok=True)
         scores, pits, coverages, joint_scores, compound, predictions, folds = [], [], [], [], [], [], []
+        event_counts = []
         for fold, (train, test) in enumerate(splits):
             print(f"{label}: fold {fold + 1}/{len(splits)}, training {train.stop} blocks", flush=True)
             training = values.iloc[:train.stop]
@@ -63,6 +70,9 @@ def validate(config, *, directory=None):
                 draws=settings.get("draws", config.get("forecast_draws")), seed=config["seed"] + fold)
             diagnostics = fit.diagnostics()["parameters"].assign(chains=fit.n_chains)
             diagnostics.to_csv(target / f"mcmc_{train.stop}.csv")
+            if getattr(fit.priors, "shrinkage", None) is not None:
+                bx.compare_shared_shrinkage(fit, level=config["credible_interval"]).to_csv(
+                    target/f"shared_shrinkage_{train.stop}.csv", index=False)
             targets = fit.contrast_diagnostics(scientific_targets(fit))
             targets.to_csv(target / f"targets_{train.stop}.csv")
             assessment = bx.convergence_assessment({'parameters': convergence_parameters(diagnostics, fit.n_chains), 'scientific_targets': targets},
@@ -78,6 +88,11 @@ def validate(config, *, directory=None):
                 fit.save(target / f"fit_{train.stop}.bucex")
             for name in values:
                 observed = values[name].iloc[list(test)].to_numpy()
+                direction = '<' if bx.UCCLE_INFO[name]['tail'] == 'min' else '>'
+                threshold = config['risks'][name]
+                events = observed < threshold if direction == '<' else observed > threshold
+                event_counts.append(dict(origin=train.stop,channel=name,threshold=threshold,
+                    direction=direction,n_events=int(events.sum()),n_cases=len(events)))
                 kwargs = {"channel": name} if label == "joint" else {}
                 score = forecast.score(observed, thresholds=[config["risks"][name]],
                                        quantiles=(0.90, 0.95, 0.99), aggregate=False, **kwargs)
@@ -117,6 +132,7 @@ def validate(config, *, directory=None):
             pd.concat(pits).to_csv(target / "held_out_pit.csv", index=False)
             pd.concat(coverages).to_csv(target / "coverage_by_case.csv", index=False)
             pd.concat(predictions).to_csv(target/'predictions.csv', index=False)
+            pd.DataFrame(event_counts).to_csv(target/'event_counts.csv', index=False)
             if joint_scores:
                 pd.concat(joint_scores).to_csv(target / "joint_log_scores.csv", index=False)
             if compound:

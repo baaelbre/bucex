@@ -1,50 +1,57 @@
-# BUCEX 1.7.4 release checks — 21 September 2026
+# BUCEX 1.8.0 validation
 
-## Executed checks
+Executed on Python 3.12.14, NumPy 2.3.5, SciPy 1.17.0
+and pandas 2.2.3. These checks validate software behavior, not
+publication conclusions or scientific convergence.
 
-- Full source test suite: **346 passed**. The existing data-loader warning
-  records two retained reported daily TN > TX pairs. This release does not
-  change the observations. See `pytest-1.7.4-source.xml`.
-- Installed-wheel checks outside the source package: **55 passed**, covering
-  the exploration API, source-data checks, report writing, bundled monthly
-  data and historical archives. The test directory contains the source test
-  fixtures but imports BUCEX from the separately installed wheel. See
-  `pytest-1.7.4-installed.xml`.
-- The 13 new exploration checks cover known analytical means, quartiles,
-  annual trends and residual IQRs; original observation signs; incomplete
-  data; invalid dates and sparse windows; report exports; and delegation
-  from the short SERRA script without invoking posterior fitting.
-- `python -m research.serra.explore` completed with the default revision
-  configuration and all six series through August 2026. It produced both
-  PNG and PDF figures, their numerical tables, source observations, resolved
-  configuration and metadata. Both PNGs were visually inspected.
-- The numerical tables reproduce the original manuscript's standalone
-  exploration exports: 144 cycle rows agree to a maximum absolute difference
-  of 7.11e-15, and 216 spread rows to 4.45e-16. See
-  `exploration-reproduction.json`.
-- A separate process blocked Matplotlib imports, loaded the installed wheel,
-  calculated exploration summaries and exported them with `figures=False`.
-  Statistical and table-only use does not require the plotting extra.
-- All existing Python files in inference, models, components, priors,
-  observation, core, API, IO and datasets, and all bundled/source data files,
-  are byte-identical to 1.7.3. See `compatibility-1.7.4.json`.
-- Wheel and source distributions were built. The release ZIP excludes build
-  trees, caches, installed test copies and generated scientific results.
+## Regression and install checks
 
-See `workflows-1.7.4.json` for the environment and executed workflow details.
-The installed test harness initially omitted the daily CSV fixture required
-by two source-data tests. Supplying that fixture resolved both failures;
-no package change was required.
+- Complete source regression: 357 passed; two tests still asserted version
+  1.7.4 when pytest collected them. Their assertions now expect 1.8.0.
+- Focused check: 16 passed, including both corrected version assertions, the
+  new hierarchy tests, and the added joint-report regression.
+- Installed-wheel check outside the source tree: 49 passed. Import resolved to
+  the installed 1.8.0 package, archive schema 2.12.0. This also exercises the
+  corrections, hierarchy, process-parallel equivalence, historical archives,
+  seasonal scale/copula margins, and public fit/restart contracts.
+- Across these runs, **360 distinct tests have a passing latest result**;
+  there are no unresolved failures. The raw XML files and reconciliation
+  details are retained in `verification-1.8.0.json`. No statistical tolerance
+  was weakened to obtain these results.
+- The existing bundled-data check reports two retained daily TN > TX pairs;
+  their handling is unchanged and documented in the dataset quality report.
 
-## Limits
+## New numerical contracts
 
-No final scientific model runs or new prior sensitivity experiments were
-conducted for this patch release. These checks establish code behavior and
-reproduction of descriptive figures, not scientific convergence, tail
-adequacy or robustness of climatic conclusions. The figures summarize
-observations; their empirical bands are not posterior intervals.
+The shared-scale conditional is compared to an independently expressed product
+of normal densities and checked against numerical quadrature. The test retains
+the scale normalizing constant and verifies the slice update. Joint prior draws
+use one common hyperparameter per draw; conditional squared coefficients have
+the reference normal moment and responses share prior magnitude dependence.
+Static innovations are excluded from the hyperparameter update. Unsupported
+SSVS/local-mixture combinations fail explicitly.
 
-Tests used Linux and Python 3.12. Other operating systems and Python versions
-were not separately exercised for this patch release. Exploration windows
-are explicit configuration choices; extending the data does not silently
-change the manuscript comparison periods.
+Mixed Gaussian/minimum-GEV fits with seasonal scales check conditional updates,
+R=I equivalence, serial/parallel chain identity, distinct chain seeds, save/load
+and warm restart, finite predictive density, unconditional prior comparisons,
+and inclusion of monthly scale and shared-median diagnostics. Compact report
+tests prevent response-label mixing and duplicate global hyperparameter tables.
+
+## Research execution
+
+`hierarchy/smoke.json --stage all` completed four full-record and four historical
+joint fits, each with six responses and four process workers. It generated
+635 PNGs, including 55 comparison figures. Shared-scale interval figures were
+visually checked. All convergence summaries correctly remain `needs_review`
+for this deliberately tiny run. No full posterior archives are requested by
+the pilot; numerical tables and compressed traces are retained.
+
+The pilot plan resolves January 1892–August 2026 (1,616 months), four candidates,
+four full-record fits and sixteen historical refits. The explicit origins
+include the 2016–2020 forecast block. Final preflight estimates 16.14 GB for
+centered state arrays alone; process transfers, merging and diagnostics require
+additional memory. The standalone shared-shrinkage API example also completed.
+
+No full-record production chains, prior winner or substantive acceleration
+claim were produced for this release. Run START_HERE.md before interpreting
+this model as the final paper specification.

@@ -42,7 +42,7 @@ def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", lev
 def convergence_parameters(table, n_chains):
     """Screen scientific parameters; fixed shrinkage hyperparameters remain in mcmc.csv."""
     names = [name for name in table.index if str(name).startswith(
-        ('sd.', 'initial.', 'sigma', 'xi', 'copula.', 'scale.', 'scale_slope', 'scale_rw_sd', 'evolution.'))]
+        ('sd.', 'initial.', 'sigma', 'xi', 'copula.', 'scale.', 'scale_slope', 'scale_rw_sd', 'evolution.', 'shrinkage.shared.'))]
     return table.loc[names].assign(chains=n_chains)
 
 
@@ -102,6 +102,9 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         credible_interval=level,figure_style=config.get('figure_style','manuscript'),
         status='Research output; assess convergence, sensitivity and held-out forecasts before reporting.'),directory/'run.json')
     pd.DataFrame(diagnostic['pit']).to_csv(directory/'in_sample_pit.csv',index=False)
+    if getattr(fit.priors, 'shrinkage', None) is not None:
+        bx.save_shared_shrinkage_report(fit, directory, level=level,
+            figures=config.get('figures', True), style=config.get('figure_style', 'manuscript'), dpi=dpi)
     targets = scientific_targets(fit, config)
     target_table = fit.contrast_diagnostics(targets, credible_interval=level)
     target_table['probability_positive'] = [float(np.mean(targets[key] > 0)) for key in target_table.index]
@@ -137,6 +140,11 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         label=name or fit.series_name or 'series'
         prior=fit.priors.channels[name] if isinstance(fit.priors,bx.MarginalPriors) else fit.priors
         channel=fit.model.channel(name) if name else fit.model
+        if isinstance(fit.priors, bx.MarginalPriors) or not fit.is_multiseries_model:
+            comparison = bx.compare_innovation_priors(fit, channel=name,
+                size=config.get('prior_draws', 2000), seed=config['seed'], level=level)
+            comparison.to_csv(directory/(label+'_prior_posterior.csv'), index=False)
+            bx.innovation_prior_diagnostics(comparison).to_csv(directory/(label+'_prior_updates.csv'), index=False)
         band(fit.component_draws('level',channel=name),label+'_level')
         band(120*fit.component_draws('slope',channel=name),label+'_slope_C_per_decade',ylabel='latent slope / °C per decade')
         if channel.period is not None:

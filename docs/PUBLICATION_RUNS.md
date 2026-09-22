@@ -1,4 +1,13 @@
-# What to run next: SERRA revision with BUCEX 1.7.4
+# SERRA publication experiments
+
+For BUCEX 1.8.0, use [START_HERE](../START_HERE.md) and
+[SHARED_SHRINKAGE.md](SHARED_SHRINKAGE.md) for the current focused common-prior
+and joint-copula workflow. Those commands supersede the sequencing below.
+The earlier configurations are retained unchanged for reproduction and for
+specific supplementary checks; they do not automatically inherit the new
+hierarchy or its tighter anchors.
+
+## Earlier 1.7.4 protocol
 
 For the immediate prior-calibration task, start with [PRIOR_ASSESSMENT.md](PRIOR_ASSESSMENT.md). The broader stages below remain available; they are not prerequisites for that focused comparison. Research configs now use four process workers for four chains.
 

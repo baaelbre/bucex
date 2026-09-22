@@ -144,11 +144,29 @@ def draw_structural_prior(prior, size=2000, *, seed=None, xi_bounds=None):
     return output
 
 
-def compare_innovation_priors(fit, prior, *, size=2000, seed=None, level=0.90):
-    """Tidy prior/posterior summaries on both SD and variance q=SD^2 scales."""
-    samples = draw_structural_prior(prior, size, seed=seed)
+def compare_innovation_priors(fit, prior=None, *, channel=None, size=2000, seed=None, level=0.90):
+    """SD/variance summaries against the unconditional declared prior.
+
+    For joint fits select a channel. Shared hyperparameters are integrated in
+    the prior draws, never fixed at their posterior estimates or anchors.
+    """
+    from ..priors import MarginalPriors
+    prior = fit.priors if prior is None else prior
+    if fit.is_multiseries_model:
+        if not isinstance(prior, MarginalPriors) or channel not in fit.channel_names:
+            raise ValueError("Select a channel and its complete MarginalPriors hierarchy.")
+        from .shrinkage import draw_marginal_prior
+        samples = draw_marginal_prior(prior, size, seed=seed)["channels"][channel]
+        prefix = f"channel.{channel}."
+        posterior_sd = {key[len(prefix):]: value for key, value in fit.process_sd_draws().items()
+                        if key.startswith(prefix)}
+    else:
+        if channel is not None:
+            raise ValueError("channel= requires a multiseries fit.")
+        samples = draw_structural_prior(prior, size, seed=seed)
+        posterior_sd = fit.process_sd_draws()
     rows = []
-    for component, posterior in fit.process_sd_draws().items():
+    for component, posterior in posterior_sd.items():
         key = f"sd.{component}"
         if key not in samples:
             raise ValueError(f"No matching prior draw for {key!r}; use a univariate FS fit.")

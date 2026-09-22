@@ -71,3 +71,19 @@ explicitly mapped report directories and preserves warning and source
 information; `sensitivity_plots.py` renders the common manuscript style.
 `research/serra/prior_assessment.py` only declares the study stages, delegates
 fitting/validation, checkpoints stage status and requests reports.
+
+## Shared innovation shrinkage (1.8.0)
+
+`priors/shrinkage.py` defines the distribution and conditional normal priors;
+`MarginalPriors` owns the optional cross-response declaration.
+`inference/fit/shrinkage.py` owns the normalized log-hyperparameter conditional
+and its slice update; `inference/fit/marginal.py` composes it with the existing
+private FS and copula sweeps. No inference logic is placed in SERRA scripts.
+
+`diagnostics/shrinkage.py` draws the unconditional hierarchy and summarizes its
+posterior. `reporting/shrinkage.py` exports numerical tables/traces and figures;
+`SensitivityReport` compares saved joint or univariate reports by response and
+matched forecast case. `calendar_origin_splits` resolves explicit training dates.
+Research declarations assemble these public APIs in `serra/models.py`; one
+candidate list drives posterior and predictive studies in `prior_assessment.py`.
+The optional field leaves ordinary univariate priors and existing fits intact.

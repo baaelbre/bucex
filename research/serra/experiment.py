@@ -13,7 +13,7 @@ def configured_variant(config, variant):
     config = deepcopy(config)
     p, m = config['priors'], config['model']
     for key in ('innovation', 'xi_prior', 'xi_sd', 'xi_bounds', 'tg_spike_shape', 'tg_tail_shape',
-                'observation_variance'):
+                'observation_variance', 'shared_shrinkage'):
         if key in variant:
             p[key] = variant[key]
     for key in ('seasonal_scale', 'scale_mode', 'scale_prior_sd', 'scale_slope_sd',

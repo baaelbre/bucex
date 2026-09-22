@@ -18,6 +18,24 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
         stem = re.sub(r'[^A-Za-z0-9_-]', '_', str(channel))+'_'+name
         images.extend(p.name for p in save_figure(fig, directory/stem, formats=('png',), dpi=dpi, close=True))
 
+    if 'shared_shrinkage' in tables:
+        data = tables['shared_shrinkage']
+        names = list(data.variant.drop_duplicates())
+        components = list(data.component.drop_duplicates())
+        fig, axes = plt.subplots(1,len(components),figsize=(5*len(components),3.5),squeeze=False,layout='constrained')
+        for ax, component in zip(axes[0], components):
+            for i, variant in enumerate(names):
+                for distribution, offset, alpha in [('prior',-.13,.4),('posterior',.13,1.)]:
+                    row = data[(data.variant==variant)&(data.component==component)&(data.distribution==distribution)].iloc[0]
+                    ax.errorbar(row['median'],i+offset,
+                        xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],
+                        fmt='s' if distribution=='prior' else 'o',color=colors[variant],alpha=alpha,
+                        label=distribution if i==0 else None)
+            ax.set(yticks=range(len(names)),yticklabels=names,xlabel=f'shared {component} SD median')
+            ax.ticklabel_format(axis='x',style='sci',scilimits=(-3,3),useMathText=True)
+        axes[0,0].legend(loc='center right')
+        save(fig,'shared','shrinkage')
+
     if 'prior_posterior' in tables:
         data = tables['prior_posterior'].query("scale == 'SD'")
         for channel, group in data.groupby('channel', sort=False):

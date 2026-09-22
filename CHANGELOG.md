@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.8.0 — 2026-09-22
+
+- Add `SharedShrinkage` to `MarginalPriors` for uncertain common FS normal-prior
+  scales, retaining private innovation SDs, paths and the univariate API.
+- Update shared scales inside the exact joint private FS/copula sampler with
+  normalized log-scale conditionals; preserve archive, restart and parallel
+  chain semantics. Fixed-zero innovations do not count as hierarchy members.
+- Export shared-scale traces, R-hat/ESS, hyperprior/posterior intervals and
+  unconditional individual prior comparisons. Include monthly scale contrasts
+  and initial seasonal vectors in scalar diagnostics; include monthly scale
+  effects in traces.
+- Extend compact sensitivity reports to joint fits, joint predictive scores,
+  compound events and shared-hyperparameter sensitivity without double-counting
+  global tables or mixing response labels.
+- Add explicit calendar forecast origins and event counts. The new SERRA pilot
+  uses all six responses through August 2026 and includes a 2016–2020 held-out
+  block to cover the 2019 temperature record.
+- Provide matched fixed-half, fixed-quarter, pooled-quarter and pooled-half
+  specifications; preserve the six-univariate and fixed-copula fallback.
+- Keep existing fixed normal-prior defaults and earlier configurations intact.
+  The focused hierarchy workflow has its own explicit anchors and makes no
+  automatic model choice or scientific convergence claim.
+
 ## 1.7.4 — 2026-09-21
 
 - Integrate exploratory manuscript Figures 1 and 2 into `research.serra.explore`.
