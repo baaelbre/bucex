@@ -1,4 +1,4 @@
-# BUCEX 1.8.4 — monthly analysis and a separate seasonal assessment
+# BUCEX 1.8.5 — seasonal prior screen and monthly comparison
 
 Summer 2026 **is included**. Only January and February 1892 are excluded from
 these research runs. The raw source and bundled monthly CSVs remain intact.
@@ -30,15 +30,15 @@ python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-Expect `1.8.4` and the new source path. On biobot, four chains use four local
+Expect `1.8.5` and the new source path. On biobot, four chains use four local
 processes with one numerical thread each. Slurm is not required. Start long
 jobs inside tmux if available:
 
 ```bash
-tmux new -s serra184
+tmux new -s serra185
 ```
 
-Detach with Ctrl-b then d; reconnect using `tmux attach -t serra184`.
+Detach with Ctrl-b then d; reconnect using `tmux attach -t serra185`.
 No mid-chain checkpoint is available. The matched comparison can resume
 **completed model/origin jobs**; an interrupted fit restarts from the beginning.
 Changing the data, settings or package version requires a new comparison.
@@ -54,7 +54,7 @@ python -m research.seasonal.compare --plan
 ```
 
 The first command generates the monthly exploratory manuscript figures.
-`prepare` writes `results/serra_184_seasonal_data/`:
+`prepare` writes `results/serra_185_seasonal_data/`:
 
 - `seasonal_summaries.csv`: the six summaries, directly from the daily record;
   means weight every day equally, including different month lengths.
@@ -65,30 +65,49 @@ The first command generates the monthly exploratory manuscript figures.
 The two preflight directories contain resolved settings, sampling plans and
 `prior_calibration.csv`. These are declarations, not fitted results.
 
-### The new reference priors
+### The reference priors
 
-This release applies the COMPSTAT **marginal second-moment calibration** discussed
-in the appendix. It replaces the previous quarter anchors in the draft configs.
-The generic prior API and historical configurations remain available.
+The seasonal reference uses the four requested per-season hyperprior medians,
+with the corrected initial-slope scale. The monthly comparison retains its
+previous reference priors. The generic prior API and historical configurations
+remain available.
 
 | Quantity | Monthly hyperprior median | Seasonal hyperprior median |
 |---|---:|---:|
-| Level innovation absolute-coefficient median | 0.008343480538 | 0.014451332204 |
-| Slope innovation absolute-coefficient median | 0.00002085870135 | 0.00010883964876 |
-| Seasonal innovation absolute-coefficient median | 0.008343480538 | 0.008343480538 |
-| Initial-slope normal SD | 0.001546257845 | 0.004638773534 |
+| Level innovation absolute-coefficient median | 0.008343480538 | 0.01 |
+| Slope innovation absolute-coefficient median | 0.00002085870135 | 0.0001 |
+| Seasonal innovation absolute-coefficient median | 0.008343480538 | 0.01 |
+| Initial-slope conditional normal SD | 0.001546257845 | 0.003 |
 
 All four learned scales have lognormal hyperpriors with log SD `log(2)`.
-After integrating these hyperpriors, the 30-year SD contributions to location
-are 0.379473°C from level innovations, 0.196769°C from slope innovations, and
-0.154919°C from same-season changes. Initial-rate SD is 0.30°C/decade.
-These are component-specific prior RMS effects, **not 95% forecast limits**.
+After integrating these hyperpriors, the seasonal model has prior SDs over
+30 years of 0.263°C from level innovations, 0.181°C from slope innovations,
+and 0.186°C from a same-season contrast. The initial linear rate has prior SD
+0.194°C/decade, contributing 0.582°C of displacement over 30 years. The joint
+same-season location-change SD is about 0.689°C. These are marginal prior
+standard deviations, **not 95% forecast limits**.
 
-A decade is 120 monthly updates or 40 seasonal updates. Numerical priors cannot
-be copied across these grids. Matching these physical effects does not make
-the two models identical or assert that their full path priors agree at every
-horizon. The independent fallback matches the same marginal second moments
+A decade is 120 monthly updates or 40 seasonal updates. The unchanged monthly
+priors and updated seasonal priors need not imply the same physical changes.
+The independent fallback matches its corresponding marginal second moments
 using fixed normal priors; it has no learned common hyperparameter.
+
+### Run the ten-setting seasonal prior screen
+
+```bash
+python -m research.seasonal.grid --dry-run
+python -u -m research.seasonal.grid --only reference
+python -u -m research.seasonal.grid --jobs 10
+```
+
+See [research/seasonal/README.md](research/seasonal/README.md) for the exact
+two-chain settings, forecast cases, score and convergence reports. Start with
+one setting to measure runtime, then run the full grid with at most ten
+settings at once (20 chain processes). Use `--jobs 4` if memory is limited;
+the default without `--jobs` is one setting at a time. Each setting logs to
+`results/serra_185_seasonal_grid/logs/`. Completed settings are reused if
+the same command is restarted. Results live in
+`results/serra_185_seasonal_grid/` and should be treated as a pilot screen.
 
 ## 3. Run the two execution checks
 
@@ -229,7 +248,7 @@ It is distinct from changing the uncertainty about those scales.
 python -m research.seasonal.clusters
 ```
 
-In `results/serra_184_clustering/`, inspect raw top/bottom-three dates and ties,
+In `results/serra_185_clustering/`, inspect raw top/bottom-three dates and ties,
 `rank_proximity_summary.csv`, `cluster_counts.csv`, and the cluster files for
 runs of 1, 3 and 5 non-exceeding days. Thresholds are calendar-month 95th/5th
 percentiles from 1961–1990, saved in `thresholds.csv`. Clusters are formed before

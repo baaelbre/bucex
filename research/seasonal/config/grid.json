@@ -1,0 +1,31 @@
+{
+  "extends": "main.json",
+  "_comment": "Quick prior screen: 3x3 level/slope grid and one broader initial-slope control. Choose by paired held-out CRPS; rerun selected settings with four long chains.",
+  "mcmc": {
+    "chains": 2,
+    "chain_workers": 2,
+    "warmup": 300,
+    "draws": 300,
+    "progress_every": 100
+  },
+  "validation": {
+    "training_ends": ["2015-11", "2020-11"],
+    "horizon": 12,
+    "draws": 800,
+    "save_fits": false
+  },
+  "diagnostic_thresholds": {
+    "min_chains": 2,
+    "max_rhat": 1.05,
+    "min_ess": 100
+  },
+  "grid": {
+    "level_factors": [0.5, 1.0, 2.0],
+    "slope_factors": [0.5, 1.0, 2.0],
+    "extra_initial_slope_factor": 1.5
+  },
+  "save_fits": false,
+  "figures": false,
+  "trace_exports": false,
+  "output": "results/serra_185_seasonal_grid"
+}

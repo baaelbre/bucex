@@ -258,7 +258,7 @@ class MultiSeriesModel:
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "MultiSeriesModel":
         if value.get("shared"):
-            raise ValueError("Shared temporal components are outside the BUCEX 1.8.4 paper API.")
+            raise ValueError("Shared temporal components are outside the BUCEX 1.8.5 paper API.")
         return cls(
             channels=tuple(Channel.from_dict(item) for item in value["channels"]),
             name=value.get("name"),

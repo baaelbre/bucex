@@ -1,0 +1,6 @@
+{
+  "extends": "grid.json",
+  "mcmc": {"warmup": 3, "draws": 4, "progress_every": 1},
+  "validation": {"training_ends": ["2020-11"], "horizon": 2, "draws": 40},
+  "output": "results/serra_185_seasonal_grid_smoke"
+}

@@ -129,7 +129,7 @@ def _decode(value: Any, arrays: Mapping[str, np.ndarray]) -> Any:
             # Earlier archives included this optional field even for continuous
             # paper fits. It is no longer a constructor argument.
             if kwargs.pop("ssvs", None) is not None:
-                raise ValueError("Structural SSVS archives are outside the BUCEX 1.8.4 paper API.")
+                raise ValueError("Structural SSVS archives are outside the BUCEX 1.8.5 paper API.")
         if _PRIOR_CLASSES[tag].__name__ == "SharedShrinkage":
             # Old fits must retain the prior they were actually sampled under.
             kwargs.setdefault("initial_slope_sd", None)

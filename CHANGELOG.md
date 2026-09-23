@@ -1,3 +1,10 @@
+# 1.8.5 (2026-09-23)
+
+- Correct the seasonal reference initial-slope shared-scale median to 0.003 per season, giving a marginal prior SD of about 0.194°C per decade.
+- Set seasonal level, slope and seasonal innovation medians to 0.01, 0.0001 and 0.01 per seasonal update; leave monthly reference priors intact.
+- Add a resumable ten-setting seasonal level/slope prior screen with up to ten concurrent, isolated setting jobs, two-chain fits, held-out CRPS, per-response and joint scores, convergence reports and a source-data checksum.
+- Keep unassessed or poorly mixed pilot rankings provisional. No new climate conclusions are included.
+
 # 1.8.4 (2026-09-23)
 
 - Focus the paper API on continuous private marginal FS fits, optional shared prior-scale shrinkage, and optional residual copulas.

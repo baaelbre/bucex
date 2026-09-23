@@ -56,7 +56,7 @@ def run(config,output,*,r=3,run_lengths=(1,3,5),quantile=.95,reference=('1961','
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',default='research/seasonal/config/main.json')
-    parser.add_argument('--output',default='results/serra_184_clustering')
+    parser.add_argument('--output',default='results/serra_185_clustering')
     parser.add_argument('--r',type=int,default=3)
     parser.add_argument('--run-lengths',type=int,nargs='+',default=[1,3,5])
     args=parser.parse_args()

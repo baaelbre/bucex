@@ -26,7 +26,7 @@ class MarginalPriors:
             if not isinstance(prior, (FSGaussianPriors, FSGEVPriors)):
                 raise TypeError(f"{name}: supply Gaussian or GEV FS priors.")
             if prior.ssvs is not None:
-                raise ValueError(f"{name}: SSVS is outside the BUCEX 1.8.4 paper API; use a continuous prior.")
+                raise ValueError(f"{name}: SSVS is outside the BUCEX 1.8.5 paper API; use a continuous prior.")
         if self.shrinkage is not None:
             if not isinstance(self.shrinkage, SharedShrinkage):
                 raise TypeError("shrinkage must be SharedShrinkage(...) or None.")

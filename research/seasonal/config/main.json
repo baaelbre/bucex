@@ -1,6 +1,6 @@
 {
   "extends": "../../monthly/config/main.json",
-  "_comment": "Separate seasonal-block alternative; r=1 extrema, full daily-weighted seasonal means; retained through JJA 2026.",
+  "_comment": "Seasonal-block reference: four transitions/year, r=1 extrema, daily-weighted means, seasonal copula; retained through JJA 2026. Shrinkage scales are per seasonal transition.",
   "data": {
     "frequency": "seasonal",
     "daily_source": "data/Uccle_31_08_26.csv",
@@ -19,11 +19,11 @@
   "priors": {
     "innovation": "normal",
     "innovation_median": {
-      "level": 0.014451332204168785,
-      "trend": 0.00010883964876422239,
-      "season": 0.008343480538225555
+      "level": 0.01,
+      "trend": 0.0001,
+      "season": 0.01
     },
-    "initial_slope_sd": 0.0046387735335118195,
+    "initial_slope_sd": 0.003,
     "xi_prior": "normal",
     "xi_sd": 0.3,
     "xi_bounds": [
@@ -64,7 +64,12 @@
     ]
   },
   "forecast_months": null,
-  "output": "results/serra_184_seasonal",
+  "copula": {
+    "structure": "seasons",
+    "eta": 1.0,
+    "prior_sd": 0.25
+  },
+  "output": "results/serra_185_seasonal",
   "validation": {
     "training_ends": [
       "2015-11",

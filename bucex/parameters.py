@@ -71,7 +71,7 @@ def resolve_parameters(observation, components, parameters):
             from .observation.scale import LogScale
             observation = replace(observation, scale=LogScale())
         elif isinstance(scale, Latent):
-            raise ValueError("Scale evolution is outside the BUCEX 1.8.4 paper API; use Constant() or SeasonalScale().")
+            raise ValueError("Scale evolution is outside the BUCEX 1.8.5 paper API; use Constant() or SeasonalScale().")
         else:
             raise TypeError("sigma must be Constant() or Latent(...).")
     if "xi" in parameters and not isinstance(parameters["xi"], Constant):

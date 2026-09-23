@@ -61,7 +61,7 @@ def resolve_structural_priors(
     expected = FSGaussianPriors if family == "gaussian" else FSGEVPriors
     if isinstance(priors, expected):
         if priors.ssvs is not None:
-            raise ValueError("SSVS is outside the BUCEX 1.8.4 paper API; use a continuous prior.")
+            raise ValueError("SSVS is outside the BUCEX 1.8.5 paper API; use a continuous prior.")
         return priors
     if not isinstance(priors, (str, type(None))):
         raise TypeError(

@@ -9,7 +9,7 @@ from research.monthly.preflight import inspect
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',default='research/seasonal/config/main.json')
-    parser.add_argument('--output',type=Path,default=Path('results/serra_184_seasonal_plan'))
+    parser.add_argument('--output',type=Path,default=Path('results/serra_185_seasonal_plan'))
     args=parser.parse_args()
     result=inspect(bx.load_config(args.config))
     args.output.mkdir(parents=True,exist_ok=True)

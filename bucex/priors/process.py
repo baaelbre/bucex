@@ -428,7 +428,7 @@ def resolve_priors(compiled: CompiledModel, priors: Priors | str | None) -> Prio
     expected = set(compiled.noise_names)
     supplied = set(resolved.process)
     if any(isinstance(prior, SpikeSlabSD) for prior in resolved.process.values()):
-        raise ValueError("Spike-and-slab priors are outside the BUCEX 1.8.4 paper API.")
+        raise ValueError("Spike-and-slab priors are outside the BUCEX 1.8.5 paper API.")
     if supplied != expected:
         missing = sorted(expected - supplied)
         extra = sorted(supplied - expected)

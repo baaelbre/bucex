@@ -64,9 +64,12 @@ COMPSTAT scales. The monthly innovation anchors are 0.008343480538,
 SDs are 0.379473, 0.196769 and 0.154919°C, and initial-rate SD is 0.30°C/decade.
 These replace the 1.8.2 exploratory quarter anchors in the draft workflow.
 
-The seasonal workflow calibrates the same physical effects at H=120 and
-40 updates per decade. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
-[START_HERE](../START_HERE.md) for the values and exact commands. Hyperprior-width
+The 1.8.5 seasonal reference uses separately declared per-season medians:
+level 0.01, slope 0.0001, seasonal 0.01 and initial slope 0.003. At H=120
+and 40 updates per decade, their integrated 30-year SDs are 0.263, 0.181
+and 0.186°C, with initial-rate SD 0.194°C/decade and initial-slope
+displacement 0.582°C. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
+[START_HERE](../START_HERE.md) for details. Hyperprior-width
 sensitivity uses `match_marginal_moments=true` to keep these effects fixed while
 changing log SD. Physical-effect sensitivity separately scales the anchors.
 This is a declared modelling assumption, not independent validation of a prior

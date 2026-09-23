@@ -1,4 +1,4 @@
-"""Independent calendar, density, physical-prior and clustering checks for 1.8.4."""
+"""Independent calendar, density, physical-prior and clustering checks for 1.8.5."""
 from dataclasses import replace
 from pathlib import Path
 import numpy as np
@@ -133,19 +133,20 @@ def test_gaussian_seasonal_density_and_score_are_for_weighted_mean():
     assert cal.end.iloc[0]==pd.Timestamp('2024-05-31')
 
 
-def test_physical_priors_match_over_30_years_and_width_sensitivity():
-    rows=[]
-    for path in ['research/monthly/config/main.json','research/seasonal/config/main.json']:
-        c=bx.load_config(ROOT/path)
-        data=pd.DataFrame({n:np.zeros(5) for n in c['data']['series']})
-        _,p=joint_model(data,c)
-        rows.append(pd.DataFrame(p.shrinkage.calibration(period=c['model']['period'],**c['prior_calibration'])))
-        v=configured_variant(c,dict(shared_shrinkage={**c['priors']['shared_shrinkage'],'log_sd':np.log(3.)},match_marginal_moments=True))
-        _,vp=joint_model(data,v)
-        widened=pd.DataFrame(vp.shrinkage.calibration(period=c['model']['period'],**c['prior_calibration']))
-        np.testing.assert_allclose(rows[-1].displacement_sd_marginal,widened.displacement_sd_marginal)
-    np.testing.assert_allclose(rows[0].displacement_sd_marginal,rows[1].displacement_sd_marginal)
-    assert rows[0].initial_rate_sd_marginal.iloc[-1]==pytest.approx(.3)
+def test_seasonal_reference_priors_have_declared_physical_scale():
+    c=bx.load_config(ROOT/'research/seasonal/config/main.json')
+    data=pd.DataFrame({n:np.zeros(5) for n in c['data']['series']})
+    model,p=joint_model(data,c)
+    assert model.copula.structure=='seasons'
+    assert c['priors']['innovation_median']==dict(level=.01,trend=.0001,season=.01)
+    assert c['priors']['initial_slope_sd']==.003
+    calibration=pd.DataFrame(p.shrinkage.calibration(period=4,**c['prior_calibration']))
+    assert calibration.loc[calibration.component.eq('initial_slope'),'initial_rate_sd_marginal'].iloc[0]==pytest.approx(.194,rel=.01)
+    v=configured_variant(c,dict(shared_shrinkage={**c['priors']['shared_shrinkage'],
+                        'log_sd':np.log(3.)},match_marginal_moments=True))
+    _,vp=joint_model(data,v)
+    widened=pd.DataFrame(vp.shrinkage.calibration(period=4,**c['prior_calibration']))
+    np.testing.assert_allclose(calibration.displacement_sd_marginal,widened.displacement_sd_marginal)
 
 
 def test_rank_ties_and_run_definition_across_season_boundary():

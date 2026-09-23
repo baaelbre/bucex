@@ -4,5 +4,5 @@
     "warmup": 500,
     "draws": 500
   },
-  "output": "results/serra_184_seasonal_pilot"
+  "output": "results/serra_185_seasonal_pilot"
 }

@@ -13,7 +13,7 @@ def test_reference_windows_and_private_model_contract():
     seasonal = inspect(bx.load_config(ROOT / 'research/seasonal/config/main.json'))
     assert (monthly['start'], monthly['end'], monthly['n_blocks']) == ('1892-03-01', '2026-08-01', 1614)
     assert seasonal['n_blocks'] == 538 and seasonal['data_audit']['last_included_day'] == '2026-08-31'
-    assert monthly['version'] == seasonal['version'] == '1.8.4'
+    assert monthly['version'] == seasonal['version'] == '1.8.5'
     assert monthly['copula']['structure'] == seasonal['copula']['structure'] == 'seasons'
     assert all(item['model']['observation']['phi'] == 'stationary'
                for item in monthly['channels'] if item['family'] == 'gev')

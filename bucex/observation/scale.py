@@ -60,7 +60,7 @@ class LogScale:
 
     def __post_init__(self):
         if self.mode != "constant":
-            raise ValueError("BUCEX 1.8.4 supports LogScale(mode='constant') only.")
+            raise ValueError("BUCEX 1.8.5 supports LogScale(mode='constant') only.")
         if self.seasonal is not None and not isinstance(self.seasonal, SeasonalScale):
             raise TypeError("seasonal must be SeasonalScale(...) or None.")
         if any(not np.isfinite(v) or v <= 0 for v in (self.slope_sd, self.innovation_sd, self.time_unit)):

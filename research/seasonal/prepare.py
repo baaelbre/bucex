@@ -37,6 +37,6 @@ def prepare(config,output):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',default='research/seasonal/config/main.json')
-    parser.add_argument('--output',default='results/serra_184_seasonal_data')
+    parser.add_argument('--output',default='results/serra_185_seasonal_data')
     args=parser.parse_args()
     print(prepare(bx.load_config(args.config),args.output))

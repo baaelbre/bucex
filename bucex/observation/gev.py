@@ -43,7 +43,7 @@ class GEV:
         }
         mode = aliases.get(mode, mode)
         if mode != "stationary":
-            raise ValueError("BUCEX 1.8.4 supports stationary GEV phi only.")
+            raise ValueError("BUCEX 1.8.5 supports stationary GEV phi only.")
         object.__setattr__(self, "phi", mode)
         if self.scale is not None:
             if not isinstance(self.scale, (SeasonalScale, LogScale)):

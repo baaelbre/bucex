@@ -29,7 +29,7 @@
     "draws": 500
   },
   "save_fits": false,
-  "output": "results/serra_184_seasonal_adequacy",
+  "output": "results/serra_185_seasonal_adequacy",
   "validation": {
     "training_ends": [
       "2015-11",

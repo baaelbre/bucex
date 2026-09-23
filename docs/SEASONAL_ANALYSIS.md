@@ -1,6 +1,6 @@
 # Seasonal blocks, comparable prediction, and future r-largest models
 
-## Scope of 1.8.4
+## Scope of 1.8.5
 
 The release provides complete seasonal r=1 models for all six summaries, joint
 hierarchical shrinkage, seasonal-scale effects, four shrunk copula matrices,
@@ -57,27 +57,31 @@ Every series retains its own latent seasonality and its own four scale effects.
 The shared seasonal hyperparameter regulates *how much location seasonality can
 change*; it is neither a shared seasonal pattern nor a shared observation scale.
 
-## Physical prior equivalence
+## Physical prior interpretation
 
 At H updates, the innovation-to-level gains are sqrt(H) and
 sqrt(H(H-1)(2H-1)/6). The dummy-season gain is computed from its actual transition
 matrix. At 30 years the monthly H=360 and seasonal H=120 dummy-season gains both
-equal sqrt(60). Use the same physical effects with `SharedShrinkage.from_effects`:
+equal sqrt(60). The 1.8.5 seasonal reference declares the following medians
+per seasonal update:
 
 ```python
-shared = bx.SharedShrinkage.from_effects(
-    horizon=120, period=4, slope_time_unit=40,
-    level_displacement_sd=.02 * 360**.5,
-    slope_displacement_sd=.00005 * (360*359*719/6)**.5,
-    seasonal_displacement_sd=.02 * 60**.5,
-    initial_slope_sd=.30, calibration='marginal',
+import math
+
+shared = bx.SharedShrinkage(
+    medians={'level': .01, 'slope': .0001, 'seasonal': .01},
+    initial_slope_sd=.003, log_sd=math.log(2),
 )
+print(shared.calibration(horizon=120, period=4,
+                         slope_time_unit=40, unit='degC'))
 ```
 
-These values reproduce the declared COMPSTAT second moments after integrating
-lognormal hyperpriors. They are not estimated from Uccle and not universal
-climate constants. They match component-wise RMS effects at one horizon;
-they do not derive a quarterly model by exact marginalization of a monthly one.
+These medians imply integrated 30-year SDs of approximately 0.263°C for
+level innovations, 0.181°C for integrated slope innovations, 0.186°C for
+same-season change and 0.582°C from the initial slope. The corresponding
+initial-rate SD is 0.194°C/decade. They are not estimated from Uccle and not
+universal climate constants; the seasonal model is not an exact marginalization
+of the monthly one.
 Slope plots use 40 seasonal rather than 120 monthly updates per decade.
 Initial-pattern priors remain explicit dummy-coordinate priors, as in the
 monthly model; they are not twelve/four exchangeable month/season effects.
