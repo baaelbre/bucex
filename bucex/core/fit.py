@@ -1247,17 +1247,8 @@ class FitResult(SharedResultMethods):
             prefix = f"sd.channel.{channel}."
         else:
             model, prefix = self.model,"sd."
-        factors = {"level":np.sqrt(horizon),
-                   "slope":np.sqrt(horizon*(horizon-1)*(2*horizon-1)/6.)}
-        if model.period is not None:
-            from ..inference.fit.fs_utils import seasonal_rotation_matrix
-            rotation = seasonal_rotation_matrix(model.period-1)
-            impulse = np.eye(model.period-1)[:,0]
-            variance = 0.
-            for _ in range(horizon):
-                variance += impulse[0]**2
-                impulse = rotation @ impulse
-            factors["seasonal"] = np.sqrt(variance)
+        from ..priors.calibration import innovation_response_gains
+        factors = innovation_response_gains(horizon, period=model.period)
         result = {}
         for process,factor in factors.items():
             values = (self.parameter(prefix+process,combine_chains=combine_chains)

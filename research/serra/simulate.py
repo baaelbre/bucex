@@ -16,7 +16,7 @@ def main():
     directory = new_run(config["output"], "shape_recovery")
     bx.save_config(config, directory / "config.json")
     truth_config = config["simulation"]
-    model = bx.Model(bx.GEV(xi_bounds=tuple(config["priors"]["xi_bounds"])),
+    model = bx.Model(bx.GEV(xi_bounds=config["priors"].get("xi_bounds")),
         (bx.LocalLinearTrend(), bx.DummySeasonal(period=config["model"]["period"])))
     metrics, status = [], []
     for replicate in range(truth_config["replicates"]):

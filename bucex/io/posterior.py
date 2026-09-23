@@ -26,9 +26,9 @@ from ..priors import marginal as marginal_priors
 
 
 FORMAT = "bucex-fit"
-SCHEMA_VERSION = "2.12.0"
+SCHEMA_VERSION = "2.13.0"
 SUPPORTED_SCHEMA_VERSIONS = {
-    "1.2", "2.0", "2.1", "2.3", "2.4", "2.4.1", "2.5.0", "2.6.0", "2.6.1", "2.6.2", "2.7.0", "2.8.0", "2.9.0", "2.10.0", "2.11.0", "2.12.0"
+    "1.2", "2.0", "2.1", "2.3", "2.4", "2.4.1", "2.5.0", "2.6.0", "2.6.1", "2.6.2", "2.7.0", "2.8.0", "2.9.0", "2.10.0", "2.11.0", "2.12.0", "2.13.0"
 }
 
 
@@ -128,6 +128,9 @@ def _decode(value: Any, arrays: Mapping[str, np.ndarray]) -> Any:
             key: _decode(item, arrays)
             for key, item in value.get("fields", {}).items()
         }
+        if _PRIOR_CLASSES[tag].__name__ == "SharedShrinkage":
+            # Old fits must retain the prior they were actually sampled under.
+            kwargs.setdefault("initial_slope_sd", None)
         return _PRIOR_CLASSES[tag](**kwargs)
     return {key: _decode(item, arrays) for key, item in value.items()}
 

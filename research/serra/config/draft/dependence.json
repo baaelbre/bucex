@@ -1,0 +1,27 @@
+{
+  "extends": "main.json",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "constant_copula",
+      "copula": {
+        "structure": "constant"
+      }
+    },
+    {
+      "name": "independence",
+      "analysis": "joint"
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "save_fits": false,
+  "output": "results/serra_182_dependence"
+}

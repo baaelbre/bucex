@@ -16,7 +16,7 @@ CONFIG=Path(__file__).resolve().parents[1]/'research/serra/config/hierarchy'
 
 def test_seasonal_hyperprior_maps_to_season_coefficient_only():
     prior=bx.fs_priors('gaussian',period=12)
-    spec=bx.SharedShrinkage({'season':.02})
+    spec=bx.SharedShrinkage({'season':.02}, initial_slope_sd=None)
     conditional=spec.conditional_prior(prior,{'seasonal':.007})
     assert conditional.s_season.sd==pytest.approx(.007/NORMAL_ABSOLUTE_MEDIAN)
     assert conditional.s_level==prior.s_level and conditional.s_trend==prior.s_trend
@@ -29,7 +29,7 @@ def test_seasonal_hyperprior_maps_to_season_coefficient_only():
     assert np.corrcoef(samples['channels']['a']['sd.seasonal'],samples['channels']['b']['sd.seasonal'])[0,1]>.2
 
 
-@pytest.mark.parametrize('name,n_fits', [('pilot',4),('seasonality',4),('dependence',2),('adequacy',3),('reviewer_sensitivity',12),('confirm',2)])
+@pytest.mark.parametrize('name,n_fits', [('pilot',4),('seasonality',4),('dependence',2),('adequacy',3),('reviewer_sensitivity',15),('confirm',2)])
 def test_documented_experiments_resolve_through_2026(name,n_fits):
     plan=study_plan(bx.load_config(CONFIG/(name+'.json')))
     assert plan['fitted_end']=='2026-08-01' and plan['n_months']==1616
@@ -68,7 +68,7 @@ def test_static_seasonal_check_retains_initial_pattern_without_a_seasonal_hyperp
     case=configured_variant(config,variant)
     model,prior=joint_model(data,case)
     fit=bx.fit(data,model,priors=prior,**fit_options(case,family=model.family))
-    assert set(fit.metadata['shared_shrinkage_members'])=={'level','slope'}
+    assert set(fit.metadata['shared_shrinkage_members'])=={'level','slope','initial_slope'}
     assert 'shrinkage.shared.seasonal' not in fit.parameter_draws
     for channel in model.channel_names:
         assert 'sd.channel.'+channel+'.seasonal' not in fit.parameter_draws

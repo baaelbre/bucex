@@ -168,6 +168,9 @@ class FSGEVKernel:
         )
 
     def _xi_prior(self, xi: float) -> float:
+        lower, upper = self.model.obs.xi_bounds
+        if not lower <= xi <= upper or abs(xi) > self.priors.xi_max_abs:
+            return -np.inf
         prior = self.priors.xi
         if isinstance(prior, UniformPrior):
             return 0.0 if prior.lower <= xi <= prior.upper else -np.inf

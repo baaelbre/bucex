@@ -244,6 +244,12 @@ class Forecast:
         target: str = "observations",
         phase: int | None = None,
     ):
+        """Empirical draw summaries; ``mean`` is the finite sample average.
+
+        In particular, a finite GEV Monte Carlo average does not establish a
+        finite theoretical predictive mean under unrestricted shape support.
+        Quantiles and event probabilities do not require finite moments.
+        """
         if not 0.0 < float(level) < 1.0:
             raise ValueError("level must lie in (0, 1).")
         alpha = 1.0 - float(level)

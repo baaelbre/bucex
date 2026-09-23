@@ -1,6 +1,7 @@
 """Innovation, observation, shape, and cross-series priors."""
 from .fs import fs_priors, triple_gamma_median
 from .calibration import (
+    innovation_response_gains,
     calibrate_structural_scales,
     half_student_t_scale_for_median,
     structural_scale_implications,
@@ -67,6 +68,7 @@ from .structural import (
 )
 
 __all__ = [
+    "innovation_response_gains",
     "fs_priors", "triple_gamma_median",
     "MarginalPriors", "SharedShrinkage",
     "Priors",

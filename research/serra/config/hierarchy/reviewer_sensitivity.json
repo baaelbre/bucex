@@ -70,10 +70,36 @@
         ],
         "log_sd": 1.0986122886681098
       }
+    },
+    {
+      "name": "xi_bounded_half",
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "name": "xi_bounded_one",
+      "xi_bounds": [
+        -1.0,
+        1.0
+      ]
+    },
+    {
+      "name": "fixed_initial_slope",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope",
+          "seasonal"
+        ],
+        "log_sd": 0.6931471805599453,
+        "pool_initial_slope": false
+      }
     }
   ],
   "assessment": {
     "baseline": "reference"
   },
-  "output": "results/serra_181_reviewer_sensitivity"
+  "output": "results/serra_182_reviewer_sensitivity"
 }

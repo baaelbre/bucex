@@ -1,0 +1,27 @@
+{
+  "extends": "main.json",
+  "_comment": "Execution check only; not evidence for the model.",
+  "data": {
+    "start": "2023-01-01"
+  },
+  "mcmc": {
+    "warmup": 3,
+    "draws": 4,
+    "progress_every": 1
+  },
+  "contrasts": {
+    "reference": [
+      "2023-01",
+      "2023-12"
+    ],
+    "comparison": [
+      "2025-01",
+      "2025-12"
+    ]
+  },
+  "forecast_draws": 30,
+  "predictive_check_draws": 12,
+  "prior_draws": 500,
+  "forecast_horizon": 12,
+  "output": "results/serra_182_smoke"
+}

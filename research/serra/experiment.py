@@ -60,8 +60,7 @@ def _save_case(fit, prior, directory, config, *, threshold, event_index=-1):
     if config.get("save_fits", True):
         fit.save(directory / "fit.bucex")
     bx.save_config(config, directory / "config.json")
-    (directory / "declared_priors.json").write_text(json.dumps(asdict(prior),
-        default=lambda value: value.tolist(), indent=2) + "\n")
+    bx.save_config(asdict(prior), directory / "declared_priors.json")
     diagnostic = fit.diagnostics()
     bx.save_config(dict(bucex_version=bx.__version__, model=fit.model.to_dict(),
         inference=fit.plan.to_dict(), warnings=diagnostic["warnings"],

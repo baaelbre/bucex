@@ -1,0 +1,5 @@
+{
+  "extends": "main.json",
+  "analysis": "joint",
+  "output": "results/serra_182_draft_independence"
+}

@@ -8,16 +8,16 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ...priors.shrinkage import COMPONENT_FIELDS, NORMAL_ABSOLUTE_MEDIAN
+from ...priors.shrinkage import COEFFICIENT_FIELDS, NORMAL_ABSOLUTE_MEDIAN
 from .fs_utils import _active_scale_names, _slice_sample_real
 
 
-def shared_scale_log_target(u, coefficients, *, anchor, log_sd):
+def shared_scale_log_target(u, coefficients, *, anchor, log_sd, scale_conversion=NORMAL_ABSOLUTE_MEDIAN):
     """Log density w.r.t. du, including the coefficient-scale normalization."""
     if not np.isfinite(u):
         return -np.inf
     coefficients = np.asarray(coefficients, dtype=float)
-    square = float(np.sum((coefficients * NORMAL_ABSOLUTE_MEDIAN / anchor)**2))
+    square = float(np.sum((coefficients * scale_conversion / anchor)**2))
     with np.errstate(over="ignore", invalid="ignore"):
         penalty = 0. if square == 0. else square * np.exp(-2*u)
         value = -.5*(u/log_sd)**2 - coefficients.size*u - .5*penalty
@@ -33,13 +33,15 @@ class SharedShrinkageState:
     @classmethod
     def initialize(cls, specification, states, rng, initial=None):
         members = {}
-        for component in specification.medians:
-            legacy = COMPONENT_FIELDS[component].removeprefix("s_")
-            members[component] = [state for state in states if legacy in _active_scale_names(state.layout)]
+        for component in specification.anchors:
+            legacy = COEFFICIENT_FIELDS[component].removeprefix("s_")
+            members[component] = [state for state in states if
+                (state.layout.has_beta if component == "initial_slope"
+                 else legacy in _active_scale_names(state.layout))]
             if len(members[component]) < 2:
-                raise ValueError(f"SharedShrinkage {component} needs at least two channels with that active innovation.")
+                raise ValueError(f"SharedShrinkage {component} needs at least two channels with that active coefficient; disable pooling for absent components.")
         multipliers = {}
-        for component, anchor in specification.medians.items():
+        for component, anchor in specification.anchors.items():
             value = (initial or {}).get(f"shrinkage.shared.{component}")
             if value is None:
                 multipliers[component] = float(rng.normal(0., specification.log_sd))
@@ -52,14 +54,15 @@ class SharedShrinkageState:
     @property
     def medians(self):
         return {c: float(anchor*np.exp(self.log_multipliers[c]))
-                for c, anchor in self.specification.medians.items()}
+                for c, anchor in self.specification.anchors.items()}
 
     def update(self, rng):
         metrics = {}
-        for component, anchor in self.specification.medians.items():
-            coefficients = [s.params_state[COMPONENT_FIELDS[component]] for s in self.members[component]]
+        for component, anchor in self.specification.anchors.items():
+            coefficients = [s.params_state[COEFFICIENT_FIELDS[component]] for s in self.members[component]]
             target = lambda u: shared_scale_log_target(u, coefficients, anchor=anchor,
-                                                       log_sd=self.specification.log_sd)
+                log_sd=self.specification.log_sd,
+                scale_conversion=1. if component == "initial_slope" else NORMAL_ABSOLUTE_MEDIAN)
             self.log_multipliers[component], evaluations = _slice_sample_real(
                 self.log_multipliers[component], target, rng, width=.5)
             metrics[f"shared_shrinkage_slice_evaluations.{component}"] = evaluations

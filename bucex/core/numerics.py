@@ -181,12 +181,25 @@ def singular_normal_logpdf(
 
 
 def bounded_to_real(value: float, lower: float, upper: float) -> float:
+    """Real coordinate for finite, one-sided, or unrestricted support."""
+    if np.isneginf(lower) and np.isposinf(upper):
+        return float(value)
+    if np.isposinf(upper):
+        return float(np.log(float(value)-float(lower)))
+    if np.isneginf(lower):
+        return float(np.log(float(upper)-float(value)))
     probability = (float(value) - float(lower)) / (float(upper) - float(lower))
     probability = np.clip(probability, 1e-12, 1.0 - 1e-12)
     return float(np.log(probability) - np.log1p(-probability))
 
 
 def real_to_bounded(value: float, lower: float, upper: float) -> float:
+    if np.isneginf(lower) and np.isposinf(upper):
+        return float(value)
+    if np.isposinf(upper):
+        return float(lower+np.exp(value))
+    if np.isneginf(lower):
+        return float(upper-np.exp(value))
     if value >= 0.0:
         probability = 1.0 / (1.0 + np.exp(-value))
     else:
@@ -196,6 +209,10 @@ def real_to_bounded(value: float, lower: float, upper: float) -> float:
 
 
 def bounded_log_jacobian(value: float, lower: float, upper: float) -> float:
+    if np.isneginf(lower) and np.isposinf(upper):
+        return 0.
+    if np.isinf(lower) or np.isinf(upper):
+        return float(value)
     if value >= 0.0:
         log_p = -np.log1p(np.exp(-value))
         log_one_minus_p = -value - np.log1p(np.exp(-value))

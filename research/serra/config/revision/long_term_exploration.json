@@ -1,0 +1,34 @@
+{
+  "data": {
+    "series": ["TXm", "TXx", "TXn", "TNm", "TNx", "TNn"],
+    "start": "1892-01-01",
+    "end": null
+  },
+  "series_order": ["TXm", "TXx", "TXn", "TNm", "TNx", "TNn"],
+  "reference": ["1892-01", "1921-12"],
+  "bandwidth_years": 10,
+  "figures": {
+    "formats": ["png", "pdf"],
+    "style": "manuscript",
+    "dpi": 200,
+    "panel_figsize": [10.6, 6.4],
+    "overlay_figsize": [8.4, 4.2],
+    "colors": {
+      "TXm": "#24658a",
+      "TXx": "#24658a",
+      "TXn": "#24658a",
+      "TNm": "#a44839",
+      "TNx": "#a44839",
+      "TNn": "#a44839"
+    },
+    "linestyles": {
+      "TXm": "-",
+      "TXx": "--",
+      "TXn": ":",
+      "TNm": "-",
+      "TNx": "--",
+      "TNn": ":"
+    }
+  },
+  "output": "results/serra_exploration"
+}

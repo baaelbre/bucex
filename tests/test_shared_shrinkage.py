@@ -53,7 +53,7 @@ def test_hyperconditional_matches_normal_density_and_quadrature():
 def test_shared_prior_integrates_hyperparameters_and_keeps_conditional_normal():
     prior=bx.fs_priors('gaussian',period=4)
     spec=bx.SharedShrinkage({'level':.01,'trend':.0001})
-    conditional=spec.conditional_prior(prior,{'level':.005,'slope':.00002})
+    conditional=spec.conditional_prior(prior,{'level':.005,'slope':.00002,'initial_slope':.0025})
     assert conditional.s_level.sd == pytest.approx(.005/NORMAL_ABSOLUTE_MEDIAN)
     assert conditional.s_trend.sd == pytest.approx(.00002/NORMAL_ABSOLUTE_MEDIAN)
     assert conditional.s_season == prior.s_season
@@ -73,7 +73,7 @@ def test_shared_prior_integrates_hyperparameters_and_keeps_conditional_normal():
                                           ({'trend':1.,'slope':2.},.5),({'level':np.inf},.5)])
 def test_invalid_shared_specification_is_rejected(anchors,width):
     with pytest.raises(ValueError):
-        bx.SharedShrinkage(anchors,log_sd=width)
+        bx.SharedShrinkage(anchors,log_sd=width,initial_slope_sd=None)
 
 
 def test_conflicting_shrinkage_and_noncentered_mean_are_rejected():
@@ -106,7 +106,7 @@ def test_parallel_mixed_copula_restart_and_chain_diagnostics(tmp_path):
     options['mcmc']=replace(options['mcmc'],chain_workers=1)
     serial=bx.fit(data,model,**options)
     np.testing.assert_array_equal(parallel.state_draws,serial.state_draws)
-    for component in ['level','slope','seasonal']:
+    for component in ['level','slope','seasonal','initial_slope']:
         key='shrinkage.shared.'+component
         np.testing.assert_array_equal(parallel.parameter_draws[key],serial.parameter_draws[key])
         assert np.all(parallel.parameter_draws[key]>0)
@@ -127,7 +127,7 @@ def test_parallel_mixed_copula_restart_and_chain_diagnostics(tmp_path):
     assert np.all(np.isfinite(future.joint_log_score(data.to_numpy()[-4:])))
     directory=bx.save_shared_shrinkage_report(parallel,tmp_path/'report',figures=False)
     assert (directory/'shared_shrinkage_traces.csv.gz').exists()
-    assert set(pd.read_csv(directory/'shared_shrinkage.csv').component)=={'level','slope','seasonal'}
+    assert set(pd.read_csv(directory/'shared_shrinkage.csv').component)=={'level','slope','seasonal','initial_slope'}
     for name in parallel.channel_names:
         comparison=bx.compare_innovation_priors(parallel,channel=name,size=500,seed=114)
         prior_season=bx.draw_marginal_prior(priors,500,seed=114)['channels'][name]['sd.seasonal']

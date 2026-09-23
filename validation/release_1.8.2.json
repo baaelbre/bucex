@@ -1,0 +1,109 @@
+{
+  "version": "1.8.2",
+  "verified_on": "2026-09-23",
+  "source_tests": {
+    "passed": 389,
+    "failed": 0,
+    "errors": 0,
+    "warnings": 1,
+    "seconds": 360.84,
+    "warning": "Bundled daily data retain two reported TN > TX pairs; quality reports preserve these observations transparently.",
+    "junit": "pytest-1.8.2-source.xml"
+  },
+  "wheel": {
+    "fresh_install_import": true,
+    "version_verified": true,
+    "python_source_files_byte_identical": 117,
+    "mixed_two_channel_fit": true,
+    "four_shared_scales": true,
+    "monthly_observation_scales": true,
+    "unrestricted_shapes": true,
+    "archive_round_trip": true,
+    "finite_forecast_execution": true
+  },
+  "workflows": {
+    "six_channel_parallel_smoke": {
+      "passed": true,
+      "chains": 4,
+      "workers": 4,
+      "warmup": 3,
+      "draws": 4,
+      "record_start": "2023-01",
+      "record_end": "2026-08",
+      "report_files": 361,
+      "note": "Initial smoke used seasonal-copula prior_sd=0.35; final predictive execution smoke used final prior_sd=0.25."
+    },
+    "saved_fit_reporting": {
+      "passed": true,
+      "strict_json": true,
+      "shape_support_report": true,
+      "extra_TXx_39p7_risk": true
+    },
+    "exploratory_figures_1_2": {
+      "passed": true,
+      "data_end": "2026-08"
+    },
+    "manuscript_panels": {
+      "passed": true,
+      "panels": 10,
+      "note": "No complete forecast calendar year in the 12-month smoke window: annual panel has an explicit placeholder."
+    },
+    "two_origin_predictive_execution_smoke": {
+      "passed": true,
+      "series": 6,
+      "chains": 4,
+      "workers": 4,
+      "training_start": "2020-01",
+      "training_ends": [
+        "2022-12",
+        "2023-12"
+      ],
+      "horizon": 12,
+      "warmup": 1,
+      "draws": 2,
+      "forecast_draws": 20,
+      "held_out_pit_rows": 144,
+      "copula_prior_sd": 0.25,
+      "four_shared_scales_per_fold": true,
+      "fold_archives_saved": true,
+      "diagnostics": "needs_review, as expected for execution-only chain lengths"
+    },
+    "start_here_shell_blocks": {
+      "bash_syntax_passed": 12
+    },
+    "draft_configuration_plans": {
+      "passed": true,
+      "record_start": "1892-01",
+      "record_end": "2026-08",
+      "months": 1616,
+      "appendix_cases": {
+        "anchors": 2,
+        "adequacy": 3,
+        "dependence": 3,
+        "sensitivity": 15
+      }
+    },
+    "figure_visual_checks": [
+      "initial slope prior/posterior",
+      "four shared regularization scales"
+    ]
+  },
+  "regression_coverage": [
+    "COMPSTAT level and slope effects and exact dummy-seasonal impulse responses",
+    "Anchor and hyperprior-marginal physical calibration",
+    "Four exact log-scale shared-hyperparameter conditional densities",
+    "Active initial-slope membership, prior draws, signed minimum-series comparisons",
+    "Old-archive compatibility without retroactive pooling",
+    "GEV fits beyond previous finite shape bounds",
+    "Unrestricted and one-sided proposal coordinates and Jacobians",
+    "General disturbance-backend shape draws actually move",
+    "Independence copula conditionals skip redundant score derivatives",
+    "Empty forecast panels and strict-mode behavior"
+  ],
+  "limitations": [
+    "Execution smoke outputs are not scientific posterior results.",
+    "The final research MCMC fits, convergence assessment, historical forecast assessment and sensitivity experiments remain for the user to run.",
+    "Unrestricted normal shape support can imply nonfinite observation moments; predictive probabilities and quantiles remain the primary summaries.",
+    "No mid-chain checkpoint/resume is implemented."
+  ]
+}

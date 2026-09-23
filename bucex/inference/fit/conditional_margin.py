@@ -26,6 +26,8 @@ class ConditionalMargin:
         marginal = np.asarray(self.observation.logpdf(y, eta, params))
         if not np.all(np.isfinite(marginal)):
             return np.full(np.shape(marginal), -np.inf)
+        if np.all(self.mean == 0.) and np.all(self.variance == 1.):
+            return marginal
         try:
             z = self.scores(y, eta, params)
             correction = (-.5 * np.log(self.variance)
@@ -36,9 +38,13 @@ class ConditionalMargin:
             return np.full(np.shape(marginal), -np.inf)
 
     def derivatives(self, y, eta, params):
-        z = self.scores(y, eta, params)
         gradient = self.observation.grad_eta(y, eta, params)
         hessian = self.observation.hess_eta(y, eta, params)
+        if np.all(self.mean == 0.) and np.all(self.variance == 1.):
+            # The exact copula correction is zero. Avoid 0*overflow when
+            # transformed-score derivatives are ill-conditioned in a tail.
+            return gradient, hessian
+        z = self.scores(y, eta, params)
         if self.name == "gaussian":
             first = -1. / np.asarray(params["sigma"])
             second = np.zeros_like(z)

@@ -13,6 +13,10 @@ from ..plotting.traces import traces_from_frame
 from ..plotting.style import PUBLICATION_COLORS
 
 
+class UnavailablePanelData(ValueError):
+    """An otherwise valid export has no cases in the requested panel window."""
+
+
 def _color(name, colors, index=0):
     return colors.get(name, PUBLICATION_COLORS[index % len(PUBLICATION_COLORS)])
 
@@ -35,7 +39,7 @@ def _band(ax, data, color, *, x="time", center="median", multiplier=1., label=No
     if not required <= set(data):
         raise ValueError(f"Band table requires {sorted(required)}.")
     if data.empty:
-        raise ValueError("Requested panel has no observations.")
+        raise UnavailablePanelData("Requested panel has no observations (for example, no complete forecast year).")
     low, high = data.lower.to_numpy(), data.upper.to_numpy()
     if np.any(low > high):
         raise ValueError("Invalid interval: lower exceeds upper.")

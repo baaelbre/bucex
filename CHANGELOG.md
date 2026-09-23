@@ -1,3 +1,10 @@
+# 1.8.2 (2026-09-23)
+
+- Shared initial-slope regularization with exact conditional updates and archive compatibility.
+- Physical horizon calibration, conditional versus marginal SD accounting, and initial-slope reports.
+- Unrestricted normal shape defaults with explicit optional bounds and enforced GEV support.
+- Draft-first SERRA commands, seasonal-copula candidate, saved fits and separate appendix comparisons.
+
 # Changelog
 
 ## 1.8.1 — 2026-09-22

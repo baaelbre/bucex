@@ -43,8 +43,8 @@
     "xi_prior": "normal",
     "xi_sd": 0.3,
     "xi_bounds": [
-      -0.5,
-      0.5
+      null,
+      null
     ],
     "tg_spike_shape": 0.5,
     "tg_tail_shape": 0.5

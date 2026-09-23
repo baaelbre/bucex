@@ -15,7 +15,8 @@
         "slope",
         "seasonal"
       ],
-      "log_sd": 0.6931471805599453
+      "log_sd": 0.6931471805599453,
+      "pool_initial_slope": true
     }
   },
   "mcmc": {
@@ -69,5 +70,5 @@
   "forecast_draws": 1000,
   "predictive_check_draws": 100,
   "figures": true,
-  "output": "results/serra_181_hierarchy"
+  "output": "results/serra_182_hierarchy"
 }

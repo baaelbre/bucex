@@ -1,3 +1,5 @@
+> For 1.8.2 use [START_HERE](../START_HERE.md) and [physical prior calibration](PRIOR_CALIBRATION.md). The earlier protocol below records previous workflows; its bounded-shape and three-scale assumptions are not the new draft defaults.
+
 # Package architecture
 
 Scientific declarations, inference and results have distinct responsibilities.

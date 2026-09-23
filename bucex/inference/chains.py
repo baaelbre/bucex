@@ -178,8 +178,7 @@ def independent_chains(*, integer_seeds=False):
                                 pending.cancel()
                             raise RuntimeError(
                                 f"MCMC chain {index + 1}/{mcmc.chains} failed; no partial fit returned. "
-                                "Run scripts under an if __name__ == '__main__' guard when using "
-                                f"chain_workers > 1. Original error: {error}") from error
+                                f"Original error: {error}") from error
                         if mcmc.progress:
                             print(f"BUCEX: chain {index + 1}/{mcmc.chains} completed", flush=True)
                 result = _merge(results, mcmc)

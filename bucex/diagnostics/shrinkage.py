@@ -28,7 +28,10 @@ def draw_marginal_prior(priors, size=2000, *, seed=None):
     for name, prior in priors.channels.items():
         samples = draw_structural_prior(prior, size, seed=int(rng.integers(0, 2**32)))
         for component, median in shared.items():
-            samples[f"sd.{component}"] = np.abs(rng.normal(size=size)) * median / NORMAL_ABSOLUTE_MEDIAN
+            if component == "initial_slope":
+                samples["initial.slope"] = rng.normal(size=size) * median
+            else:
+                samples[f"sd.{component}"] = np.abs(rng.normal(size=size)) * median / NORMAL_ABSOLUTE_MEDIAN
         channels[name] = samples
     return {"channels": channels, "shared": shared}
 
@@ -42,13 +45,14 @@ def compare_shared_shrinkage(fit, *, level=.95):
         raise ValueError("This fit has no shared innovation-scale hierarchy.")
     quantiles = np.array([(1-level)/2, .5, (1+level)/2])
     rows = []
-    for component, anchor in spec.medians.items():
+    for component, anchor in spec.anchors.items():
         values = fit.parameter(f"shrinkage.shared.{component}", combine_chains=False)
         for distribution in ("prior", "posterior"):
             interval = (anchor*np.exp(spec.log_sd*ndtri(quantiles)) if distribution == "prior"
                         else np.quantile(values, quantiles))
             rows.append(dict(component=component, distribution=distribution,
-                scale="population_median", anchor=anchor, log_sd=spec.log_sd,
+                scale="normal_SD" if component == "initial_slope" else "population_median",
+                anchor=anchor, log_sd=spec.log_sd,
                 lower=interval[0], median=interval[1], upper=interval[2], credible_interval=level,
                 rhat=rhat(values) if distribution == "posterior" else np.nan,
                 ess_bulk=ess_bulk(values) if distribution == "posterior" else np.nan,
@@ -57,4 +61,34 @@ def compare_shared_shrinkage(fit, *, level=.95):
     return pd.DataFrame(rows)
 
 
-__all__ = ["draw_marginal_prior", "compare_shared_shrinkage"]
+def compare_initial_slope_priors(fit, *, size=20000, seed=None, rate_multiplier=120., level=.95):
+    """Signed initial slopes on the original response scale, against full priors.
+
+    ``rate_multiplier`` converts per-update slopes (120 for monthly to per
+    decade). A shared prior scale is integrated, never replaced by its posterior.
+    """
+    if not isinstance(fit.priors, MarginalPriors):
+        raise TypeError("Supply a joint fit with MarginalPriors.")
+    if not 0 < level < 1 or not np.isfinite(rate_multiplier) or rate_multiplier <= 0:
+        raise ValueError("Invalid interval level or rate_multiplier.")
+    samples = draw_marginal_prior(fit.priors, size, seed=seed)["channels"]
+    rows = []
+    for name in fit.channel_names:
+        key = f"initial.channel.{name}.slope"
+        if key not in fit.parameter_draws:
+            continue
+        sign = fit.model.channel(name).transform_sign
+        posterior = fit.parameter(key, combine_chains=False)*sign*rate_multiplier
+        for distribution, values in [("prior", samples[name]["initial.slope"]*sign*rate_multiplier),
+                                     ("posterior", posterior)]:
+            lo, mid, hi = np.quantile(values, [(1-level)/2, .5, (1+level)/2])
+            rows.append(dict(channel=name, component="initial_slope", distribution=distribution,
+                scale="signed_rate", rate_multiplier=rate_multiplier, lower=lo, median=mid,
+                upper=hi, credible_interval=level,
+                rhat=rhat(posterior) if distribution == "posterior" else np.nan,
+                ess_bulk=ess_bulk(posterior) if distribution == "posterior" else np.nan,
+                ess_tail=ess_tail(posterior) if distribution == "posterior" else np.nan))
+    return pd.DataFrame(rows)
+
+
+__all__ = ["draw_marginal_prior", "compare_shared_shrinkage", "compare_initial_slope_priors"]

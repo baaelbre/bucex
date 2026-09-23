@@ -1,4 +1,4 @@
-# BUCEX 1.8.1
+# BUCEX 1.8.2
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
 Declare interpretable latent components for observation parameters, fit one
@@ -30,22 +30,23 @@ See [the API and statistical specification](docs/SHARED_SHRINKAGE.md) for a
 complete model example and the exact conditional update. Conditional priors are
 normal; integrating their common scale gives a normal scale mixture. The
 current SERRA specification pools level, slope and seasonal innovation
-shrinkage separately. Seasonal pooling regularizes changes in the seasonal
+shrinkage separately and also learns a common initial-slope prior SD. Set
+`initial_slope_sd=None` to disable that fourth hierarchy. Seasonal pooling regularizes changes in the seasonal
 pattern; it does not share the initial pattern or monthly observation scales.
 
 ## What to run for SERRA
 
-Start with [START_HERE](START_HERE.md). It gives commands for a four-process
-smoke check, the fixed-half/fixed-quarter/pooled-quarter/pooled-half comparison,
-matched historical predictions, two-versus-three-component pooling, seasonal
-anchor sensitivity, structural adequacy, reviewer checks and final fits. The
-record ends in August 2026; the forecast comparisons include the 2019 record.
-No full simulation study is part of this workflow. A smooth posterior is not
-by itself evidence of reliable acceleration or adequate predictive coverage.
+[START_HERE](START_HERE.md) now prioritizes a supervisor draft: exploration,
+physical prior calibration, one smoke check, one main fit and two historical
+forecast origins. Appendix sensitivities are separate. The main six-series
+candidate has repeating monthly scales, seasonal copula dependence, four
+shared regularization scales and unrestricted normal GEV shapes, through
+August 2026. Saved posterior archives support replotting without refitting.
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/smoke.json --stage all
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/pilot.json --stage plan
+python -m research.serra.preflight --config research/serra/config/draft/main.json
+python -m research.serra.copula --config research/serra/config/draft/smoke.json
+python -m research.serra.copula --config research/serra/config/draft/main.json
 ```
 
 Four independent chains use `MCMC(chains=4, chain_workers=4, ...)`. No cluster
@@ -93,7 +94,11 @@ fit.save("TXx.bucex")
 estimated, not numerically fixed. The original API remains valid:
 `Model(GEV(), [LocalLinearTrend(), DummySeasonal(12)])`. Existing saved fits
 remain readable. The default observation-scale prior from `fs_priors` is
-IG(2,2) on variance; shape is N(0,.3²), truncated by the declared bounds.
+IG(2,2) on variance; shape defaults to unrestricted N(0,.3²). Finite
+`GEV(xi_bounds=...)` and `xi_max_abs` are opt-in support restrictions.
+GEV observation support is always enforced. See
+[physical prior calibration](docs/PRIOR_CALIBRATION.md) for horizon-based
+settings and the distinction between conditional and marginal prior SDs.
 Normal innovation priors are the default, with monthly SD prior medians
 (.01, .00005, .02) for level, slope and seasonality. The .01 is a prior
 median, not a fixed process SD or the normal coefficient prior SD.

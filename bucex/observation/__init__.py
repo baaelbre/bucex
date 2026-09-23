@@ -14,7 +14,7 @@ def observation_from_dict(value):
         return Gaussian(scale=scale)
     if family == "gev":
         return GEV(
-            tuple(value.get("xi_bounds", (-0.5, 0.5))),
+            value.get("xi_bounds"),
             phi=value.get("phi", "stationary"), scale=scale,
         )
     raise ValueError(f"Unknown observation family '{family}'.")

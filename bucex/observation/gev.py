@@ -20,14 +20,18 @@ class GEV:
     ``phi_t = log(sigma_t)``.  The stationary model remains the default.
     """
 
-    xi_bounds: tuple[float, float] = (-0.5, 0.5)
+    xi_bounds: tuple[float | None, float | None] | None = None
     phi: str = "stationary"
     scale: SeasonalScale | LogScale | StructuralScale | None = None
     name: str = field(default="gev", init=False)
     spec: ObsSpec = field(default=ObsSpec("gev"), init=False, repr=False)
 
     def __post_init__(self) -> None:
-        lo, hi = map(float, self.xi_bounds)
+        bounds = (None, None) if self.xi_bounds is None else self.xi_bounds
+        if len(bounds) != 2:
+            raise ValueError("GEV xi_bounds needs two endpoints, or None.")
+        lo = -np.inf if bounds[0] is None else float(bounds[0])
+        hi = np.inf if bounds[1] is None else float(bounds[1])
         if not lo < hi:
             raise ValueError("GEV xi_bounds must satisfy lower < upper.")
         object.__setattr__(self, "xi_bounds", (lo, hi))
@@ -219,7 +223,7 @@ class GEV:
     def to_dict(self) -> dict[str, Any]:
         return {
             "family": self.name,
-            "xi_bounds": list(self.xi_bounds),
+            "xi_bounds": [v if np.isfinite(v) else None for v in self.xi_bounds],
             "phi": self.phi,
             **({"scale": self.scale.to_dict()} if self.scale else {}),
         }

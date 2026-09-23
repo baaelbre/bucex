@@ -1,404 +1,184 @@
-# Start with BUCEX 1.8.1
+# BUCEX 1.8.2: first supervisor draft
 
-This is the complete command guide for the SERRA revision experiments. Run from
-the extracted `bucex-1.8.1` directory, beside `pyproject.toml`.
+Run from the extracted `bucex-1.8.2` directory beside `pyproject.toml`. Keep the
+old checkout and results; do not merge source trees.
 
-The current candidate model has six private FS location models and **three
-shared shrinkage hyperparameters: level, slope and seasonal innovations**.
-Every response retains its own three innovation SDs, initial seasonal pattern,
-latent paths, repeating monthly observation scales and, for GEV responses,
-constant-in-time shape. A Gaussian copula accounts for contemporaneous residual
-dependence. No SSVS or ASIS is used in these configurations.
+The draft model has six private FS structural locations, repeating monthly
+observation scales, constant shapes with unrestricted Normal(0, 0.3²) priors,
+and four shared regularization scales: level, slope and seasonal innovations,
+plus initial slopes. Every series still has its own initial slope and trajectory.
+The draft Gaussian copula uses four seasonal correlation matrices with shrunk
+departures from a common baseline. Monthly dispersion and seasonal dependence
+are separate model components. The record is January 1892–August 2026, 1,616
+months. Mixed inference uses Laplace–MH with an exact likelihood correction;
+the configurations use neither SSVS nor ASIS.
 
-The primary data span is January 1892–August 2026: 1,616 monthly blocks.
-All scientific settings are in JSON. The package handles model construction,
-inference, diagnostics, forecasts, risks, comparison tables and figure style.
-
-## 0. Install and verify the version
+## 1. Install and protect the session
 
 ```bash
-python -m pip install -e ".[plot]"
+python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-Expect `1.8.1` and the path of this checkout. On biobot, four chains use four
-local processes; no Slurm installation is needed. Numerical thread pools are
-limited within each chain. Candidates and forecast origins run sequentially.
-Avoid launching multiple large final fits simultaneously. Preflight reports
-state-array storage; workers, merging and diagnostics need additional RAM.
+Expect `1.8.2` and this checkout's path. Four chains use four local processes;
+Slurm is not needed. Numerical libraries use one thread per chain.
 
-Start new assessments for the three-hyperparameter model. Saved 1.8.0 fits
-remain readable but their declared two-component hierarchy is not changed by
-installing 1.8.1. New configurations write under `results/serra_181_*`.
+If tmux is installed, start it before long commands:
 
-## What to run, in order
+```bash
+tmux new -s serra182
+```
 
-| Stage | Purpose | Full-record fits / historical refits if both stages run |
-|---|---|---:|
-| Exploration | Observed-data Figures 1 and 2 | 0 / 0 |
-| Smoke | Execution check on a short record | 4 / 4 short fits |
-| Prior pilot | Fixed half/quarter versus three-component pooled half/quarter | 4 / 16 |
-| Seasonal hierarchy check | Two versus three pooled components; seasonal-anchor sensitivity | 4 / 16 |
-| Dependence check | R=I versus estimated Gaussian copula | 2 / 8 |
-| Structural adequacy | Monthly versus constant scales; fixed versus evolving location seasonality | 3 / 12 |
-| Targeted prior checks | Initial slope, shape, monthly dispersion, copula prior and hyperprior width | Select the subsets below |
-| Confirmation, if needed | Resolve Monte Carlo uncertainty between the pooled candidates | 2 / 8 |
-| Final fit and figures | Archive the selected posterior and produce manuscript results | 1 / 0 |
+Detach with Ctrl-b then d; reconnect with `tmux attach -t serra182`. This
+protects against SSH disconnection, not machine shutdown. Mid-chain checkpoint
+and resume is not implemented. Completed fits are saved before reports.
 
-These are focused comparisons, not a factorial search over every possible
-structure. Start with posterior sensitivity. Run the historical stage for the
-main prior comparison and dependence/adequacy questions; extend the remaining
-checks to forecasts when their posterior differences matter. Do not interpret
-an unstable short-chain estimate as a model difference. No simulation study is
-automatically run. Previously completed supplementary computation studies can
-still be used if their assumptions match the revised model.
+Without tmux, the following is an alternative to the foreground main command
+in step 4. Use one route, not both:
 
-The optional `--stage all` commands below execute both stages. Use either the
-combined command or the split-stage route for a given assessment, not both.
+```bash
+mkdir -p logs
+nohup python -u -m research.serra.copula --config research/serra/config/draft/main.json > logs/draft182.log 2>&1 < /dev/null &
+tail -f logs/draft182.log
+```
 
-## 1. Generate exploratory Figures 1 and 2
+## 2. Exploration and physical prior calibration: no MCMC
 
 ```bash
 python -m research.serra.explore
+python -m research.serra.preflight --config research/serra/config/draft/main.json --output results/serra_182_plan
 ```
 
-No MCMC is needed. The script uses the general `explore_monthly` API and writes
-source/summary CSVs and manuscript-style PNG/PDF figures below
-`results/serra_exploration/`. The current record ends in August 2026. Settings
-are in `research/serra/config/revision/exploration.json`.
+Observed-data Figures 1–2 go below `results/serra_exploration/`. Preflight saves
+`preflight.json` and `prior_calibration.csv`. Check the dates, six responses,
+four workers, monthly scales, seasonal copula and four shared scales. Draft
+state arrays alone require about 4 GB; workers, reporting and archives need more.
 
-## 2. Check the complete workflow once
+The default quarter anchors retain the preceding sensitivity specification:
+
+| Component | Conditional effect SD at the hyperprior median | SD integrating hyperprior uncertainty |
+|---|---:|---:|
+| Level innovations: 30-year displacement | 0.070°C | 0.114°C |
+| Slope innovations: 30-year level displacement | 0.073°C | 0.118°C |
+| Seasonal innovations: same-month change after 30 years | 0.230°C | 0.371°C |
+| Initial slope: warming rate | 0.300°C/decade | 0.485°C/decade |
+
+These are SDs, not 95% limits or maximum permitted changes. Innovation effects
+condition on the current state and exclude weather variability; initial slope
+uncertainty is additional. The COMPSTAT formulas use signed-normal coefficient
+SDs, whereas the configuration uses medians of physical innovation SDs. See
+[PRIOR_CALIBRATION](docs/PRIOR_CALIBRATION.md) for the conversion and API.
+Physical units explain these strong assumptions; they do not establish optimality.
+
+## 3. One execution check
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/smoke.json --stage all
+python -m research.serra.copula --config research/serra/config/draft/smoke.json
 ```
 
-This uses all six responses from January 2023 to August 2026, four workers,
-three warmup iterations and four retained draws per chain. It checks the four
-candidates, three-component shared-scale reports, a held-out year and comparison
-figures. **The smoke outputs are execution checks only.** `needs_review` is
-expected in convergence files. Do not choose hyperparameters from this run.
+Six responses, 2023–August 2026, four parallel chains, 3 warmup + 4 retained
+iterations. This checks fitting, archiving, reports and forecasts. Convergence
+warnings are expected. These outputs must not be used as paper results.
 
-For a short, readable example of the general model-building API:
+## 4. One main fit for the draft
 
 ```bash
-python -m docs.examples.shared_shrinkage
+python -u -m research.serra.copula --config research/serra/config/draft/main.json
 ```
 
-That example also uses tiny chains and is not a scientific experiment.
+This is one joint fit, with 1,000 warmup + 1,000 retained draws per chain. Save
+the printed report path under `results/serra_182_draft/`. It contains `fit.bucex`,
+CSV/JSON results, PNGs and compressed traces. Each run gets a fresh directory.
+The posterior archive can be large; retain it locally and share compact reports.
 
-## 3. Compare fixed and learned innovation shrinkage
+This is a preliminary budget. Check mixing before interpreting credible bands.
+If chains disagree, label the output preliminary and avoid precise interval or
+acceleration claims. Shared shrinkage does not guarantee improved convergence.
 
-Inspect the resolved dates, complete prior declarations, model settings and fit
-counts before running MCMC:
-
-```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/pilot.json --stage plan
-```
-
-| Candidate | Level median/anchor | Slope median/anchor | Seasonal median/anchor | Learned shared components |
-|---|---:|---:|---:|---|
-| `fixed_half` | .005 | .000025 | .020 | None |
-| `fixed_quarter` | .0025 | .0000125 | .020 | None |
-| `pooled_quarter` | .0025 | .0000125 | .020 | Level, slope, seasonal |
-| `pooled_half` | .005 | .000025 | .020 | Level, slope, seasonal |
-
-The fixed rows specify medians of physical innovation SDs. Pooled rows specify
-anchors of lognormal hyperpriors on the shared conditional prior medians;
-`log_sd = log(2)`. About 95% of each shared median's hyperprior lies between
-0.257 and 3.89 times its anchor. The marginal innovation prior integrates over
-this uncertainty. It is not a normal prior with its scale fixed at the anchor.
-
-Initial-slope prior SD is .0025 per month. Initial seasonal coefficient SD is
-2.25. Monthly log-scale contrast prior SD is .3. GEV shape has a Normal(0,.3²)
-prior truncated to [-.5,.5]. These nuisance priors are matched across candidates.
-Small seasonal innovations mean a slowly changing seasonal pattern; they do
-not remove its initial amplitude or the repeating monthly observation scales.
-
-Run the posterior comparison first:
-
-```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/pilot.json --stage sensitivity
-```
-
-The pilot uses four chains, four workers and **500 warmup + 500 retained draws
-per chain**. Keep the printed `Assessment directory` and inspect its
-`comparison/` reports. If the chains have substantial disagreement or little
-movement, resolve that before interpreting predictive differences.
-
-Continue with the same saved settings and historical forecasts:
-
-```bash
-python -m research.serra.prior_assessment --run "PILOT_ASSESSMENT_DIRECTORY" --stage predictive
-```
-
-Replace `PILOT_ASSESSMENT_DIRECTORY` with the actual printed path. To run both
-stages from a fresh directory in one command instead:
-
-```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/pilot.json --stage all
-```
-
-The four training cutoffs are December 2000, 2010, 2015 and 2020. They predict
-2001–2005, 2011–2015, **2016–2020 including the 2019 record**, and 2021–2025.
-Each fit learns all three shared hyperparameters from its own training data.
-These are five-year forecasts from each origin, not rolling one-step forecasts.
-Comparisons across four origins are descriptive; no precise ranking interval
-is obtained by treating all months as independent replicates.
-
-## 4. Check the seasonal hierarchy and its anchor
-
-```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/seasonality.json --stage plan
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/seasonality.json --stage sensitivity
-```
-
-The four candidates keep quarter level/slope anchors and the same likelihood:
-
-| Candidate | Seasonal treatment |
+| Read first | Question for the draft |
 |---|---|
-| `pooled_quarter` | Learned common seasonal median, anchor .020 |
-| `pooled_level_slope` | Original two-component hierarchy; fixed seasonal prior median .020 |
-| `season_anchor_half` | Three-component hierarchy; seasonal anchor .010 |
-| `season_anchor_double` | Three-component hierarchy; seasonal anchor .040 |
+| `run.json`, `config.json`, `declared_priors.json` | Intended record and model? |
+| `convergence.json`, `mcmc.csv`, parameter and scale traces | Chain agreement and enough effective samples? |
+| `shared_shrinkage.csv`, `shared_shrinkage_effects.csv`, `shared_shrinkage_traces.png` | Learned regularization and its physical interpretation? |
+| `initial_slope_prior_posterior.csv` / `.png` | Learning about the six signed initial slopes? |
+| `*_level.png`, `*_slope_C_per_decade.png`, `period_contrasts.csv` | Changes in typical conditions and warming rates? |
+| Seasonal and observation-scale plots | Location seasonality versus observation dispersion? |
+| PIT/QQ, `residual_serial.csv`, `residual_dependence_by_month.csv` | Remaining marginal, serial or seasonal failures? |
+| `*_risk.png`, `TXx_risk_39p7.png`, `*_period_risks.csv` | Changing threshold risk, including the 2019 record? |
+| Forecast reports, `compound_heat_forecast.csv` | Future and simultaneous-event risks? |
+| `ordering_in_sample.csv`, `ordering_forecast.csv` | Physically impossible replicated orderings? |
 
-This separates seasonal pooling from the choice of its anchor. It does not
-change initial seasonality or monthly observation dispersion. Start with
-`shared_shrinkage.csv`/`.png`, then individual seasonal innovation comparisons,
-monthly location changes, level/slope contrasts and risk. The unpooled seasonal
-hyperparameter is marked `not pooled` in comparison figures.
+Initial-slope comparisons use the original temperature scale, including minima.
+The hyperparameter is a positive prior SD. `shared_shrinkage_effects.csv`
+describes regularization strength, not realized temperature changes. In-sample
+PIT is descriptive, not forecast validation. Seasonal copulas do not guarantee
+removal of winter skewness or temporal residual memory.
 
-If the differences affect the scientific conclusions or calibration, continue:
+## 5. Manuscript figures without refitting
 
-```bash
-python -m research.serra.prior_assessment --run "SEASONAL_ASSESSMENT_DIRECTORY" --stage predictive
-```
-
-Or, from a fresh run, execute both stages directly:
-
-```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/seasonality.json --stage all
-```
-
-Do not interpret convergence problems as evidence against seasonal pooling.
-Check the seasonal hyperparameter and six individual seasonal innovation traces.
-
-## 5. Assess what the copula contributes
+Replace the quoted path with step 4's printed report directory:
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/dependence.json --stage plan
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/dependence.json --stage all
+python -m research.serra.figures --reports "YOUR_DRAFT_REPORT_DIRECTORY" --formats png
 ```
 
-This compares fixed R=I with an estimated constant Gaussian copula. Both models
-learn the same three shared shrinkage hyperparameters. Thus the R=I model
-still has hierarchical dependence through its priors; it is not six separate
-posterior fits. Compare trajectories, paired cross-summary contrasts, compound
-risks and held-out joint log scores. Read residual dependence and ordering
-checks as well as the marginal scores.
-
-Season/month-dependent copulas remain available through `copula --structure`,
-but are not part of the minimal story. If constant dependence leaves a clear
-seasonal residual failure, assess that extension as a separately declared check.
-
-## 6. Check the two main structural assumptions for the supplement
+These fitted-model panels complement exploratory Figures 1–2. Recipes are in
+`research/serra/config/revision/figures.json`; missing exports are flagged.
+To re-report saved draws or change the forecast horizon:
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/adequacy.json --stage plan
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/adequacy.json --stage all
+python -m research.serra.report --fit "YOUR_DRAFT_REPORT_DIRECTORY/fit.bucex" --horizon 120 --format png --output results/serra_182_replots
 ```
 
-This compares the reference with one change at a time:
+You can now write the supervisor draft: introduction, data/exploration, model
+and computation, estimated evolution, translation to risk, then discussion.
+Label results preliminary and leave boxes for sensitivity and unresolved
+checks. Tracking evolving distributions and risk is the central contribution;
+an acceleration result is not a prerequisite.
 
-- A constant observation scale for each response, replacing its monthly scales.
-- Fixed location seasonality, retaining each response's initial seasonal cycle.
-
-The fixed-seasonality candidate explicitly omits the seasonal innovation
-hyperparameter because that innovation is fixed at zero. It retains the
-level/slope hierarchy and monthly observation scales. Check month-specific
-PIT/QQ, predictive coverage, residual serial correlation and scientific targets.
-These comparisons support the adequacy of a chosen structural framework; they
-are not a search over every combination of location and scale evolution.
-
-## 7. Run targeted prior checks for the revision
-
-The following subsets use `reviewer_sensitivity.json` and compare one prior
-choice at a time with `reference`. Each command creates a separate assessment
-and writes its resolved declarations. Begin with posterior sensitivity; extend
-only meaningful or ambiguous differences to forecasts. All use the pooled
-quarter reference with **three** shared hyperparameters.
-
-Initial slope, relevant to slow mixing and the slope decomposition:
+## 6. Two historical prediction checks alongside writing
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/reviewer_sensitivity.json --variants reference initial_slope_half initial_slope_double --stage sensitivity
+python -m research.serra.validate --config research/serra/config/draft/predictive.json
 ```
 
-GEV shape, including a uniform prior across [-.5,.5] and narrower/wider normal
-priors on that same support:
+Two refits: train through December 2015 and forecast 2016–2020 including 2019;
+train through December 2020 and forecast 2021–2025. Four chains, 500 warmup +
+500 retained draws per refit. Shared scales are learned from training data only.
+Fold fits are saved for reuse. These are fixed-origin five-year forecasts,
+not rolling one-step residuals.
+
+Under the printed directory's `joint/` folder, inspect `folds.csv`, `mcmc_*.csv`,
+`convergence_*.json`, `held_out_pit.csv`, `coverage_by_case.csv`, `scores.csv`,
+`joint_log_scores.csv` and predictions. Two blocks give limited evidence about
+rare tails; they cannot precisely establish 99% calibration.
+
+## Later: appendix and final runs
+
+[SUPPLEMENTARY_RUNS](docs/SUPPLEMENTARY_RUNS.md) gives matched commands for
+anchor/width sensitivity, initial-slope pooling, shape bounds, seasonal scales,
+location seasonality and dependence. No sensitivity grid runs in steps 2–6.
+
+Optional matched hierarchy with R=I:
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/reviewer_sensitivity.json --variants reference xi_normal_tighter xi_normal_wider xi_uniform --stage sensitivity
+python -m research.serra.run --config research/serra/config/draft/independence.json
 ```
 
-Monthly observation-scale contrast prior:
+Six genuinely separate fits with fixed priors and the unchanged univariate API:
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/reviewer_sensitivity.json --variants reference monthly_scale_prior_half monthly_scale_prior_double --stage sensitivity
+python -m research.serra.univariate --config research/serra/config/draft/independent.json
 ```
 
-Copula LKJ concentration (eta = 1, 2, 4):
+Add `--series TXm` to try one response. Separate fits cannot learn the shared
+scales from all six series. Once the model and diagnostics are satisfactory:
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/reviewer_sensitivity.json --variants reference lkj_2 lkj_4 --stage sensitivity
+python -m research.serra.copula --config research/serra/config/draft/final.json
 ```
 
-Shared-hyperprior width, if common medians or their scientific consequences
-remain sensitive: log-SD log(1.5), log(2) and log(3), with anchors held fixed:
-
-```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/reviewer_sensitivity.json --variants reference hyperprior_tighter hyperprior_wider --stage sensitivity
-```
-
-For any of those saved assessments, the forecast continuation is:
-
-```bash
-python -m research.serra.prior_assessment --run "THAT_ASSESSMENT_DIRECTORY" --stage predictive
-```
-
-These checks surround the declared pooled-quarter reference. If another common
-specification is adopted, copy its resolved `priors` settings from its saved
-`config.json` into the relevant supplementary/final configuration before new
-runs, then inspect `--stage plan`. Do not change the settings inside an existing
-assessment directory. All series must use the same declared common specification.
-
-## 8. Read the evidence before choosing the final specification
-
-Each assessment's `comparison/` directory contains:
-
-| Output | What it tells you |
-|---|---|
-| `convergence.csv`, `joint_mcmc.csv` | R-hat/ESS warnings for initial slopes, innovation SDs, monthly scales, shared medians and copula parameters |
-| `shared_shrinkage.csv`, `shared_shrinkage_updates.csv`, `shared_shrinkage.png` | Hyperprior/posterior learning and sensitivity for level, slope and seasonal regularization |
-| `prior_updates.csv`, `*_prior_posterior.png` | Individual innovation SDs versus unconditional priors that integrate the shared hyperparameters |
-| `scientific_targets.csv`, `joint_scientific_targets.csv` | Period warming/rate changes and paired cross-summary differences |
-| `*_level.png`, `*_slope.png`, `*_risk.png` | How smoothing affects scientific trajectories and risks |
-| `predictive_comparison.csv`, `scores_by_origin.csv` | Matched marginal forecast losses; positive improvement favors the candidate |
-| `joint_log_scores_comparison.csv`, `compound_heat_scores_comparison.csv` | Joint forecast and simultaneous hot-condition performance |
-| `coverage_by_month.csv`, `pit_by_month.csv`, `*_forecasts.png` | Seasonal predictive calibration and the actual held-out observations |
-| `event_counts.csv` | How many observed threshold events inform each marginal risk score |
-| `shared_shrinkage_forecasts.csv` | Training-only common-median posteriors at each forecast origin |
-
-Under `sensitivity/VARIANT/joint/` also inspect `shared_shrinkage_traces.png`,
-`shared_shrinkage_traces.csv.gz`, channel parameter/scale traces, PIT/QQ figures,
-`residual_serial.csv`, `residual_dependence.csv` and `ordering_*.csv`.
-A contemporaneous copula does not remove serial residual memory or guarantee
-minimum/mean/maximum ordering. Do not sort predictive samples to hide violations.
-
-Choose a defensible common specification based on adequate computation, stable
-scientific conclusions and acceptable predictive calibration. Posterior movement
-away from its prior or narrower intervals is not a target to maximize. Strong
-shrinkage is useful if those checks support it. If acceleration is sensitive,
-report that while retaining robust warming and risk findings.
-
-Pilot files do not include large posterior archives. They do include compact
-CSV/JSON files, PNGs and compressed traces. Keep these together when sharing
-results; the baseline declarations and forecast case dates are essential.
-
-## 9. Increase MCMC only where the comparison remains uncertain
-
-To confirm the two pooled level/slope anchors with seasonal pooling in both:
-
-```bash
-python -m research.serra.prior_assessment --config research/serra/config/hierarchy/confirm.json --stage all
-```
-
-This uses 1,000 warmup + 2,000 retained draws per chain. For another targeted
-comparison, copy its JSON, increase its `mcmc` budget and give it a new output
-root, then start a new assessment. Short-chain status is never silently waived.
-Completed stages are reused by `--run`; interrupted stages retain partial files
-and require a fresh run to avoid mixing incomplete outputs.
-
-## 10. Fit the selected model and save the full posterior
-
-If the checks support the pooled-quarter, three-component specification:
-
-```bash
-python -m research.serra.preflight --config research/serra/config/hierarchy/final.json
-python -m research.serra.copula --config research/serra/config/hierarchy/final.json
-```
-
-If the pooled-half specification is chosen instead:
-
-```bash
-python -m research.serra.preflight --config research/serra/config/hierarchy/final_half.json
-python -m research.serra.copula --config research/serra/config/hierarchy/final_half.json
-```
-
-Run the selected one, not both by default. These configurations request four
-chains, four workers, 2,000 warmup + 4,000 retained draws per chain, save the
-`.bucex` archive and produce full manuscript-style reports. The default ten-year
-forecast includes month-specific, annual and seasonal summaries/risk curves.
-Longer MCMC is still needed if effective sample sizes or Monte Carlo precision
-are inadequate. A `final.json` filename does not certify publication readiness.
-
-For a longer matched R=I fit, only if the pilot dependence comparison needs it:
-
-```bash
-python -m research.serra.copula --config research/serra/config/hierarchy/final.json --independence
-```
-
-Use `final_half.json` there if that is the chosen prior specification.
-
-## 11. Generate manuscript panels and re-report without fitting
-
-The final fit already creates component, diagnostic, forecast and risk figures.
-To assemble the manuscript panel recipes from its compact CSV report directory:
-
-```bash
-python -m research.serra.figures --reports "FINAL_REPORT_DIRECTORY" --formats png
-```
-
-Replace `FINAL_REPORT_DIRECTORY` with the directory printed by the final fit.
-For selected recipes only:
-
-```bash
-python -m research.serra.figures --reports "FINAL_REPORT_DIRECTORY" --panels monthly_scales annual_forecasts --formats png
-```
-
-Rebuild an assessment's comparison tables and figures from existing outputs:
-
-```bash
-python -m research.serra.prior_assessment --run "ANY_ASSESSMENT_DIRECTORY" --stage report
-```
-
-Exploratory Figures 1 and 2 come from step 1; `figures` handles fitted-model
-panels. Figures use the package's manuscript style. Choose PDF/SVG through
-`--formats` if needed.
-
-## 12. Fixed-prior fallback: six univariate analyses, then the copula
-
-If the hierarchy proves difficult to identify or compute, use the matched
-fixed-half normal priors with monthly observation scales:
-
-```bash
-python -m research.serra.univariate --config research/serra/config/hierarchy/independent.json
-python -m research.serra.copula --config research/serra/config/hierarchy/fixed_half.json
-```
-
-To inspect one independent response first:
-
-```bash
-python -m research.serra.univariate --config research/serra/config/hierarchy/independent.json --series TXm
-```
-
-The same `--series` option accepts TNm, TXx, TXn, TNx and TNn. The univariate API
-is unchanged. These fits have no cross-series shrinkage hyperparameters.
-
-The intended paper story remains tracking the evolving temperature distribution
-and environmental risk under slow climatic change and substantial weather
-variability. Three-component hierarchical shrinkage supplies a common form of
-regularization; the copula carries cross-summary dependence into inference and
-risk. Neither makes a particular acceleration result a prerequisite for the
-paper. Keep the focused adequacy/prior comparisons in the supplement where they
-support that story.
+This requests 2,000 warmup + 4,000 retained iterations per chain. The filename
+does not certify convergence, adequacy or publication readiness. Old `.bucex`
+archives keep their original priors when loaded; installing 1.8.2 does not
+retroactively add initial-slope pooling or remove their shape bounds.

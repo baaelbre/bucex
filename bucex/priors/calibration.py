@@ -142,3 +142,33 @@ __all__ = [
     "half_student_t_scale_for_median",
     "structural_scale_implications",
 ]
+
+
+def innovation_response_gains(horizon, *, period=12):
+    """Unit-innovation SD contributions after ``horizon`` state updates.
+
+    Uses level[t+1] = level[t] + slope[t] + level_noise[t+1].
+    Seasonal gain uses the actual sum-to-zero dummy-seasonal transition. At a
+    multiple of the period this is the SD of same-season change.
+    """
+    if int(horizon) != horizon or horizon < 1:
+        raise ValueError("horizon must be a positive integer.")
+    h = int(horizon)
+    gains = {"level": float(np.sqrt(h)),
+             "slope": float(np.sqrt(h*(h-1)*(2*h-1)/6.))}
+    if period is not None:
+        from ..components import DummySeasonal
+        if int(period) != period or period < 2:
+            raise ValueError("period must be an integer >=2 or None.")
+        transition, loading, _, _ = DummySeasonal(int(period)).system_matrices(0, {"q_season": 1.})
+        impulse = loading[:, 0]
+        variance = 0.
+        for _ in range(h):
+            variance += impulse[0]**2
+            impulse = transition @ impulse
+        gains["seasonal"] = float(np.sqrt(variance))
+    return gains
+
+
+
+__all__.append("innovation_response_gains")

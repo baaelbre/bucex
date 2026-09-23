@@ -1,0 +1,8 @@
+{
+  "extends": "main.json",
+  "analysis": "independent",
+  "priors": {
+    "shared_shrinkage": null
+  },
+  "output": "results/serra_182_draft_univariate"
+}

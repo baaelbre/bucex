@@ -32,7 +32,7 @@ def triple_gamma_median(spike_shape=.5, tail_shape=.5):
 
 def fs_priors(family, *, period=12, innovation="normal", innovation_median=None,
               initial_level=None, initial_slope=None, seasonal_initial_sd=2.25,
-              observation_variance=None, xi_prior=None, xi_max_abs=.5,
+              observation_variance=None, xi_prior=None, xi_max_abs=None,
               spike_shape=.5, tail_shape=.5):
     """Construct proper, median-matched normal/lasso/triple-gamma FS priors.
 
@@ -45,7 +45,9 @@ def fs_priors(family, *, period=12, innovation="normal", innovation_median=None,
     All three families have zero probability of an exactly zero innovation.
 
     Initial level defaults to N(0,20²), without reading/centering on the data.
-    Shape defaults to N(0,.3²), truncated by xi_max_abs AND GEV.xi_bounds.
+    Shape defaults to unrestricted N(0,.3²). Optional xi_max_abs and
+    GEV.xi_bounds intersect the prior support; the observation-dependent GEV
+    support is always enforced regardless of these optional prior bounds.
     For no seasonal component, period=None is accepted.
     """
     family = str(getattr(family, "name", family)).lower()

@@ -36,7 +36,8 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
                         xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],
                         fmt='s' if distribution=='prior' else 'o',color=colors[variant],alpha=alpha,
                         label=distribution if i==0 else None)
-            ax.set(yticks=range(len(names)),yticklabels=names,xlabel=f'shared {component} SD median')
+            ax.set(yticks=range(len(names)),yticklabels=names,
+                   xlabel='initial slope prior SD' if component == 'initial_slope' else f'shared {component} SD median')
             ax.ticklabel_format(axis='x',style='sci',scilimits=(-3,3),useMathText=True)
         axes[0,0].legend(loc='center right')
         save(fig,'shared','shrinkage')

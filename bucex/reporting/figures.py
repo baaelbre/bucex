@@ -8,7 +8,7 @@ import textwrap
 
 from ..__about__ import __version__
 from ..plotting.style import publication_style, save_figure
-from .panels import PANEL_BUILDERS
+from .panels import PANEL_BUILDERS, UnavailablePanelData
 
 
 def _placeholder(name, reason):
@@ -57,7 +57,7 @@ def save_publication_figures(reports, directory, *, recipes, colors=None,
             existing = set(plt.get_fignums())
             try:
                 figure, tables = PANEL_BUILDERS[spec["kind"]](reports, spec, names, colors)
-            except FileNotFoundError as exc:
+            except (FileNotFoundError, UnavailablePanelData) as exc:
                 for number in set(plt.get_fignums())-existing:
                     plt.close(number)
                 if strict:

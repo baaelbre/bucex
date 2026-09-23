@@ -1,6 +1,6 @@
 """Posterior, predictive and calibration diagnostics."""
 from .comparison import paired_block_comparison
-from .shrinkage import draw_marginal_prior, compare_shared_shrinkage
+from .shrinkage import draw_marginal_prior, compare_shared_shrinkage, compare_initial_slope_priors
 from .sensitivity import innovation_prior_diagnostics, compare_predictive_scores
 from .calibration import PITResult, empirical_coverage, pit_diagnostics
 from .calendar import pit_normal_scores, pit_by_month, coverage_by_month
@@ -31,7 +31,7 @@ from .scores import (
 )
 
 __all__ = [
-    "draw_marginal_prior", "compare_shared_shrinkage",
+    "draw_marginal_prior", "compare_shared_shrinkage", "compare_initial_slope_priors",
     "innovation_prior_diagnostics", "compare_predictive_scores",
     "pit_normal_scores", "pit_by_month", "coverage_by_month",
     "paired_block_comparison",

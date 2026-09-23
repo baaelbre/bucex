@@ -1,0 +1,31 @@
+{
+  "extends": "../hierarchy/final.json",
+  "_comment": "Preliminary supervisor draft: four shared regularization scales, seasonal copula, monthly observation dispersion; no automatic model selection.",
+  "copula": {
+    "structure": "seasons",
+    "eta": 1.0,
+    "prior_sd": 0.25
+  },
+  "mcmc": {
+    "warmup": 1000,
+    "draws": 1000,
+    "chains": 4,
+    "chain_workers": 4
+  },
+  "save_fits": true,
+  "forecast_draws": 2000,
+  "predictive_check_draws": 200,
+  "prior_predictive_draws": 0,
+  "prior_calibration": {
+    "horizon": 360,
+    "slope_time_unit": 120,
+    "unit": "degC"
+  },
+  "additional_risks": {
+    "TXx": [
+      39.7
+    ]
+  },
+  "variants": null,
+  "output": "results/serra_182_draft"
+}

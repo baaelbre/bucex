@@ -272,7 +272,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
             if not lower < upper:
                 raise ValueError(f"Empty fitted shape support for {state.name}.")
             if not lower <= state.params_obs["xi"] <= upper:
-                state.params_obs["xi"] = (lower+upper)/2
+                state.params_obs["xi"] = float(np.clip(
+                    getattr(prior.xi, "mean", 0.), lower+1e-8, upper-1e-8))
             residual = state.y-mu_from_ncp(state.z_path, state.params_state, state.layout)
             scale = max(state.params_obs["sigma"], float(np.max(-state.params_obs["xi"]*residual))/.8)
             state.params_obs.update(sigma=scale, sigma2=scale*scale)
@@ -391,10 +392,11 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                   "continuous_coefficient_update": "exact Gaussian draw / conditional-mode reference elliptical slice",
                   "coefficient_reference_initialization": "deterministic, independent of current coefficients",
                   "shared_temporal_state": False, "hierarchical_model_selection": False,
-                  "hierarchical_innovations": priors.shrinkage is not None,
+                  "hierarchical_innovations": bool(priors.shrinkage and priors.shrinkage.medians),
+                  "hierarchical_initial_slopes": bool(priors.shrinkage and priors.shrinkage.initial_slope_sd is not None),
                   "shared_shrinkage": None if priors.shrinkage is None else asdict(priors.shrinkage),
                   "shared_shrinkage_members": {} if shared is None else {c: [s.name for s in members] for c, members in shared.members.items()},
-                  "innovation_marginal_prior": "normal scale mixture" if priors.shrinkage else "declared channel priors",
+                  "innovation_marginal_prior": "normal scale mixture" if priors.shrinkage and priors.shrinkage.medians else "declared channel priors",
                   "joint_model": True, "joint_likelihood": True,
                   "conditional_channel_independence": model.copula is None,
                   "copula_feedback": model.copula is not None,

@@ -289,6 +289,32 @@ class CompiledModel:
             output[t] = mean + transition_loading @ disturbance
         return output
 
+    def support_feasible_path(self, y, path, params):
+        """Deterministic intercept shift for a GEV Laplace proposal start.
+
+        This mirrors the shared-model compiler's initialization policy. It
+        preserves transition support and only moves an uncertain initial
+        intercept. It never repairs a posterior draw or uses the current MCMC
+        trajectory to construct an independence proposal.
+        """
+        out = np.asarray(path, dtype=float).copy()
+        if self.family != 'gev' or abs(float(params['xi'])) < 1e-10:
+            return out
+        xi, sigma = float(params['xi']), float(params['sigma'])
+        values = np.asarray(y, dtype=float)
+        valid = np.isfinite(values)
+        bounds = values[valid]+sigma/xi-self.eta(out,params=params)[valid]
+        margin = max(1e-7, .01*sigma)
+        delta = (max(0., float(np.max(bounds))+margin) if xi < 0
+                 else min(0., float(np.min(bounds))-margin))
+        if delta == 0:
+            return out
+        block = self.component_slices.get('trend')
+        if block is None or block.start == block.stop or self.initial_cov[block.start,block.start] <= 0:
+            raise FloatingPointError('No uncertain intercept can initialize the GEV Laplace support.')
+        out[:,block.start] += delta
+        return out
+
     def with_data(self, y: Array, exog: Any = None) -> "CompiledModel":
         return compile_model(self.model, y, exog=exog)
 

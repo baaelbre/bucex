@@ -89,8 +89,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     if save_fit and config.get('save_fits', True):
         fit.save(directory/'fit.bucex')
     bx.save_config(config,directory/'config.json')
-    (directory/'declared_priors.json').write_text(json.dumps(asdict(fit.priors),
-        default=lambda x:x.tolist() if isinstance(x,np.ndarray) else x,indent=2)+'\n')
+    bx.save_config(asdict(fit.priors), directory/'declared_priors.json')
     diagnostic = fit.diagnostics()
     diagnostic['parameters'].to_csv(directory/'mcmc.csv')
     pd.DataFrame.from_dict(fit.static_summary(level),orient='index').to_csv(directory/'parameters.csv')
@@ -104,7 +103,11 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     pd.DataFrame(diagnostic['pit']).to_csv(directory/'in_sample_pit.csv',index=False)
     if getattr(fit.priors, 'shrinkage', None) is not None:
         bx.save_shared_shrinkage_report(fit, directory, level=level,
-            figures=config.get('figures', True), style=config.get('figure_style', 'manuscript'), dpi=dpi)
+            figures=config.get('figures', True), style=config.get('figure_style', 'manuscript'), dpi=dpi,
+            seed=config['seed'], horizon=config.get('prior_calibration', {}).get('horizon', 360),
+            response_unit='degC', rate_unit='°C per decade')
+        pd.DataFrame(fit.priors.shrinkage.calibration(period=config['model']['period'],
+            **config.get('prior_calibration', {}))).to_csv(directory/'prior_calibration.csv',index=False)
     targets = scientific_targets(fit, config)
     target_table = fit.contrast_diagnostics(targets, credible_interval=level)
     target_table['probability_positive'] = [float(np.mean(targets[key] > 0)) for key in target_table.index]
@@ -136,6 +139,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     forecast.summary(level=level).to_csv(directory/'forecast.csv',index=False)
     predictive = fit.posterior_predictive(draws=config.get('predictive_check_draws',200),seed=config['seed'])
     names = fit.channel_names if fit.is_multiseries_model else (None,)
+    shape_rows = []
     for name in names:
         label=name or fit.series_name or 'series'
         prior=fit.priors.channels[name] if isinstance(fit.priors,bx.MarginalPriors) else fit.priors
@@ -161,6 +165,20 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             fit.component_transition_summary(channel=name).to_csv(directory/(label+'_structure_mixing.csv'))
         if channel.family=='gev':
             band(fit.return_level_draws(100,channel=name),label+'_return_level_100_blocks')
+            lower, upper = channel.observation.xi_bounds
+            lower = max(lower, -prior.xi_max_abs, getattr(prior.xi, 'lower', -np.inf))
+            upper = min(upper, prior.xi_max_abs, getattr(prior.xi, 'upper', np.inf))
+            shape = fit.parameter('xi.'+name if name else 'xi')
+            shape_rows.append(dict(channel=label, shape_prior_lower=lower, shape_prior_upper=upper,
+                prior_allows_infinite_conditional_mean=upper>1,
+                prior_allows_infinite_conditional_variance=upper>.5,
+                retained_fraction_xi_ge_1=float(np.mean(shape>=1)),
+                retained_fraction_xi_ge_half=float(np.mean(shape>=.5)),
+                note='Retained fractions do not establish existence of full predictive moments; use probabilities and quantiles.'))
+        for extra_threshold in config.get('additional_risks', {}).get(label, []):
+            tag = str(extra_threshold).replace('-', 'minus').replace('.', 'p')
+            band(fit.exceedance_probability_draws(extra_threshold,channel=name,return_labels=False),
+                 label+'_risk_'+tag,ylabel=fit.event_label(extra_threshold,channel=name))
         threshold = (risks or {}).get(label, (risks or {}).get('series'))
         if threshold is not None:
             probability=fit.exceedance_probability_draws(threshold,channel=name,return_labels=False)
@@ -186,6 +204,8 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             style=config.get('figure_style','manuscript'),
             trace_exports=config.get('trace_exports',True),primary=config.get('figure_colors',{}).get(label))
 
+    if shape_rows:
+        pd.DataFrame(shape_rows).to_csv(directory/'shape_support.csv',index=False)
     if fit.is_multiseries_model:
         bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
             directory/'residual_dependence.csv',index=False)

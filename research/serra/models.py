@@ -17,13 +17,13 @@ def channel(name, data, config):
             raise ValueError('The historical Laplace benchmark requires a constant scale.')
         scale = None
     obs = (bx.Gaussian(scale=scale) if info['family'] == 'gaussian' else
-           bx.GEV(scale=scale, xi_bounds=tuple(config['priors']['xi_bounds'])))
+           bx.GEV(scale=scale, xi_bounds=config['priors'].get('xi_bounds')))
     components = (bx.LocalLinearTrend(level_mode=settings.get('level', 'dynamic'),
                     trend_mode=settings.get('trend', 'dynamic')),
                   bx.DummySeasonal(settings['period'], mode=settings.get('seasonal', 'dynamic')))
     # Both univariate and joint fits use the same named parameter declaration.
     if seasonal is None and scale is not None and scale.mode == 'constant':
-        obs = bx.Gaussian() if info['family'] == 'gaussian' else bx.GEV(xi_bounds=tuple(config['priors']['xi_bounds']))
+        obs = bx.Gaussian() if info['family'] == 'gaussian' else bx.GEV(xi_bounds=config['priors'].get('xi_bounds'))
         parameters = {'mu': bx.Latent(components), 'sigma': bx.Constant()}
     else:
         parameters = {'mu': bx.Latent(components)}
@@ -38,7 +38,8 @@ def marginal_prior(item, data, config):
     center = p.get('initial_level_mean', 0.)
     if isinstance(center, dict):
         center = center[item.name]
-    xi = (bx.UniformPrior(*p['xi_bounds']) if p.get('xi_prior', 'normal') == 'uniform'
+    bounds = bx.GEV(xi_bounds=p.get('xi_bounds')).xi_bounds
+    xi = (bx.UniformPrior(*bounds) if p.get('xi_prior', 'normal') == 'uniform'
           else bx.NormalPrior(p.get('xi_mean', 0.), p.get('xi_sd', .3)))
     return bx.fs_priors(item.family, period=config['model']['period'],
         innovation=p.get('innovation', 'normal'), innovation_median=p['innovation_median'],
@@ -46,7 +47,7 @@ def marginal_prior(item, data, config):
         initial_slope=bx.NormalPrior(0., p['initial_slope_sd']),
         seasonal_initial_sd=p['seasonal_initial_sd'],
         observation_variance=bx.InverseGammaPrior(*p['observation_variance']),
-        xi_prior=xi, xi_max_abs=max(abs(v) for v in p['xi_bounds']),
+        xi_prior=xi, xi_max_abs=max(abs(v) for v in bounds),
         spike_shape=p.get('tg_spike_shape', .5), tail_shape=p.get('tg_tail_shape', .5))
 
 
@@ -73,7 +74,9 @@ def joint_model(data, config):
         hierarchy = bx.SharedShrinkage(
             medians={c: config['priors']['innovation_median'][aliases[c]]
                      for c in settings.get('components', ['level', 'slope', 'seasonal'])},
-            log_sd=settings.get('log_sd', np.log(2.)))
+            log_sd=settings.get('log_sd', np.log(2.)),
+            initial_slope_sd=(config['priors']['initial_slope_sd']
+                              if settings.get('pool_initial_slope', True) else None))
     return model, bx.MarginalPriors(
         {c.name: marginal_prior(c, data, config) for c in channels}, shrinkage=hierarchy)
 

@@ -1,0 +1,24 @@
+{
+  "extends": "main.json",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "half_anchors",
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0
+      }
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "save_fits": false,
+  "output": "results/serra_182_anchor_sensitivity"
+}

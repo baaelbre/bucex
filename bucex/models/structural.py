@@ -192,7 +192,7 @@ def structural_model(
     *,
     trend: str = "local_linear",
     period: int | None = None,
-    xi_bounds: tuple[float, float] = (-0.5, 0.5),
+    xi_bounds: tuple[float | None, float | None] | None = None,
     phi: str = "stationary",
 ) -> Model:
     family_key = str(family).lower()

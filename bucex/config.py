@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import math
+import numpy as np
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -51,15 +53,27 @@ def _merge(base, overrides):
 
 
 def save_config(config: Mapping[str, Any], path: str | Path) -> Path:
-    """Write a JSON configuration deterministically and return its path."""
+    """Write portable JSON; nonfinite numeric endpoints/diagnostics use null."""
 
     resolved = Path(path).expanduser().resolve()
     resolved.parent.mkdir(parents=True, exist_ok=True)
     resolved.write_text(
-        json.dumps(dict(config), indent=2, sort_keys=True) + "\n",
+        json.dumps(_json_values(dict(config)), indent=2, sort_keys=True, allow_nan=False) + "\n",
         encoding="utf-8",
     )
     return resolved
+
+
+def _json_values(value):
+    if isinstance(value, Mapping):
+        return {key: _json_values(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, np.ndarray)):
+        return [_json_values(item) for item in value]
+    if isinstance(value, np.generic):
+        return _json_values(value.item())
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    return value
 
 
 def config_title(config: Mapping[str, Any], key: str | None = None) -> str | None:

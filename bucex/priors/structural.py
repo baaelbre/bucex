@@ -47,8 +47,8 @@ class UniformPrior:
     upper: float
 
     def __post_init__(self) -> None:
-        if not self.lower < self.upper:
-            raise ValueError("UniformPrior requires lower < upper.")
+        if not np.isfinite(self.lower) or not np.isfinite(self.upper) or not self.lower < self.upper:
+            raise ValueError("UniformPrior requires finite lower < upper.")
 
     def logpdf(self, value: float) -> float:
         if self.lower <= float(value) <= self.upper:
@@ -756,14 +756,15 @@ class FSGEVPriors:
     triple_gamma: Optional[TripleGammaPrior] = None
     pc: Optional[PCInnovationPrior] = None
     ssvs: Optional[SSVSPrior] = None
-    xi_max_abs: float = 0.5
+    xi_max_abs: float | None = None
 
     def __post_init__(self) -> None:
         if self.sigma2 is None and self.log_sigma is None:
             raise ValueError("Provide sigma2=InverseGammaPrior(...) or log_sigma=NormalPrior(...).")
         if not isinstance(self.phi, PhiPrior):
             raise TypeError("FSGEVPriors.phi must be a PhiPrior.")
-        if self.xi_max_abs <= 0.0:
+        object.__setattr__(self, "xi_max_abs", np.inf if self.xi_max_abs is None else float(self.xi_max_abs))
+        if np.isnan(self.xi_max_abs) or self.xi_max_abs <= 0.0:
             raise ValueError("FSGEVPriors.xi_max_abs must be > 0.")
         strategies = (
             int(self.lasso is not None)
@@ -920,7 +921,7 @@ def normal_gev_priors(
     k = period - 1
     return FSGEVPriors(
         sigma2=InverseGammaPrior(a=2.0, b=2.0),
-        xi=UniformPrior(-0.5, 0.5),
+        xi=NormalPrior(0.0, 0.3),
         alpha0=NormalPrior(alpha_mean, np.sqrt(10.0)),
         beta0=NormalPrior(beta_mean, beta_sd),
         gamma0_season=DiagonalNormalPrior(
@@ -1016,7 +1017,7 @@ def ssvs_gev_priors(
     seasonal_initial_sd: float = np.sqrt(5.0),
     sigma2_prior: Optional[InverseGammaPrior] = None,
     xi_prior: Optional[XiPrior] = None,
-    xi_max_abs: float = 0.5,
+    xi_max_abs: float | None = None,
     phi_prior: Optional[PhiPrior] = None,
     ssvs: Optional[SSVSPrior] = None,
     innovation_slab_sd: Optional[Mapping[str, float]] = None,
@@ -1045,7 +1046,7 @@ def ssvs_gev_priors(
             if sigma2_prior is None
             else sigma2_prior
         ),
-        xi=UniformPrior(-0.5, 0.5) if xi_prior is None else xi_prior,
+        xi=NormalPrior(0.0, 0.3) if xi_prior is None else xi_prior,
         alpha0=NormalPrior(alpha_mean, alpha_sd),
         beta0=NormalPrior(beta_mean, beta_sd),
         gamma0_season=DiagonalNormalPrior(
@@ -1117,7 +1118,7 @@ def regularized_gev_priors(
     )
     return FSGEVPriors(
         sigma2=InverseGammaPrior(a=2.0, b=2.0),
-        xi=UniformPrior(-0.5, 0.5),
+        xi=NormalPrior(0.0, 0.3),
         alpha0=NormalPrior(alpha_mean, np.sqrt(10.0)),
         beta0=NormalPrior(beta_mean, beta_sd),
         gamma0_season=DiagonalNormalPrior(
@@ -1193,7 +1194,7 @@ def regularized_horseshoe_gev_priors(
     )
     return FSGEVPriors(
         sigma2=InverseGammaPrior(a=2.0, b=2.0),
-        xi=UniformPrior(-0.5, 0.5),
+        xi=NormalPrior(0.0, 0.3),
         alpha0=NormalPrior(alpha_mean, np.sqrt(10.0)),
         beta0=NormalPrior(beta_mean, beta_sd),
         gamma0_season=DiagonalNormalPrior(
@@ -1286,7 +1287,7 @@ def triple_gamma_gev_priors(
     )
     return FSGEVPriors(
         sigma2=InverseGammaPrior(a=2.0, b=2.0),
-        xi=UniformPrior(-0.5, 0.5),
+        xi=NormalPrior(0.0, 0.3),
         alpha0=NormalPrior(alpha_mean, np.sqrt(10.0)),
         beta0=NormalPrior(beta_mean, beta_sd),
         gamma0_season=DiagonalNormalPrior(
@@ -1369,7 +1370,7 @@ def pc_gev_priors(
     )
     return FSGEVPriors(
         sigma2=InverseGammaPrior(a=2.0, b=2.0),
-        xi=UniformPrior(-0.5, 0.5),
+        xi=NormalPrior(0.0, 0.3),
         alpha0=NormalPrior(alpha_mean, np.sqrt(10.0)),
         beta0=NormalPrior(beta_mean, beta_sd),
         gamma0_season=DiagonalNormalPrior(

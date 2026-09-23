@@ -22,5 +22,5 @@
   },
   "forecast_draws": 4000,
   "predictive_check_draws": 400,
-  "output": "results/serra_181_hierarchy_confirm"
+  "output": "results/serra_182_hierarchy_confirm"
 }

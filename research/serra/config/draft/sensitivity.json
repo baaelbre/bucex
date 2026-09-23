@@ -1,0 +1,14 @@
+{
+  "extends": "../hierarchy/reviewer_sensitivity.json",
+  "copula": {
+    "structure": "seasons",
+    "eta": 1.0,
+    "prior_sd": 0.25
+  },
+  "output": "results/serra_182_draft_sensitivity",
+  "additional_risks": {
+    "TXx": [
+      39.7
+    ]
+  }
+}

@@ -51,7 +51,7 @@ def make_gev_model(
     components: Sequence[Any],
     *,
     name: str | None = None,
-    xi_bounds: tuple[float, float] = (-0.5, 0.5),
+    xi_bounds: tuple[float | None, float | None] | None = None,
     phi: str = "stationary",
 ) -> Model:
     return Model(GEV(xi_bounds=xi_bounds, phi=phi), components, name=name)

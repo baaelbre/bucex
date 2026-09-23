@@ -1,38 +1,51 @@
-# BUCEX 1.8.1 — hierarchical shrinkage for level, slope and seasonality
+# BUCEX 1.8.2
 
-The current SERRA specification estimates three shared shrinkage
-hyperparameters: one each for level, slope and seasonal innovations. Each
-response retains its own innovation SDs and latent components. Seasonal pooling
-regularizes changes to the repeating seasonal pattern, while the initial
-pattern and monthly observation scales remain response-specific.
+This release adds physically interpretable hierarchical prior calibration,
+shared initial-slope regularization and unrestricted normal GEV shape defaults.
+The SERRA workflow now prioritizes a preliminary supervisor draft over a large
+sensitivity campaign. See START_HERE.md for commands.
 
-The existing `SharedShrinkage` API and exact joint FS/copula sampler already
-support these components. This release makes three-component pooling the
-research default and adds its sensitivity checks; it introduces no new sampler
-approximation. Two-component pooling, fixed normal priors and separate
-univariate fits remain available. Saved 1.8.0 fits keep their original meaning;
-installing 1.8.1 does not add seasonal pooling to an existing posterior.
+- `SharedShrinkage` now learns a separate common SD for the zero-centred initial
+  slopes by default, alongside selected innovation prior scales. Individual
+  slopes remain distinct. `initial_slope_sd=None` opts out; research JSON uses
+  `pool_initial_slope: false`. Active slope coefficients only enter its exact
+  log-scale slice update. Normalizing constants are retained.
+- `SharedShrinkage.from_effects`, `calibration`, and `innovation_response_gains`
+  translate between per-update priors and horizon changes. They distinguish
+  physical-SD medians, signed-normal SDs and fully hyperprior-marginal RMS effects.
+  Seasonal calibration uses the actual dummy transition.
+- Reports include initial-slope prior/posterior comparisons, all four shared
+  scales, physical effect tables, traces and shape-support diagnostics.
+- `GEV()` and `fs_priors('gev')` default to unrestricted normal shape support.
+  Standard FS convenience profiles now use Normal(0,.3²) shape priors; the
+  explicitly historical `manuscript_gev_priors` retains its historical uniform.
+  Finite/one-sided bounds remain supported; JSON represents unbounded endpoints
+  with null. Uniform priors require finite endpoints. GEV observation support
+  is enforced in every likelihood update, including the legacy FS kernel.
+  General disturbance proposals use identity/exponential/logit coordinates
+  for unrestricted/one-sided/two-sided supports with the correct Jacobians.
+  Scalar GEV Laplace starts can shift an uncertain intercept into support
+  deterministically, preserving transition constraints and the exact MH target.
+- Fit schema 2.13.0 stores the new hierarchy. Older archives retain their old
+  priors; missing initial-slope pooling is decoded as disabled, not added.
+- `config/draft/` provides a six-series seasonal-copula candidate through
+  August 2026, a complete parallel smoke check, historical validation, R=I and
+  independent fallbacks, and separately declared supplementary comparisons.
+  Main and validation posteriors are saved for later reporting. An additional
+  39.7°C TXx risk export matches the reviewer's 2019 threshold question.
+- Empty requested figure windows (such as a partial forecast year) produce a
+  labelled placeholder in non-strict mode. Exact independence conditionals
+  skip unnecessary score derivatives, avoiding zero-times-overflow artifacts.
 
-The three default hyperprior anchors are .0025, .0000125 and .02 for level,
-slope and seasonality. These anchor uncertain prior medians of individual
-innovation SDs; they are neither fixed process SDs nor posterior estimates.
-Each shared median has a lognormal hyperprior with log SD `log(2)`.
+The existing modular parameter-evolution API and separate univariate fitting
+remain available. This release does not replace private trajectories by shared
+states or introduce discrete model selection. It does not implement mid-chain
+checkpoint/resume, so use tmux/nohup on biobot.
 
-`START_HERE.md` now supplies the complete command sequence: exploration, smoke
-test, fixed/pooled half/quarter comparison, historical prediction, seasonal
-pooling and anchor sensitivity, copula comparison, constant-scale and fixed
-seasonality checks, focused reviewer prior checks, confirmation, final fits
-and manuscript figures. Optional follow-ups are marked. Full-record
-configurations end in August 2026 and use four local worker processes, without
-requiring Slurm.
-
-Mixed two- and three-component comparison figures label an absent shared
-seasonal parameter as `not pooled`. Dry-run plans now expose structural,
-observation-prior and copula settings as well as innovation anchors.
-
-Read [START_HERE](START_HERE.md) for commands and
-[SHARED_SHRINKAGE.md](docs/SHARED_SHRINKAGE.md) for the model and public API.
-The software checks are recorded in
-[RELEASE_VALIDATION.md](validation/RELEASE_VALIDATION.md). Short smoke chains
-check execution only; publication conclusions still require convergence,
-predictive adequacy and sensitivity checks on the full temperature record.
+Scientific limits: four pooled scales do not guarantee better mixing, and
+seasonal dependence cannot by itself repair marginal skewness, temporal
+dependence or ordering violations. Unrestricted shapes permit nonfinite
+observation moments; empirical averages are not proof of finite theoretical
+moments. Quantiles and risk probabilities remain primary summaries. Short
+execution tests validate software behavior, not temperature findings or
+publication readiness. Verification details are in validation/release_1.8.2.json.
