@@ -49,11 +49,12 @@ def convergence_parameters(table, n_chains):
 def scientific_targets(fit, config=None):
     """Endpoint diagnostics plus explicitly declared climate-period estimands."""
     targets = {}
+    rate_multiplier = 10*(config or {}).get('model',{}).get('steps_per_year',12)
     for name in fit.channel_names if fit.is_multiseries_model else (None,):
         values = fit.component_draws("level", channel=name, combine_chains=False)
         targets[f"{name or 'series'}_level_change"] = values[..., -1] - values[..., 0]
         slopes = fit.component_draws("slope", channel=name, combine_chains=False)
-        targets[f"{name or 'series'}_end_slope_C_per_decade"] = slopes[..., -1]*120
+        targets[f"{name or 'series'}_end_slope_C_per_decade"] = slopes[..., -1]*rate_multiplier
     if fit.is_multiseries_model:
         for left, right in (("TXx", "TXm"), ("TNn", "TNm"), ("TXm", "TNm"), ("TXx", "TNx")):
             if {left, right} <= set(fit.channel_names):
@@ -86,6 +87,8 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     directory.mkdir(parents=True, exist_ok=True)
     image_format = config.get('figure_format', 'png')
     dpi = config.get('figure_dpi', 180)
+    seasonal_blocks = config.get('data',{}).get('frequency')=='seasonal'
+    rate_multiplier = 10*config.get('model',{}).get('steps_per_year',4 if seasonal_blocks else 12)
     if save_fit and config.get('save_fits', True):
         fit.save(directory/'fit.bucex')
     bx.save_config(config,directory/'config.json')
@@ -96,7 +99,8 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     bx.save_config({key:float(v) if np.isfinite(v) else None for key,v in diagnostic['engine'].items()},directory/'engine.json')
     bx.save_config(dict(bucex_version=bx.__version__,model=fit.model.to_dict(),inference=fit.plan.to_dict(),
         execution=fit.sampler_diagnostics.get('execution'),
-        fitted_start=str(fit.time[0]),fitted_end=str(fit.time[-1]),n_months=fit.n_time,
+        fitted_start=str(fit.time[0]),fitted_end=str(fit.time[-1]),n_blocks=fit.n_time,
+        n_months=None if seasonal_blocks else fit.n_time,block_frequency='seasonal' if seasonal_blocks else 'monthly',
         warnings=diagnostic['warnings'],interval='pointwise posterior credible interval',
         credible_interval=level,figure_style=config.get('figure_style','manuscript'),
         status='Research output; assess convergence, sensitivity and held-out forecasts before reporting.'),directory/'run.json')
@@ -105,6 +109,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         bx.save_shared_shrinkage_report(fit, directory, level=level,
             figures=config.get('figures', True), style=config.get('figure_style', 'manuscript'), dpi=dpi,
             seed=config['seed'], horizon=config.get('prior_calibration', {}).get('horizon', 360),
+            rate_multiplier=rate_multiplier,
             response_unit='degC', rate_unit='°C per decade')
         pd.DataFrame(fit.priors.shrinkage.calibration(period=config['model']['period'],
             **config.get('prior_calibration', {}))).to_csv(directory/'prior_calibration.csv',index=False)
@@ -119,7 +124,8 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     if config.get('contrasts'):
         bx.save_config(config['contrasts'], directory/'contrast_definitions.json')
         target_table.loc[[key for key in target_table.index if '.' in key]].to_csv(directory/'period_contrasts.csv')
-    bx.residual_serial_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
+    bx.residual_serial_check(fit,lags=(1,4 if seasonal_blocks else 12),
+        draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
         directory/'residual_serial.csv',index=False)
     metrics = fit.sampler_diagnostics.get('draw_metrics',{})
     if metrics:
@@ -138,6 +144,8 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     forecast = fit.forecast(horizon,draws=config.get('forecast_draws'),seed=config['seed'])
     forecast.summary(level=level).to_csv(directory/'forecast.csv',index=False)
     predictive = fit.posterior_predictive(draws=config.get('predictive_check_draws',200),seed=config['seed'])
+    bx.posterior_predictive_checks(fit,prediction=predictive,seed=config['seed']).to_csv(
+        directory/'posterior_predictive_checks.csv',index=False)
     names = fit.channel_names if fit.is_multiseries_model else (None,)
     shape_rows = []
     for name in names:
@@ -150,15 +158,16 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             comparison.to_csv(directory/(label+'_prior_posterior.csv'), index=False)
             bx.innovation_prior_diagnostics(comparison).to_csv(directory/(label+'_prior_updates.csv'), index=False)
         band(fit.component_draws('level',channel=name),label+'_level')
-        band(120*fit.component_draws('slope',channel=name),label+'_slope_C_per_decade',ylabel='latent slope / °C per decade')
+        band(rate_multiplier*fit.component_draws('slope',channel=name),label+'_slope_C_per_decade',ylabel='latent slope / °C per decade')
         if channel.period is not None:
             band(fit.component_draws('seasonal',channel=name),label+'_seasonal')
         band(fit.channel_eta_draws(name,original_scale=True) if name else fit.eta_draws(original_scale=True),label+'_location')
         band(fit.sigma_draws(channel=name),label+'_observation_scale',ylabel='observation scale / °C')
-        effects=fit.innovation_effect_draws(120,channel=name,combine_chains=False)
+        effects=fit.innovation_effect_draws(rate_multiplier,channel=name,combine_chains=False)
         practical=fit.contrast_diagnostics(effects,credible_interval=level)
         practical['probability_effect_sd_over_0.1']= [np.mean(effects[key]>.1) for key in practical.index]
         practical['horizon_months']=120
+        practical['horizon_updates']=rate_multiplier
         practical.to_csv(directory/(label+'_innovation_effects.csv'))
         if prior.ssvs is not None:
             fit.component_probabilities(channel=name).to_csv(directory/(label+'_structure.csv'))
@@ -197,9 +206,11 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         if config.get('figures',True):
             axis=forecast.plot(channel=name,level=level,history=fit.observed,history_dates=fit.time,history_points=120)
             axis.figure.savefig(directory/(label+'_forecast.'+image_format),bbox_inches='tight',dpi=dpi);plt.close(axis.figure)
-        bx.save_prediction_report(fit,directory,channel=name,forecast=forecast,predictive=predictive,
+        prediction_report = bx.save_seasonal_prediction_report if seasonal_blocks else bx.save_prediction_report
+        calendar_options = {} if seasonal_blocks else {'months':config.get('forecast_months',list(range(1,13)))}
+        prediction_report(fit,directory,channel=name,forecast=forecast,predictive=predictive,
             threshold=threshold,level=level,draws=config.get('predictive_check_draws',200),seed=config['seed'],
-            months=config.get('forecast_months',list(range(1,13))),image_format=image_format,dpi=dpi,
+            **calendar_options,image_format=image_format,dpi=dpi,
             figures=config.get('figures',True),prefix=label,
             style=config.get('figure_style','manuscript'),
             trace_exports=config.get('trace_exports',True),primary=config.get('figure_colors',{}).get(label))
@@ -211,7 +222,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             directory/'residual_dependence.csv',index=False)
         if fit.n_time>=36:
             bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed'],by_phase=True).to_csv(
-                directory/'residual_dependence_by_month.csv',index=False)
+                directory/('residual_dependence_by_season.csv' if seasonal_blocks else 'residual_dependence_by_month.csv'),index=False)
         if fit.model.copula is not None:
             fit.copula_summary(credible_interval=level).to_csv(directory/'copula_correlations.csv')
             if config.get('figures',True):

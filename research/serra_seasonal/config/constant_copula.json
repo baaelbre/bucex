@@ -1,0 +1,7 @@
+{
+  "extends": "main.json",
+  "copula": {
+    "structure": "constant"
+  },
+  "output": "results/serra_183_seasonal_constant_copula"
+}

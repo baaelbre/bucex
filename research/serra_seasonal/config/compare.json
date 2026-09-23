@@ -1,0 +1,17 @@
+{
+  "extends": "main.json",
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "comparison": {
+    "monthly_config": "research/serra/config/draft/main.json",
+    "training_ends": [
+      "2015-11",
+      "2020-11"
+    ],
+    "horizon_seasons": 20,
+    "draws": 2000
+  },
+  "output": "results/serra_183_block_comparison"
+}

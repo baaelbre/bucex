@@ -9,7 +9,7 @@
     {"name": "level_slope_half", "multipliers": {"level": 0.5, "trend": 0.5}}
   ],
   "assessment": {"baseline": "normal_reference"},
-  "validation": {"initial": 1308, "horizon": 60, "step": 120, "draws": 2000, "save_fits": false},
+  "validation": {"training_ends": ["2000-12", "2010-12", "2020-12"], "horizon": 60, "draws": 2000, "save_fits": false},
   "prior_draws": 20000,
   "prior_predictive_draws": 0,
   "save_fits": false,

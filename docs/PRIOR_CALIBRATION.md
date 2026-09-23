@@ -57,12 +57,20 @@ lognormal shared SD. Hyperparameters are separate for the four coefficient
 types; they are shared across responses, not across quantities with different
 units or dynamical roles.
 
-The default SERRA innovation anchors .0025, .0000125 and .02 imply 30-year
-conditional SDs .0703, .0729 and .2297°C, or marginal SDs .1137, .1179 and
-.3714°C. The original slide's signed-normal level SD .02 corresponds to a
-physical-SD median .01349, **not** .02. The current quarter anchors are stronger
-regularization than that slide. They retain the existing exploratory choice;
-this release does not relabel posterior-informed tuning as external knowledge.
+In 1.8.3 the draft configurations apply marginal moment calibration to the
+COMPSTAT scales. The monthly innovation anchors are 0.008343480538,
+0.00002085870135 and 0.008343480538; the initial-slope anchor is
+0.001546257845 per month. With log SD log(2), the integrated 30-year component
+SDs are 0.379473, 0.196769 and 0.154919°C, and initial-rate SD is 0.30°C/decade.
+These replace the 1.8.2 exploratory quarter anchors in the draft workflow.
+
+The seasonal workflow calibrates the same physical effects at H=120 and
+40 updates per decade. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
+[START_HERE](../START_HERE.md) for the values and exact commands. Hyperprior-width
+sensitivity uses `match_marginal_moments=true` to keep these effects fixed while
+changing log SD. Physical-effect sensitivity separately scales the anchors.
+This is a declared modelling assumption, not independent validation of a prior
+or a choice made to maximize smoothness or evidence of acceleration.
 
 ## API: specify effects directly
 

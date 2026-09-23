@@ -54,7 +54,7 @@ def plot_pit_diagnostics(pit, dates, *, in_sample=False, max_lag=24, bins=10, ti
     acf = [centered[:-lag] @ centered[lag:]/denominator if denominator > 0 else np.nan for lag in lags]
     axes[1, 1].bar(lags, acf, color="C0", alpha=.7)
     axes[1, 1].axhline(0, color="black", lw=.6)
-    axes[1, 1].set(xlabel="lag / monthly blocks", ylabel="residual autocorrelation")
+    axes[1, 1].set(xlabel="lag / observation blocks", ylabel="residual autocorrelation")
     if title:
         figure.suptitle(title, fontsize=12)
     figure.tight_layout()

@@ -1,0 +1,8 @@
+{
+  "extends": "main.json",
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "output": "results/serra_183_seasonal_pilot"
+}

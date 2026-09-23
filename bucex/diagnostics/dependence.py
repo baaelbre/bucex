@@ -28,7 +28,9 @@ def residual_dependence_check(fit, *, draws=200, seed=None, level=.9, by_phase=F
     observed, replicated = [], []
     from ..core.calendar import seasonal_phases
     period = getattr(copula,"period",None) or fit.model.period or 12
-    phase = seasonal_phases(period,fit.n_time,fit.dates) if by_phase else np.zeros(fit.n_time,int)
+    phase = ((copula.phases(fit.n_time, fit.dates) if copula is not None and copula.seasonal
+              else seasonal_phases(period,fit.n_time,fit.dates))
+             if by_phase else np.zeros(fit.n_time,int))
     groups = {int(p):phase == p for p in np.unique(phase) if np.sum(phase == p) >= 3}
     if not groups:
         raise ValueError("At least three observations per reported phase are required.")

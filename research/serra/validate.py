@@ -30,7 +30,8 @@ def calibration(forecast, observed, *, channel=None):
 
 def validation_splits(data, settings):
     if settings.get("training_ends") is not None:
-        return tuple(bx.calendar_origin_splits(data.index, settings["training_ends"], horizon=settings["horizon"]))
+        return tuple(bx.calendar_origin_splits(data.index, settings["training_ends"], horizon=settings["horizon"],
+            block_frequency=data.attrs.get('frequency','monthly')))
     return tuple(bx.rolling_origin_splits(len(data), **{k: settings[k] for k in ("initial", "horizon", "step")}))
 
 
@@ -73,7 +74,7 @@ def validate(config, *, directory=None):
             if getattr(fit.priors, "shrinkage", None) is not None:
                 bx.compare_shared_shrinkage(fit, level=config["credible_interval"]).to_csv(
                     target/f"shared_shrinkage_{train.stop}.csv", index=False)
-            targets = fit.contrast_diagnostics(scientific_targets(fit))
+            targets = fit.contrast_diagnostics(scientific_targets(fit,{'model':config['model']}))
             targets.to_csv(target / f"targets_{train.stop}.csv")
             assessment = bx.convergence_assessment({'parameters': convergence_parameters(diagnostics, fit.n_chains), 'scientific_targets': targets},
                 **config.get('diagnostic_thresholds', {}))

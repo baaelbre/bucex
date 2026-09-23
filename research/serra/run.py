@@ -26,9 +26,10 @@ def run(config, *, series=None):
     config = selected_config(config, series=series)
     data = bx.load_uccle_multiseries(**config["data"])
     directory = new_run(config["output"], f"uccle_{config['analysis']}")
-    print(f"Fitting {data.index[0]:%Y-%m} through {data.index[-1]:%Y-%m}: {len(data)} monthly blocks.",flush=True)
+    frequency = config['data'].get('frequency','monthly')
+    print(f"Fitting {data.index[0]:%Y-%m} through {data.attrs.get('last_included_day', str(data.index[-1]))}: {len(data)} {frequency} blocks.",flush=True)
     print(f"MCMC: {config['mcmc']['chains']} chains, {config['mcmc']['warmup']} warmup, {config['mcmc']['draws']} retained per chain.",flush=True)
-    bx.save_config(dict(start=str(data.index[0]),end=str(data.index[-1]),n_months=len(data),
+    bx.save_config(dict(data.attrs,start=str(data.index[0]),end=str(data.index[-1]),n_blocks=len(data),
                         requested_end=config['data'].get('end'),series=list(data)),directory/'data_window.json')
     report = dict(config=config, risks=config["risks"], horizon=config["forecast_horizon"],
                   level=config["credible_interval"])

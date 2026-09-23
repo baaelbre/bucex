@@ -18,6 +18,7 @@ class SeasonalScale:
 
     period: int = 12
     prior_sd: float = 0.3
+    calendar: str | None = None
 
     def __post_init__(self):
         if int(self.period) != self.period or self.period < 2:
@@ -26,17 +27,25 @@ class SeasonalScale:
             raise ValueError("SeasonalScale.prior_sd must be finite and positive.")
         object.__setattr__(self, "period", int(self.period))
         object.__setattr__(self, "prior_sd", float(self.prior_sd))
+        if self.calendar not in {None, "meteorological"} or (self.calendar and self.period != 4):
+            raise ValueError("calendar='meteorological' requires period=4.")
 
     def contrast(self):
         """Columns are an orthonormal basis for the zero-sum subspace."""
         return helmert(self.period, full=False).T
 
     def phases(self, n_time, dates=None, *, start_index=0):
+        if self.calendar is not None:
+            from ..core.calendar import meteorological_phases
+            if dates is None or len(dates) != n_time:
+                raise ValueError("Meteorological scales require aligned dates, including forecasts.")
+            return meteorological_phases(dates)-1
         from ..core.calendar import seasonal_phases
         return seasonal_phases(self.period, n_time, dates, start_index=start_index) - 1
 
     def to_dict(self):
-        return {"period": self.period, "prior_sd": self.prior_sd}
+        return {"period": self.period, "prior_sd": self.prior_sd,
+                **({"calendar": self.calendar} if self.calendar else {})}
 
 
 @dataclass(frozen=True)

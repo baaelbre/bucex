@@ -21,6 +21,13 @@ def period_average(draws, dates, period, *, month=None, require_complete=True):
     if start > end:
         raise ValueError("Period start must precede its end.")
     expected = pd.period_range(start, end, freq="M")
+    # Seasonal blocks are timestamped at their first month. Period boundaries
+    # refer to complete blocks; do not average a season extending past 'end'.
+    delta = np.diff(index.asi8)
+    if len(delta) and np.all(delta == 3) and np.all(np.isin(index.month,[3,6,9,12])):
+        expected = expected[np.isin(expected.month,[3,6,9,12]) & (expected+2 <= end)]
+        if require_complete and ((start.month not in {3,6,9,12}) or end.month not in {2,5,8,11}):
+            raise ValueError("Seasonal period contrasts require complete meteorological block boundaries.")
     if month is not None:
         if int(month) != month or not 1 <= month <= 12:
             raise ValueError("month must be an integer in 1..12.")

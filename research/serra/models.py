@@ -6,7 +6,8 @@ import bucex as bx
 def channel(name, data, config):
     """Private location components and a separately declared observation scale."""
     info, settings = bx.UCCLE_INFO[name], config['model']
-    seasonal = (bx.SeasonalScale(settings['period'], settings.get('scale_prior_sd', .3))
+    seasonal = (bx.SeasonalScale(settings['period'], settings.get('scale_prior_sd', .3),
+                    calendar='meteorological' if config['data'].get('frequency')=='seasonal' else None)
                 if settings.get('seasonal_scale', False) else None)
     scale = bx.LogScale(settings.get('scale_mode', 'constant'), seasonal,
         slope_sd=settings.get('scale_slope_sd', .1),
@@ -86,7 +87,8 @@ def inference_options(config):
 
 
 def fit_options(config, *, family='mixed', tail=None):
-    options = dict(engine='ffbs' if family == 'gaussian' else 'laplace_mh',
+    engine = 'ffbs' if family=='gaussian' else 'laplace_mh' if family in {'gev','mixed'} else 'auto'
+    options = dict(engine=engine,
         parameterization='fs', asis=config.get('inference', {}).get('asis', False),
         mcmc=bx.MCMC(**config['mcmc']), **inference_options(config))
     if tail is not None:

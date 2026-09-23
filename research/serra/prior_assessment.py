@@ -39,7 +39,9 @@ def study_plan(config):
             raise ValueError('Analysis must be independent, joint or copula.')
     n_fits = sum(1 if case['analysis'] in {'joint', 'copula'} else len(data.columns) for case in cases)
     return dict(version=bx.__version__, fitted_start=str(data.index[0].date()),
-        fitted_end=str(data.index[-1].date()), n_months=len(data), series=list(data.columns),
+        fitted_end=str(data.index[-1].date()), n_blocks=len(data),
+        n_months=len(data) if config['data'].get('frequency','monthly')=='monthly' else None,
+        block_frequency=config['data'].get('frequency','monthly'), series=list(data.columns),
         candidates=[dict(name=v['name'], analysis=case['analysis'],
             innovation_median=case['priors']['innovation_median'],
             shared_shrinkage=case['priors'].get('shared_shrinkage'),
@@ -67,7 +69,8 @@ def report(directory):
                                            for name in config['data']['series']}
     if not mappings:
         raise ValueError('No completed assessment stage is available to report.')
-    return bx.SensitivityReport(**mappings, baseline=config['assessment']['baseline']).save(
+    return bx.SensitivityReport(**mappings, baseline=config['assessment']['baseline'],
+        block_frequency=config['data'].get('frequency','monthly')).save(
         directory/'comparison', figures=config.get('figures',True),
         style=config.get('figure_style','manuscript'), dpi=config.get('figure_dpi',180))
 

@@ -32,7 +32,7 @@ def test_seasonal_hyperprior_maps_to_season_coefficient_only():
 @pytest.mark.parametrize('name,n_fits', [('pilot',4),('seasonality',4),('dependence',2),('adequacy',3),('reviewer_sensitivity',15),('confirm',2)])
 def test_documented_experiments_resolve_through_2026(name,n_fits):
     plan=study_plan(bx.load_config(CONFIG/(name+'.json')))
-    assert plan['fitted_end']=='2026-08-01' and plan['n_months']==1616
+    assert plan['fitted_end']=='2026-08-01' and plan['n_months']==1614
     assert plan['posterior_fits']==n_fits and plan['predictive_fits']==4*n_fits
     assert plan['effective_chain_workers']==4
     assert all('model' in candidate and 'priors' in candidate and 'copula' in candidate for candidate in plan['candidates'])

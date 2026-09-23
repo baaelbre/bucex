@@ -12,10 +12,22 @@ from research.serra.report import save_band
 def configured_variant(config, variant):
     config = deepcopy(config)
     p, m = config['priors'], config['model']
+    old_hierarchy = p.get('shared_shrinkage')
     for key in ('innovation', 'xi_prior', 'xi_sd', 'xi_bounds', 'tg_spike_shape', 'tg_tail_shape',
                 'observation_variance', 'shared_shrinkage'):
         if key in variant:
             p[key] = variant[key]
+    if variant.get('match_marginal_moments',False):
+        new_hierarchy=p.get('shared_shrinkage')
+        if old_hierarchy is None or new_hierarchy is None:
+            raise ValueError('Moment-matched width sensitivity requires both shared hierarchies.')
+        old_d=old_hierarchy.get('log_sd',np.log(2.));new_d=new_hierarchy.get('log_sd',np.log(2.))
+        factor=np.exp(old_d**2-new_d**2)
+        aliases={'level':'level','slope':'trend','seasonal':'season'}
+        for component in new_hierarchy.get('components',['level','slope','seasonal']):
+            p['innovation_median'][aliases[component]]*=factor
+        if new_hierarchy.get('pool_initial_slope',True):
+            p['initial_slope_sd']*=factor
     for key in ('seasonal_scale', 'scale_mode', 'scale_prior_sd', 'scale_slope_sd',
                 'scale_innovation_sd', 'level', 'trend', 'seasonal'):
         if key in variant:

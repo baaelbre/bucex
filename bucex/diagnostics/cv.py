@@ -37,7 +37,7 @@ def rolling_origin_splits(
         train_end += step
 
 
-def calendar_origin_splits(dates, training_ends, *, horizon):
+def calendar_origin_splits(dates, training_ends, *, horizon, block_frequency="monthly"):
     """Expanding-window ranges at explicitly declared monthly cutoffs.
 
     Cutoffs are inclusive calendar months, e.g. ``['2000-12', '2015-12']``.
@@ -48,17 +48,23 @@ def calendar_origin_splits(dates, training_ends, *, horizon):
     months = index.to_period("M")
     if len(index) < 2 or index.hasnans or not index.is_monotonic_increasing or months.has_duplicates:
         raise ValueError("Supply a sorted, unique monthly calendar.")
-    if not np.all(np.diff(months.asi8) == 1):
-        raise ValueError("Calendar origins require consecutive monthly observations.")
+    if block_frequency not in {"monthly", "seasonal"}:
+        raise ValueError("block_frequency must be monthly or seasonal.")
+    step = 1 if block_frequency == "monthly" else 3
+    if not np.all(np.diff(months.asi8) == step):
+        raise ValueError("Calendar origins require consecutive observations at the declared frequency.")
+    if step == 3 and (np.any(index.day != 1) or not np.all(np.isin(index.month,[3,6,9,12]))):
+        raise ValueError("Seasonal dates must label meteorological season starts.")
+    end_months = months + (step-1)
     if int(horizon) != horizon or horizon < 1:
         raise ValueError("horizon must be a positive integer.")
     cutoffs = pd.PeriodIndex(training_ends, freq="M")
     if not len(cutoffs) or cutoffs.has_duplicates or not cutoffs.is_monotonic_increasing or cutoffs.hasnans:
         raise ValueError("Declare unique, increasing training-end months.")
     for cutoff in cutoffs:
-        if cutoff not in months:
-            raise ValueError(f"Training cutoff {cutoff} is outside the monthly record.")
-        origin = int(months.get_loc(cutoff)) + 1
+        if cutoff not in end_months:
+            raise ValueError(f"Training cutoff {cutoff} is not a complete block end in the record.")
+        origin = int(end_months.get_loc(cutoff)) + 1
         if origin < 2 or origin + horizon > len(index):
             raise ValueError(f"Training cutoff {cutoff} needs at least two training months and a complete forecast block.")
         yield range(origin), range(origin, origin + int(horizon))

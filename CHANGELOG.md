@@ -1,3 +1,14 @@
+# 1.8.3 (2026-09-23)
+
+- Separate `research/serra_seasonal` workflow: complete daily-derived seasonal means/extrema, four-phase scales and copula, shared shrinkage and independent fallbacks.
+- Retain JJA 2026; exclude only January-February 1892 in research analyses. Audit 1,614 monthly / 538 seasonal blocks.
+- Apply COMPSTAT marginal-moment prior calibration and match physical effects across update frequencies; moment-preserving hyperprior-width sensitivity.
+- Analytic aggregate Gaussian/extreme CDFs and densities; matched historical forecasts scored on identical seasonal targets.
+- Correct seasonal slope units, calendar grouping, yearly definitions, trace/risk/PIT reporting and prior-sensitivity summaries.
+- Conditional-score posterior predictive tail/skewness/lag checks alongside existing dependence and forecast diagnostics.
+- Raw r-largest ranks and runs-cluster diagnostics; r>1 likelihood remains a documented future extension.
+- Resume completed comparison folds with configuration, data and version checks; no mid-chain checkpoint.
+
 # 1.8.2 (2026-09-23)
 
 - Shared initial-slope regularization with exact conditional updates and archive compatibility.

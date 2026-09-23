@@ -1,5 +1,5 @@
 {
-  "_comment": "SERRA primary model through August 2026: private monthly FS locations, constant scales/shapes, continuous shrinkage; source provenance is documented.",
+  "_comment": "Monthly analysis through August 2026. January-February 1892 are excluded by request; source data remain unchanged.",
   "analysis": "independent",
   "data": {
     "series": [
@@ -10,8 +10,12 @@
       "TNx",
       "TNn"
     ],
-    "start": "1892-01-01",
-    "end": "2026-08-01"
+    "start": "1892-03-01",
+    "end": "2026-08-01",
+    "exclude_months": [
+      "1892-01",
+      "1892-02"
+    ]
   },
   "model": {
     "period": 12,
@@ -23,7 +27,8 @@
     "scale_prior_sd": 0.3,
     "scale_slope_sd": 0.1,
     "scale_innovation_sd": 0.01,
-    "scale_time_unit": 120
+    "scale_time_unit": 120,
+    "steps_per_year": 12
   },
   "priors": {
     "innovation": "normal",
@@ -113,8 +118,8 @@
   ],
   "contrasts": {
     "reference": [
-      "1892-01",
-      "1921-12"
+      "1892-03",
+      "1922-02"
     ],
     "comparison": [
       "1996-09",

@@ -103,17 +103,21 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
             for ax, metric in zip(axes,('crps','log')):
                 for variant, data in group[group.score==metric].groupby('variant',sort=False):
                     ax.plot(data.origin,data['mean'],marker='o',color=colors[variant],label=variant)
-                ax.set(xlabel='forecast origin / training months',ylabel='CRPS' if metric=='crps' else 'negative log predictive density')
+                ax.set(xlabel='forecast origin / training blocks',ylabel='CRPS' if metric=='crps' else 'negative log predictive density')
             axes[0].legend(loc='best')
             save(fig,channel,'forecast_scores')
-    if 'coverage_by_month' in tables:
-        coverage = tables['coverage_by_month']
+    if 'coverage_by_month' in tables or 'coverage_by_season' in tables:
+        seasonal='coverage_by_season' in tables
+        coverage = tables['coverage_by_season' if seasonal else 'coverage_by_month']
         for channel, group in coverage[(coverage.kind=='central_interval') & np.isclose(coverage.nominal,.95)].groupby('channel',sort=False):
             fig, ax = plt.subplots(figsize=(9,3.5),layout='constrained')
             for variant, data in group.groupby('variant',sort=False):
-                ax.plot(data.month,data.empirical,marker='o',color=colors[variant],label=variant)
+                data=data.sort_values('phase' if seasonal else 'month')
+                ax.plot(data.phase if seasonal else data.month,data.empirical,marker='o',color=colors[variant],label=variant)
             ax.axhline(.95,color='.4',ls='--',lw=1)
-            ax.set(xlabel='calendar month',ylabel='95% predictive coverage',xticks=range(1,13),ylim=(0,1.03))
+            ax.set(xlabel='season' if seasonal else 'calendar month',ylabel='95% predictive coverage',
+                   xticks=range(1,5) if seasonal else range(1,13),ylim=(0,1.03))
+            if seasonal:ax.set_xticklabels(['DJF','MAM','JJA','SON'])
             ax.legend(loc='best')
             save(fig,channel,'forecast_coverage')
     if 'pit' in tables:

@@ -1,0 +1,77 @@
+{
+  "extends": "../../serra/config/draft/main.json",
+  "_comment": "Separate seasonal-block alternative; r=1 extrema, full daily-weighted seasonal means; retained through JJA 2026.",
+  "data": {
+    "frequency": "seasonal",
+    "daily_source": "data/Uccle_31_08_26.csv",
+    "start": "1892-01",
+    "end": "2026-08",
+    "exclude_months": [
+      "1892-01",
+      "1892-02"
+    ]
+  },
+  "model": {
+    "period": 4,
+    "steps_per_year": 4,
+    "scale_time_unit": 40
+  },
+  "priors": {
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.014451332204168785,
+      "trend": 0.00010883964876422239,
+      "season": 0.008343480538225555
+    },
+    "initial_slope_sd": 0.0046387735335118195,
+    "xi_prior": "normal",
+    "xi_sd": 0.3,
+    "xi_bounds": [
+      null,
+      null
+    ],
+    "shared_shrinkage": {
+      "components": [
+        "level",
+        "slope",
+        "seasonal"
+      ],
+      "log_sd": 0.6931471805599453,
+      "pool_initial_slope": true
+    }
+  },
+  "prior_calibration": {
+    "horizon": 120,
+    "slope_time_unit": 40,
+    "unit": "degC"
+  },
+  "forecast_horizon": 40,
+  "contrasts": {
+    "months": [
+      3,
+      6,
+      9,
+      12
+    ],
+    "rate_multiplier": 40.0,
+    "reference": [
+      "1892-03",
+      "1922-02"
+    ],
+    "comparison": [
+      "1996-09",
+      "2026-08"
+    ]
+  },
+  "forecast_months": null,
+  "output": "results/serra_183_seasonal",
+  "validation": {
+    "training_ends": [
+      "2015-11",
+      "2020-11"
+    ],
+    "horizon": 20,
+    "draws": 2000,
+    "save_fits": true
+  }
+}

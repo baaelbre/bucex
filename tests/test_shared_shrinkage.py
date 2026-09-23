@@ -159,7 +159,7 @@ def test_declared_calendar_origins_include_2019_and_no_silent_drops():
     from research.serra.prior_assessment import study_plan
     directory=Path(__file__).resolve().parents[1]/'research/serra/config/hierarchy'
     config=bx.load_config(directory/'pilot.json'); plan=study_plan(config)
-    assert plan['n_months']==1616 and plan['fitted_end']=='2026-08-01'
+    assert plan['n_months']==1614 and plan['fitted_end']=='2026-08-01'
     assert plan['posterior_fits']==4 and plan['predictive_fits']==16
     assert plan['effective_chain_workers']==4
     for candidate in plan['candidates']:

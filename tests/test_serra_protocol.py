@@ -13,7 +13,7 @@ def test_primary_record_and_periods_reach_august_2026():
     config = bx.load_config(CONFIG/'copula_full.json')
     report = inspect(config)
     assert report['end'] == '2026-08-01'
-    assert report['n_months'] == 1616
+    assert report['n_months'] == 1614
     assert report['contrasts']['comparison'] == ['1996-09','2026-08']
     assert report['asis'] is False
     assert report['priors']['innovation'] == 'normal'
@@ -27,7 +27,7 @@ def test_primary_record_and_periods_reach_august_2026():
 
 def test_historical_comparison_keeps_complete_climate_windows():
     report = inspect(bx.load_config(CONFIG/'copula_1892_2022.json'))
-    assert report['end'] == '2022-12-01' and report['n_months'] == 1572
+    assert report['end'] == '2022-12-01' and report['n_months'] == 1570
     assert report['contrasts']['comparison'] == ['1993-01','2022-12']
 
 

@@ -23,5 +23,5 @@
   "predictive_check_draws": 12,
   "prior_draws": 500,
   "forecast_horizon": 12,
-  "output": "results/serra_182_smoke"
+  "output": "results/serra_183_smoke"
 }

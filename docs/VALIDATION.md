@@ -1,3 +1,6 @@
 # Release validation
 
-See [../validation/RELEASE_VALIDATION.md](../validation/RELEASE_VALIDATION.md) for checks actually executed on 1.7.4 and [REVIEWER_MATRIX.md](REVIEWER_MATRIX.md) for remaining scientific evidence. The former release's test counts are not carried forward as current evidence. Independent numerical targets, regression checks, installed-package checks and workflow execution checks serve different purposes. None establishes convergence or coverage for the full Uccle application.
+See [the release record](../validation/RELEASE_VALIDATION.md) for checks actually
+executed on 1.8.3. Earlier records retain their version labels. Software tests,
+archive checks and smoke runs do not establish convergence or model adequacy
+for the full application. Scientific assessment is in [START_HERE](../START_HERE.md).

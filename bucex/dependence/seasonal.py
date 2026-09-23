@@ -19,9 +19,11 @@ class SeasonalGaussianCopula(GaussianCopula):
     depends on channel ordering; declare that order and assess permutations.
 
     ``structure='harmonic'`` uses one sine/cosine pair; ``'seasons'`` uses
-    DJF/MAM/JJA/SON contrasts (period=12); ``'monthly'`` uses period-1 zero-sum
+    DJF/MAM/JJA/SON contrasts (period=12 for months, period=4 for seasonal
+    blocks); ``'monthly'`` uses period-1 zero-sum
     contrasts. Effects shrink towards a constant, estimated correlation.
-    Public phases are 1-based; dated monthly data use calendar months.
+    Public phases are 1-based; dated monthly data use calendar months, and
+    dated seasonal blocks use DJF=1, MAM=2, JJA=3, SON=4.
     """
 
     period: int = 12
@@ -36,8 +38,8 @@ class SeasonalGaussianCopula(GaussianCopula):
             raise ValueError("period must be an integer >= 3.")
         if self.structure not in {"harmonic", "seasons", "monthly"}:
             raise ValueError("structure must be harmonic, seasons, or monthly.")
-        if self.structure == "seasons" and self.period != 12:
-            raise ValueError("Meteorological seasons require period=12.")
+        if self.structure == "seasons" and self.period not in {4,12}:
+            raise ValueError("Meteorological seasons require period=4 or period=12.")
         if not np.isfinite(self.prior_sd) or self.prior_sd <= 0:
             raise ValueError("prior_sd must be finite and positive.")
 
@@ -50,10 +52,17 @@ class SeasonalGaussianCopula(GaussianCopula):
             angle = 2*np.pi*np.arange(self.period)/self.period
             return np.column_stack((np.cos(angle), np.sin(angle)))
         if self.structure == "seasons":
+            if self.period == 4:
+                return helmert(4, full=False).T
             return helmert(4, full=False).T[((np.arange(12)+1) % 12)//3]
         return helmert(self.period, full=False).T
 
     def phases(self, n_time, dates=None, *, start_index=0):
+        if self.structure == "seasons" and self.period == 4:
+            from ..core.calendar import meteorological_phases
+            if dates is None or len(dates) != n_time:
+                raise ValueError("Seasonal-block copulas require aligned dates.")
+            return meteorological_phases(dates)
         from ..core.calendar import seasonal_phases
         return seasonal_phases(self.period, n_time, dates, start_index=start_index)
 

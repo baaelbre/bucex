@@ -1,0 +1,107 @@
+{
+  "version": "1.8.3",
+  "verified_date": "2026-09-23",
+  "status": "passed",
+  "data": {
+    "monthly_blocks": 1614,
+    "first_month": "1892-03",
+    "seasonal_blocks": 538,
+    "last_season": "JJA 2026",
+    "last_included_day": "2026-08-31",
+    "excluded_months": [
+      "1892-01",
+      "1892-02"
+    ],
+    "raw_data_modified": false
+  },
+  "executed_workflows": {
+    "seasonal_fit": {
+      "channels": 6,
+      "chains": 4,
+      "workers": 4,
+      "warmup_per_chain": 3,
+      "draws_per_chain": 4,
+      "results_excluded_from_release": true
+    },
+    "matched_forecast_comparison": {
+      "models": [
+        "monthly",
+        "seasonal"
+      ],
+      "channels": 6,
+      "training_cutoff": "2023-11",
+      "forecast_seasons": 4,
+      "chains": 4,
+      "workers": 4,
+      "warmup_per_chain": 3,
+      "draws_per_chain": 4,
+      "forecast_draws": 40,
+      "results_excluded_from_release": true
+    },
+    "seasonal_adequacy_report_integration": {
+      "channels": 2,
+      "variants": 2,
+      "chains": 2,
+      "workers": 1,
+      "warmup_per_chain": 1,
+      "draws_per_chain": 4,
+      "historical_origins": 1
+    },
+    "seasonal_data_preparation": true,
+    "rank_and_cluster_diagnostics": true
+  },
+  "installed_wheel": {
+    "version": "1.8.3",
+    "installed_package_files_matched": 123,
+    "seasonal_blocks": 538,
+    "last_included_day": "2026-08-31",
+    "archive_reloaded": true,
+    "forecast_finite": true,
+    "forecast_shape": [
+      8,
+      4,
+      6
+    ],
+    "conditional_PPC_rows": 222
+  },
+  "command_guide": {
+    "bash_blocks_validated": 14,
+    "resolved_configurations": 18,
+    "CLI_help_checked": [
+      "research.serra.copula",
+      "research.serra.explore",
+      "research.serra.preflight",
+      "research.serra.prior_assessment",
+      "research.serra.univariate",
+      "research.serra_seasonal.clusters",
+      "research.serra_seasonal.compare",
+      "research.serra_seasonal.fit",
+      "research.serra_seasonal.preflight",
+      "research.serra_seasonal.prepare"
+    ]
+  },
+  "comparison_resume": {
+    "preserved_completed_folds": true,
+    "caution": "Descriptive short-run assessment. Check each fold convergence.json; wider or narrower intervals alone do not choose a model.",
+    "completed_model_origins": 2,
+    "density": "Marginal seasonal predictive density, not raw monthly-vs-seasonal fitting likelihoods or a joint six-dimensional score",
+    "difference": "seasonal minus monthly; negative is better for seasonal",
+    "excluded_claims": "No asymptotic guarantee, no formal significance from a few origins, no r-largest or daily-cluster likelihood.",
+    "n_paired_cases": 192,
+    "target": "Same observed seasonal daily-weighted means, maxima or minima"
+  },
+  "scope": "Software execution and mathematical regression checks. Short posterior runs are not scientific convergence or model-adequacy evidence. r>1 joint likelihood not implemented.",
+  "source_suite": {
+    "tests": 406,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 477.603
+  },
+  "final_targeted_regression": {
+    "tests": 45,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "extends": "compare.json",
+  "mcmc": {
+    "warmup": 1000,
+    "draws": 1000
+  },
+  "comparison": {
+    "training_ends": [
+      "2000-11",
+      "2010-11",
+      "2015-11",
+      "2020-11"
+    ],
+    "draws": 4000
+  },
+  "output": "results/serra_183_block_comparison_full"
+}

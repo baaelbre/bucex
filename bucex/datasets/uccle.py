@@ -134,12 +134,25 @@ def load_uccle_multiseries(
     series: Iterable[str] | str = UCCLE_SERIES,
     start: str | None = None,
     end: str | None = None,
+    frequency: str = "monthly",
+    daily_source: str | Path | None = None,
+    exclude_months: Iterable[str] = (),
 ) -> pd.DataFrame:
     """Load aligned summaries in the requested channel order."""
 
     selected = _normalize_series_names(series)
     if not selected:
         raise ValueError("Select at least one Uccle series.")
+    if frequency == "seasonal":
+        from .seasonal import derive_uccle_seasonal
+        if data_dir is not None:
+            raise ValueError("Seasonal analysis derives complete blocks from daily_source, not monthly CSVs.")
+        return derive_uccle_seasonal(daily_source, start=start, end=end,
+            exclude_months=exclude_months).loc[:, list(selected)]
+    if frequency != "monthly":
+        raise ValueError("frequency must be monthly or seasonal.")
+    if daily_source is not None:
+        raise ValueError("Monthly CSV loading does not use daily_source; first derive_uccle_monthly if needed.")
     values = [load_uccle_series(name, data_dir, start=start, end=end) for name in selected]
     if any(not item.index.equals(values[0].index) for item in values[1:]):
         raise ValueError("Uccle channels must have the same dates; choose an explicit common range.")
@@ -150,7 +163,14 @@ def load_uccle_multiseries(
     )
     if frame.isna().any().any():
         raise ValueError("Uccle channels are not completely aligned.")
-    return frame.loc[:, list(selected)]
+    exclusions = pd.PeriodIndex(list(exclude_months or ()), freq="M")
+    frame = frame.loc[~frame.index.to_period("M").isin(exclusions), list(selected)]
+    if frame.empty or (len(frame)>1 and not np.all(np.diff(frame.index.to_period("M").asi8)==1)):
+        raise ValueError("Month exclusions must leave a nonempty consecutive monthly record.")
+    frame.attrs.update(frequency="monthly", seasonal_period=12, n_blocks=len(frame),
+        requested_month_exclusions=list(map(str, exclude_months or ())),
+        last_included_day=str((frame.index[-1]+pd.offsets.MonthEnd(0)).date()))
+    return frame
 
 
 def _daily_frame(frame: pd.DataFrame) -> pd.DataFrame:

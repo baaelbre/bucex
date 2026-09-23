@@ -24,7 +24,9 @@ def inspect(config):
         **config.get('prior_calibration', {})) if joint and prior.shrinkage is not None else [])
     bytes_per_state = mcmc.chains*mcmc.draws*(len(data)+1)*8
     return dict(version=bx.__version__, analysis=config['analysis'],
-        start=str(data.index[0].date()), end=str(data.index[-1].date()), n_months=len(data),
+        start=str(data.index[0].date()), end=str(data.index[-1].date()), n_blocks=len(data),
+        block_frequency=config['data'].get('frequency','monthly'), data_audit=data.attrs,
+        n_months=len(data) if config['data'].get('frequency','monthly')=='monthly' else None,
         channels=[dict(name=c.name,family=c.family,tail=c.tail,model=c.to_dict()) for c in declarations],
         inference=fit_options(config, family='mixed' if any(c.family=='gev' for c in declarations) else 'gaussian')['engine'],
         asis=config['inference']['asis'], priors=config['priors'],

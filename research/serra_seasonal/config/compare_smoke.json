@@ -1,0 +1,21 @@
+{
+  "extends": "compare.json",
+  "data": {
+    "start": "2021-03"
+  },
+  "mcmc": {
+    "warmup": 3,
+    "draws": 4,
+    "progress_every": 1
+  },
+  "comparison": {
+    "monthly_config": "research/serra/config/draft/block_smoke.json",
+    "training_ends": [
+      "2023-11"
+    ],
+    "horizon_seasons": 4,
+    "draws": 40
+  },
+  "predictive_check_draws": 12,
+  "output": "results/serra_183_block_comparison_smoke"
+}

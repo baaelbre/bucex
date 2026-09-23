@@ -30,10 +30,13 @@ class SensitivityReport:
         report.save("results/comparison")
     """
 
-    def __init__(self, *, posterior_runs=None, predictive_runs=None, baseline="normal_reference"):
+    def __init__(self, *, posterior_runs=None, predictive_runs=None, baseline="normal_reference", block_frequency="monthly"):
         self.posterior_runs = posterior_runs or {}
         self.predictive_runs = predictive_runs or {}
         self.baseline = baseline
+        if block_frequency not in {'monthly','seasonal'}:
+            raise ValueError('block_frequency must be monthly or seasonal.')
+        self.block_frequency=block_frequency
         if not self.posterior_runs and not self.predictive_runs:
             raise ValueError("Supply posterior or predictive report directories.")
         self.sources = []
@@ -161,7 +164,9 @@ class SensitivityReport:
         if 'scores' in result:
             scores = result['scores'].copy()
             result['predictive_comparison'] = compare_predictive_scores(scores, baseline=self.baseline, seed=173)
-            scores['horizon_band'] = np.where(scores.horizon <= 12, 'horizons_1_12', 'horizons_13_plus')
+            first_year=4 if self.block_frequency=='seasonal' else 12
+            scores['horizon_band'] = np.where(scores.horizon <= first_year,
+                f'horizons_1_{first_year}',f'horizons_{first_year+1}_plus')
             scores = pd.concat([scores, scores.assign(horizon_band='all')], ignore_index=True)
             grouping = ['variant','channel','origin','score','setting','horizon_band']
             result['scores_by_origin'] = scores.groupby(grouping, dropna=False, sort=False).value.agg(
@@ -178,6 +183,12 @@ class SensitivityReport:
             result['pit_by_month'] = pd.concat([
                 pit_by_month(group.pit, group.time).assign(variant=variant, channel=channel)
                 for (variant, channel), group in result['pit'].groupby(['variant','channel'], sort=False)], ignore_index=True)
+            if self.block_frequency=='seasonal':
+                for kind in ['coverage','pit']:
+                    table=result.pop(kind+'_by_month').rename(columns={'month':'block_start_month'})
+                    table['season']=table.block_start_month.map({12:'DJF',3:'MAM',6:'JJA',9:'SON'})
+                    table['phase']=(table.block_start_month%12)//3+1
+                    result[kind+'_by_season']=table
         return result
 
     def save(self, directory, *, figures=True, style='manuscript', dpi=180):
@@ -192,7 +203,7 @@ class SensitivityReport:
             from .sensitivity_plots import save_sensitivity_plots
             with publication_style(style=style, dpi=dpi):
                 images = save_sensitivity_plots(tables, directory, dpi=dpi)
-        manifest = dict(bucex_version=__version__, baseline=self.baseline,
+        manifest = dict(bucex_version=__version__, baseline=self.baseline, block_frequency=self.block_frequency,
             sources=self.sources, tables=list(tables), figures=images,
             interpretation=[
                 'All forecast scores are losses: smaller is better; paired improvement is baseline minus candidate.',
@@ -209,8 +220,9 @@ class SensitivityReport:
             '# Prior and predictive assessment\n\n'
             'Start with `convergence.csv`; short runs commonly need more draws. '
             'Then inspect `prior_updates.csv`, `scientific_targets.csv` and the level/slope/risk overlays. '
-            'For held-out forecasts read `scores_by_origin.csv`, `predictive_comparison.csv`, '
-            '`coverage_by_month.csv` and `pit_by_month.csv`.\n\n' +
+            'For held-out forecasts read `scores_by_origin.csv`, `predictive_comparison.csv`, ' +
+            ('`coverage_by_season.csv` and `pit_by_season.csv`.\n\n' if self.block_frequency=='seasonal' else
+             '`coverage_by_month.csv` and `pit_by_month.csv`.\n\n') +
             '\n'.join('- '+item for item in manifest['interpretation'])+'\n', encoding='utf-8')
         return directory
 

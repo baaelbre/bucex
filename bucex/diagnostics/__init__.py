@@ -1,4 +1,7 @@
 """Posterior, predictive and calibration diagnostics."""
+from .clustering import ranked_extremes, rank_clustering_diagnostics, extreme_clusters
+from .predictive_checks import posterior_predictive_checks
+from .block_comparison import score_seasonal_forecast
 from .comparison import paired_block_comparison
 from .shrinkage import draw_marginal_prior, compare_shared_shrinkage, compare_initial_slope_priors
 from .sensitivity import innovation_prior_diagnostics, compare_predictive_scores
@@ -31,6 +34,9 @@ from .scores import (
 )
 
 __all__ = [
+    "score_seasonal_forecast",
+    "posterior_predictive_checks",
+    "ranked_extremes", "rank_clustering_diagnostics", "extreme_clusters",
     "draw_marginal_prior", "compare_shared_shrinkage", "compare_initial_slope_priors",
     "innovation_prior_diagnostics", "compare_predictive_scores",
     "pit_normal_scores", "pit_by_month", "coverage_by_month",

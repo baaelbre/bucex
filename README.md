@@ -1,4 +1,4 @@
-# BUCEX 1.8.2
+# BUCEX 1.8.3
 
 Bayesian unobserved components for Gaussian summaries and GEV extremes.
 Declare interpretable latent components for observation parameters, fit one
@@ -21,8 +21,12 @@ the existing marginal prior API. Ordinary univariate analysis remains supported.
 import bucex as bx
 
 # channel_priors maps the declared response names to their FS priors.
-shared = bx.SharedShrinkage(
-    medians={"level": .0025, "slope": .0000125, "seasonal": .02})
+shared = bx.SharedShrinkage.from_effects(
+    horizon=360, period=12, slope_time_unit=120,
+    level_displacement_sd=0.3794733192,
+    slope_displacement_sd=0.1967692811,
+    seasonal_displacement_sd=0.1549193338,
+    initial_slope_sd=0.30, calibration="marginal")
 priors = bx.MarginalPriors(channel_priors, shrinkage=shared)
 ```
 
@@ -33,6 +37,15 @@ current SERRA specification pools level, slope and seasonal innovation
 shrinkage separately and also learns a common initial-slope prior SD. Set
 `initial_slope_sd=None` to disable that fourth hierarchy. Seasonal pooling regularizes changes in the seasonal
 pattern; it does not share the initial pattern or monthly observation scales.
+
+## Monthly and seasonal SERRA workflows
+
+The monthly reference retains March 1892–August 2026 (1,614 months).
+The separate `research/serra_seasonal` workflow uses 538 complete seasons,
+including JJA 2026. Its command guide covers complete-block auditing,
+physical prior calibration, four-chain fitting, comparable seasonal forecast
+scores, and daily clustering/rank diagnostics. See [START_HERE](START_HERE.md)
+and [the seasonal methods guide](docs/SEASONAL_ANALYSIS.md).
 
 ## What to run for SERRA
 

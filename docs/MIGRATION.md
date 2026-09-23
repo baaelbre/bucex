@@ -1,3 +1,18 @@
+# Moving to 1.8.3
+
+Extract a new source tree, install it, and check `bucex.__version__` and
+`bucex.__file__`. The default `draft/main.json` priors now implement the
+COMPSTAT marginal-moment calibration and the research window excludes
+January-February 1892. Refit to study this specification. Summer 2026 is included.
+
+Seasonal-block alternatives have their own `research/serra_seasonal` configs;
+period 4 alone does not turn monthly data into seasonal observations. Use the
+daily aggregation API. Existing data-loading calls without the new frequency
+argument still load the full bundled monthly record. Existing archived priors
+and relative period-4 scale declarations are preserved.
+
+See [START_HERE](../START_HERE.md).
+
 # Migrating from 1.7.3 to 1.7.4
 
 No model, prior, sampler or archive migration is needed. The release adds

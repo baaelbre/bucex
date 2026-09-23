@@ -1,9 +1,10 @@
 """Plot descriptive long-term movement in the six monthly Uccle summaries.
 
-This script is deliberately exploratory.  It removes the calendar-month
-climatology of a declared reference period and applies the same fixed,
-local-linear smoother to every series.  It does not fit a BUCEX model, select
-changepoints, estimate uncertainty bands, or perform significance tests.
+This script is deliberately exploratory. It expresses each observation as an
+anomaly from the corresponding calendar-month mean in a declared reference
+period and applies the same LOESS specification to all six series. It does not
+fit a BUCEX model, select changepoints, estimate uncertainty bands, or perform
+significance tests.
 
 Run from the project root with
 
@@ -54,16 +55,16 @@ def calendar_month_anomalies(data, reference):
     return anomalies, climatology
 
 
-def local_linear_smooth(data, bandwidth_years=10.0):
-    """Apply a fixed tricube local-linear smoother, including at the endpoints.
+def loess_smooth(data, span=0.15):
+    """Apply degree-one LOESS with tricube weights and no robust reweighting.
 
-    ``bandwidth_years`` is the half-width of the moving window.  The same
-    bandwidth is used for every series, so differences in apparent smoothness
-    are not caused by separate tuning choices.
+    ``span`` is the fraction of finite observations used in each local fit.
+    The same span is used for every series. With the Uccle record, a span of
+    0.15 corresponds to a neighbourhood of approximately 20 years.
     """
-    bandwidth_years = float(bandwidth_years)
-    if not np.isfinite(bandwidth_years) or bandwidth_years <= 0:
-        raise ValueError("bandwidth_years must be positive and finite.")
+    span = float(span)
+    if not np.isfinite(span) or not 0 < span <= 1:
+        raise ValueError("span must be finite and lie in (0, 1].")
 
     dates = pd.DatetimeIndex(data.index)
     time = dates.year.to_numpy(float) + (dates.month.to_numpy(float) - 0.5) / 12.0
@@ -76,19 +77,20 @@ def local_linear_smooth(data, bandwidth_years=10.0):
             raise ValueError(f"{name} has fewer than three finite observations.")
         x = time[finite]
         y = observed[finite]
+        neighbours = max(3, int(np.ceil(span * len(x))))
         fitted = np.empty(len(time), dtype=float)
 
         for i, target in enumerate(time):
-            distance = x - target
-            scaled = np.abs(distance) / bandwidth_years
-            inside = scaled < 1.0
-            if inside.sum() < 3:
-                raise ValueError(
-                    f"The bandwidth leaves fewer than three observations near {dates[i]:%Y-%m}."
-                )
-            local_distance = distance[inside]
-            weights = (1.0 - scaled[inside] ** 3) ** 3
-            design = np.column_stack((np.ones(inside.sum()), local_distance))
+            distance = np.abs(x - target)
+            bandwidth = np.partition(distance, neighbours - 1)[neighbours - 1]
+            if bandwidth <= 0:
+                raise ValueError(f"LOESS neighbourhood is degenerate near {dates[i]:%Y-%m}.")
+
+            inside = distance <= bandwidth
+            scaled = np.minimum(distance[inside] / bandwidth, 1.0)
+            weights = (1.0 - scaled**3) ** 3
+            local_time = x[inside] - target
+            design = np.column_stack((np.ones(inside.sum()), local_time))
             root_weights = np.sqrt(weights)
             coefficients = np.linalg.lstsq(
                 design * root_weights[:, None], y[inside] * root_weights, rcond=None
@@ -100,7 +102,7 @@ def local_linear_smooth(data, bandwidth_years=10.0):
     return result
 
 
-def plot_panels(anomalies, smooths, *, colors, bandwidth_years, figsize, style, dpi):
+def plot_panels(anomalies, smooths, *, colors, loess_span, figsize, style, dpi):
     """Six panels retaining the noisy monthly observations behind each smooth."""
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -124,7 +126,7 @@ def plot_panels(anomalies, smooths, *, colors, bandwidth_years, figsize, style, 
             axis.axhline(0, color="#555555", lw=0.7, alpha=0.45)
             axis.set_title(f"{name}: {SERIES_LABELS[name]}", loc="left", weight="bold")
             if position % 3 == 0:
-                axis.set_ylabel("Calendar-month anomaly / Â°C")
+                axis.set_ylabel("Calendar-month anomaly / °C")
             if position >= 3:
                 axis.set_xlabel("Year")
         axes[0, 0].legend(
@@ -132,7 +134,7 @@ def plot_panels(anomalies, smooths, *, colors, bandwidth_years, figsize, style, 
                 Line2D([], [], marker="o", ls="", color="#8b9198", alpha=0.55,
                        markersize=4, label="Monthly anomaly"),
                 Line2D([], [], color="#333333", lw=2.1,
-                       label=f"Local-linear smooth ({bandwidth_years:g}-year half-width)"),
+                       label=f"LOESS (span = {loess_span:g})"),
             ],
             loc="upper left",
             fontsize=8.5,
@@ -156,7 +158,7 @@ def plot_overlay(smooths, *, colors, linestyles, figsize, style, dpi):
                 label=name,
             )
         axis.axhline(0, color="#555555", lw=0.8, alpha=0.5)
-        axis.set(xlabel="Year", ylabel="Smoothed calendar-month anomaly / Â°C")
+        axis.set(xlabel="Year", ylabel="Calendar-month anomaly / °C")
         axis.legend(ncol=2, loc="upper left")
     return figure
 
@@ -172,9 +174,9 @@ def run(config, *, output=None):
     data = data.loc[:, order]
 
     reference = config["reference"]
-    bandwidth = float(config.get("bandwidth_years", 10.0))
+    span = float(config.get("loess_span", 0.15))
     anomalies, climatology = calendar_month_anomalies(data, reference)
-    smooths = local_linear_smooth(anomalies, bandwidth)
+    smooths = loess_smooth(anomalies, span)
 
     settings = config.get("figures", {})
     colors = settings.get("colors", {})
@@ -187,7 +189,7 @@ def run(config, *, output=None):
     bx.save_config(config, directory / "config.json")
     data.to_csv(directory / "data" / "monthly_observations.csv", float_format="%.17g")
     anomalies.to_csv(directory / "data" / "calendar_month_anomalies.csv", float_format="%.17g")
-    smooths.to_csv(directory / "data" / "local_linear_smooths.csv", float_format="%.17g")
+    smooths.to_csv(directory / "data" / "loess_smooths.csv", float_format="%.17g")
     climatology.rename_axis("month").to_csv(
         directory / "data" / "reference_climatology.csv", float_format="%.17g"
     )
@@ -202,7 +204,7 @@ def run(config, *, output=None):
                 anomalies,
                 smooths,
                 colors=colors,
-                bandwidth_years=bandwidth,
+                loess_span=span,
                 figsize=tuple(settings.get("panel_figsize", (10.6, 6.4))),
                 style=style,
                 dpi=dpi,
@@ -234,14 +236,16 @@ def run(config, *, output=None):
             "observed_end": str(data.index[-1].date()),
             "n_months": len(data),
             "reference": reference,
-            "bandwidth_years": bandwidth,
+            "loess_span": span,
+            "loess_degree": 1,
+            "robust_reweighting": False,
             "anomaly_definition": (
                 "Observation minus the corresponding calendar-month mean in the reference period."
             ),
             "smoother": (
-                "Local-linear regression with tricube weights and a fixed half-width; "
-                "the same bandwidth is used for all six series. Endpoint values use "
-                "asymmetric windows and should be interpreted descriptively."
+                "Degree-one LOESS with tricube distance weights and no robust "
+                "reweighting; the same span is used for all six series. Neighbourhoods "
+                "near the endpoints are one-sided and should be interpreted descriptively."
             ),
             "inferential_status": (
                 "Descriptive only: no model selection, confidence bands, hypothesis tests, "
@@ -253,13 +257,13 @@ def run(config, *, output=None):
     (directory / "README.md").write_text(
         "# Long-term exploratory figures\n\n"
         "`exploratory_long_term_anomalies` retains the monthly observations and "
-        "adds one fixed descriptive smooth per series.\n\n"
+        "adds one descriptive degree-one LOESS smooth per series.\n\n"
         "`exploratory_shared_smooths` overlays those same smooths; it contains no "
         "additional estimation. TX summaries are blue and TN summaries red; line "
         "type distinguishes the mean, upper extreme and lower extreme.\n\n"
         "The figures are descriptive model motivation, not evidence for a specific "
-        "changepoint or a substitute for the state-space analysis. Smooths near the "
-        "start and end of the record use asymmetric windows.\n",
+        "changepoint or a substitute for the state-space analysis. The same LOESS "
+        "span is used for all series; endpoint neighbourhoods are one-sided.\n",
         encoding="utf-8",
     )
     return directory
@@ -273,13 +277,13 @@ def main():
         default=Path("research/serra/config/revision/long_term_exploration.json"),
     )
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--bandwidth-years", type=float)
+    parser.add_argument("--loess-span", type=float)
     parser.add_argument("--formats", nargs="+", choices=("png", "pdf", "svg"))
     args = parser.parse_args()
 
     config = bx.load_config(args.config)
-    if args.bandwidth_years is not None:
-        config["bandwidth_years"] = args.bandwidth_years
+    if args.loess_span is not None:
+        config["loess_span"] = args.loess_span
     if args.formats:
         config.setdefault("figures", {})["formats"] = args.formats
     directory = run(config, output=args.output)

@@ -59,7 +59,7 @@ def test_pilot_has_one_candidate_list_correct_dates_and_short_parallel_chains():
     directory = Path(__file__).resolve().parents[1]/'research/serra/config/priors'
     config = bx.load_config(directory/'pilot.json')
     plan = study_plan(config)
-    assert plan['fitted_end'] == '2026-08-01' and plan['n_months'] == 1616
+    assert plan['fitted_end'] == '2026-08-01' and plan['n_months'] == 1614
     assert plan['posterior_fits'] == 3 and plan['predictive_fits'] == 9
     assert [r['training_end'] for r in plan['folds']] == ['2000-12-01','2010-12-01','2020-12-01']
     assert plan['effective_chain_workers'] == 4
