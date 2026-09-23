@@ -108,34 +108,3 @@ def test_analytic_pc_plot_acf_and_save_api(tmp_path):
     plt.close(process_figure)
     plt.close(acf_figure)
     plt.close(forecast_axis.figure)
-
-
-def test_constant_ssvs_allocation_has_undefined_rhat_and_ess():
-    values = np.zeros((4, 100))
-    assert np.isnan(bx.rhat(values))
-    assert np.isnan(bx.ess_bulk(values))
-
-    forced = bx.SSVSPrior(
-        level_dynamic_probability=0.0,
-        trend_probabilities=(1.0, 0.0, 0.0),
-        season_probabilities=(1.0, 0.0, 0.0),
-    )
-    model = bx.Model(
-        bx.Gaussian(),
-        (bx.LocalLinearTrend(), bx.DummySeasonal(period=4)),
-    )
-    fit = bx.fit(
-        _univariate_data(10),
-        model,
-        parameterization="fruehwirth_schnatter",
-        priors=bx.ssvs_gaussian_priors(period=4, ssvs=forced),
-        asis=False,
-        mcmc=bx.MCMC(draws=3, warmup=1, chains=2, seed=11),
-    )
-    row = fit.diagnostics()["parameters"].loc["state_season"]
-    assert bool(row["constant"])
-    assert np.isnan(row["rhat"])
-    assert np.isnan(row["ess_bulk"])
-    assert row["diagnostic"] == "constant draw; R-hat and ESS undefined"
-    transitions = fit.component_transition_summary()
-    assert transitions.loc["seasonal", "status"] == "constant posterior allocation"

@@ -1,0 +1,33 @@
+{
+  "extends": "main.json",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "constant_dispersion",
+      "seasonal_scale": false
+    },
+    {
+      "name": "fixed_location_seasonality",
+      "seasonal": "static",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope"
+        ],
+        "log_sd": 0.6931471805599453,
+        "pool_initial_slope": true
+      }
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "save_fits": false,
+  "output": "results/serra_184_adequacy"
+}

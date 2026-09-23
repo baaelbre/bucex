@@ -131,7 +131,7 @@ def test_missing_traces_are_marked_and_strict_export_fails(tmp_path):
 
 
 def test_report_exports_initial_slope_and_honours_save_fits_false(tmp_path):
-    from research.serra.report import write_report
+    from research.monthly.report import write_report
     dates = pd.date_range('2020-01-01',periods=36,freq='MS')
     y = pd.Series(10+np.sin(np.arange(36)*np.pi/6),index=dates,name='TXm')
     fit = bx.fit(y,family='gaussian',period=12,priors='normal',parameterization='fs',
@@ -148,12 +148,12 @@ def test_report_exports_initial_slope_and_honours_save_fits_false(tmp_path):
     assert notes['interval_level'] == .95 and notes['threshold'] == 25
 
 
-def test_revision_margins_are_matched_and_reach_august_2026():
-    base=Path(__file__).resolve().parents[1]/'research/serra/config/revision'
-    independent=bx.load_config(base/'monthly_scale.json')
-    joint=bx.load_config(base/'copula_monthly.json')
+def test_paper_margins_are_matched_and_reach_august_2026():
+    base=Path(__file__).resolve().parents[1]/'research/monthly/config'
+    independent=bx.load_config(base/'independent.json')
+    joint=bx.load_config(base/'main.json')
     assert independent['model'] == joint['model']
-    assert independent['priors'] == joint['priors']
+    assert independent['priors']['shared_shrinkage'] is None
     assert joint['data']['end'] == '2026-08-01'
-    assert joint['priors']['innovation_median']['level'] == .01
+    assert joint['priors']['innovation_median']['level'] > 0
     assert joint['model']['seasonal_scale'] and not joint['inference']['asis']

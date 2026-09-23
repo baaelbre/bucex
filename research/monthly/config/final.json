@@ -1,0 +1,10 @@
+{
+  "extends": "main.json",
+  "mcmc": {
+    "warmup": 2000,
+    "draws": 4000
+  },
+  "forecast_draws": 4000,
+  "predictive_check_draws": 400,
+  "output": "results/serra_184_final"
+}

@@ -24,5 +24,5 @@ reporting windows, gap filling and source-boundary limitations. The package
 software license does not assign a license to the observations.
 
 The daily CSV is included in the source release's `data/`, not in the wheel.
-From that source root, `python -m research.serra.prepare_uccle` regenerates
+From that source root, `python -m research.monthly.prepare_uccle` regenerates
 these files through the public `bx.derive_uccle_monthly` function.

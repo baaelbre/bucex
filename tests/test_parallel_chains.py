@@ -22,21 +22,16 @@ def problem(kind):
         options["priors"] = bx.fs_priors(family, period=4)
         if kind == "disturbance":
             options = {"priors": "normal", "parameterization": "noncentered"}
-    elif kind in {"copula", "hierarchy"}:
-        channels = (bx.Channel("mean", bx.Gaussian(scale=bx.SeasonalScale(4)) if kind == "copula" else bx.Gaussian(), components),
+    elif kind == "copula":
+        channels = (bx.Channel("mean", bx.Gaussian(scale=bx.SeasonalScale(4)), components),
                     bx.Channel("minimum", bx.GEV(), components, tail="lower"))
-        model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula() if kind == "copula" else None)
+        model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula())
         y = pd.DataFrame({"mean": y, "minimum": y * .4 + rng.normal(size=len(y))})
-        options["priors"] = (bx.MarginalPriors({c.name: bx.fs_priors(c.family, period=4) for c in channels})
-                             if kind == "copula" else bx.HierarchicalPrior(pool="both"))
-    else:
-        from tests.test_shared_sampler import _mixed_shared_fixture
-        model, y, priors = _mixed_shared_fixture()
-        options["priors"] = priors
+        options["priors"] = bx.MarginalPriors({c.name: bx.fs_priors(c.family, period=4) for c in channels})
     return y, model, options
 
 
-@pytest.mark.parametrize("kind", ["fs_gaussian", "fs_gev", "monthly", "copula", "disturbance", "hierarchy", "shared"])
+@pytest.mark.parametrize("kind", ["fs_gaussian", "fs_gev", "monthly", "copula", "disturbance"])
 def test_serial_parallel_identical_draws_and_saved_chain_axes(kind, tmp_path):
     y, model, options = problem(kind)
     settings = bx.MCMC(chains=2, draws=4, warmup=2, thin=2, seed=371)
@@ -96,8 +91,8 @@ def test_parallel_errors_do_not_return_partial_posterior():
         bx.fit(y, model, mcmc=bx.MCMC(chains=2, draws=1, warmup=0, chain_workers=2), **options)
 
 
-def test_shared_warm_start_selects_the_matching_chain():
-    y, model, options = problem("shared")
+def test_marginal_warm_start_selects_the_matching_chain():
+    y, model, options = problem("copula")
     initial = bx.fit(y, model, mcmc=bx.MCMC(chains=2, draws=2, warmup=1, seed=21), **options)
     settings = bx.MCMC(chains=2, draws=2, warmup=1, seed=22)
     serial = bx.fit(y, model, init=initial, mcmc=settings, **options)

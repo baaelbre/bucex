@@ -1,0 +1,21 @@
+{
+  "extends": "main.json",
+  "analysis": "independent",
+  "priors": {
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.013489795003921638,
+      "trend": 3.372448750980409e-05,
+      "season": 0.013489795003921634
+    },
+    "initial_slope_sd": 0.0025,
+    "xi_prior": "normal",
+    "xi_sd": 0.3,
+    "xi_bounds": [
+      null,
+      null
+    ],
+    "shared_shrinkage": null
+  },
+  "output": "results/serra_184_univariate"
+}

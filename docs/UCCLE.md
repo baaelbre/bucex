@@ -83,8 +83,8 @@ normally differ by less than `1e-12` after a CSV round trip.
 
 ## Configured workflow
 
-`python -m research.serra.prepare_uccle` is a short wrapper around the same
-aggregator. Its `research/serra/config/prepare_uccle.json` contains:
+`python -m research.monthly.prepare_uccle` is a short wrapper around the same
+aggregator. Its `research/monthly/config/prepare_uccle.json` contains:
 
 ```json
 {
@@ -103,12 +103,12 @@ a saved `fit.bucex` is unchanged until refitted. No homogenization is asserted. 
 comparability before interpreting the extension.
 
 ```bash
-python -m research.serra.univariate --series TXm TXx
-python -m research.serra.copula --independence
-python -m research.serra.copula
+python -m research.monthly.univariate --series TXm TXx
+python -m research.monthly.copula --independence
+python -m research.monthly.copula
 ```
 
-Use `--config research/serra/config/independent_full.json` or `copula_full.json`
+Use `--config research/monthly/config/independent_full.json` or `copula_full.json`
 for substantive fits. These are MCMC starting budgets and require diagnostics.
 Every channel has private location seasonality and an optional seasonal scale.
-The complete sequence and reviewer studies are in `research/serra/README.md`.
+The complete sequence and reviewer studies are in `research/monthly/README.md`.

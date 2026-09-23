@@ -70,7 +70,6 @@ def build_parser() -> argparse.ArgumentParser:
             "regularized_triple_gamma",
             "pc",
             "normal",
-            "ssvs",
         ),
         default="normal",
     )

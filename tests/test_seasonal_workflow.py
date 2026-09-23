@@ -1,4 +1,4 @@
-"""Independent calendar, density, physical-prior and clustering checks for 1.8.3."""
+"""Independent calendar, density, physical-prior and clustering checks for 1.8.4."""
 from dataclasses import replace
 from pathlib import Path
 import numpy as np
@@ -7,8 +7,8 @@ import pytest
 from scipy.stats import norm,genextreme
 import bucex as bx
 from tests.test_calendar_forecasts import forecast
-from research.serra.models import joint_model
-from research.serra.experiment import configured_variant
+from research.monthly.models import joint_model
+from research.monthly.experiment import configured_variant
 
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -45,11 +45,11 @@ def test_missing_daily_data_are_never_silently_replaced():
 
 
 def test_actual_uccle_window_and_ordering():
-    config=bx.load_config(ROOT/'research/serra_seasonal/config/main.json')
+    config=bx.load_config(ROOT/'research/seasonal/config/main.json')
     config['data']['daily_source']=ROOT/'data/Uccle_31_08_26.csv'
     values=bx.load_uccle_multiseries(**config['data'])
     assert len(values)==538 and values.attrs['last_included_day']=='2026-08-31'
-    monthly=bx.load_uccle_multiseries(**bx.load_config(ROOT/'research/serra/config/draft/main.json')['data'])
+    monthly=bx.load_uccle_multiseries(**bx.load_config(ROOT/'research/monthly/config/main.json')['data'])
     assert len(monthly)==1614 and monthly.index[0]==pd.Timestamp('1892-03-01')
     # Verify seasonal extraction against an independent reduction of monthly CSVs.
     for date,row in values.iterrows():
@@ -135,7 +135,7 @@ def test_gaussian_seasonal_density_and_score_are_for_weighted_mean():
 
 def test_physical_priors_match_over_30_years_and_width_sensitivity():
     rows=[]
-    for path in ['research/serra/config/draft/main.json','research/serra_seasonal/config/main.json']:
+    for path in ['research/monthly/config/main.json','research/seasonal/config/main.json']:
         c=bx.load_config(ROOT/path)
         data=pd.DataFrame({n:np.zeros(5) for n in c['data']['series']})
         _,p=joint_model(data,c)
@@ -166,8 +166,8 @@ def test_rank_ties_and_run_definition_across_season_boundary():
 
 
 def test_seasonal_adequacy_reports_keep_quarterly_units(tmp_path,monkeypatch):
-    from research.serra.prior_assessment import run
-    config=bx.load_config(ROOT/'research/serra_seasonal/config/smoke.json')
+    from research.monthly.prior_assessment import run
+    config=bx.load_config(ROOT/'research/seasonal/config/smoke.json')
     dates=pd.date_range('2021-03-01',periods=22,freq='3MS')
     rng=np.random.default_rng(18)
     data=pd.DataFrame({name:10+3*np.sin(np.arange(22)*np.pi/2)+rng.normal(size=22)

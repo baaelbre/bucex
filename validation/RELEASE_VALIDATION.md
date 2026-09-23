@@ -1,39 +1,16 @@
-# BUCEX 1.8.3 verification
+# BUCEX 1.8.4 validation — 2026-09-23
 
-Verified on 23 September 2026. The final source suite passed **406 tests**
-with zero failures or errors in 477.60 seconds. One data-quality warning
-records the two retained daily TN > TX pairs. The JUnit report and machine-readable
-verification record are included beside this file.
-After the final calendar-end label correction, a further 45 targeted
-seasonal, calendar, prior-assessment and publication-reporting tests passed.
+The release was checked from its source tree with the same Python environment used to build the distribution.
 
-The tests cover complete-season boundaries and leap-year weights, exclusion of
-January-February 1892 and retention of JJA 2026, agreement of daily-derived
-seasonal summaries with independent aggregation of the monthly records,
-meteorological scale/copula phases, GEV maximum/minimum predictive densities
-against direct order-statistic formulas, support endpoints, physical prior
-calibration, runs-cluster definitions, and a complete seasonal adequacy-report
-workflow. Existing univariate, shared-state, hierarchical, copula, archive,
-inference and reporting regressions also passed.
+| Check | Result |
+|---|---|
+| Active software suite: `python -m pytest -q` | 272 passed; one data quality warning reports two daily TN > TX pairs already retained in the source record |
+| Focused private marginal, seasonal, forecast and archive tests during cleanup | 54 passed; the full suite was rerun after removing the SSVS constructor option |
+| All research JSON configurations | 16 monthly and 12 seasonal configurations resolved through inheritance |
+| Matched seasonal comparison dry run | Two monthly and two seasonal training windows aligned to common seasonal outcomes |
+| Monthly and seasonal preflight | 1,614 monthly observations and 538 complete seasonal blocks, ending with JJA 2026 |
+| Package build | `bucex-1.8.4` wheel built with `pip wheel . --no-build-isolation --no-deps` |
+| 1.8.3 paper-model archive | A small private two-channel Gaussian/copula fit was saved under 1.8.3, loaded under 1.8.4, and produced finite correlated forecasts and joint scores |
+| Legacy archive migration | Continuous Gaussian and GEV fit archives with an unused `ssvs: null` field load and resave; the `ssvs=` prior constructor option is absent |
 
-The built wheel was installed in a separate directory; all 123 package Python
-files matched the source byte for byte. An installed-package check reloaded the
-six-channel seasonal posterior archive, generated finite forecasts, retained
-season labels through JJA 2027, and exported conditional predictive discrepancies.
-
-Research execution checks completed a six-response seasonal fit with four
-parallel chains and a matched monthly-versus-seasonal forecast comparison.
-Each smoke chain used 3 warmup and 4 retained draws. The forecast comparison
-used a November 2023 cutoff and four complete held-out seasons. Completed-fold
-resume preserved the existing completion records. Data preparation and daily
-rank/clustering diagnostics also ran. All 14 Bash command blocks in START_HERE
-passed syntax checks; 18 referenced configurations resolved and all ten named
-research command-line entry points accepted --help. Seasonal forecast/risk and
-copula figures were visually inspected.
-
-These short posterior runs validate execution, not convergence, temperature
-change, predictive superiority or asymptotic adequacy. Their results are excluded
-from the release. Full scientific fits and predictive/sensitivity assessments
-remain to run. Seasonal fitting uses r=1 extrema; r>1 fitting is not implemented.
-
-See `release_1.8.3.json` for exact execution settings and coverage.
+These checks cover software behavior, configurations and data window calculations. The long paper fits and their convergence, adequacy and predictive comparisons remain separate experiments. The removed latent factor, structural SSVS and evolving-scale routes are not part of this release's tests or public API.

@@ -1,4 +1,4 @@
-# Shared regularization in BUCEX 1.8.2
+# Shared regularization in BUCEX 1.8.4
 
 Every channel retains its own realized location trajectory, initial slope,
 innovation SDs, seasonal pattern and observation parameters. Hierarchical
@@ -64,8 +64,7 @@ Pooling requires at least two channels with the selected active coefficient.
 A fixed but uncertain slope is eligible; a removed slope is not. An omitted
 innovation is not counted as an observed zero in the scale update. With only
 local-level models, disable initial-slope pooling. This hierarchy requires
-zero-centred normal FS coefficient priors; it does not combine with SSVS or
-local lasso/horseshoe/triple-gamma mixtures.
+zero-centred normal FS coefficient priors; it does not combine with local lasso/horseshoe/triple-gamma mixtures.
 
 ## Exact conditional update
 

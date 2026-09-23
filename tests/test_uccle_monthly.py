@@ -149,9 +149,9 @@ def test_bundled_release_coverage_and_default_do_not_depend_on_cwd(tmp_path, mon
 
 
 def test_research_runner_can_initialize_updated_lower_extremes():
-    from research.serra.models import channel, marginal_prior, fit_options
+    from research.monthly.models import channel, marginal_prior, fit_options
 
-    config = bx.load_config(ROOT / "research/serra/config/independent_smoke.json")
+    config = bx.load_config(ROOT / "research/monthly/config/independent.json")
     config["mcmc"].update(draws=1, warmup=1, chains=1, progress=False)
     data = bx.load_uccle_multiseries(series="TNn", start="2024-09-01")
     item = channel("TNn", data, config)

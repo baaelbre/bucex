@@ -103,9 +103,9 @@ def test_unrestricted_shape_support_and_bounded_opt_in(xi):
 
 
 def test_draft_configuration_matches_the_scientific_contract():
-    from research.serra.preflight import inspect
-    from research.serra.models import joint_model
-    path=Path(__file__).resolve().parents[1]/'research/serra/config/draft'
+    from research.monthly.preflight import inspect
+    from research.monthly.models import joint_model
+    path=Path(__file__).resolve().parents[1]/'research/monthly/config'
     config=bx.load_config(path/'main.json')
     summary=inspect(config)
     assert summary['start']=='1892-03-01' and summary['end']=='2026-08-01' and summary['n_months']==1614
@@ -116,7 +116,7 @@ def test_draft_configuration_matches_the_scientific_contract():
     assert config['priors']['shared_shrinkage']['pool_initial_slope']
     data=bx.load_uccle_multiseries(**config['data'])
     model,priors=joint_model(data,config)
-    assert priors.shrinkage.initial_slope_sd == pytest.approx(.0025*np.exp(-np.log(2.)**2))
+    assert priors.shrinkage.initial_slope_sd == pytest.approx(config['priors']['initial_slope_sd'])
     assert model.channel('TXx').observation.xi_bounds==(-np.inf,np.inf)
     assert np.isinf(priors.channels['TXx'].xi_max_abs)
     assert bx.load_config(path/'independent.json')['priors']['shared_shrinkage'] is None

@@ -1,11 +1,11 @@
 # Seasonal blocks, comparable prediction, and future r-largest models
 
-## Scope of 1.8.3
+## Scope of 1.8.4
 
 The release provides complete seasonal r=1 models for all six summaries, joint
 hierarchical shrinkage, seasonal-scale effects, four shrunk copula matrices,
 independent fallback fits, posterior diagnostics and matched forecast assessment.
-The separate research workflow is `research/serra_seasonal`; runnable commands
+The separate research workflow is `research/seasonal`; runnable commands
 are in `START_HERE.md`.
 
 It also provides raw r-largest/r-smallest extraction and runs-cluster diagnostics.

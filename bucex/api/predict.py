@@ -10,7 +10,7 @@ import numpy as np
 from ..diagnostics.calibration import pit_diagnostics
 from ..diagnostics.scores import evaluate_ensemble, log_predictive_score
 from ..inference.fit.phi import phi_future_basis
-from ..core.shared_results import channel_design, group_design, univariate_design
+from ..core.component_results import channel_design, univariate_design
 from ..core.calendar import seasonal_phases
 
 
@@ -74,18 +74,6 @@ def _component_designs(fit, n_time: int) -> dict[str, Array]:
         for channel in fit.channel_names
         for component in ("level", "slope", "seasonal")
     }
-    if getattr(fit.compiled, "is_shared", False):
-        for name, kind in fit.compiled.group_kinds.items():
-            for component in ("level", "slope", "seasonal"):
-                try:
-                    if kind == "shared":
-                        designs[f"shared.{name}.{component}"] = group_design(fit.compiled, name, component)
-                    else:
-                        for channel in fit.channel_names:
-                            designs[f"departure.{name}.{channel}.{component}"] = group_design(fit.compiled, name, component, channel=channel)
-                except ValueError:
-                    # A local-level process, for example, has no slope.
-                    continue
     return designs
 
 
@@ -208,15 +196,6 @@ class Forecast:
         if design.ndim == 1:
             return np.einsum("dtm,m->dt", self.states, design)
         return np.einsum("dtm,tm->dt", self.states, design)
-
-    def shared_draws(self, name: str = "warming", *, component: str = "level") -> Array:
-        """Future shared trajectory before its fixed channel loadings."""
-        return self._project_component(f"shared.{name}.{component}")
-
-    def departure_draws(self, channel: str, *, name: str = "departure", component: str = "level") -> Array:
-        """Future constrained departure on the original response scale."""
-        self._channel_index(channel)
-        return self._project_component(f"departure.{name}.{channel}.{component}")
 
     def _target_draws(self, target: str, *, channel: str | None) -> Array:
         key = str(target).lower().replace("-", "_")
@@ -505,8 +484,8 @@ class Forecast:
     def compound_probability(self, events, *, operation="all") -> Array:
         """Probability of simultaneous channel threshold events at each time.
 
-        Uses unchanged joint predictive draws, preserving copula, shared-state
-        and parameter dependence. This Monte Carlo average is not a credible
+        Uses unchanged joint predictive draws, preserving copula and parameter
+        dependence. This Monte Carlo average is not a credible
         interval for a conditional probability.
         """
         from ..diagnostics.ordering import compound_event_probability

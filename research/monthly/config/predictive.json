@@ -1,0 +1,18 @@
+{
+  "extends": "main.json",
+  "_comment": "Two declared forecast origins; priors fixed in advance, hyperparameters learned only from training data.",
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "validation": {
+    "training_ends": [
+      "2015-12",
+      "2020-12"
+    ],
+    "horizon": 60,
+    "draws": 2000,
+    "save_fits": true
+  },
+  "output": "results/serra_184_draft_predictive"
+}

@@ -1,7 +1,6 @@
 """Model specifications and compilation."""
 from .base import LinearDesign, LinearGaussianSystem, StateSpaceModel
 from .multiseries import Channel, MultiSeriesModel
-from .shared import Shared, Departures
 from ..dependence import GaussianCopula
 from .multiseries_compiler import (
     CompiledMultiSeriesModel,
@@ -14,8 +13,6 @@ __all__ = [
     "LinearGaussianSystem",
     "StateSpaceModel",
     "Channel",
-    "Shared",
-    "Departures",
     "GaussianCopula",
     "MultiSeriesModel",
     "CompiledMultiSeriesModel",

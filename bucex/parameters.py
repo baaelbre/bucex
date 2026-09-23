@@ -20,10 +20,8 @@ class Constant:
 class Latent:
     """An additive structural predictor for a distribution parameter.
 
-    Location priors are the ordinary ``fs_priors`` passed to ``fit``. For a
-    log-scale predictor, ``priors=EvolutionPriors(...)`` controls the additional
-    evolution; the baseline scale still uses the observation-scale prior.
-    ``link=None`` selects the family's natural link (identity or log).
+    Location priors are the ordinary ``fs_priors`` passed to ``fit``.
+    ``link=None`` selects the family's natural identity link.
     """
     components: tuple
     link: str | None = None
@@ -39,7 +37,6 @@ class Latent:
 
 def resolve_parameters(observation, components, parameters):
     """Lower named parameters to the existing executable model representation."""
-    from .observation.scale import StructuralScale
     components = tuple(components)
     if parameters is None:
         return observation, components
@@ -74,9 +71,7 @@ def resolve_parameters(observation, components, parameters):
             from .observation.scale import LogScale
             observation = replace(observation, scale=LogScale())
         elif isinstance(scale, Latent):
-            if scale.link not in {None, "log"}:
-                raise ValueError("Positive scale parameters use the log link.")
-            observation = replace(observation, scale=StructuralScale(scale.components, scale.priors))
+            raise ValueError("Scale evolution is outside the BUCEX 1.8.4 paper API; use Constant() or SeasonalScale().")
         else:
             raise TypeError("sigma must be Constant() or Latent(...).")
     if "xi" in parameters and not isinstance(parameters["xi"], Constant):

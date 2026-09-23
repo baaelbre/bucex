@@ -1,0 +1,28 @@
+{
+  "extends": "main.json",
+  "data": {
+    "start": "2021-03"
+  },
+  "mcmc": {
+    "warmup": 3,
+    "draws": 4,
+    "chains": 4,
+    "chain_workers": 4,
+    "progress_every": 1
+  },
+  "contrasts": {
+    "reference": [
+      "2021-03",
+      "2022-02"
+    ],
+    "comparison": [
+      "2025-03",
+      "2026-02"
+    ]
+  },
+  "forecast_horizon": 8,
+  "forecast_draws": 40,
+  "predictive_check_draws": 12,
+  "prior_draws": 500,
+  "output": "results/serra_184_seasonal_smoke"
+}

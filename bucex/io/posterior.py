@@ -18,10 +18,8 @@ from ..inference.plan import InferencePlan
 from ..models.compiler import compile_model
 from ..models.multiseries import MultiSeriesModel
 from ..models.structural import Model
-from ..priors import hierarchical as hierarchical_priors
 from ..priors import process as process_priors
 from ..priors import structural as structural_priors
-from ..priors import joint as joint_priors
 from ..priors import marginal as marginal_priors
 
 
@@ -37,8 +35,7 @@ def _prior_classes() -> dict[str, type]:
     for module in (
         process_priors,
         structural_priors,
-        hierarchical_priors,
-        joint_priors, marginal_priors,
+        marginal_priors,
     ):
         for name in dir(module):
             candidate = getattr(module, name)
@@ -128,6 +125,11 @@ def _decode(value: Any, arrays: Mapping[str, np.ndarray]) -> Any:
             key: _decode(item, arrays)
             for key, item in value.get("fields", {}).items()
         }
+        if _PRIOR_CLASSES[tag].__name__ in {"FSGaussianPriors", "FSGEVPriors"}:
+            # Earlier archives included this optional field even for continuous
+            # paper fits. It is no longer a constructor argument.
+            if kwargs.pop("ssvs", None) is not None:
+                raise ValueError("Structural SSVS archives are outside the BUCEX 1.8.4 paper API.")
         if _PRIOR_CLASSES[tag].__name__ == "SharedShrinkage":
             # Old fits must retain the prior they were actually sampled under.
             kwargs.setdefault("initial_slope_sd", None)

@@ -13,7 +13,7 @@ From the extracted source directory:
 
 ```bash
 python -m pip install -e '.[test]'
-python -m research.serra.univariate --config research/serra/config/independent_full.json --series TXm
+python -m research.monthly.univariate --config research/monthly/config/independent_full.json --series TXm
 ```
 
 Omit `--series TXm` to fit all six independently. The full default is four
@@ -23,16 +23,16 @@ still use four-draw execution checks. Read the printed chain/draw/date counts.
 
 For the old manuscript period, choose `independent_1892_2022.json` or
 `copula_1892_2022.json`. When changing the actual source data, first update
-`research/serra/config/prepare_uccle.json` and run `research.serra.prepare_uccle`.
+`research/monthly/config/prepare_uccle.json` and run `research.monthly.prepare_uccle`.
 Full fitting follows the refreshed monthly CSVs. Existing local saved JSON
 configurations with `end: "2022-12-01"` continue to request that cutoff.
 
 ## Existing fit: more figures without more MCMC
 
 ```bash
-python -m research.serra.report --fit PATH_TO_RUN/fit.bucex
-python -m research.serra.report --fit PATH_TO_RUN/fit.bucex --months 1 7 8 --horizon 120
-python -m research.serra.check_updates --fit PATH_TO_RUN/fit.bucex
+python -m research.monthly.report --fit PATH_TO_RUN/fit.bucex
+python -m research.monthly.report --fit PATH_TO_RUN/fit.bucex --months 1 7 8 --horizon 120
+python -m research.monthly.check_updates --fit PATH_TO_RUN/fit.bucex
 ```
 
 `report` reads `config.json` beside the fit unless `--config` overrides it.
@@ -41,7 +41,7 @@ the posterior archive. `--format pdf` is available. `check_updates` evaluates
 later bundled observations from the saved forecast origin; it is a fixed-origin
 multistep check, not rolling one-step validation. Fit mixing and record source
 comparability still affect its interpretation. For rolling validation use
-`research.serra.validate` with the intended full configuration.
+`research.monthly.validate` with the intended full configuration.
 
 ## What to inspect
 

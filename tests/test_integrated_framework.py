@@ -95,7 +95,6 @@ def test_gev_engines_share_one_result_contract(engine, exact):
         ),
         ("pc", {"pc_tau_level", "pc_tau_trend", "pc_tau_season"}),
         ("normal", set()),
-        ("ssvs", {"state_level", "state_trend", "state_season"}),
     ],
 )
 def test_fs_prior_profiles_resolve_through_fit(profile, required):
@@ -133,24 +132,6 @@ def test_incompatible_prior_and_model_combinations_fail_before_sampling():
             mcmc=QUICK,
         )
 
-
-def test_fs_ssvs_uses_semantic_component_summaries():
-    fit = bx.fit(
-        _sample("gaussian", 5),
-        family="gaussian",
-        period=12,
-        priors="ssvs",
-        parameterization="fruehwirth_schnatter",
-        mcmc=bx.MCMC(draws=4, warmup=2, chains=1, seed=6),
-    )
-    table = fit.component_probabilities()
-    assert list(table.columns) == ["zero", "fixed", "dynamic"]
-    np.testing.assert_allclose(table.sum(axis=1), 1.0)
-    assert fit.most_probable_structure()["level"] in {"fixed", "dynamic"}
-    state_trend = np.asarray(fit.parameter("state_trend"), dtype=int)
-    state_season = np.asarray(fit.parameter("state_season"), dtype=int)
-    assert np.all(fit.parameter("signed_sd.slope")[state_trend != 2] == 0.0)
-    assert np.all(fit.parameter("signed_sd.seasonal")[state_season != 2] == 0.0)
 
 
 def test_structural_shrinkage_profiles_are_mathematically_distinct():

@@ -1,6 +1,13 @@
+# 1.8.4 (2026-09-23)
+
+- Focus the paper API on continuous private marginal FS fits, optional shared prior-scale shrinkage, and optional residual copulas.
+- Separate `research/monthly` and `research/seasonal`; retain periodic-versus-constant scale adequacy tests.
+- Remove public shared latent factors, hierarchical SSVS, dynamic GEV phi, and evolving observation scales.
+- Correct copula-aware private multiseries forecast simulation and scoring.
+
 # 1.8.3 (2026-09-23)
 
-- Separate `research/serra_seasonal` workflow: complete daily-derived seasonal means/extrema, four-phase scales and copula, shared shrinkage and independent fallbacks.
+- Separate `research/seasonal` workflow: complete daily-derived seasonal means/extrema, four-phase scales and copula, shared shrinkage and independent fallbacks.
 - Retain JJA 2026; exclude only January-February 1892 in research analyses. Audit 1,614 monthly / 538 seasonal blocks.
 - Apply COMPSTAT marginal-moment prior calibration and match physical effects across update frequencies; moment-preserving hyperprior-width sensitivity.
 - Analytic aggregate Gaussian/extreme CDFs and densities; matched historical forecasts scored on identical seasonal targets.
@@ -62,7 +69,7 @@
 
 ## 1.7.4 — 2026-09-21
 
-- Integrate exploratory manuscript Figures 1 and 2 into `research.serra.explore`.
+- Integrate exploratory manuscript Figures 1 and 2 into `research.monthly.explore`.
 - Add the general `explore_monthly` / `MonthlyExploration` API for empirical
   seasonal cycles and within-month, within-era detrended interquartile ranges.
 - Keep numerical calculations, scoped plotting and report persistence in

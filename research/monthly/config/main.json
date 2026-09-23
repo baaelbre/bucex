@@ -1,0 +1,68 @@
+{
+  "extends": "base.json",
+  "_comment": "1.8.4 monthly reference. Shared innovation and initial-slope regularization, COMPSTAT marginal-moment calibration; private states, monthly scales, seasonal copula.",
+  "analysis": "copula",
+  "model": {
+    "seasonal_scale": true
+  },
+  "priors": {
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.008343480538225556,
+      "trend": 2.085870134556389e-05,
+      "season": 0.008343480538225555
+    },
+    "initial_slope_sd": 0.0015462578445039402,
+    "xi_prior": "normal",
+    "xi_sd": 0.3,
+    "xi_bounds": [
+      null,
+      null
+    ],
+    "shared_shrinkage": {
+      "components": [
+        "level",
+        "slope",
+        "seasonal"
+      ],
+      "log_sd": 0.6931471805599453,
+      "pool_initial_slope": true
+    }
+  },
+  "copula": {
+    "structure": "seasons",
+    "eta": 1.0,
+    "prior_sd": 0.25
+  },
+  "mcmc": {
+    "warmup": 1000,
+    "draws": 1000,
+    "chains": 4,
+    "chain_workers": 4,
+    "progress_every": 100
+  },
+  "save_fits": true,
+  "forecast_draws": 2000,
+  "predictive_check_draws": 200,
+  "prior_predictive_draws": 0,
+  "prior_calibration": {
+    "horizon": 360,
+    "slope_time_unit": 120,
+    "unit": "degC"
+  },
+  "additional_risks": {
+    "TXx": [
+      39.7
+    ]
+  },
+  "output": "results/serra_184_monthly",
+  "validation": {
+    "training_ends": [
+      "2015-11",
+      "2020-11"
+    ],
+    "horizon": 60,
+    "draws": 2000,
+    "save_fits": true
+  }
+}

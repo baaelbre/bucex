@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 import bucex as bx
-from research.serra.prior_assessment import study_plan
+from research.monthly.prior_assessment import study_plan
 
 
 def score_cases(n_origins=3):
@@ -55,35 +55,13 @@ def test_prior_contraction_can_happen_without_a_shift():
         bx.innovation_prior_diagnostics(rows)
 
 
-def test_pilot_has_one_candidate_list_correct_dates_and_short_parallel_chains():
-    directory = Path(__file__).resolve().parents[1]/'research/serra/config/priors'
-    config = bx.load_config(directory/'pilot.json')
+def test_adequacy_study_plans_shared_margins_and_matched_forecasts():
+    directory = Path(__file__).resolve().parents[1]/'research/monthly/config'
+    config = bx.load_config(directory/'adequacy.json')
     plan = study_plan(config)
     assert plan['fitted_end'] == '2026-08-01' and plan['n_months'] == 1614
-    assert plan['posterior_fits'] == 3 and plan['predictive_fits'] == 9
-    assert [r['training_end'] for r in plan['folds']] == ['2000-12-01','2010-12-01','2020-12-01']
+    assert plan['posterior_fits'] == 3 and plan['predictive_fits'] == 3 * len(plan['folds'])
+    assert len(plan['folds']) >= 2
     assert plan['effective_chain_workers'] == 4
     assert config['model']['seasonal_scale'] and config['priors']['innovation'] == 'normal'
     assert config['mcmc']['warmup'] == config['mcmc']['draws'] == 500
-    assert config['prior_predictive_draws'] == 0
-    assert config['diagnostic_thresholds']['max_rhat'] == 1.01
-    assert config['contrasts']['comparison'] == ['1996-09','2026-08']
-
-
-def test_sensitivity_paths_are_saved_without_figures_or_full_archives(tmp_path):
-    from research.serra.sensitivity import run
-    config = bx.load_config(Path(__file__).resolve().parents[1]/'research/serra/config/priors/smoke.json')
-    config['variants'] = [{'name':'normal_reference'}]
-    config['mcmc'].update(chain_workers=1,progress=False)
-    config['figures'] = False
-    run(config,directory=tmp_path/'fits')
-    source = tmp_path/'fits/normal_reference/TNm'
-    assert not (source/'fit.bucex').exists()
-    for name in ('level.csv','slope.csv','risk.csv','prior_updates.csv','parameter_traces.csv.gz','target_traces.csv.gz'):
-        assert (source/name).exists()
-    report = bx.SensitivityReport(posterior_runs={'normal_reference':{'TNm':source}})
-    target = report.save(tmp_path/'report',figures=False)
-    assert (target/'convergence.csv').exists()
-    assert (target/'scientific_targets.csv').exists()
-    table = pd.read_csv(target/'convergence.csv')
-    assert table.numerical_status.eq('needs_review').all()

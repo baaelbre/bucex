@@ -11,11 +11,11 @@ The six derived monthly CSVs live once in `bucex/data`. They contain 1,616
 months through August 2026. Regenerate them from the source root:
 
 ```bash
-python -m research.serra.prepare_uccle
+python -m research.monthly.prepare_uccle
 bucex-uccle validate-data --daily-source data/Uccle_31_08_26.csv
 ```
 
-The preparation settings are `research/serra/config/prepare_uccle.json`.
+The preparation settings are `research/monthly/config/prepare_uccle.json`.
 See [the data API](../docs/UCCLE.md) for direct Python use and custom outputs.
 
 [Source notes](../bucex/data/SOURCES.md) preserve the extraction details,

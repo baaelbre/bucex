@@ -36,7 +36,7 @@ def _gev_sample(seed: int = 710) -> tuple[bx.Model, np.ndarray]:
 def test_version_plan_and_configuration_contract():
     model, values = _gev_sample()
     plan = bx.plan(model, values, engine="laplace_mh", parameterization="fs")
-    assert bx.__version__ == "1.8.3"
+    assert bx.__version__ == "1.8.4"
     assert plan.engine == "laplace_mh"
     assert plan.targets_exact_posterior
     assert plan.approximation is None
@@ -143,21 +143,3 @@ def test_public_laplace_mh_fit_is_exact_and_reports_diagnostics(
     restored = bx.FitResult.load(archive)
     assert restored.plan == fit.plan
     assert restored.config["laplace"]["mh_steps"] == 2
-
-
-def test_laplace_mh_uses_exact_structural_selection_updates():
-    model, values = _gev_sample(715)
-    fit = bx.fit(
-        values,
-        model=model,
-        priors="ssvs",
-        engine="laplace_mh",
-        parameterization="fs",
-        mcmc=bx.MCMC(draws=1, warmup=1, chains=1, seed=716),
-        laplace=bx.Laplace(max_iterations=12),
-    )
-    assert fit.meta["model_selection_exact"]
-    assert fit.meta["model_selection_basis"] == (
-        "exact_gev_rjmh_with_laplace_independence_proposals"
-    )
-    assert "ssvs_model_mh" in fit.sampler_diagnostics["acceptance"]

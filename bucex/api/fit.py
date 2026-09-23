@@ -16,14 +16,10 @@ from ..inference.fit._fs_output import FSOutput
 from ..inference.chains import independent_chains, chain_seeds
 from ..inference.config import (
     GibbsConfig,
-    HierarchicalSampler,
-    SharedSampler,
     Laplace,
     MCMC,
 )
 from ..inference.fit.disturbance import sample_posterior
-from ..inference.fit.hierarchical import sample_hierarchical_posterior
-from ..inference.fit.shared import sample_shared_posterior
 from ..inference.fit.fs_gaussian import FSGaussianKernel
 from ..inference.fit.fs_gev import FSGEVKernel
 from ..inference.plan import InferencePlan, inference_plan
@@ -33,7 +29,8 @@ from ..models.multiseries_compiler import as_multiseries_array, multiseries_date
 from ..models.structural import Model, structural_model
 from ..observation import GEV, Gaussian
 from ..priors import resolve_prior_spec
-from ..priors.hierarchical import resolve_hierarchical_priors
+from ..priors import MarginalPriors
+from ..inference.fit.marginal import marginal_plan, sample_marginal_posterior
 from ..priors.structural import FSGaussianPriors, FSGEVPriors
 
 Array = np.ndarray
@@ -52,9 +49,8 @@ def make_gev_model(
     *,
     name: str | None = None,
     xi_bounds: tuple[float | None, float | None] | None = None,
-    phi: str = "stationary",
 ) -> Model:
-    return Model(GEV(xi_bounds=xi_bounds, phi=phi), components, name=name)
+    return Model(GEV(xi_bounds=xi_bounds), components, name=name)
 
 
 def _default_model(family: str, period: int | None, trend: str = "local_linear") -> Model:
@@ -506,8 +502,6 @@ def _fit_multiseries_model(
     asis: bool,
     mcmc: MCMC | None,
     laplace: Laplace | None,
-    hierarchical_sampler: HierarchicalSampler | None,
-    shared_sampler: SharedSampler | None,
     init: Mapping[str, Any] | FitResult | None,
     dates: Array | None,
     name: str | None,
@@ -519,7 +513,7 @@ def _fit_multiseries_model(
     seed: int | None,
     progress: bool | None,
 ) -> FitResult:
-    """Resolve and run the joint multiseries hierarchy."""
+    """Fit private channel trajectories through the marginal FS posterior."""
 
     if name is not None:
         model = replace(model, name=str(name))
@@ -540,8 +534,10 @@ def _fit_multiseries_model(
     y_model = y_original * model.transform_signs[None, :]
     if dates is not None and np.asarray(dates).reshape(-1).size != y_model.shape[0]:
         raise ValueError("dates must have the same length as multiseries observations.")
-    if exog is not None and not model.requires_joint_inference:
-        raise ValueError("Hierarchical structural inference does not support regression yet.")
+    if exog is not None:
+        raise ValueError("Private marginal FS inference does not support regression.")
+    if not isinstance(priors, MarginalPriors):
+        raise TypeError("MultiSeriesModel requires MarginalPriors(channels={name: fs_prior}).")
     compiled = compile_model(model, y_model, exog=exog)
     resolved_mcmc = _resolve_mcmc(
         mcmc,
@@ -556,85 +552,13 @@ def _fit_multiseries_model(
     resolved_laplace = Laplace() if laplace is None else laplace
     if not isinstance(resolved_laplace, Laplace):
         raise TypeError("laplace must be Laplace(...).")
-    resolved_hierarchical_sampler = (
-        HierarchicalSampler()
-        if hierarchical_sampler is None
-        else hierarchical_sampler
-    )
-    if not isinstance(resolved_hierarchical_sampler, HierarchicalSampler):
-        raise TypeError(
-            "hierarchical_sampler must be HierarchicalSampler(...)."
-        )
-    from ..priors import MarginalPriors
-    from ..inference.fit.marginal import marginal_plan, sample_marginal_posterior
-    if isinstance(priors, MarginalPriors):
-        if hierarchical_sampler is not None or shared_sampler is not None or exog is not None:
-            raise ValueError("MarginalPriors uses the private FS sampler; omit hierarchical_sampler, shared_sampler and exog.")
-        if isinstance(init, FitResult):
-            if init.model != model or not np.array_equal(init.y, y_model, equal_nan=True):
-                raise ValueError("A marginal FS warm start must use the same model and observations.")
-            init = init.warm_start()
-        private_plan = marginal_plan(compiled, engine=engine, parameterization=parameterization, asis=asis)
-        return sample_marginal_posterior(y_model, compiled, priors, private_plan,
-            mcmc=resolved_mcmc, laplace=resolved_laplace, dates=dates, initial_parameters=init)
-    if model.copula is not None and model.copula.seasonal:
-        raise ValueError("SeasonalGaussianCopula requires MarginalPriors and private FS trajectories.")
-    if not model.requires_joint_inference and any(getattr(c, "level_mode", None) == "static" or getattr(c, "trend_mode", None) == "static" or
-           getattr(c, "mode", None) == "static" for channel in model.channels for c in channel.components):
-        raise ValueError("Explicit static FS components require MarginalPriors with continuous priors.")
-    if any(channel.observation.scale is not None for channel in model.channels):
-        raise ValueError("Multiseries scale declarations require MarginalPriors and private FS trajectories.")
-    resolved_plan = inference_plan(
-        compiled,
-        engine=engine,
-        parameterization=parameterization,
-        asis=asis,
-    )
-    if model.requires_joint_inference:
-        if hierarchical_sampler is not None:
-            raise ValueError("Use shared_sampler= for joint shared-state or copula models.")
-        resolved_shared_sampler = SharedSampler() if shared_sampler is None else shared_sampler
-        if not isinstance(resolved_shared_sampler, SharedSampler):
-            raise TypeError("shared_sampler must be SharedSampler(...).")
-        if isinstance(init, FitResult):
-            if init.model != model or not np.array_equal(np.asarray(init.y), y_model, equal_nan=True):
-                raise ValueError("A shared warm start must use the same model and observations.")
-            init = init.warm_start()
-        return sample_shared_posterior(
-            y_model, compiled, priors, resolved_plan, mcmc=resolved_mcmc,
-            laplace=resolved_laplace, dates=dates, initial_parameters=init,
-            sampler=resolved_shared_sampler,
-        )
-    if shared_sampler is not None:
-        raise ValueError("shared_sampler= requires shared components or a copula.")
-    if resolved_plan.parameterization != "fruehwirth_schnatter":
-        raise ValueError(
-            "MultiSeriesModel currently implements hierarchical inference through "
-            "parameterization='fs'."
-        )
-    if resolved_plan.asis:
-        raise ValueError("ASIS is not combined with the joint hierarchical sampler.")
-    resolved_plan = replace(resolved_plan, backend="hierarchical_state_space")
-    resolved_priors = resolve_hierarchical_priors(compiled, priors)
     if isinstance(init, FitResult):
-        if not init.is_multiseries_model:
-            raise ValueError("A multiseries fit is required as a multiseries warm start.")
-        if init.model != model:
-            raise ValueError("The warm-start fit uses a different multiseries model.")
-        if not np.array_equal(np.asarray(init.y), y_model, equal_nan=True):
-            raise ValueError("The warm-start fit uses different observations.")
+        if init.model != model or not np.array_equal(init.y, y_model, equal_nan=True):
+            raise ValueError("A marginal FS warm start must use the same model and observations.")
         init = init.warm_start()
-    return sample_hierarchical_posterior(
-        y_model,
-        compiled,
-        resolved_priors,
-        resolved_plan,
-        mcmc=resolved_mcmc,
-        laplace=resolved_laplace,
-        sampler=resolved_hierarchical_sampler,
-        dates=dates,
-        initial_parameters=init,
-    )
+    private_plan = marginal_plan(compiled, engine=engine, parameterization=parameterization, asis=asis)
+    return sample_marginal_posterior(y_model, compiled, priors, private_plan,
+        mcmc=resolved_mcmc, laplace=resolved_laplace, dates=dates, initial_parameters=init)
 
 
 def fit(
@@ -652,8 +576,6 @@ def fit(
     mcmc: MCMC | None = None,
     particles: Any = None,
     laplace: Laplace | None = None,
-    hierarchical_sampler: HierarchicalSampler | None = None,
-    shared_sampler: SharedSampler | None = None,
     init: Mapping[str, Any] | FitResult | None = None,
     init_params_state: Mapping[str, Any] | None = None,
     init_params_obs: Mapping[str, Any] | None = None,
@@ -726,8 +648,6 @@ def fit(
             asis=asis,
             mcmc=mcmc,
             laplace=laplace,
-            hierarchical_sampler=hierarchical_sampler,
-            shared_sampler=shared_sampler,
             init=init,
             dates=dates,
             name=name,
@@ -738,12 +658,6 @@ def fit(
             chains=chains,
             seed=seed,
             progress=progress,
-        )
-    if shared_sampler is not None:
-        raise ValueError("shared_sampler= requires a MultiSeriesModel with shared components.")
-    if hierarchical_sampler is not None:
-        raise ValueError(
-            "hierarchical_sampler= is only valid for MultiSeriesModel fits."
         )
     if model is None:
         family = "gaussian" if family is None else family

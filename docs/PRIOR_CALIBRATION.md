@@ -57,7 +57,7 @@ lognormal shared SD. Hyperparameters are separate for the four coefficient
 types; they are shared across responses, not across quantities with different
 units or dynamical roles.
 
-In 1.8.3 the draft configurations apply marginal moment calibration to the
+In 1.8.4 the draft configurations apply marginal moment calibration to the
 COMPSTAT scales. The monthly innovation anchors are 0.008343480538,
 0.00002085870135 and 0.008343480538; the initial-slope anchor is
 0.001546257845 per month. With log SD log(2), the integrated 30-year component

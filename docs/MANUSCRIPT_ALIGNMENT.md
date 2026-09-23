@@ -1,29 +1,13 @@
-# Alignment with the working SERRA revision
+# Working manuscript alignment
 
-The manuscript follows six Gaussian/GEV summary-specific monthly location
-models, normal FS shrinkage, constant unknown shape and a constant scale
-baseline. Calendar-month scales are a targeted adequacy extension. Private
-trajectories remain separate under a joint Gaussian copula likelihood.
+The working analysis compares six private Gaussian/GEV location models under continuous FS priors. Gaussian copula dependence and shared regularization of prior scales are estimated in the joint paper model. The fitted scale baseline and GEV shape are time-constant; periodic observation-scale effects are a candidate to assess rather than an established necessity.
 
-The supplied preliminary evidence consists of independent constant-scale
-1.7.1 fits through August 2026. This release does not replace that evidence
-with smoke-test output. Final empirical claims remain conditional on
-convergence, sensitivity and predictive validation.
-
-| Manuscript box | Research work |
+| Question | Experiment |
 |---|---|
-| R1 | `simulate`, `endpoint`, joint recovery; preserve failures and poor convergence |
-| R2 | Innovation/initial/shape/scale/copula prior sensitivity; prior/posterior comparisons |
-| R3 | Fixed/evolving location seasonality and constant/monthly scale; held-out assessment |
-| R4 | Matched R=I/copula fits, paired contrasts, dependence and ordering diagnostics |
-| R5 | Held-out tails, risk estimates, endpoint and forecast-width/aggregation checks |
-| R6 | Scientific synthesis after the preceding evidence |
-| S1 | Detailed experiments and numerical diagnostics |
-| S2 | Source-extension audit and common-period historical comparison |
+| Monthly versus complete seasonal blocks | `research/seasonal/compare.py` on identical seasonal forecast targets |
+| Need for periodic observation scales | `constant_dispersion` variant in monthly and seasonal `adequacy.json` |
+| Location seasonality | `fixed_location_seasonality` variant in both `adequacy.json` files |
+| Sensitivity of innovations, shape, and prior pooling | `sensitivity.json`, `anchors.json`, and independent fits |
+| Dependence and predictive adequacy | Matched copula/identity fits, block forecasts, PIT and ordering checks |
 
-`figures.json` declares all nine current manuscript figures and two additional
-scale/annual-forecast panels. `figure_manifest.json` records their numerical
-inputs. A trace-image-only archive cannot supply a new trace figure: re-export
-its saved fit or retain an explicit placeholder.
-
-See [reviewer comments](REVIEWER_MATRIX.md) and [publication runs](PUBLICATION_RUNS.md).
+No long-run posterior findings are asserted by this software release. Archived analyses retain the priors and data under which they were sampled. Final manuscript claims require the planned fits, convergence and out-of-sample checks.

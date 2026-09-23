@@ -6,7 +6,7 @@ include CHANGELOG.md
 include RELEASE_NOTES.md
 recursive-include docs *.md *.py
 recursive-include research *.py *.md *.json *.pbs
-recursive-include validation *.json *.xml *.csv *.md
+recursive-include validation *.md
 recursive-include data *.csv *.md
 recursive-include bucex/data *.json
 recursive-include tests *.py *.md *.bucex

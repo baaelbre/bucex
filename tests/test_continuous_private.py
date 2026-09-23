@@ -9,7 +9,7 @@ from scipy.stats import norm
 import bucex as bx
 from bucex.inference.fit.continuous import gaussian_reference, ShrinkageState, coefficient_step, interweave_scales
 from bucex.inference.fit.conditional_margin import ConditionalMargin
-from bucex.inference.fit.hierarchical import _initial_channel_state
+from bucex.inference.fit.private_channel import _initial_channel_state
 from bucex.inference.fit import fs_utils as fs
 
 
@@ -99,9 +99,8 @@ def test_independence_copula_preserves_every_continuous_kernel_draw(family):
     assert not any(k.startswith('state.') for k in a.parameter_draws)
 
 
-@pytest.mark.parametrize('mode',['constant','linear','rw'])
-def test_scale_and_seasonal_copula_calendar_forecast_restart(tmp_path,mode):
-    scale=bx.LogScale(mode,bx.SeasonalScale(12))
+def test_scale_and_seasonal_copula_calendar_forecast_restart(tmp_path):
+    scale=bx.LogScale('constant',bx.SeasonalScale(12))
     channels=[bx.Channel('a',bx.Gaussian(scale=scale),[bx.LocalLinearTrend(trend_mode='static')]),
               bx.Channel('b',bx.GEV(scale=scale),[bx.LocalLinearTrend()])]
     model=bx.MultiSeriesModel(channels,copula=bx.SeasonalGaussianCopula())

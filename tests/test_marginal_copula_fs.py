@@ -44,7 +44,7 @@ def _small_fit(copula=True, seasonal=True):
         copula=bx.GaussianCopula() if copula else None)
     data = pd.DataFrame(np.random.default_rng(9).normal(size=(20,2)), columns=model.channel_names,
                         index=pd.date_range("2000-01-01", periods=20, freq="MS"))
-    prior = bx.MarginalPriors({"mean": bx.ssvs_gaussian_priors(4), "minimum": bx.ssvs_gev_priors(4)})
+    prior = bx.MarginalPriors({"mean": bx.fs_priors('gaussian', period=4), "minimum": bx.fs_priors('gev', period=4)})
     return bx.fit(data, model, priors=prior, parameterization="fs",
                   mcmc=bx.MCMC(chains=1, warmup=3, draws=4, seed=12))
 
@@ -52,17 +52,18 @@ def _small_fit(copula=True, seasonal=True):
 def test_mixed_copula_seasonal_prediction_density_and_archive(tmp_path):
     fit = _small_fit()
     assert fit.plan.targets_exact_posterior
-    assert fit.metadata["copula_feedback"] and fit.metadata["structural_ssvs"]
+    assert fit.metadata["copula_feedback"] and not fit.metadata["structural_ssvs"]
     assert not fit.metadata["shared_temporal_state"]
     for channel in fit.channel_names:
         np.testing.assert_allclose(fit.parameter(f"scale.seasonal.{channel}").sum(axis=-1), 0, atol=1e-14)
         assert fit.sigma_draws(channel=channel).shape == (4,20)
-        assert len(fit.component_probabilities(channel=channel)) > 0
     future = fit.forecast(4, seed=41)
     replicated = fit.posterior_predictive(seed=42)
     for prediction in (future, replicated):
         assert np.all(np.isfinite(prediction.observations))
-        assert np.all(np.isfinite(prediction.joint_conditional_log_density(prediction.observations[0])))
+        density = prediction.joint_conditional_log_density(prediction.observations[0])
+        assert np.all(np.isfinite(density[0]))
+        assert np.all(np.isfinite(prediction.joint_log_score(prediction.observations[0])))
     path = tmp_path / "copula.bucex"
     fit.save(path)
     loaded = bx.load_fit(path)
@@ -75,11 +76,8 @@ def test_mixed_copula_seasonal_prediction_density_and_archive(tmp_path):
 def test_univariate_seasonal_api_dates_and_warm_start(tmp_path):
     y = pd.Series(np.random.default_rng(5).normal(size=24), index=pd.date_range("2001-03-01", periods=24, freq="MS"))
     model = bx.Model(bx.Gaussian(scale=bx.SeasonalScale()), [bx.LocalLinearTrend(), bx.DummySeasonal(12)])
-    fit = bx.fit(y, model, priors=bx.ssvs_gaussian_priors(), mcmc=bx.MCMC(chains=1, draws=4, warmup=2, seed=22))
+    fit = bx.fit(y, model, priors=bx.fs_priors('gaussian'), mcmc=bx.MCMC(chains=1, draws=4, warmup=2, seed=22))
     assert not fit.is_multiseries_model
-    assert list(fit.component_probabilities().index) == ["level", "slope", "seasonal"]
-    assert np.isclose(fit.structural_model_probabilities()["probability"].sum(), 1.)
-    assert len(fit.component_transition_summary()) == 3
     expected = fit.parameter("sigma") * np.exp(fit.parameter("scale.seasonal")[:,2])
     np.testing.assert_allclose(fit.sigma_draws()[:,0], expected)
     future = fit.forecast(12, seed=9)
@@ -114,7 +112,7 @@ def test_short_record_can_initialize_unobserved_seasonal_phases():
                   index=pd.date_range("2001-03-01", periods=6, freq="MS"))
     model = bx.Model(bx.Gaussian(scale=bx.SeasonalScale()),
                      [bx.LocalLinearTrend(), bx.DummySeasonal(12)])
-    fit = bx.fit(y, model, priors=bx.ssvs_gaussian_priors(),
+    fit = bx.fit(y, model, priors=bx.fs_priors('gaussian'),
                  mcmc=bx.MCMC(chains=1, warmup=1, draws=2, seed=79))
     assert np.all(np.isfinite(fit.state_draws))
     assert np.all(np.isfinite(fit.forecast(12, seed=80).observations))

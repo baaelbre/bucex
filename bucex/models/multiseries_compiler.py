@@ -200,6 +200,8 @@ class CompiledMultiSeriesModel:
             names.append(f"sigma.{channel.name}")
             if channel.family == "gev":
                 names.append(f"xi.{channel.name}")
+        if self.model.copula is not None:
+            names.extend(self.model.copula.parameter_names(self.channel_names))
         return tuple(names)
 
     def process_vector(self, params: Mapping[str, float]) -> Array:
@@ -306,6 +308,17 @@ class CompiledMultiSeriesModel:
         rng: np.random.Generator,
     ) -> Array:
         eta_t = np.asarray(eta_t, dtype=float).reshape(len(self.channel_names))
+        if self.model.copula is not None:
+            from ..dependence import sample_normal_scores, quantiles_from_normal_scores
+
+            phase = params.get("__copula_phase")
+            if self.model.copula.seasonal and phase is None:
+                raise ValueError("Seasonal copula simulation requires a calendar phase.")
+            correlation = self.model.copula.correlation_matrix(
+                params, self.channel_names, phase=phase
+            )
+            scores = np.asarray(sample_normal_scores(correlation, 1, rng)).reshape(len(self.channel_names))
+            return quantiles_from_normal_scores(scores, eta_t, self.model.channels, params)
         output = np.zeros(len(self.channel_names))
         for index, channel in enumerate(self.model.channels):
             output[index] = float(
@@ -381,9 +394,6 @@ def compile_multiseries_model(
 
     if not isinstance(model, MultiSeriesModel):
         raise TypeError("model must be a MultiSeriesModel.")
-    if model.requires_joint_inference:
-        from .shared_compiler import compile_shared_model
-        return compile_shared_model(model, y, exog=exog)
     y_array = as_multiseries_array(y, model)
     n_time, _ = y_array.shape
     xreg = _multiseries_exog(exog, model, n_time)

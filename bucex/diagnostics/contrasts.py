@@ -12,7 +12,7 @@ def summarize_draws(draws: Mapping[str, np.ndarray], *, credible_interval: float
     """Summarize named scalar posterior quantities while preserving chains.
 
     Every value must have shape ``(chains, draws)``. For example, derive a
-    warming change from ``fit.shared_draws(combine_chains=False)`` by taking
+    channel warming change from ``fit.component_draws('level', channel=..., combine_chains=False)`` by taking
     the difference between its final and initial time columns. The returned
     table includes pointwise posterior intervals, rank-normalized split R-hat
     and bulk ESS. These diagnostics describe the supplied scientific quantity,

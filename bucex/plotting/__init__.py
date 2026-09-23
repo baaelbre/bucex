@@ -7,16 +7,13 @@ from .dependence import plot_copula, plot_ordering
 from .report import save_prediction_report
 from .predictive import (plot_predictive_diagnostics, plot_pit_diagnostics, plot_chain_traces,
     plot_forecast_months, plot_scale_calendar, plot_calendar_risk_curves)
-from .shared import plot_shared, plot_departures, plot_channel_component
 from .core import (
     loess_smooth,
     plot,
     plot_bulk_tail,
     plot_collection,
-    plot_component_probabilities,
     plot_endpoint,
     plot_fit,
-    plot_hierarchy,
     plot_level,
     plot_level_slope,
     plot_parameter_densities,
@@ -39,11 +36,10 @@ __all__ = [
     "save_prediction_report",
     "plot_predictive_diagnostics", "plot_chain_traces", "plot_forecast_months",
     "plot_scale_calendar", "plot_calendar_risk_curves",
-    "plot_copula", "plot_ordering", "plot_shared", "plot_departures", "plot_channel_component",
+    "plot_copula", "plot_ordering",
     "loess_smooth",
     "plot",
     "plot_fit",
-    "plot_hierarchy",
     "plot_parameter_densities",
     "plot_parameter_acfs",
     "plot_predictor",
@@ -57,7 +53,6 @@ __all__ = [
     "plot_risk",
     "plot_season",
     "plot_seasonal_patterns",
-    "plot_component_probabilities",
     "plot_bulk_tail",
     "plot_collection",
 ]

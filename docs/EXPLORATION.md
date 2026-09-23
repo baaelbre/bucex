@@ -3,7 +3,7 @@
 From the source-release directory, after `python -m pip install -e ".[plot]"`:
 
 ```bash
-python -m research.serra.explore
+python -m research.monthly.explore
 ```
 
 This generates both figures from all six observed monthly temperature summaries.
@@ -46,7 +46,7 @@ history. They motivate a specification whose adequacy is assessed separately.
 
 ## Edit the configuration
 
-All application choices are in `research/serra/config/revision/exploration.json`:
+All application choices are in `research/monthly/config/exploration.json`:
 
 - `data`: source directory, response order and loaded date range. `end: null`
   loads the latest available month, currently August 2026 in the bundled data.
@@ -67,9 +67,9 @@ API counts missing observations and missing months in `n_missing`.
 Useful overrides:
 
 ```bash
-python -m research.serra.explore --series TXm TNm --formats png
-python -m research.serra.explore --data-dir data --output results/my_exploration
-python -m research.serra.explore --config research/serra/config/revision/exploration.json
+python -m research.monthly.explore --series TXm TNm --formats png
+python -m research.monthly.explore --data-dir data --output results/my_exploration
+python -m research.monthly.explore --config research/monthly/config/exploration.json
 ```
 
 ## General package API
@@ -80,7 +80,7 @@ report. The numerical work and plotting are ordinary BUCEX functions:
 ```python
 import bucex as bx
 
-config = bx.load_config("research/serra/config/revision/exploration.json")
+config = bx.load_config("research/monthly/config/exploration.json")
 data = bx.load_uccle_multiseries(**config["data"])
 exploration = bx.explore_monthly(
     data,
@@ -103,8 +103,8 @@ editing. The corresponding public plot functions are
 
 ## Where the remaining paper figures come from
 
-`research.serra.explore` generates the two descriptive data figures.
-`research.serra.figures` continues to reconstruct level, slope, risk,
+`research.monthly.explore` generates the two descriptive data figures.
+`research.monthly.figures` continues to reconstruct level, slope, risk,
 dependence, scale and diagnostic figures from fitted-model report exports.
 Changing innovation priors affects those fitted-model figures; it does not
 change Figures 1 and 2.

@@ -17,7 +17,8 @@ class GEV:
 
     SciPy uses ``c=-xi``.  Both legacy ``params={"sigma", "xi"}`` and
     explicit keyword calls are accepted. ``phi`` describes the model for
-    ``phi_t = log(sigma_t)``.  The stationary model remains the default.
+    ``phi_t = log(sigma_t)``. The paper model uses a stationary baseline
+    with optional repeating seasonal effects on the observation scale.
     """
 
     xi_bounds: tuple[float | None, float | None] | None = None
@@ -39,18 +40,14 @@ class GEV:
         aliases = {
             "constant": "stationary",
             "fixed": "stationary",
-            "random_walk": "rw",
-            "randomwalk": "rw",
-            "selection": "ssvs",
-            "spike_slab": "ssvs",
         }
         mode = aliases.get(mode, mode)
-        if mode not in {"stationary", "linear", "rw", "ssvs"}:
-            raise ValueError("GEV phi must be 'stationary', 'linear', 'rw', or 'ssvs'.")
+        if mode != "stationary":
+            raise ValueError("BUCEX 1.8.4 supports stationary GEV phi only.")
         object.__setattr__(self, "phi", mode)
         if self.scale is not None:
-            if not isinstance(self.scale, (SeasonalScale, LogScale, StructuralScale)):
-                raise TypeError("scale must be SeasonalScale(...), LogScale(...), StructuralScale(...), or None.")
+            if not isinstance(self.scale, (SeasonalScale, LogScale)):
+                raise TypeError("scale must be SeasonalScale(...), LogScale(...), or None.")
             if mode != "stationary":
                 raise ValueError("SeasonalScale currently requires phi='stationary'; dynamic phi remains available without SeasonalScale.")
 

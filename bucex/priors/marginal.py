@@ -8,13 +8,12 @@ from .shrinkage import SharedShrinkage
 
 @dataclass(frozen=True)
 class MarginalPriors:
-    """Named FS priors for private trajectories, with optional exact SSVS.
+    """Named continuous FS priors for private trajectories.
 
     ``shrinkage=SharedShrinkage(...)`` optionally learns common normal-prior
     scales while retaining private trajectories and individual innovation SDs.
     Without it, the channel priors are independent. A GaussianCopula couples
-    observations through the joint likelihood. Shared latent components use
-    JointPriors instead.
+    observations through the joint likelihood.
     """
 
     channels: Mapping[str, FSGaussianPriors | FSGEVPriors]
@@ -26,6 +25,8 @@ class MarginalPriors:
         for name, prior in self.channels.items():
             if not isinstance(prior, (FSGaussianPriors, FSGEVPriors)):
                 raise TypeError(f"{name}: supply Gaussian or GEV FS priors.")
+            if prior.ssvs is not None:
+                raise ValueError(f"{name}: SSVS is outside the BUCEX 1.8.4 paper API; use a continuous prior.")
         if self.shrinkage is not None:
             if not isinstance(self.shrinkage, SharedShrinkage):
                 raise TypeError("shrinkage must be SharedShrinkage(...) or None.")

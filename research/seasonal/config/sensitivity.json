@@ -1,0 +1,75 @@
+{
+  "extends": "main.json",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "tighter_hyperprior",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope",
+          "seasonal"
+        ],
+        "log_sd": 0.4054651081081644,
+        "pool_initial_slope": true
+      },
+      "match_marginal_moments": true
+    },
+    {
+      "name": "wider_hyperprior",
+      "shared_shrinkage": {
+        "components": [
+          "level",
+          "slope",
+          "seasonal"
+        ],
+        "log_sd": 1.0986122886681098,
+        "pool_initial_slope": true
+      },
+      "match_marginal_moments": true
+    },
+    {
+      "name": "xi_narrow",
+      "xi_sd": 0.15
+    },
+    {
+      "name": "xi_wide",
+      "xi_sd": 0.6
+    },
+    {
+      "name": "xi_normal_bounded",
+      "xi_sd": 0.3,
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ]
+    },
+    {
+      "name": "xi_uniform_bounded",
+      "xi_prior": "uniform",
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ]
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "validation": {
+    "training_ends": [
+      "2015-11",
+      "2020-11"
+    ],
+    "horizon": 20,
+    "save_fits": false
+  },
+  "save_fits": false,
+  "output": "results/serra_184_seasonal_sensitivity"
+}

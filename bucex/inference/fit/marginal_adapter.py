@@ -1,4 +1,4 @@
-"""Result and restart adapters for the shared univariate/multiseries FS kernel."""
+"""Result and restart adapters for the private univariate/multiseries FS kernel."""
 from dataclasses import replace
 
 import numpy as np

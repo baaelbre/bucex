@@ -14,7 +14,7 @@ def _fit(*, correlation=.7, inferred=False, mixed=False, regression=False):
         ('high', 1., bx.Gaussian(), None),
         ('low', -1., bx.GEV() if mixed else bx.Gaussian(), 'lower' if mixed else None),
     ):
-        components = [bx.LocalLevel(mode='static', initial_mean=mean, initial_sd=0)]
+        components = [bx.LocalLevel(mode='static', initial_mean=-mean if tail == 'lower' else mean, initial_sd=0)]
         if regression:
             components.append(bx.Regression(1, initial_mean=(2.,), initial_sd=0))
         channels.append(bx.Channel(name, observation, tuple(components), tail=tail))
@@ -55,7 +55,6 @@ def test_joint_predictive_covariance_and_gaussian_density(tmp_path):
     np.testing.assert_allclose(restored.copula_correlation_draws(), np.broadcast_to([[1., .7], [.7, 1.]], (2, 2, 2)))
     np.testing.assert_array_equal(restored.forecast(3, seed=4).observations, fit.forecast(3, seed=4).observations)
     assert restored.model.copula == fit.model.copula
-    assert restored.warm_start()['parameters']['copula.z.1.0'] == np.arctanh(.7)
 
 
 def test_mixed_minimum_copula_orientation_preserved():

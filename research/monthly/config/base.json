@@ -1,0 +1,185 @@
+{
+  "_comment": "Monthly analysis through August 2026. January-February 1892 are excluded by request; source data remain unchanged.",
+  "analysis": "independent",
+  "data": {
+    "series": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
+    ],
+    "start": "1892-03-01",
+    "end": "2026-08-01",
+    "exclude_months": [
+      "1892-01",
+      "1892-02"
+    ]
+  },
+  "model": {
+    "period": 12,
+    "level": "dynamic",
+    "trend": "dynamic",
+    "seasonal": "dynamic",
+    "seasonal_scale": false,
+    "scale_prior_sd": 0.3,
+    "steps_per_year": 12
+  },
+  "priors": {
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.01,
+      "trend": 5e-05,
+      "season": 0.02
+    },
+    "initial_level_mean": 0.0,
+    "baseline_sd": 20.0,
+    "initial_slope_sd": 0.0025,
+    "seasonal_initial_sd": 2.25,
+    "observation_variance": [
+      2.0,
+      2.0
+    ],
+    "xi_prior": "normal",
+    "xi_sd": 0.3,
+    "xi_bounds": [
+      null,
+      null
+    ],
+    "tg_spike_shape": 0.5,
+    "tg_tail_shape": 0.5
+  },
+  "mcmc": {
+    "draws": 2000,
+    "warmup": 2000,
+    "chains": 4,
+    "seed": 56100,
+    "progress": true,
+    "progress_every": 50,
+    "chain_workers": 4
+  },
+  "inference": {
+    "asis": false,
+    "laplace": {
+      "max_iterations": 30,
+      "tolerance": 1e-05,
+      "mh_steps": 1
+    }
+  },
+  "seed": 56101,
+  "output": "results/serra_184_monthly",
+  "forecast_horizon": 120,
+  "forecast_draws": 1000,
+  "credible_interval": 0.95,
+  "risks": {
+    "TXm": 25,
+    "TNm": 18,
+    "TXx": 35,
+    "TXn": 0,
+    "TNx": 25,
+    "TNn": -10
+  },
+  "copula": {
+    "structure": "constant",
+    "eta": 1.0
+  },
+  "validation": {
+    "initial": 1188,
+    "horizon": 12,
+    "step": 12,
+    "save_fits": false
+  },
+  "figures": true,
+  "predictive_check_draws": 400,
+  "prior_draws": 10000,
+  "prior_predictive_draws": 200,
+  "save_fits": true,
+  "continue_on_error": false,
+  "figure_format": "png",
+  "figure_dpi": 180,
+  "forecast_months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "contrasts": {
+    "reference": [
+      "1892-03",
+      "1922-02"
+    ],
+    "comparison": [
+      "1996-09",
+      "2026-08"
+    ],
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "rate_multiplier": 120.0,
+    "pairs": [
+      [
+        "TXx",
+        "TXm"
+      ],
+      [
+        "TXn",
+        "TXm"
+      ],
+      [
+        "TNx",
+        "TNm"
+      ],
+      [
+        "TNn",
+        "TNm"
+      ],
+      [
+        "TXm",
+        "TNm"
+      ],
+      [
+        "TXx",
+        "TNx"
+      ],
+      [
+        "TXn",
+        "TNn"
+      ]
+    ]
+  },
+  "diagnostic_thresholds": {
+    "max_rhat": 1.01,
+    "min_ess": 400,
+    "min_chains": 4
+  },
+  "figure_style": "manuscript",
+  "figure_colors": {
+    "TXm": "#24658a",
+    "TXx": "#24658a",
+    "TXn": "#24658a",
+    "TNm": "#a44839",
+    "TNx": "#a44839",
+    "TNn": "#a44839"
+  },
+  "trace_exports": true
+}

@@ -68,7 +68,7 @@ class ReportCollection:
             if not path.exists():
                 path = path.with_suffix(".csv.gz")
             if not path.exists():
-                raise FileNotFoundError(f"Missing {series}_{table}.csv[.gz]. Re-export the saved fit with research.serra.report.")
+                raise FileNotFoundError(f"Missing {series}_{table}.csv[.gz]. Re-export the saved fit with research.monthly.report.")
             value = pd.read_csv(path)
             if "time" in value:
                 value["time"] = pd.to_datetime(value.time)

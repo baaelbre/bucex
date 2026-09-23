@@ -10,14 +10,14 @@ import numpy as np
 from ..inference.plan import InferencePlan
 from ..models.compiler import CompiledModel
 from ..models.structural import Model
-from .shared_results import SharedResultMethods
+from .component_results import ComponentResultMethods
 
 
 Array = np.ndarray
 
 
 @dataclass
-class FitResult(SharedResultMethods):
+class FitResult(ComponentResultMethods):
     model: Any
     compiled: Any
     priors: Any
@@ -303,42 +303,13 @@ class FitResult(SharedResultMethods):
 
     def parameter_component_draws(self, parameter: str, component: str, *,
                                  channel: str | None = None, combine_chains: bool = True) -> Array:
-        """Location components or log-scale structural components.
-
-        For sigma, level includes log(sigma)'s baseline. Slope is log-scale
-        change per observation step; seasonal effects are on log-scale units.
-        """
+        """Location level, slope, or seasonal component draws."""
         if parameter == "mu":
             return self.component_draws(component, channel=channel, combine_chains=combine_chains)
-        if parameter != "sigma":
-            raise ValueError("Components are available for mu and structural log sigma.")
-        from ..observation.scale import StructuralScale
-        from ..inference.fit.evolution import GaussianEvolutionState
-        if self.is_multiseries_model and channel not in self.channel_names:
-            raise ValueError(f"Choose channel from {self.channel_names}.")
-        if not self.is_multiseries_model and channel is not None:
-            raise ValueError("channel= requires a multiseries fit.")
-        obs = self.model.channel(channel).observation if channel else self.model.observation
-        if not isinstance(obs.scale, StructuralScale):
-            raise ValueError("Log-scale components require StructuralScale or Latent sigma.")
-        suffix = "."+channel if channel else ""
-        layout = GaussianEvolutionState(obs.scale, self.n_time).layout
-        states = self.parameter("evolution.state"+suffix, combine_chains=combine_chains)[...,1:,:]
-        if component == "level":
-            return states[...,layout.idx_alpha] + np.log(self.parameter(
-                "sigma"+suffix, combine_chains=combine_chains))[...,None]
-        if component == "slope":
-            return states[...,layout.idx_beta] if layout.has_beta else np.zeros(states.shape[:-1])
-        if component == "seasonal":
-            return states[...,layout.season_slice.start] if layout.season_dim else np.zeros(states.shape[:-1])
-        raise ValueError("component must be level, slope, or seasonal.")
+        raise ValueError("Structural components are available for mu only.")
 
     def phi_draws(self, *, channel: str | None = None, combine_chains: bool = True) -> Array:
-        """Posterior paths for ``phi_t = log(sigma_t)``.
-
-        Stationary fits are expanded to ``T`` columns, so downstream code can
-        compare stationary, linear, random-walk, and SSVS fits uniformly.
-        """
+        """Log observation scale through time for a GEV fit."""
 
         if self.is_multiseries_model:
             return np.log(self.sigma_draws(channel=channel,combine_chains=combine_chains))
@@ -346,8 +317,6 @@ class FitResult(SharedResultMethods):
             raise ValueError("channel= requires a multiseries fit.")
         if self.family != "gev":
             raise ValueError("phi_draws is defined only for GEV fits.")
-        if "phi" in self.parameter_draws:
-            return self.parameter("phi", combine_chains=combine_chains)
         return np.log(self.sigma_draws(combine_chains=combine_chains))
 
     def sigma_draws(self, *, channel: str | None = None, combine_chains: bool = True) -> Array:
@@ -372,20 +341,6 @@ class FitResult(SharedResultMethods):
             phases = observation.scale.phases(self.n_time, self.dates)
             return sigma[..., None] * np.exp(effects[..., phases])
         return np.repeat(sigma[..., None], self.n_time, axis=-1)
-
-    def phi_model_probabilities(self) -> dict[str, float]:
-        """Posterior SSVS probabilities for stationary, linear, and RW scale."""
-
-        if (
-            str(getattr(self.model.observation, "phi", "stationary")) != "ssvs"
-            or "phi_model" not in self.parameter_draws
-        ):
-            raise ValueError("This fit did not use phi='ssvs'.")
-        values = np.asarray(self.parameter("phi_model"), dtype=int)
-        return {
-            name: float(np.mean(values == code))
-            for code, name in enumerate(("stationary", "linear", "rw"))
-        }
 
     @property
     def draws_states(self) -> Array:
@@ -460,333 +415,6 @@ class FitResult(SharedResultMethods):
                 **{key: float(value) for key, value in summary.items()},
             }
         return rows
-
-    def _structural_indicator_keys(
-        self, channel: str | None = None
-    ) -> dict[str, str]:
-        if self.is_multiseries_model:
-            if channel is None:
-                raise ValueError(f"Choose channel from {self.channel_names}.")
-            if channel not in self.channel_names:
-                raise KeyError(
-                    f"Unknown channel '{channel}'. Available: {self.channel_names}"
-                )
-            return {
-                "level": f"state.{channel}.level",
-                "slope": f"state.{channel}.trend",
-                "seasonal": f"state.{channel}.season",
-            }
-        if channel is not None:
-            raise ValueError("channel= is only valid for multiseries results.")
-        return {
-            "level": "state_level",
-            "slope": "state_trend",
-            "seasonal": "state_season",
-        }
-
-    def inclusion_probabilities(
-        self, channel: str | None = None
-    ) -> dict[str, float]:
-        output = {}
-        for name in self.compiled.noise_names:
-            key = f"slab.{name}"
-            if key in self.parameter_draws:
-                output[name] = float(np.mean(self.parameter(key)))
-        fs_keys = self._structural_indicator_keys(channel)
-        for name, key in fs_keys.items():
-            if key in self.parameter_draws:
-                output[name] = float(np.mean(self.parameter(key) == 2))
-        if not output:
-            raise ValueError("This fit has no spike-and-slab process priors.")
-        return output
-
-    def component_probabilities(self, channel: str | None = None):
-        """Posterior zero/fixed/dynamic probabilities by series and process."""
-
-        channels = (
-            ([channel] if channel is not None else list(self.channel_names))
-            if self.is_multiseries_model
-            else [None]
-        )
-        rows = []
-        for current in channels:
-            fs_keys = self._structural_indicator_keys(current)
-            for name, key in fs_keys.items():
-                if key not in self.parameter_draws:
-                    continue
-                values = np.asarray(self.parameter(key), dtype=int)
-                row = {
-                    "process": name,
-                    "zero": float(np.mean(values == 0)),
-                    "fixed": float(np.mean(values == 1)),
-                    "dynamic": float(np.mean(values == 2)),
-                }
-                if current is not None:
-                    row["channel"] = current
-                rows.append(row)
-        if not rows:
-            probabilities = self.inclusion_probabilities(channel)
-            rows = [
-                {"process": name, "spike": 1.0 - value, "slab": value}
-                for name, value in probabilities.items()
-            ]
-        try:
-            import pandas as pd
-
-            index = ["channel", "process"] if self.is_multiseries_model else "process"
-            return pd.DataFrame(rows).set_index(index)
-        except ImportError:
-            return rows
-
-    def component_transition_summary(self, channel: str | None = None):
-        """Switching diagnostics; constant chains are reported, not blessed."""
-
-        rows = []
-        for name in self.compiled.noise_names:
-            key = f"slab.{name}"
-            if key not in self.parameter_draws:
-                continue
-            chains = np.asarray(self.parameter(key, combine_chains=False), dtype=int)
-            values = chains.reshape(-1)
-            switches = int(np.count_nonzero(np.diff(chains, axis=1)))
-            opportunities = chains.shape[0] * max(chains.shape[1] - 1, 0)
-            rows.append(
-                {
-                    "process": name,
-                    "n_draws": int(values.size),
-                    "n_switches": switches,
-                    "switch_rate": float(switches / max(opportunities, 1)),
-                    "first_state": "slab" if values[0] else "spike",
-                    "last_state": "slab" if values[-1] else "spike",
-                    "status": (
-                        "constant posterior allocation"
-                        if switches == 0
-                        else "switching"
-                    ),
-                }
-            )
-        channels = (
-            ([channel] if channel is not None else list(self.channel_names))
-            if self.is_multiseries_model
-            else [None]
-        )
-        for current in channels:
-            for name, key in self._structural_indicator_keys(current).items():
-                if key not in self.parameter_draws:
-                    continue
-                chains = np.asarray(self.parameter(key, combine_chains=False), dtype=int)
-                values = chains.reshape(-1)
-                switches = int(np.count_nonzero(np.diff(chains, axis=1)))
-                opportunities = chains.shape[0] * max(chains.shape[1] - 1, 0)
-                labels = {0: "zero", 1: "fixed", 2: "dynamic"}
-                row = {
-                    "process": name,
-                    "n_draws": int(values.size),
-                    "n_switches": switches,
-                    "switch_rate": float(switches / max(opportunities, 1)),
-                    "first_state": labels[int(values[0])],
-                    "last_state": labels[int(values[-1])],
-                    "status": "constant posterior allocation" if switches == 0 else "switching",
-                }
-                if current is not None:
-                    row["channel"] = current
-                rows.append(row)
-        if not rows:
-            raise ValueError("This fit has no spike-and-slab process priors.")
-        try:
-            import pandas as pd
-
-            index = ["channel", "process"] if self.is_multiseries_model else "process"
-            return pd.DataFrame(rows).set_index(index)
-        except ImportError:
-            return rows
-
-    def structural_model_probabilities(self, channel: str | None = None):
-        """Joint structural-model probabilities, optionally for one channel."""
-
-        if self.is_multiseries_model and channel is None:
-            rows = []
-            for current in self.channel_names:
-                table = self.structural_model_probabilities(current)
-                records = table.to_dict("records") if hasattr(table, "to_dict") else table
-                rows.extend({"channel": current, **row} for row in records)
-            try:
-                import pandas as pd
-
-                return pd.DataFrame(rows).sort_values(
-                    ["channel", "probability"], ascending=[True, False]
-                ).reset_index(drop=True)
-            except ImportError:
-                return rows
-
-        fs_keys = self._structural_indicator_keys(channel)
-        if any(key in self.parameter_draws for key in fs_keys.values()):
-            names = [name for name, key in fs_keys.items() if key in self.parameter_draws]
-            values = np.column_stack(
-                [np.asarray(self.parameter(fs_keys[name]), dtype=int) for name in names]
-            )
-            labels = {0: "zero", 1: "fixed", 2: "dynamic"}
-            unique, counts = np.unique(values, axis=0, return_counts=True)
-            rows = []
-            for allocation, count in zip(unique, counts):
-                row = {
-                    name: labels[int(indicator)]
-                    for name, indicator in zip(names, allocation)
-                }
-                row["probability"] = float(count / values.shape[0])
-                rows.append(row)
-            try:
-                import pandas as pd
-
-                return pd.DataFrame(rows).sort_values(
-                    "probability", ascending=False
-                ).reset_index(drop=True)
-            except ImportError:
-                return sorted(rows, key=lambda row: row["probability"], reverse=True)
-
-        names = [
-            name for name in self.compiled.noise_names
-            if f"slab.{name}" in self.parameter_draws
-        ]
-        if not names:
-            raise ValueError("This fit has no spike-and-slab process priors.")
-        values = np.column_stack(
-            [np.asarray(self.parameter(f"slab.{name}"), dtype=int) for name in names]
-        )
-        unique, counts = np.unique(values, axis=0, return_counts=True)
-        rows = []
-        for allocation, count in zip(unique, counts):
-            row = {
-                name: "slab" if indicator else "spike"
-                for name, indicator in zip(names, allocation)
-            }
-            row["probability"] = float(count / values.shape[0])
-            rows.append(row)
-        try:
-            import pandas as pd
-
-            return pd.DataFrame(rows).sort_values("probability", ascending=False).reset_index(drop=True)
-        except ImportError:
-            return sorted(rows, key=lambda row: row["probability"], reverse=True)
-
-    def most_probable_structure(self, channel: str | None = None) -> dict[str, Any]:
-        if self.is_multiseries_model and channel is None:
-            raise ValueError(f"Choose channel from {self.channel_names}.")
-        table = self.structural_model_probabilities(channel)
-        if hasattr(table, "iloc"):
-            return dict(table.iloc[0])
-        return dict(table[0])
-
-    def hierarchical_probabilities(self, credible_interval: float = 0.90):
-        """Posterior summaries of the shared categorical probability vectors."""
-
-        rows = []
-        prefix = "hierarchy.prob."
-        alpha = 1.0 - float(credible_interval)
-        for key in sorted(self.parameter_draws):
-            if not key.startswith(prefix):
-                continue
-            component, state = key.removeprefix(prefix).split(".", 1)
-            values = self.parameter(key)
-            lower, upper = np.quantile(values, [alpha / 2.0, 1.0 - alpha / 2.0])
-            rows.append(
-                {
-                    "process": component,
-                    "state": state,
-                    "mean": float(np.mean(values)),
-                    "median": float(np.median(values)),
-                    "lower": float(lower),
-                    "upper": float(upper),
-                }
-            )
-        if not rows:
-            raise ValueError("This fit has no pooled structural-probability draws.")
-        try:
-            import pandas as pd
-
-            return pd.DataFrame(rows).set_index(["process", "state"])
-        except ImportError:
-            return rows
-
-    def hierarchical_trend_model_probabilities(
-        self, credible_interval: float = 0.90
-    ):
-        """Posterior probabilities of the four joint trend-evolution classes.
-
-        The classes are linear trend, RW1 with drift, RW2 smooth changing
-        trend, and the full local-linear trend.  Unlike marginal level/slope
-        allocations, these probabilities answer the structural question
-        directly and always retain an estimated slope.
-        """
-
-        rows = []
-        prefix = "hierarchy.model_prob."
-        alpha = 1.0 - float(credible_interval)
-        for key in self.parameter_draws:
-            if not key.startswith(prefix):
-                continue
-            model = key.removeprefix(prefix)
-            values = np.asarray(self.parameter(key), dtype=float)
-            lower, upper = np.quantile(values, [alpha / 2.0, 1.0 - alpha / 2.0])
-            rows.append(
-                {
-                    "model": model,
-                    "mean": float(np.mean(values)),
-                    "median": float(np.median(values)),
-                    "lower": float(lower),
-                    "upper": float(upper),
-                }
-            )
-        if not rows:
-            raise ValueError("This fit does not use the joint trend model space.")
-        order = {
-            "linear_trend": 0,
-            "rw1_drift": 1,
-            "rw2_smooth_trend": 2,
-            "local_linear_trend": 3,
-        }
-        rows.sort(key=lambda row: order.get(row["model"], 99))
-        try:
-            import pandas as pd
-
-            return pd.DataFrame(rows).set_index("model")
-        except ImportError:
-            return rows
-
-    def hierarchical_slab_summary(self, credible_interval: float = 0.90):
-        """Posterior summaries of shared dynamic-slab multipliers."""
-
-        rows = []
-        prefix = "hierarchy.slab_scale."
-        alpha = 1.0 - float(credible_interval)
-        coefficient_scales = getattr(
-            getattr(self.priors, "hierarchy", None), "coefficient_scale", {}
-        )
-        for key in sorted(self.parameter_draws):
-            if not key.startswith(prefix):
-                continue
-            process = key.removeprefix(prefix)
-            values = self.parameter(key)
-            lower, upper = np.quantile(values, [alpha / 2.0, 1.0 - alpha / 2.0])
-            base = float(coefficient_scales.get(process, 1.0))
-            rows.append(
-                {
-                    "process": process,
-                    "mean": float(np.mean(values)),
-                    "median": float(np.median(values)),
-                    "lower": float(lower),
-                    "upper": float(upper),
-                    "innovation_sd_median": base * float(np.median(values)),
-                }
-            )
-        if not rows:
-            raise ValueError("This fit has no pooled slab-scale draws.")
-        try:
-            import pandas as pd
-
-            return pd.DataFrame(rows).set_index("process")
-        except ImportError:
-            return rows
 
     def _observation_context(self, channel: str | None = None):
         if self.is_multiseries_model:
@@ -986,8 +614,7 @@ class FitResult(SharedResultMethods):
     ) -> Array:
         """Finite-change rate of a channel predictor or scientific component.
 
-        ``target='level'`` excludes seasonal changes. ``shared`` and
-        ``departure`` select contributions from the optional ``name`` group.
+        ``target='level'`` excludes seasonal changes.
         The historical default, ``predictor``, retains its original meaning.
         """
 
@@ -997,18 +624,8 @@ class FitResult(SharedResultMethods):
             values = self.channel_eta_draws(channel, original_scale=True)
         elif target == "level":
             values = self.channel_component_draws(channel, "level")
-        elif target in {"shared", "departure"}:
-            from .shared_results import group_design
-
-            group = name or ("warming" if target == "shared" else "departure")
-            if not self.is_shared_model or self.compiled.group_kinds.get(group) != target:
-                raise ValueError(f"No {target} group named {group!r} is present.")
-            values = self._component_projection(
-                group_design(self.compiled, group, "level", channel=channel),
-                combine_chains=True, include_initial=False,
-            )
         else:
-            raise ValueError("target must be 'predictor', 'level', 'shared', or 'departure'.")
+            raise ValueError("target must be 'predictor' or 'level'.")
         result = self._calendar_rate(
             values,
             start_year,
@@ -1344,14 +961,6 @@ class FitResult(SharedResultMethods):
         if self.metadata.get("marginal_fs"):
             from ..inference.fit.marginal_adapter import export_marginal_start
             return export_marginal_start(self, chain_index, draw_index)
-        if self.is_shared_model:
-            output["state_path"] = self.state_draws[chain_index, draw_index].copy()
-            output["parameters"] = {
-                name: float(np.asarray(values)[chain_index, draw_index])
-                for name, values in self.parameter_draws.items()
-                if np.asarray(values)[chain_index, draw_index].ndim == 0
-            }
-            return output
         if not self.is_multiseries_model:
             def scalar(name: str, default: float = 0.0) -> float:
                 if name not in self.parameter_draws:

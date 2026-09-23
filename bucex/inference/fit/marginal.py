@@ -1,4 +1,4 @@
-"""Private FS trajectories with continuous shrinkage or exact SSVS with optional residual copula.
+"""Private FS trajectories with continuous shrinkage and optional residual copula.
 
 Gaussian channels use their exact copula-conditional Gaussian regression.
 GEV paths use deterministic conditional Laplace independence proposals and
@@ -6,7 +6,6 @@ an exact MH correction. Structural moves, scale, shape and R updates all
 target the joint likelihood. There is no two-stage/cut approximation.
 """
 from dataclasses import asdict
-from types import SimpleNamespace
 
 from ..chains import independent_chains, chain_seeds, chain_position
 
@@ -18,14 +17,11 @@ from ...dependence.gaussian import gaussian_copula_logpdf
 from ...priors import MarginalPriors, FSGaussianPriors, FSGEVPriors
 from ..plan import InferencePlan
 from .conditional_margin import ConditionalMargin, conditional_score_parameters
-from .hierarchical import _initial_channel_state, _sign_move
+from .private_channel import _initial_channel_state
 from .fs_utils import (
-    apply_theta_draw, baseline_mu_path, build_ncp_system, design_matrix_ncp,
-    elliptical_slice_gaussian_prior, ffbs_gaussian_1d_tvR, map_ncp_to_centered,
-    measurement_vector, mu_from_ncp, ncp_laplace_mh, theta_vector_from_params,
-    _slice_sample_real, _ncp_laplace_pseudo_data,
+    elliptical_slice_gaussian_prior, map_ncp_to_centered,
+    mu_from_ncp, _slice_sample_real,
 )
-from .model_space import sample_structural_regression, sample_structural_regression_exact
 from .continuous import ShrinkageState, continuous_step
 from .shrinkage import SharedShrinkageState
 
@@ -86,65 +82,6 @@ def _channel_parameters(state, effects, *, selection=True):
     result.update({f"{key}.{name}": np.asarray(value).copy()
                    for key,value in state.params_obs.items() if key.startswith("evolution.")})
     return result
-
-
-def _structure_step(state, conditional, params, prior, laplace, rng):
-    layout = state.layout
-    model = SimpleNamespace(obs=conditional)
-    metric = {}
-    if state.family == "gaussian":
-        G, Q = build_ncp_system(layout)
-        adjusted = state.y - params["sigma"] * conditional.mean
-        variance = params["sigma"]**2 * conditional.variance
-        state.z_path = ffbs_gaussian_1d_tvR(
-            adjusted - baseline_mu_path(state.y.size, state.params_state, layout),
-            G, Q, measurement_vector(state.params_state, layout), variance,
-            m0=np.zeros(layout.ncp_state_dim), C0=np.zeros((layout.ncp_state_dim,)*2), rng=rng,
-        )
-    else:
-        result = ncp_laplace_mh(
-            state.y, model, state.params_state, params, layout, state.z_path,
-            rng=rng, mh_steps=laplace.mh_steps, max_iterations=laplace.max_iterations,
-            tolerance=laplace.tolerance, curvature_floor=laplace.curvature_floor,
-            maximum_variance=laplace.maximum_variance,
-        )
-        state.z_path = result.z_path
-        metric = {"laplace_mh_acceptance": result.acceptance_rate,
-                  "laplace_converged": float(result.approximation.converged),
-                  "laplace_iterations": result.approximation.iterations,
-                  "laplace_relative_change": result.approximation.relative_change,
-                  "laplace_mh_mean_log_acceptance_ratio": float(np.mean(result.log_acceptance_ratio)),
-                  "laplace_initial_support_repaired": float(result.approximation.initial_support_repaired),
-                  "laplace_mh_support_rejections": result.proposal_support_failures,
-                  "laplace_support_rejections": result.proposal_support_failures}
-    X, names, tbar = design_matrix_ncp(state.z_path, layout, center_time=True)
-    common = dict(X=X, theta_names=names, tbar=tbar, priors=prior,
-                  layout=layout, rng=rng, apply_theta_draw=apply_theta_draw)
-    if state.family == "gaussian":
-        selection = sample_structural_regression(y=adjusted, noise_variance=variance, **common)
-    else:
-        # A fixed, support-safe observation anchor makes q independent of the
-        # coefficients and model being updated. Re-expanding at their current
-        # predictor would require a different reverse-proposal calculation.
-        eta = state.y
-        pseudo_y, pseudo_variance = _ncp_laplace_pseudo_data(
-            state.y, eta, model, params, curvature_floor=laplace.curvature_floor,
-            maximum_variance=laplace.maximum_variance, shift_limit=10*float(np.max(params["sigma"])),
-        )
-        selection = sample_structural_regression_exact(
-            y=state.y, pseudo_y=pseudo_y, pseudo_variance=pseudo_variance,
-            current_state=state.model_state, current_params_state=state.params_state,
-            theta_vector_from_params=theta_vector_from_params,
-            elliptical_slice=elliptical_slice_gaussian_prior,
-            log_likelihood=lambda eta: float(np.sum(conditional.logpdf(state.y, eta, params))),
-            **common,
-        )
-        metric["structural_move_acceptance"] = float(selection.move_accepted)
-    state.params_state.update(selection.params_state)
-    state.model_state, state.model_index = selection.state, int(selection.selected_index)
-    _, error = _sign_move(state, rng)
-    metric["sign_error"] = error
-    return metric
 
 
 def _observation_step(state, conditional, coefficients, scale, phase, prior, rng, mixing=None):
@@ -213,21 +150,19 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
     if not isinstance(priors, MarginalPriors):
         raise TypeError("Use MarginalPriors(channels={name: fs_prior}).")
     model = compiled.model
-    if plan.asis and any(p.ssvs is not None for p in priors.channels.values()):
-        raise ValueError("ASIS requires continuous priors for every channel; exact SSVS has point-mass zero scales.")
-    if model.shared or not model.supports_fs_parameterization:
-        raise ValueError("Private FS/SSVS requires local-linear trends with optional dummy seasonality, without shared states or regressions.")
+    if not model.supports_fs_parameterization:
+        raise ValueError("Private FS requires local-linear trends with optional dummy seasonality and no regressions.")
     if set(priors.channels) != set(compiled.channel_names):
         raise ValueError("MarginalPriors names must match model channels exactly.")
     values = np.asarray(y, float)
     if values.ndim != 2 or values.shape[0] < 2 or not np.all(np.isfinite(values)):
-        raise ValueError("Private FS/SSVS currently requires a complete aligned observation matrix; missing-data inference is not implemented in this backend.")
+        raise ValueError("Private FS requires a complete aligned observation matrix; missing-data inference is not implemented in this backend.")
     for channel in model.channels:
         expected = FSGaussianPriors if channel.family == "gaussian" else FSGEVPriors
         if not isinstance(priors.channels[channel.name], expected):
             raise TypeError(f"Wrong structural prior family for {channel.name}.")
         if channel.family == "gev" and channel.observation.phi != "stationary":
-            raise ValueError("Joint FS/SSVS supports stationary or seasonal observation scales, not a dynamic phi path.")
+            raise ValueError("Private FS supports stationary or seasonal observation scales, not a dynamic phi path.")
     C, D, T, K = mcmc.chains, mcmc.draws, len(values), len(model.channels)
     paths = np.empty((C, D, T+1, compiled.state_dim))
     loglik = np.empty((C, D))
@@ -250,21 +185,11 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
         states = [_initial_channel_state(b.name, model.channel(b.name).family, values[:,j], b.compiled,
                   priors.channels[b.name], rng, initial) for j,b in enumerate(compiled.blocks)]
         for state in states:
-            from .model_space import enumerate_structural_models, structural_model_log_prior, enforce_structural_state
             prior = priors.channels[state.name]
             from .fs_utils import _active_scale_names
             inactive = {"level", "trend", "season"} - set(_active_scale_names(state.layout))
-            has_fixed = (any(getattr(c, "level_mode", None) == "static" or
-                             getattr(c, "trend_mode", None) == "static" or
-                             getattr(c, "mode", None) == "static" for c in state.model.components))
-            if has_fixed and prior.ssvs is not None:
-                raise ValueError("Explicit static components use continuous priors; for SSVS declare dynamic components and select them through SSVSPrior.")
             for component in inactive:
                 state.params_state["s_"+component] = state.params_state["q_"+component] = 0.
-            if prior.ssvs is not None and not np.isfinite(structural_model_log_prior(state.model_state, prior.ssvs)):
-                candidates = enumerate_structural_models(state.layout, prior.ssvs)
-                state.model_state = max(candidates, key=lambda m: structural_model_log_prior(m, prior.ssvs))
-                state.params_state = enforce_structural_state(state.params_state, state.model_state, state.layout)
             if state.family != "gev":
                 continue
             lower = max(state.model.observation.xi_bounds[0], -prior.xi_max_abs, getattr(prior.xi, "lower", -np.inf))
@@ -277,7 +202,7 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
             residual = state.y-mu_from_ncp(state.z_path, state.params_state, state.layout)
             scale = max(state.params_obs["sigma"], float(np.max(-state.params_obs["xi"]*residual))/.8)
             state.params_obs.update(sigma=scale, sigma2=scale*scale)
-        mixing = [ShrinkageState.initialize(priors.channels[s.name], s.layout) if priors.channels[s.name].ssvs is None else None for s in states]
+        mixing = [ShrinkageState.initialize(priors.channels[s.name], s.layout) for s in states]
         coefficients = [np.zeros(s.period-1) if s else np.zeros(0) for s in scales]
         effects = [s.contrast() @ b if s else np.zeros(1) for s,b in zip(scales, coefficients)]
         cp = model.copula.initial_parameters(compiled.channel_names) if model.copula else {}
@@ -314,11 +239,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                 prior = priors.channels[state.name]
                 if shared is not None:
                     prior = priors.shrinkage.conditional_prior(prior, shared.medians)
-                if prior.ssvs is not None:
-                    metric = _structure_step(state, conditional, _observation_params(state, effects[j], phases[j]), prior, laplace, rng)
-                else:
-                    metric = continuous_step(state, conditional, _observation_params(state, effects[j], phases[j]),
-                                             prior, mixing[j], laplace, rng, asis=plan.asis)
+                metric = continuous_step(state, conditional, _observation_params(state, effects[j], phases[j]),
+                                         prior, mixing[j], laplace, rng, asis=plan.asis)
                 coefficients[j], effects[j], obs_metric = _observation_step(
                     state, conditional, coefficients[j], scales[j], phases[j], prior, rng, mixing[j])
                 row_metrics.update({f"{key}.{state.name}": value for key,value in {**metric, **obs_metric}.items()})
@@ -346,7 +268,7 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                 total = float(np.sum(gaussian_copula_logpdf(scores, correlation)))
                 for j, (state, block) in enumerate(zip(states, compiled.blocks)):
                     paths[chain,saved_draw,:,block.state_slice] = map_ncp_to_centered(state.z_path, state.params_state, state.layout)
-                    current.update(_channel_parameters(state, effects[j], selection=priors.channels[state.name].ssvs is not None))
+                    current.update(_channel_parameters(state, effects[j], selection=False))
                     if scales[j] is not None:
                         current[f"sigma_path.{state.name}"] = _sigma(state, effects[j], phases[j])
                     if mixing[j] is not None: current.update(mixing[j].parameter_values(state.name))
@@ -382,8 +304,8 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
         dates=None if dates is None else np.asarray(dates), series_name=model.name,
         transform_sign=model.transform_signs,
         metadata={"bucex_version": __version__, "inference_contract": "private_fs_joint_likelihood",
-                  "marginal_fs": True, "structural_ssvs": any(p.ssvs is not None for p in priors.channels.values()),
-                  "model_selection_exact": any(p.ssvs is not None for p in priors.channels.values()),
+                  "marginal_fs": True, "structural_ssvs": False,
+                  "model_selection_exact": False,
                   "innovation_prior_families": {k:p.profile for k,p in priors.channels.items()},
                   "parameter_updates": {c.name: {"mu": plan.state_update,
                       "sigma": "Gaussian evolution elliptical slice" if getattr(c.observation.scale,"mode",None)=="structural" else "exact likelihood scale updates",

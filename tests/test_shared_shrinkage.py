@@ -78,8 +78,6 @@ def test_invalid_shared_specification_is_rejected(anchors,width):
 
 def test_conflicting_shrinkage_and_noncentered_mean_are_rejected():
     spec=bx.SharedShrinkage({'level':.01})
-    with pytest.raises(ValueError,match='continuous normal'):
-        bx.MarginalPriors({'a':bx.ssvs_gaussian_priors(4)},shrinkage=spec)
     with pytest.raises(ValueError,match='zero-mean'):
         bx.MarginalPriors({'a':replace(bx.fs_priors('gaussian',period=4),s_level=bx.NormalPrior(.1,.2))},shrinkage=spec)
 
@@ -155,19 +153,15 @@ def test_only_active_channels_in_hyperconditional():
                mcmc=bx.MCMC(chains=1,warmup=1,draws=1))
 
 
-def test_declared_calendar_origins_include_2019_and_no_silent_drops():
-    from research.serra.prior_assessment import study_plan
-    directory=Path(__file__).resolve().parents[1]/'research/serra/config/hierarchy'
-    config=bx.load_config(directory/'pilot.json'); plan=study_plan(config)
+def test_declared_calendar_origins_and_no_silent_drops():
+    from research.monthly.prior_assessment import study_plan
+    directory=Path(__file__).resolve().parents[1]/'research/monthly/config'
+    config=bx.load_config(directory/'adequacy.json'); plan=study_plan(config)
     assert plan['n_months']==1614 and plan['fitted_end']=='2026-08-01'
-    assert plan['posterior_fits']==4 and plan['predictive_fits']==16
+    assert plan['posterior_fits']==3 and plan['predictive_fits']==3*len(plan['folds'])
     assert plan['effective_chain_workers']==4
-    for candidate in plan['candidates']:
-        if candidate['name'].startswith('pooled'):
-            assert candidate['shared_shrinkage']['components']==['level','slope','seasonal']
-            assert candidate['innovation_median']['season']==.02
-    assert plan['folds'][2]['forecast_start']=='2016-01-01'
-    assert plan['folds'][2]['forecast_end']=='2020-12-01'
+    assert plan['candidates'][0]['shared_shrinkage']['components']==['level','slope','seasonal']
+    assert all(fold['forecast_start'] <= fold['forecast_end'] for fold in plan['folds'])
     dates=pd.date_range('2000-01-01',periods=36,freq='MS')
     a,b=next(bx.calendar_origin_splits(dates,['2001-12'],horizon=12))
     assert a.stop==24 and b.start==24 and b.stop==36

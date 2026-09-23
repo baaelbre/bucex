@@ -113,7 +113,7 @@ def test_combine_fits_preserves_chain_identity():
     np.testing.assert_allclose(combined.state_draws[1], fits[1].state_draws[0])
 
 
-def test_combine_deserialized_ssvs_fits_with_array_priors(tmp_path):
+def test_combine_deserialized_continuous_fits_with_array_priors(tmp_path):
     values = np.linspace(20.0, 25.0, 24)
     fits = []
     for chain, seed in enumerate((2501, 2502), start=1):
@@ -121,11 +121,8 @@ def test_combine_deserialized_ssvs_fits_with_array_priors(tmp_path):
             values,
             family="gev",
             period=12,
-            priors=bx.ssvs_gev_priors(
-                period=12,
-                season_probabilities=(0.0, 1.0, 0.0),
-            ),
-            engine="laplace",
+            priors=bx.fs_priors('gev', period=12),
+            engine="laplace_mh",
             parameterization="fruehwirth_schnatter",
             mcmc=bx.MCMC(draws=1, warmup=1, chains=1, seed=seed),
         )

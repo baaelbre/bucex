@@ -592,76 +592,6 @@ class PCInnovationPrior:
 
 
 @dataclass(frozen=True)
-class SSVSPrior:
-    """Exact structural spike-and-slab prior for non-centred models.
-
-    The package enumerates the complete structural model space. The level is
-    always present and is either fixed (``s_level = 0``) or dynamic. Trend and
-    seasonality can be zero, fixed, or dynamic. Active signed innovation scales
-    receive Gaussian slab priors; inactive coefficients are exactly zero.
-
-    ``trend_probabilities`` and ``season_probabilities`` are ordered as
-    ``(zero, fixed, dynamic)``.
-    """
-
-    innovation_slab_sd: Mapping[str, float] = field(
-        default_factory=lambda: {
-            "level": 0.03,
-            "trend": 0.0002,
-            "season": 0.03,
-        }
-    )
-    level_dynamic_probability: float = 0.5
-    trend_probabilities: Sequence[float] = (0.10, 0.45, 0.45)
-    season_probabilities: Sequence[float] = (1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0)
-    trend_model_probabilities: Mapping[str, float] | None = None
-
-    def __post_init__(self) -> None:
-        required = {"level", "trend", "season"}
-        supplied = set(self.innovation_slab_sd)
-        missing = required - supplied
-        if missing:
-            raise ValueError(f"Missing innovation slab scales for: {sorted(missing)}")
-        if any(float(self.innovation_slab_sd[key]) <= 0.0 for key in required):
-            raise ValueError("All innovation_slab_sd values must be positive.")
-        if not 0.0 <= float(self.level_dynamic_probability) <= 1.0:
-            raise ValueError("level_dynamic_probability must lie in [0, 1].")
-        for name, values in (
-            ("trend_probabilities", self.trend_probabilities),
-            ("season_probabilities", self.season_probabilities),
-        ):
-            values = np.asarray(values, dtype=float)
-            if values.shape != (3,):
-                raise ValueError(f"{name} must contain (zero, fixed, dynamic).")
-            if np.any(values < 0.0) or not np.isclose(values.sum(), 1.0):
-                raise ValueError(f"{name} entries must be non-negative and sum to one.")
-        if self.trend_model_probabilities is not None:
-            required_models = {
-                "linear_trend",
-                "rw1_drift",
-                "rw2_smooth_trend",
-                "local_linear_trend",
-            }
-            supplied_models = set(self.trend_model_probabilities)
-            if supplied_models != required_models:
-                raise ValueError(
-                    "trend_model_probabilities must contain exactly "
-                    f"{sorted(required_models)}."
-                )
-            model_probabilities = np.asarray(
-                [self.trend_model_probabilities[name] for name in sorted(required_models)],
-                dtype=float,
-            )
-            if (
-                np.any(~np.isfinite(model_probabilities))
-                or np.any(model_probabilities < 0.0)
-                or not np.isclose(model_probabilities.sum(), 1.0)
-            ):
-                raise ValueError(
-                    "trend_model_probabilities must be non-negative and sum to one."
-                )
-
-@dataclass(frozen=True)
 class FSGaussianPriors:
     """Priors for the non-centred structural Gaussian model."""
 
@@ -676,7 +606,9 @@ class FSGaussianPriors:
     horseshoe: Optional[RegularizedHorseshoePrior] = None
     triple_gamma: Optional[TripleGammaPrior] = None
     pc: Optional[PCInnovationPrior] = None
-    ssvs: Optional[SSVSPrior] = None
+    # Retained internally so legacy continuous kernels can share one path.
+    # The unsupported structural selection option is not constructible.
+    ssvs: None = field(default=None, init=False, repr=False)
 
     def __post_init__(self) -> None:
         strategies = (
@@ -684,13 +616,12 @@ class FSGaussianPriors:
             + int(self.horseshoe is not None)
             + int(self.triple_gamma is not None)
             + int(self.pc is not None)
-            + int(self.ssvs is not None)
             + int(self.s_level is not None)
         )
         if strategies != 1:
             raise ValueError(
                 "Choose exactly one innovation prior: normal, Bayesian lasso, "
-                "regularized horseshoe, triple gamma, PC prior, or SSVS."
+                "regularized horseshoe, triple gamma, or PC prior."
             )
         if self.horseshoe is not None:
             missing = {"level", "trend", "season"} - set(
@@ -725,8 +656,6 @@ class FSGaussianPriors:
             )
         if self.pc is not None:
             return "pc"
-        if self.ssvs is not None:
-            return "ssvs"
         return "normal"
 
 
@@ -755,7 +684,7 @@ class FSGEVPriors:
     horseshoe: Optional[RegularizedHorseshoePrior] = None
     triple_gamma: Optional[TripleGammaPrior] = None
     pc: Optional[PCInnovationPrior] = None
-    ssvs: Optional[SSVSPrior] = None
+    ssvs: None = field(default=None, init=False, repr=False)
     xi_max_abs: float | None = None
 
     def __post_init__(self) -> None:
@@ -771,13 +700,12 @@ class FSGEVPriors:
             + int(self.horseshoe is not None)
             + int(self.triple_gamma is not None)
             + int(self.pc is not None)
-            + int(self.ssvs is not None)
             + int(self.s_level is not None)
         )
         if strategies != 1:
             raise ValueError(
                 "Choose exactly one innovation prior: normal, Bayesian lasso, "
-                "regularized horseshoe, triple gamma, PC prior, or SSVS."
+                "regularized horseshoe, triple gamma, or PC prior."
             )
         if self.horseshoe is not None:
             missing = {"level", "trend", "season"} - set(
@@ -812,8 +740,6 @@ class FSGEVPriors:
             )
         if self.pc is not None:
             return "pc"
-        if self.ssvs is not None:
-            return "ssvs"
         return "normal"
 
 
@@ -931,130 +857,6 @@ def normal_gev_priors(
         s_level=NormalPrior(0.0, level_sd),
         s_trend=NormalPrior(0.0, trend_sd),
         s_season=NormalPrior(0.0, season_sd),
-    )
-
-
-def _resolve_ssvs_prior(
-    ssvs: Optional[SSVSPrior],
-    *,
-    innovation_slab_sd: Optional[Mapping[str, float]],
-    level_dynamic_probability: Optional[float],
-    trend_probabilities: Optional[Sequence[float]],
-    season_probabilities: Optional[Sequence[float]],
-) -> SSVSPrior:
-    """Resolve the object and convenience-keyword SSVS APIs consistently."""
-
-    settings = {
-        "innovation_slab_sd": innovation_slab_sd,
-        "level_dynamic_probability": level_dynamic_probability,
-        "trend_probabilities": trend_probabilities,
-        "season_probabilities": season_probabilities,
-    }
-    supplied = {name: value for name, value in settings.items() if value is not None}
-    if ssvs is not None and supplied:
-        names = ", ".join(sorted(supplied))
-        raise ValueError(
-            "Pass either ssvs=SSVSPrior(...) or direct SSVS settings, not both; "
-            f"direct settings supplied: {names}."
-        )
-    if ssvs is not None:
-        return ssvs
-    return SSVSPrior(**supplied)
-
-
-def ssvs_gaussian_priors(
-    period: int = 12,
-    *,
-    alpha_mean: float = 0.0,
-    alpha_sd: float = np.sqrt(10.0),
-    beta_mean: float = 0.0,
-    beta_sd: float = 0.005,
-    seasonal_initial_sd: float = np.sqrt(5.0),
-    sigma2_prior: Optional[InverseGammaPrior] = None,
-    ssvs: Optional[SSVSPrior] = None,
-    innovation_slab_sd: Optional[Mapping[str, float]] = None,
-    level_dynamic_probability: Optional[float] = None,
-    trend_probabilities: Optional[Sequence[float]] = None,
-    season_probabilities: Optional[Sequence[float]] = None,
-) -> FSGaussianPriors:
-    """Gaussian structural SSVS prior with exact structural states.
-
-    The SSVS settings may be supplied either as an explicit :class:`SSVSPrior`
-    through ``ssvs=`` or as the readable convenience keywords exposed here.
-    Do not mix the two forms in one call.
-    """
-
-    k = period - 1
-    resolved_ssvs = _resolve_ssvs_prior(
-        ssvs,
-        innovation_slab_sd=innovation_slab_sd,
-        level_dynamic_probability=level_dynamic_probability,
-        trend_probabilities=trend_probabilities,
-        season_probabilities=season_probabilities,
-    )
-    return FSGaussianPriors(
-        sigma2=(
-            InverseGammaPrior(a=2.0, b=1.0)
-            if sigma2_prior is None
-            else sigma2_prior
-        ),
-        alpha0=NormalPrior(alpha_mean, alpha_sd),
-        beta0=NormalPrior(beta_mean, beta_sd),
-        gamma0_season=DiagonalNormalPrior(
-            mean=np.zeros(k), sd=np.full(k, seasonal_initial_sd)
-        ),
-        ssvs=resolved_ssvs,
-    )
-
-
-def ssvs_gev_priors(
-    period: int = 12,
-    *,
-    alpha_mean: float = 0.0,
-    alpha_sd: float = np.sqrt(10.0),
-    beta_mean: float = 0.0,
-    beta_sd: float = 0.005,
-    seasonal_initial_sd: float = np.sqrt(5.0),
-    sigma2_prior: Optional[InverseGammaPrior] = None,
-    xi_prior: Optional[XiPrior] = None,
-    xi_max_abs: float | None = None,
-    phi_prior: Optional[PhiPrior] = None,
-    ssvs: Optional[SSVSPrior] = None,
-    innovation_slab_sd: Optional[Mapping[str, float]] = None,
-    level_dynamic_probability: Optional[float] = None,
-    trend_probabilities: Optional[Sequence[float]] = None,
-    season_probabilities: Optional[Sequence[float]] = None,
-) -> FSGEVPriors:
-    """DGEV structural SSVS prior with exact zero/fixed/dynamic states.
-
-    The SSVS settings may be supplied either as an explicit :class:`SSVSPrior`
-    through ``ssvs=`` or as the readable convenience keywords exposed here.
-    Do not mix the two forms in one call.
-    """
-
-    k = period - 1
-    resolved_ssvs = _resolve_ssvs_prior(
-        ssvs,
-        innovation_slab_sd=innovation_slab_sd,
-        level_dynamic_probability=level_dynamic_probability,
-        trend_probabilities=trend_probabilities,
-        season_probabilities=season_probabilities,
-    )
-    return FSGEVPriors(
-        sigma2=(
-            InverseGammaPrior(a=2.0, b=2.0)
-            if sigma2_prior is None
-            else sigma2_prior
-        ),
-        xi=NormalPrior(0.0, 0.3) if xi_prior is None else xi_prior,
-        alpha0=NormalPrior(alpha_mean, alpha_sd),
-        beta0=NormalPrior(beta_mean, beta_sd),
-        gamma0_season=DiagonalNormalPrior(
-            mean=np.zeros(k), sd=np.full(k, seasonal_initial_sd)
-        ),
-        phi=PhiPrior() if phi_prior is None else phi_prior,
-        ssvs=resolved_ssvs,
-        xi_max_abs=xi_max_abs,
     )
 
 

@@ -369,13 +369,12 @@ def default_priors(compiled: CompiledModel, profile: str = "regularized") -> Pri
     key = str(profile).lower()
     key = {
         "normal": "half_normal",
-        "ssvs": "spike_slab",
         "manuscript": "legacy_ig",
         "lasso": "regularized",
     }.get(key, key)
-    if key not in {"regularized", "weak", "strong", "half_normal", "spike_slab", "legacy_ig"}:
+    if key not in {"regularized", "weak", "strong", "half_normal", "legacy_ig"}:
         raise ValueError(
-            "profile must be regularized, weak, strong, half_normal, spike_slab, or legacy_ig."
+            "profile must be regularized, weak, strong, half_normal, or legacy_ig."
         )
     multiplier = {"weak": 2.0, "strong": 0.5}.get(key, 1.0)
     uppers = {name: multiplier * _adaptive_upper(name, compiled) for name in compiled.noise_names}
@@ -383,12 +382,6 @@ def default_priors(compiled: CompiledModel, profile: str = "regularized") -> Pri
     for name, upper in uppers.items():
         if key == "half_normal":
             process[name] = HalfNormalSD(scale=upper / 1.96)
-        elif key == "spike_slab":
-            process[name] = SpikeSlabSD(
-                spike_scale=max(upper / 20.0, compiled.y_scale * 1e-10),
-                slab_scale=upper,
-                slab_probability=0.5,
-            )
         elif key == "legacy_ig":
             process[name] = InverseGammaVariance(shape=2.0, scale=max(upper**2, 1e-16))
         else:
@@ -434,6 +427,8 @@ def resolve_priors(compiled: CompiledModel, priors: Priors | str | None) -> Prio
         raise TypeError("priors must be a Priors object, profile name, or None.")
     expected = set(compiled.noise_names)
     supplied = set(resolved.process)
+    if any(isinstance(prior, SpikeSlabSD) for prior in resolved.process.values()):
+        raise ValueError("Spike-and-slab priors are outside the BUCEX 1.8.4 paper API.")
     if supplied != expected:
         missing = sorted(expected - supplied)
         extra = sorted(supplied - expected)

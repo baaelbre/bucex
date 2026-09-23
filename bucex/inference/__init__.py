@@ -1,5 +1,5 @@
 """Inference configuration, planning and state-update kernels."""
-from .config import GibbsConfig, HierarchicalSampler, Laplace, MCMC, SharedSampler
+from .config import Laplace, MCMC
 from .plan import InferencePlan, inference_plan
 from .state import (
     build_laplace_approximation,
@@ -14,10 +14,7 @@ from .state import (
 
 __all__ = [
     "MCMC",
-    "GibbsConfig",
     "Laplace",
-    "HierarchicalSampler",
-    "SharedSampler",
     "InferencePlan",
     "inference_plan",
     "kalman_filter",

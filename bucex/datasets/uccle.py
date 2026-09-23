@@ -1,4 +1,4 @@
-"""Reproducible univariate and hierarchical Uccle data helpers."""
+"""Uccle data loading and independent marginal fitting."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,15 +12,11 @@ import numpy as np
 import pandas as pd
 
 from ..api.fit import fit
-from ..components import DummySeasonal, LocalLevel, LocalLinearTrend
+from ..components import DummySeasonal, LocalLinearTrend
 from ..core.fit import FitResult
 from ..inference.config import Laplace, MCMC
-from ..models.multiseries import Channel, MultiSeriesModel
-from ..models.shared import Departures, Shared
 from ..models.structural import Model
 from ..observation import GEV, Gaussian
-from ..priors.hierarchical import HierarchicalPrior, HierarchicalPriors
-from ..priors.joint import JointPriors
 
 
 UCCLE_SERIES = ("TXm", "TNm", "TXx", "TXn", "TNx", "TNn")
@@ -343,154 +339,12 @@ def validate_uccle_data(
     return table
 
 
-def make_uccle_hierarchical_model(
-    *,
-    series: Iterable[str] | str = UCCLE_SERIES,
-    seasonal: bool = True,
-    period: int = 12,
-) -> MultiSeriesModel:
-    """Create separate structural paths coupled through a prior hierarchy.
-
-    Seasonality is included in every channel by default. Under hierarchical
-    selection it may be fixed or dynamic, but it is not allowed to disappear.
-    """
-
-    selected = _normalize_series_names(series)
-    if len(selected) < 2:
-        raise ValueError("A hierarchical model requires at least two series.")
-    if int(period) < 2:
-        raise ValueError("period must be at least 2.")
-    channels = []
-    for name in selected:
-        info = UCCLE_INFO[name]
-        components = [LocalLinearTrend()]
-        if seasonal:
-            components.append(DummySeasonal(period=int(period)))
-        channels.append(
-            Channel(
-                name=name,
-                observation=Gaussian() if info["family"] == "gaussian" else GEV(),
-                components=tuple(components),
-                tail="lower" if info["tail"] == "min" else None,
-                description=info["description"],
-            )
-        )
-    return MultiSeriesModel(
-        channels=tuple(channels),
-        name="Uccle hierarchical structural model",
-        description="Separate paths with pooled structural probabilities and/or normal-slab scales.",
-    )
 
 
-def fit_uccle_hierarchical(
-    data_dir: str | Path | None = None,
-    *,
-    model: MultiSeriesModel | None = None,
-    series: Iterable[str] | str = UCCLE_SERIES,
-    pooling: str = "selection",
-    priors: HierarchicalPrior | HierarchicalPriors | str | None = None,
-    seasonal: bool = True,
-    period: int = 12,
-    start: str | None = "1980-01-01",
-    end: str | None = None,
-    **kwargs,
-) -> FitResult:
-    """Fit aligned Uccle series with pooled SSVS, slabs, or both."""
-
-    resolved_model = model or make_uccle_hierarchical_model(series=series, seasonal=seasonal, period=period)
-    values = load_uccle_multiseries(data_dir, series=resolved_model.channel_names, start=start, end=end)
-    resolved_priors = HierarchicalPrior(pool=pooling) if priors is None else priors
-    options = dict(kwargs)
-    options.setdefault("parameterization", "fruehwirth_schnatter")
-    options.setdefault("engine", "auto")
-    options.setdefault("asis", False)
-    return fit(values, resolved_model, priors=resolved_priors, **options)
 
 
-def make_uccle_shared_model(
-    *,
-    series: Iterable[str] | str = UCCLE_SERIES,
-    seasonal: bool = True,
-    period: int = 12,
-    departures: str | None = "trend",
-    weights: Mapping[str, float] | None = None,
-    baseline_means: Mapping[str, float] | None = None,
-    copula=None,
-) -> MultiSeriesModel:
-    """Construct a common warming trajectory with constrained departures.
-
-    This is a short application of the general ``Channel``, ``Shared`` and
-    ``Departures`` grammar. Every channel retains its own static intercept and
-    fixed seasonal cycle. Unit loadings keep effects in degrees Celsius; the
-    weighted sum of departures is zero at each time. ``departures='rw'`` uses
-    simpler random-walk deviations, and ``None`` omits them entirely.
-
-    Initial levels of the common trend and departures are pinned at zero.
-    Initial slope SDs are 0.005 and 0.002 degrees per model step, respectively;
-    the bundled observations are monthly. Initial intercept and seasonal SDs
-    are 10 degrees. For other priors, construct the general model directly.
-    """
-    selected = _normalize_series_names(series)
-    if len(selected) < 2:
-        raise ValueError("A shared model requires at least two series.")
-    if departures not in {None, "rw", "trend"}:
-        raise ValueError("departures must be 'trend', 'rw', or None.")
-    if weights is not None and departures is None:
-        raise ValueError("weights require a departure component.")
-    if baseline_means is not None and set(baseline_means) != set(selected):
-        raise ValueError("baseline_means must name every selected channel exactly once.")
-    channels = []
-    for name in selected:
-        info = UCCLE_INFO[name]
-        components = [LocalLevel(mode="static", initial_mean=None if baseline_means is None else float(baseline_means[name]), initial_sd=10.0)]
-        if seasonal:
-            components.append(DummySeasonal(period=period, mode="static", initial_sd=10.0))
-        channels.append(Channel(name, Gaussian() if info["family"] == "gaussian" else GEV(), tuple(components),
-                                tail="lower" if info["tail"] == "min" else None, description=info["description"]))
-    shared = [Shared("warming", LocalLinearTrend(initial_level=0.0, initial_level_sd=0.0, initial_slope_sd=0.005))]
-    if departures is not None:
-        component = (LocalLevel(initial_mean=0.0, initial_sd=0.0) if departures == "rw"
-                     else LocalLinearTrend(initial_level=0.0, initial_level_sd=0.0, initial_slope_sd=0.002))
-        shared.append(Departures("departure", component, weights=weights))
-    return MultiSeriesModel(channels=tuple(channels), shared=tuple(shared), copula=copula,
-                            name="Uccle common warming and departures",
-                            description="Unit-loading common trend, weighted sum-to-zero departures, separate fixed seasonal cycles.")
 
 
-def fit_uccle_shared(
-    data_dir: str | Path | None = None,
-    *,
-    model: MultiSeriesModel | None = None,
-    series: Iterable[str] | str = UCCLE_SERIES,
-    priors: JointPriors | None = None,
-    seasonal: bool = True,
-    departures: str | None = "trend",
-    weights: Mapping[str, float] | None = None,
-    copula=None,
-    start: str | None = "1892-01-01",
-    end: str | None = None,
-    **kwargs,
-) -> FitResult:
-    """Fit the shared model through the ordinary ``fit(data, model, ...)`` API.
-
-    Pass explicit ``JointPriors`` for a scientific analysis: ``priors=None``
-    uses the same recorded data-adaptive convenience calibration as ``fit``.
-    When constructing a model here, intercept-prior centers are the observed
-    channel medians; pass your own model to supply data-independent centers.
-    """
-    selected = model.channel_names if model is not None else _normalize_series_names(series)
-    values = load_uccle_multiseries(data_dir, series=selected, start=start, end=end)
-    resolved_model = model or make_uccle_shared_model(
-        series=selected, seasonal=seasonal, departures=departures, weights=weights,
-        baseline_means={name: float(values[name].median()) for name in selected}, copula=copula,
-    )
-    if not getattr(resolved_model, "shared", ()):
-        raise ValueError("fit_uccle_shared requires a model containing shared states.")
-    options = dict(kwargs)
-    options.setdefault("engine", "auto")
-    options.setdefault("parameterization", "centered")
-    options.setdefault("asis", False)
-    return fit(values, resolved_model, priors=priors, **options)
 
 
 def fit_uccle_series(
@@ -574,8 +428,7 @@ def fit_uccle_all(
 
 __all__ = [
     "UCCLE_INFO", "UCCLE_SERIES", "UccleFitCollection", "derive_uccle_monthly",
-    "fit_uccle_all", "fit_uccle_hierarchical", "fit_uccle_series",
-    "fit_uccle_shared", "make_uccle_shared_model",
+    "fit_uccle_all", "fit_uccle_series",
     "load_uccle_daily", "load_uccle_multiseries", "load_uccle_series",
-    "make_uccle_hierarchical_model", "validate_uccle_data",
+    "validate_uccle_data",
 ]

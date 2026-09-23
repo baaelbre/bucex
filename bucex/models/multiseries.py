@@ -1,10 +1,4 @@
-"""Declarative models for related time series.
-
-Channels declare their own observations and local components. Without shared
-declarations, a hierarchical prior can pool structural selection probabilities
-and innovation scales while retaining separate paths. Explicit Shared and
-Departures declarations instead introduce jointly inferred latent components.
-"""
+"""Private structural trajectories for aligned series, with an optional copula."""
 from __future__ import annotations
 
 from dataclasses import dataclass, InitVar
@@ -21,7 +15,6 @@ from ..components import (
 )
 from ..components.base import Component
 from ..observation import GEV, Gaussian, Observation, observation_from_dict
-from .shared import Shared, Departures, shared_from_dict
 from ..dependence import GaussianCopula
 
 
@@ -150,18 +143,11 @@ class Channel:
 
 @dataclass(frozen=True)
 class MultiSeriesModel:
-    """Marginal state-space models with optional shared states and a copula.
-
-    Without shared states or a copula, the structural prior hierarchy retains
-    separate paths. ``Shared``/``Departures`` declarations or ``copula=`` select
-    general joint inference with :class:`~bucex.priors.JointPriors`. A copula
-    alone couples private trajectories; a common factor is not required.
-    """
+    """Named channel models with private trajectories and optional copula."""
 
     channels: tuple[Channel, ...]
     name: str | None = None
     description: str | None = None
-    shared: tuple[Shared | Departures, ...] = ()
     copula: GaussianCopula | None = None
 
     def __post_init__(self) -> None:
@@ -172,41 +158,10 @@ class MultiSeriesModel:
         if len(names) != len(set(names)):
             raise ValueError("MultiSeriesModel channel names must be unique.")
         object.__setattr__(self, "channels", channels)
-        shared = tuple(self.shared)
-        if any(not isinstance(item, (Shared, Departures)) for item in shared):
-            raise TypeError("shared must contain Shared(...) or Departures(...).")
-        if len({item.name for item in shared}) != len(shared):
-            raise ValueError("Shared/departure group names must be unique.")
-        for item in shared:
-            item.loading_matrix(tuple(names))
-        signatures = {}
-        for item in shared:
-            c = item.component
-            signature = (type(c).__name__, getattr(c, "level_mode", None),
-                         getattr(c, "trend_mode", None), getattr(c, "mode", None), getattr(c, "period", None))
-            signatures.setdefault(signature, []).append(item)
-        for groups in signatures.values():
-            mixing = np.column_stack([item.loading_matrix(tuple(names)) for item in groups])
-            if np.linalg.matrix_rank(mixing) < mixing.shape[1]:
-                raise ValueError(
-                    "Shared components with the same dynamics require linearly independent "
-                    f"loading columns; overlapping groups: {[item.name for item in groups]}. "
-                    "Use one common component and complementary constrained departures."
-                )
-        object.__setattr__(self, "shared", shared)
         if self.copula is not None:
             if not isinstance(self.copula, GaussianCopula):
                 raise TypeError("copula must be GaussianCopula(...) or None.")
             self.copula.correlation_matrix(self.copula.initial_parameters(tuple(names)), tuple(names))
-
-    @property
-    def has_shared_states(self) -> bool:
-        return bool(self.shared)
-
-    @property
-    def requires_joint_inference(self) -> bool:
-        """Whether latent paths need the general joint posterior backend."""
-        return self.has_shared_states or self.copula is not None
 
     @property
     def channel_names(self) -> tuple[str, ...]:
@@ -251,16 +206,12 @@ class MultiSeriesModel:
         periods = {
             channel.period for channel in self.channels if channel.period is not None
         }
-        periods.update(int(item.component.period) for item in self.shared
-                       if isinstance(item.component, DummySeasonal) and item.component.mode != "off")
         return periods.pop() if len(periods) == 1 else None
 
     @property
     def supports_fs_parameterization(self) -> bool:
         """Whether every channel has the structural hierarchy layout."""
 
-        if self.shared:
-            return False
         for channel in self.channels:
             trends = [
                 component
@@ -301,17 +252,17 @@ class MultiSeriesModel:
             "channels": [channel.to_dict() for channel in self.channels],
             "name": self.name,
             "description": self.description,
-            "shared": [item.to_dict() for item in self.shared],
             "copula": None if self.copula is None else self.copula.to_dict(),
         }
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "MultiSeriesModel":
+        if value.get("shared"):
+            raise ValueError("Shared temporal components are outside the BUCEX 1.8.4 paper API.")
         return cls(
             channels=tuple(Channel.from_dict(item) for item in value["channels"]),
             name=value.get("name"),
             description=value.get("description"),
-            shared=tuple(shared_from_dict(item) for item in value.get("shared", ())),
             copula=None if value.get("copula") is None else GaussianCopula.from_dict(value["copula"]),
         )
 

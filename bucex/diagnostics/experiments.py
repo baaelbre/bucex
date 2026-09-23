@@ -5,7 +5,6 @@ silently condition endpoint summaries on a negative shape.
 """
 from __future__ import annotations
 
-from dataclasses import replace
 import numpy as np
 import pandas as pd
 from scipy.stats import genextreme, truncnorm
@@ -16,41 +15,6 @@ from ..priors.structural import (
 from .contrasts import summarize_draws
 
 _COMPONENTS = {"level": "level", "trend": "slope", "season": "seasonal"}
-
-
-def innovation_prior_variant(prior, *, profile="ssvs", multipliers=None,
-                             lasso_shape=1.0, lasso_rate=1.0):
-    """Change innovation shrinkage while retaining all other declared priors.
-
-    Multipliers act on signed innovation SDs, hence multiply variances by their
-    square. ``manuscript_lasso`` reproduces the common-lambda hierarchy, with
-    Gaussian observation-variance scaling, while retaining the supplied static
-    priors for a controlled comparison. Use manuscript_*_priors separately to
-    reproduce the complete original profile.
-    """
-    factors = {key: 1.0 for key in _COMPONENTS}
-    factors.update(multipliers or {})
-    if set(factors) != set(_COMPONENTS) or any(not np.isfinite(v) or v <= 0 for v in factors.values()):
-        raise ValueError("multipliers must be positive finite level/trend/season values.")
-    if prior.ssvs is None:
-        raise ValueError("Start from an SSVS prior to declare the baseline component scales.")
-    scales = {key: prior.ssvs.innovation_slab_sd[key] * factors[key] for key in factors}
-    if profile == "ssvs":
-        return replace(prior, ssvs=replace(prior.ssvs, innovation_slab_sd=scales))
-    if profile == "component_lasso":
-        lasso = ComponentwiseBayesianLassoPrior(coefficient_scale=scales,
-            a_lambda={key: lasso_shape for key in factors},
-            b_lambda={key: lasso_rate for key in factors})
-    elif profile == "manuscript_lasso":
-        if len(set(factors.values())) != 1:
-            raise ValueError("The manuscript common-lambda prior permits only a joint scale multiplier.")
-        # Scaling s by c is equivalent to scaling the Gamma rate of lambda^2 by c^2.
-        lasso = BayesianLassoPrior(a_lambda=lasso_shape,
-            b_lambda=lasso_rate * factors["level"]**2,
-            variance_mode="fixed" if hasattr(prior, "xi") else "observation")
-    else:
-        raise ValueError("profile must be ssvs, component_lasso or manuscript_lasso.")
-    return replace(prior, ssvs=None, lasso=lasso)
 
 
 def draw_structural_prior(prior, size=2000, *, seed=None, xi_bounds=None):
@@ -282,7 +246,7 @@ def forecast_uncertainty(forecast, *, channel=None, levels=(0.90, 0.95, 0.99)):
     return pd.DataFrame(rows)
 
 
-__all__ = ["innovation_prior_variant", "draw_structural_prior", "compare_innovation_priors",
+__all__ = ["draw_structural_prior", "compare_innovation_priors",
            "scientific_summary", "recovery_metrics", "forecast_uncertainty"]
 
 

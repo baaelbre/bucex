@@ -2,7 +2,7 @@
 
 All aesthetics and layouts come from BUCEX. The short study script chooses
 series, quantities, months and event thresholds through
-`research/serra/config/revision/figures.json`.
+`research/monthly/config/figures.json`.
 
 The reference is the rewritten SERRA manuscript: blue TX panels, red TN
 panels, 2-by-3 component layouts, readable sans-serif labels, light horizontal
@@ -12,8 +12,8 @@ configuration; the package also works with other response names.
 ## Rebuild from reports
 
 ```text
-python -m research.serra.figures --reports PATH_TO_RUN
-python -m research.serra.figures --reports PATH_TO_TXm PATH_TO_TNm PATH_TO_TXx PATH_TO_TXn PATH_TO_TNx PATH_TO_TNn --formats png pdf
+python -m research.monthly.figures --reports PATH_TO_RUN
+python -m research.monthly.figures --reports PATH_TO_TXm PATH_TO_TNm PATH_TO_TXx PATH_TO_TXn PATH_TO_TNx PATH_TO_TNn --formats png pdf
 ```
 
 Paths may be a single joint report, one independent-run root, or separate
@@ -24,7 +24,7 @@ No fit archive is loaded and no MCMC is run.
 To start with one response and a few panels:
 
 ```text
-python -m research.serra.figures --reports PATH_TO_TNm --series TNm --panels levels slopes monthly_residual_spread qq_scores monthly_scales
+python -m research.monthly.figures --reports PATH_TO_TNm --series TNm --panels levels slopes monthly_residual_spread qq_scores monthly_scales
 ```
 
 | Figure stem | Source | Interpretation |
@@ -53,7 +53,7 @@ draws. Summary medians/intervals cannot recover those traces. Re-export an
 existing `.bucex` fit to obtain the new compressed CSVs:
 
 ```text
-python -m research.serra.report --fit PATH_TO_CASE/fit.bucex --format png --level 0.95
+python -m research.monthly.report --fit PATH_TO_CASE/fit.bucex --format png --level 0.95
 ```
 
 The new report includes unthinned `(chain, draw)` parameter, target and

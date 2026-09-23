@@ -117,36 +117,6 @@ def test_joseph_backward_covariance_is_psd_and_long_ffbs_is_stable():
     assert np.all(np.isfinite(path))
 
 
-def test_gev_laplace_mh_ssvs_is_exact_invariant_and_records_model_moves():
-    model = bx.Model(
-        bx.GEV(),
-        (bx.LocalLinearTrend(), bx.DummySeasonal(4)),
-    )
-    simulation = bx.simulate(
-        model,
-        28,
-        {
-            "sd.level": 0.02,
-            "sd.slope": 0.001,
-            "sd.seasonal": 0.01,
-            "sigma": 0.4,
-            "xi": -0.05,
-        },
-        seed=221,
-    )
-    fitted = bx.fit(
-        simulation.y,
-        model,
-        priors="ssvs",
-        engine="laplace_mh",
-        mcmc=bx.MCMC(draws=4, warmup=4, chains=1, seed=222),
-    )
-    assert fitted.plan.targets_exact_posterior
-    assert fitted.metadata["model_selection_exact"] is True
-    assert "exact_gev_rjmh" in fitted.metadata["model_selection_basis"]
-    assert "ssvs_model_move_accepted" in fitted.draws_aux
-    assert "state_level" in fitted.parameter_draws
-
 
 def test_forecast_log_score_pit_and_lfo_share_one_api():
     model = bx.Model(bx.Gaussian(), (bx.LocalLinearTrend(),))

@@ -1,4 +1,4 @@
-# BUCEX 1.8.3 — monthly analysis and a separate seasonal assessment
+# BUCEX 1.8.4 — monthly analysis and a separate seasonal assessment
 
 Summer 2026 **is included**. Only January and February 1892 are excluded from
 these research runs. The raw source and bundled monthly CSVs remain intact.
@@ -12,7 +12,7 @@ these research runs. The raw source and bundled monthly CSVs remain intact.
   GEV shape, shared level/slope/seasonal innovation and initial-slope
   regularization, and a Gaussian copula. No PGAS; the reference uses neither
   SSVS nor ASIS. Mixed inference uses exact-likelihood-corrected Laplace–MH.
-- `research/serra` is the monthly workflow. `research/serra_seasonal` is the
+- `research/monthly` is the monthly workflow. `research/seasonal` is the
   separate seasonal experiment. They reuse the same package and model builder.
 
 The current seasonal model uses **one maximum/minimum per season (r=1)**.
@@ -30,15 +30,15 @@ python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-Expect `1.8.3` and the new source path. On biobot, four chains use four local
+Expect `1.8.4` and the new source path. On biobot, four chains use four local
 processes with one numerical thread each. Slurm is not required. Start long
 jobs inside tmux if available:
 
 ```bash
-tmux new -s serra183
+tmux new -s serra184
 ```
 
-Detach with Ctrl-b then d; reconnect using `tmux attach -t serra183`.
+Detach with Ctrl-b then d; reconnect using `tmux attach -t serra184`.
 No mid-chain checkpoint is available. The matched comparison can resume
 **completed model/origin jobs**; an interrupted fit restarts from the beginning.
 Changing the data, settings or package version requires a new comparison.
@@ -46,15 +46,15 @@ Changing the data, settings or package version requires a new comparison.
 ## 2. Check the data and the priors first — no MCMC
 
 ```bash
-python -m research.serra.explore
-python -m research.serra_seasonal.prepare
-python -m research.serra_seasonal.preflight
-python -m research.serra.preflight --config research/serra/config/draft/main.json --output results/serra_183_monthly_plan
-python -m research.serra_seasonal.compare --plan
+python -m research.monthly.explore
+python -m research.seasonal.prepare
+python -m research.seasonal.preflight
+python -m research.monthly.preflight --config research/monthly/config/main.json --output results/serra_184_monthly_plan
+python -m research.seasonal.compare --plan
 ```
 
 The first command generates the monthly exploratory manuscript figures.
-`prepare` writes `results/serra_183_seasonal_data/`:
+`prepare` writes `results/serra_184_seasonal_data/`:
 
 - `seasonal_summaries.csv`: the six summaries, directly from the daily record;
   means weight every day equally, including different month lengths.
@@ -93,8 +93,8 @@ using fixed normal priors; it has no learned common hyperparameter.
 ## 3. Run the two execution checks
 
 ```bash
-python -m research.serra_seasonal.fit --config research/serra_seasonal/config/smoke.json
-python -m research.serra_seasonal.compare --config research/serra_seasonal/config/compare_smoke.json
+python -m research.seasonal.fit --config research/seasonal/config/smoke.json
+python -m research.seasonal.compare --config research/seasonal/config/compare_smoke.json
 ```
 
 These use four parallel chains, 3 warmup and 4 retained draws per chain, on a
@@ -105,7 +105,7 @@ trajectories, posterior intervals or model-score rankings scientifically.
 ## 4. First useful seasonal fit
 
 ```bash
-python -u -m research.serra_seasonal.fit --config research/serra_seasonal/config/pilot.json
+python -u -m research.seasonal.fit --config research/seasonal/config/pilot.json
 ```
 
 This uses the full record and all six summaries, with 500 warmup + 500 retained
@@ -130,8 +130,8 @@ arbitrary marginal tail misspecification or daily/serial clustering.
 For the first manuscript draft after screening:
 
 ```bash
-python -u -m research.serra.copula --config research/serra/config/draft/main.json
-python -u -m research.serra_seasonal.fit --config research/serra_seasonal/config/main.json
+python -u -m research.monthly.copula --config research/monthly/config/main.json
+python -u -m research.seasonal.fit --config research/seasonal/config/main.json
 ```
 
 Both use four chains with 1,000 warmup + 1,000 retained draws. This draw count
@@ -140,7 +140,7 @@ is not a convergence guarantee; extend only fits whose diagnostics need it.
 ## 5. The important comparison: same seasonal forecast targets
 
 ```bash
-python -u -m research.serra_seasonal.compare --config research/serra_seasonal/config/compare.json
+python -u -m research.seasonal.compare --config research/seasonal/config/compare.json
 ```
 
 This fits both models at the ends of **November 2015 and November 2020**, then
@@ -180,7 +180,7 @@ PITs and probability calibration, not as proof that all predictive moments exist
 If the pilot comparison is informative, expand the origins and sampling:
 
 ```bash
-python -u -m research.serra_seasonal.compare --config research/serra_seasonal/config/compare_full.json
+python -u -m research.seasonal.compare --config research/seasonal/config/compare_full.json
 ```
 
 This adds November 2000 and November 2010, with 1,000 + 1,000 draws per chain
@@ -188,7 +188,7 @@ and 4,000 forecast paths. It is a new run. To continue an interrupted comparison
 use its actual printed run directory in place of `RUN_DIRECTORY`:
 
 ```bash
-python -u -m research.serra_seasonal.compare --run RUN_DIRECTORY
+python -u -m research.seasonal.compare --run RUN_DIRECTORY
 ```
 
 Completed model/origin jobs are preserved. An unfinished job restarts. The
@@ -200,10 +200,10 @@ These use the same package and common assessment engine; no simulation study.
 Run `--stage plan` before `--stage all` to see the amount of work.
 
 ```bash
-python -m research.serra.prior_assessment --config research/serra_seasonal/config/adequacy.json --stage plan
-python -u -m research.serra.prior_assessment --config research/serra_seasonal/config/adequacy.json --stage all
-python -m research.serra.prior_assessment --config research/serra_seasonal/config/sensitivity.json --stage plan
-python -u -m research.serra.prior_assessment --config research/serra_seasonal/config/sensitivity.json --stage all
+python -m research.monthly.prior_assessment --config research/seasonal/config/adequacy.json --stage plan
+python -u -m research.monthly.prior_assessment --config research/seasonal/config/adequacy.json --stage all
+python -m research.monthly.prior_assessment --config research/seasonal/config/sensitivity.json --stage plan
+python -u -m research.monthly.prior_assessment --config research/seasonal/config/sensitivity.json --stage all
 ```
 
 Adequacy compares the reference, a common observation scale across seasons,
@@ -215,9 +215,9 @@ uniform shape priors. Width changes alone would otherwise change prior RMSs.
 The corresponding monthly experiments are:
 
 ```bash
-python -u -m research.serra.prior_assessment --config research/serra/config/draft/adequacy.json --stage all
-python -u -m research.serra.prior_assessment --config research/serra/config/draft/sensitivity.json --stage all
-python -u -m research.serra.prior_assessment --config research/serra/config/draft/anchors.json --stage all
+python -u -m research.monthly.prior_assessment --config research/monthly/config/adequacy.json --stage all
+python -u -m research.monthly.prior_assessment --config research/monthly/config/sensitivity.json --stage all
+python -u -m research.monthly.prior_assessment --config research/monthly/config/anchors.json --stage all
 ```
 
 The last experiment halves/doubles all four physical regularization scales.
@@ -226,10 +226,10 @@ It is distinct from changing the uncertainty about those scales.
 ## 7. Rank and clustering exploration — no additional MCMC
 
 ```bash
-python -m research.serra_seasonal.clusters
+python -m research.seasonal.clusters
 ```
 
-In `results/serra_183_clustering/`, inspect raw top/bottom-three dates and ties,
+In `results/serra_184_clustering/`, inspect raw top/bottom-three dates and ties,
 `rank_proximity_summary.csv`, `cluster_counts.csv`, and the cluster files for
 runs of 1, 3 and 5 non-exceeding days. Thresholds are calendar-month 95th/5th
 percentiles from 1961–1990, saved in `thresholds.csv`. Clusters are formed before
@@ -246,10 +246,10 @@ clusters remain visible, never padded with ordinary days. See
 ## 8. Keep the fallback and finalize only the chosen specification
 
 ```bash
-python -u -m research.serra.univariate --config research/serra/config/draft/independent.json
-python -u -m research.serra_seasonal.fit --config research/serra_seasonal/config/independent.json
-python -u -m research.serra_seasonal.fit --config research/serra_seasonal/config/independence.json
-python -u -m research.serra_seasonal.fit --config research/serra_seasonal/config/constant_copula.json
+python -u -m research.monthly.univariate --config research/monthly/config/independent.json
+python -u -m research.seasonal.fit --config research/seasonal/config/independent.json
+python -u -m research.seasonal.fit --config research/seasonal/config/independence.json
+python -u -m research.seasonal.fit --config research/seasonal/config/constant_copula.json
 ```
 
 The first two run six independent fits. The third keeps shared shrinkage but
@@ -259,8 +259,8 @@ correlation. The main model has four shrunk seasonal correlation matrices.
 If diagnostics and the common-target comparison support the chosen model:
 
 ```bash
-python -u -m research.serra.copula --config research/serra/config/draft/final.json
-python -u -m research.serra_seasonal.fit --config research/serra_seasonal/config/final.json
+python -u -m research.monthly.copula --config research/monthly/config/final.json
+python -u -m research.seasonal.fit --config research/seasonal/config/final.json
 ```
 
 Choose the relevant command; there is no need to run both final models just to

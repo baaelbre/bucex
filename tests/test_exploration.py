@@ -122,7 +122,7 @@ def test_save_records_plotted_values_original_data_and_empirical_bands(tmp_path)
 
 
 def test_serra_driver_uses_package_api_without_fitting(tmp_path, monkeypatch):
-    from research.serra.explore import run
+    from research.monthly.explore import run
     frame = observations().A.rename("TNm").rename_axis("date")
     frame.to_csv(tmp_path/"TNm.csv")
     def forbidden(*args, **kwargs):

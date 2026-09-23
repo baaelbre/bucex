@@ -20,8 +20,6 @@ from .structural import (
     regularized_horseshoe_gev_priors,
     regularized_triple_gamma_gaussian_priors,
     regularized_triple_gamma_gev_priors,
-    ssvs_gaussian_priors,
-    ssvs_gev_priors,
     triple_gamma_gaussian_priors,
     triple_gamma_gev_priors,
 )
@@ -35,7 +33,6 @@ STRUCTURAL_PRIORS = {
     "regularized_triple_gamma",
     "pc",
     "normal",
-    "ssvs",
 }
 
 
@@ -52,7 +49,6 @@ def normalize_prior_profile(value: str | None) -> str:
         "regularized_tg": "regularized_triple_gamma",
         "regularised_triple_gamma": "regularized_triple_gamma",
         "half_normal": "normal",
-        "spike_slab": "ssvs",
     }
     return aliases.get(key, key)
 
@@ -64,6 +60,8 @@ def resolve_structural_priors(
     family = compiled.family
     expected = FSGaussianPriors if family == "gaussian" else FSGEVPriors
     if isinstance(priors, expected):
+        if priors.ssvs is not None:
+            raise ValueError("SSVS is outside the BUCEX 1.8.4 paper API; use a continuous prior.")
         return priors
     if not isinstance(priors, (str, type(None))):
         raise TypeError(
@@ -86,8 +84,6 @@ def resolve_structural_priors(
         ("gev", "pc"): pc_gev_priors,
         ("gaussian", "normal"): normal_gaussian_priors,
         ("gev", "normal"): normal_gev_priors,
-        ("gaussian", "ssvs"): ssvs_gaussian_priors,
-        ("gev", "ssvs"): ssvs_gev_priors,
     }
     try:
         builder = builders[(family, profile)]
@@ -95,7 +91,7 @@ def resolve_structural_priors(
         raise ValueError(
             "FS prior must be manuscript_lasso, regularized_lasso, "
             "regularized_horseshoe, triple_gamma, regularized_triple_gamma, "
-            "pc, normal, or ssvs."
+            "pc, or normal."
         ) from exc
     return builder(period=int(compiled.model.period or 1))
 
@@ -125,7 +121,6 @@ def resolve_prior_spec(
         mapping = {
             "pc": "regularized",
             "normal": "half_normal",
-            "ssvs": "spike_slab",
         }
         if normalized in {
             "manuscript_lasso", "regularized_lasso", "regularized_horseshoe",

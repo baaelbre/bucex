@@ -1487,134 +1487,6 @@ def plot_risk(
     return figure, ax
 
 
-def plot_component_probabilities(
-    fit, *, channel: str | None = None, ax=None, title: str | None = None
-):
-    import matplotlib.pyplot as plt
-
-    table = fit.component_probabilities(channel=channel)
-    if ax is None:
-        figure, ax = plt.subplots(figsize=(7, 3.5))
-    else:
-        figure = ax.figure
-    if hasattr(table, "index"):
-        names = [
-            f"{value[0]}\n{value[1]}" if isinstance(value, tuple) else str(value)
-            for value in table.index
-        ]
-    else:
-        names = [
-            f"{row['channel']}\n{row['process']}"
-            if "channel" in row
-            else row["process"]
-            for row in table
-        ]
-    positions = np.arange(len(names))
-    if hasattr(table, "columns") and "dynamic" in table.columns:
-        bottom = np.zeros(len(names))
-        for label, color in (("zero", "0.78"), ("fixed", "C1"), ("dynamic", "C0")):
-            values = table[label].to_numpy()
-            ax.bar(positions, values, bottom=bottom, label=label, color=color)
-            bottom += values
-    else:
-        slab = table["slab"].to_numpy() if hasattr(table, "columns") else np.asarray([row["slab"] for row in table])
-        ax.bar(positions, 1.0 - slab, label="continuous spike", color="0.75")
-        ax.bar(positions, slab, bottom=1.0 - slab, label="dynamic slab", color="C0")
-    ax.set_xticks(positions, names)
-    ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel("posterior probability")
-    if title is not None:
-        ax.set_title(str(title))
-    ax.legend()
-    return figure, ax
-
-
-def plot_hierarchy(fit, *, figsize=(9, 6)):
-    """Plot learned population allocation probabilities and slab scales."""
-
-    import matplotlib.pyplot as plt
-
-    probabilities = fit.hierarchical_probabilities()
-    slabs = fit.hierarchical_slab_summary()
-    figure, axes = plt.subplots(2, 1, figsize=figsize)
-    processes = ("level", "trend", "season")
-    colors = {"zero": "0.75", "fixed": "C1", "dynamic": "C0"}
-    bottom = np.zeros(len(processes))
-    for state in ("zero", "fixed", "dynamic"):
-        values = []
-        for process in processes:
-            try:
-                values.append(float(probabilities.loc[(process, state), "mean"]))
-            except KeyError:
-                values.append(0.0)
-        axes[0].bar(processes, values, bottom=bottom, color=colors[state], label=state)
-        bottom += np.asarray(values)
-    axes[0].set_ylim(0.0, 1.0)
-    axes[0].set_ylabel("posterior mean probability")
-    axes[0].set_title("Population structural allocation")
-    axes[0].legend(ncol=3)
-
-    medians = np.asarray([float(slabs.loc[name, "median"]) for name in processes])
-    lower = np.asarray([float(slabs.loc[name, "lower"]) for name in processes])
-    upper = np.asarray([float(slabs.loc[name, "upper"]) for name in processes])
-    axes[1].errorbar(
-        processes,
-        medians,
-        yerr=np.vstack((medians - lower, upper - medians)),
-        fmt="o",
-        color="C2",
-        capsize=4,
-    )
-    axes[1].axhline(1.0, color="0.45", linestyle="--", linewidth=0.8)
-    axes[1].set_ylabel("shared slab multiplier")
-    axes[1].set_title("Dynamic-slab scale (median and credible interval)")
-    figure.tight_layout()
-    return figure, axes
-
-
-def plot_trend_models(fit, *, credible_interval: float = 0.90, ax=None):
-    """Plot the learned population probabilities of four joint trend models."""
-
-    import matplotlib.pyplot as plt
-
-    table = fit.hierarchical_trend_model_probabilities(credible_interval)
-    if ax is None:
-        figure, ax = plt.subplots(figsize=(8, 4))
-    else:
-        figure = ax.figure
-    labels = {
-        "linear_trend": "linear\ntrend",
-        "rw1_drift": "RW1 +\ndrift",
-        "rw2_smooth_trend": "RW2 smooth\ntrend",
-        "local_linear_trend": "local linear\ntrend",
-    }
-    if hasattr(table, "index"):
-        names = list(table.index)
-        means = table["mean"].to_numpy(dtype=float)
-        lower = table["lower"].to_numpy(dtype=float)
-        upper = table["upper"].to_numpy(dtype=float)
-    else:
-        names = [row["model"] for row in table]
-        means = np.asarray([row["mean"] for row in table], dtype=float)
-        lower = np.asarray([row["lower"] for row in table], dtype=float)
-        upper = np.asarray([row["upper"] for row in table], dtype=float)
-    positions = np.arange(len(names))
-    ax.bar(positions, means, color=("C1", "C0", "C2", "C3"))
-    ax.errorbar(
-        positions,
-        means,
-        yerr=np.vstack((means - lower, upper - means)),
-        fmt="none",
-        ecolor="0.2",
-        capsize=4,
-    )
-    ax.set_xticks(positions, [labels.get(name, name) for name in names])
-    ax.set_ylim(0.0, 1.0)
-    ax.set_ylabel("posterior mean population probability")
-    ax.set_title("Joint trend-evolution model")
-    return figure, ax
-
-
 def plot_fit(fit, kind: str = "state", **kwargs):
     save = kwargs.pop("save", None)
 
@@ -1631,12 +1503,8 @@ def plot_fit(fit, kind: str = "state", **kwargs):
             from .dependence import plot_copula
 
             return finish(plot_copula(fit, **kwargs))
-        if key in {"shared", "factor", "departures", "departure"}:
-            from .shared import plot_shared, plot_departures
-
-            return finish((plot_shared if key in {"shared", "factor"} else plot_departures)(fit, **kwargs))
         if key in {"level", "slope", "season", "seasonal"}:
-            from .shared import plot_channel_component
+            from .channels import plot_channel_component
 
             kwargs.setdefault("channel", fit.channel_names[0])
             return finish(plot_channel_component(fit, component=key, **kwargs))
@@ -1656,16 +1524,10 @@ def plot_fit(fit, kind: str = "state", **kwargs):
             return finish(plot_process_sd_traces(fit, **kwargs))
         if key in {"acf", "acfs", "autocorrelation", "autocorrelations"}:
             return finish(plot_parameter_acfs(fit, **kwargs))
-        if key in {"component_probabilities", "inclusion_probabilities"}:
-            return finish(plot_component_probabilities(fit, **kwargs))
-        if key in {"hierarchy", "population"}:
-            return finish(plot_hierarchy(fit, **kwargs))
-        if key in {"trend_models", "trend_model_probabilities", "model_space"}:
-            return finish(plot_trend_models(fit, **kwargs))
         raise ValueError(
             "Multiseries kind must be channel, process_sd, parameter_density, "
-            "traces, acf, level, slope, seasonal, shared, departures, endpoint, "
-            "exceedance, return_period, component_probabilities, hierarchy, copula, or trend_models."
+            "traces, acf, level, slope, seasonal, endpoint, "
+            "exceedance, return_period, or copula."
         )
     if key in {"process_sd", "process_sds", "prior_posterior_sd"}:
         return finish(plot_process_sds(fit, **kwargs))
@@ -1693,13 +1555,10 @@ def plot_fit(fit, kind: str = "state", **kwargs):
         return finish(plot_endpoint(fit, **kwargs))
     if key in {"exceedance", "return_period"}:
         return finish(plot_risk(fit, kind=key, **kwargs))
-    if key in {"component_probabilities", "inclusion_probabilities"}:
-        return finish(plot_component_probabilities(fit, **kwargs))
     raise ValueError(
         "kind must be state, level, slope, level_slope, season, seasonal_patterns, "
         "predictor, process_sd, "
-        "parameter_density, traces, acf, endpoint, exceedance, return_period, or "
-        "component_probabilities."
+        "parameter_density, traces, acf, endpoint, exceedance, or return_period."
     )
 
 
