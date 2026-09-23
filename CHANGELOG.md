@@ -1,4 +1,4 @@
-# 1.8.5 (2026-09-23)
+# 1.8.5 (2026-09-23 )
 
 - Correct the seasonal reference initial-slope shared-scale median to 0.003 per season, giving a marginal prior SD of about 0.194°C per decade.
 - Set seasonal level, slope and seasonal innovation medians to 0.01, 0.0001 and 0.01 per seasonal update; leave monthly reference priors intact.
