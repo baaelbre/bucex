@@ -27,5 +27,18 @@
     ]
   },
   "variants": null,
-  "output": "results/serra_182_draft"
+  "output": "results/serra_182_draft",
+  "priors": {
+  "innovation_median": {
+    "level": 0.00834348,
+    "trend": 0.0000208587,
+    "season": 0.00834348
+  },
+  "initial_slope_sd": 0.00154626,
+  "shared_shrinkage": {
+    "components": ["level", "slope", "seasonal"],
+    "log_sd": 0.6931471805599453,
+    "pool_initial_slope": true
+  }
+}
 }
