@@ -1,6 +1,12 @@
 {
   "extends": "../../monthly/config/main.json",
-  "_comment": "Seasonal-block reference: four transitions/year, r=1 extrema, daily-weighted means, seasonal copula; retained through JJA 2026. Shrinkage scales are per seasonal transition.",
+  "_comment": "BUCEX 1.8.7 seasonal reference. Scientific settings reproduce uccle_copula_20260923T222238_406159Z.zip; the 1.8.6.1 dummy-seasonal initialization correction is retained.",
+  "reference_run": {
+    "archive": "uccle_copula_20260923T222238_406159Z.zip",
+    "archive_sha256": "2e337e0fbe09f8587ab1782e10c861507b35b73677163b7904e7d1e16d1ac64a",
+    "resolved_config_sha256": "9a0f9c082d92831bf1185b8e51b0093d20c2677f3bfee03988acbbab6c958c44",
+    "policy": "Preserve the scientific model, priors, thresholds, periods, seeds and reporting settings; do not tune priors to posterior diagnostics."
+  },
   "data": {
     "frequency": "seasonal",
     "daily_source": "data/Uccle_31_08_26.csv",
@@ -19,11 +25,11 @@
   "priors": {
     "innovation": "normal",
     "innovation_median": {
-      "level": 0.01,
-      "trend": 0.0001,
-      "season": 0.01
+      "level": 0.014451332204168785,
+      "trend": 0.00010883964876422239,
+      "season": 0.008343480538225555
     },
-    "initial_slope_sd": 0.003,
+    "initial_slope_sd": 0.0046387735335118195,
     "xi_prior": "normal",
     "xi_sd": 0.3,
     "xi_bounds": [
@@ -69,7 +75,7 @@
     "eta": 1.0,
     "prior_sd": 0.25
   },
-  "output": "results/serra_185_seasonal",
+  "output": "results/serra_187_seasonal",
   "validation": {
     "training_ends": [
       "2015-11",

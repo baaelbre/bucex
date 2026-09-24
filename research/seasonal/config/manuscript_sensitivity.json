@@ -1,0 +1,49 @@
+{
+  "extends": "main.json",
+  "_comment": "Main-text prior sensitivity. Width variants preserve the marginal second moments of the signed structural coefficients; shape variants target the extreme-value risks.",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "tighter_hyperprior",
+      "shared_shrinkage": {
+        "components": ["level", "slope", "seasonal"],
+        "log_sd": 0.4054651081081644,
+        "pool_initial_slope": true
+      },
+      "match_marginal_moments": true
+    },
+    {
+      "name": "wider_hyperprior",
+      "shared_shrinkage": {
+        "components": ["level", "slope", "seasonal"],
+        "log_sd": 1.0986122886681098,
+        "pool_initial_slope": true
+      },
+      "match_marginal_moments": true
+    },
+    {
+      "name": "xi_narrow",
+      "xi_sd": 0.15
+    },
+    {
+      "name": "xi_wide",
+      "xi_sd": 0.60
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "mcmc": {
+    "warmup": 2000,
+    "draws": 4000,
+    "chains": 4,
+    "chain_workers": 4,
+    "progress_every": 100
+  },
+  "save_fits": false,
+  "forecast_draws": 2000,
+  "predictive_check_draws": 200,
+  "output": "results/serra_187_manuscript_sensitivity"
+}

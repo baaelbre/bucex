@@ -1,4 +1,25 @@
-# BUCEX 1.8.6.1
+# BUCEX 1.8.7
+
+This release freezes the seasonal manuscript specification to the successful
+`uccle_copula_20260923T222238_406159Z.zip` settings while retaining the 1.8.6.1
+dummy-seasonal initialization correction. The four shared-scale medians are
+`(0.0144513322, 0.000108839649, 0.00834348054, 0.00463877353)` per seasonal
+update for level, slope, seasonal and initial-slope terms. They imply marginal
+prior SDs of approximately 0.38°C, 0.20°C and 0.15°C for their 30-year
+contributions and 0.30°C/decade for the initial rate.
+
+The final run increases only the MCMC budget to four chains with 3,000 warm-up
+and 8,000 retained draws. A strict post-run gate verifies configuration, data,
+required exports and numerical diagnostics. A stable-name figure builder now
+generates the main seasonal manuscript panels and records source checksums.
+Targeted configs cover prior/structural sensitivity, the prospective JJA-2019
+record event, expanding-window tail validation and matched monthly-block
+sensitivity. See [FINAL_RUN.md](FINAL_RUN.md).
+
+Release checks and the locked source/configuration checksums are recorded in
+[validation/RELEASE_VALIDATION_187.md](validation/RELEASE_VALIDATION_187.md).
+
+## 1.8.6.1
 
 This patch corrects the lag ordering of the dummy-seasonal starting state in
 single-series and joint fits. The earlier 2015 TXn pilot had a badly drifting

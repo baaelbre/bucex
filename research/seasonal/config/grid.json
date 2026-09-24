@@ -28,5 +28,5 @@
   "figures": false,
   "trace_exports": false,
   "mixing_gate": "results/serra_186_seasonal_mixing",
-  "output": "results/serra_1861_seasonal_grid"
+  "output": "results/serra_187_seasonal_grid"
 }

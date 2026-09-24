@@ -139,9 +139,19 @@ def _initial_channel_state(
                 "and contain only finite values."
             )
         z_path = map_centered_to_ncp(centered, state, layout)
-    if family == "gev" and not _gev_support_ok(
-        y, mu_from_ncp(z_path, state, layout), model, observation
-    ):
+    mu = mu_from_ncp(z_path, state, layout)
+    if family == "gev" and not _gev_support_ok(y, mu, model, observation):
+        # A supplied nonzero shape can introduce a finite endpoint even when
+        # the data-informed location path is sensible.  Enlarge only the
+        # starting scale enough to place every observation strictly inside
+        # support; sigma remains sampled immediately afterwards.  This is an
+        # initialization repair, not a likelihood or prior modification.
+        xi = float(observation["xi"])
+        required = float(np.max(-xi * (np.asarray(y, dtype=float) - mu)))
+        if xi != 0.0 and np.isfinite(required) and required > 0.0:
+            scale = max(float(observation["sigma"]), required / .8)
+            observation.update(sigma=scale, sigma2=scale * scale)
+    if family == "gev" and not _gev_support_ok(y, mu, model, observation):
         raise ValueError(
             f"Initial GEV values violate support for channel '{name}'. "
             "Use channel-prefixed init values closer to the data."

@@ -137,13 +137,16 @@ def test_report_exports_initial_slope_and_honours_save_fits_false(tmp_path):
     fit = bx.fit(y,family='gaussian',period=12,priors='normal',parameterization='fs',
                  mcmc=bx.MCMC(chains=2,warmup=2,draws=4,seed=172))
     config = dict(seed=172,figures=False,save_fits=False,forecast_draws=8,
-                  predictive_check_draws=8,credible_interval=.95)
+                  predictive_check_draws=8,credible_interval=.95,
+                  additional_risks={'TXm':[20.0]})
     write_report(fit,tmp_path,config=config,horizon=24,risks={'TXm':25})
     assert not (tmp_path/'fit.bucex').exists()
     traces = pd.read_csv(tmp_path/'TXm_parameter_traces.csv.gz')
     assert 'initial.slope' in traces and 'sd.level' in traces
     assert traces.groupby('chain').size().tolist() == [4,4]
     assert (tmp_path/'TXm_pit_by_month.csv').exists()
+    extra = pd.read_csv(tmp_path/'TXm_forecast_risk_20p0.csv')
+    assert len(extra) == 24 and {'lower','median','upper'} <= set(extra)
     notes=json.loads((tmp_path/'TXm_prediction_notes.json').read_text())
     assert notes['interval_level'] == .95 and notes['threshold'] == 25
 

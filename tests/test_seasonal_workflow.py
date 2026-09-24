@@ -138,10 +138,13 @@ def test_seasonal_reference_priors_have_declared_physical_scale():
     data=pd.DataFrame({n:np.zeros(5) for n in c['data']['series']})
     model,p=joint_model(data,c)
     assert model.copula.structure=='seasons'
-    assert c['priors']['innovation_median']==dict(level=.01,trend=.0001,season=.01)
-    assert c['priors']['initial_slope_sd']==.003
+    assert c['priors']['innovation_median']==dict(
+        level=0.014451332204168785,
+        trend=0.00010883964876422239,
+        season=0.008343480538225555)
+    assert c['priors']['initial_slope_sd']==0.0046387735335118195
     calibration=pd.DataFrame(p.shrinkage.calibration(period=4,**c['prior_calibration']))
-    assert calibration.loc[calibration.component.eq('initial_slope'),'initial_rate_sd_marginal'].iloc[0]==pytest.approx(.194,rel=.01)
+    assert calibration.loc[calibration.component.eq('initial_slope'),'initial_rate_sd_marginal'].iloc[0]==pytest.approx(.30,rel=.01)
     v=configured_variant(c,dict(shared_shrinkage={**c['priors']['shared_shrinkage'],
                         'log_sd':np.log(3.)},match_marginal_moments=True))
     _,vp=joint_model(data,v)

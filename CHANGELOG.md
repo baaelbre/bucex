@@ -1,3 +1,19 @@
+# 1.8.7 (2026-09-24)
+
+- Lock the seasonal manuscript reference to the resolved scientific settings,
+  thresholds, contrasts and seeds of
+  `uccle_copula_20260923T222238_406159Z.zip`; retain the 1.8.6.1
+  dummy-seasonal initialization correction.
+- Increase only the final MCMC budget to 3,000 warm-up and 8,000 retained
+  iterations per chain. Priors are not tuned to the earlier run's diagnostics.
+- Add prospective JJA-2019 record-event configurations and export forecast
+  probabilities for every declared additional threshold.
+- Add a convergence-gated manuscript-figure builder, focused prior/adequacy
+  configurations, and a single final-run command guide.
+- Repair a nonzero user-supplied initial GEV shape by enlarging only the
+  starting scale when needed to enter finite support; the prior and retained
+  likelihood are unchanged.
+
 # 1.8.6.1 (2026-09-24)
 
 - Fix dummy-seasonal initial states: map chronological phase effects to the lag-ordered coordinates used by the state transition in single-series and joint fits. Match the time-one convention for the initial level.

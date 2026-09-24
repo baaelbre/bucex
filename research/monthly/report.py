@@ -175,6 +175,12 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             tag = str(extra_threshold).replace('-', 'minus').replace('.', 'p')
             band(fit.exceedance_probability_draws(extra_threshold,channel=name,return_labels=False),
                  label+'_risk_'+tag,ylabel=fit.event_label(extra_threshold,channel=name))
+            # A declared record threshold must also be available on the
+            # prospective forecast scale.  This is especially important for
+            # pre-event refits: an in-sample risk path is not a prospective
+            # probability for the subsequently observed record.
+            forecast.risk_summary(extra_threshold, channel=name, level=level).to_csv(
+                directory/(label+'_forecast_risk_'+tag+'.csv'), index=False)
         threshold = (risks or {}).get(label, (risks or {}).get('series'))
         if threshold is not None:
             probability=fit.exceedance_probability_draws(threshold,channel=name,return_labels=False)

@@ -1,0 +1,20 @@
+{
+  "extends": "main.json",
+  "_comment": "Resolved scientific and Monte Carlo settings of uccle_copula_20260923T222238_406159Z.zip, expressed through the 1.8.7 configuration hierarchy. This is the reproducibility baseline, not the larger final-run budget.",
+  "mcmc": {
+    "warmup": 2000,
+    "draws": 4000,
+    "chains": 4,
+    "chain_workers": 4,
+    "seed": 56100,
+    "progress": true,
+    "progress_every": 100
+  },
+  "forecast_draws": 4000,
+  "predictive_check_draws": 400,
+  "prior_predictive_draws": 0,
+  "save_fits": true,
+  "trace_exports": true,
+  "seed": 56101,
+  "output": "results/serra_187_reference_20260923"
+}

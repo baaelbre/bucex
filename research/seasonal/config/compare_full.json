@@ -1,8 +1,8 @@
 {
   "extends": "compare.json",
   "mcmc": {
-    "warmup": 1000,
-    "draws": 1000
+    "warmup": 1500,
+    "draws": 3000
   },
   "comparison": {
     "training_ends": [
@@ -13,5 +13,5 @@
     ],
     "draws": 4000
   },
-  "output": "results/serra_185_block_comparison_full"
+  "output": "results/serra_187_block_comparison_full"
 }

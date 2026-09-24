@@ -25,11 +25,11 @@
     "baseline": "reference"
   },
   "mcmc": {
-    "warmup": 500,
-    "draws": 500
+    "warmup": 2000,
+    "draws": 4000
   },
   "save_fits": false,
-  "output": "results/serra_185_seasonal_adequacy",
+  "output": "results/serra_187_seasonal_adequacy",
   "validation": {
     "training_ends": [
       "2015-11",

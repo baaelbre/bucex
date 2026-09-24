@@ -1,4 +1,4 @@
-# BUCEX 1.8.6.1
+# BUCEX 1.8.7
 
 Bayesian unobserved component models for Gaussian temperature summaries and GEV block extremes. This release supports private structural trajectories for each series, continuous innovation priors, optional shared shrinkage of **prior scales**, and an optional Gaussian residual copula. The research workflows are [monthly](research/monthly/README.md) and [seasonal](research/seasonal/README.md).
 
@@ -7,7 +7,7 @@ python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__)"
 ```
 
-The monthly window is March 1892–August 2026 (1,614 months). The seasonal reference has 538 complete DJF/MAM/JJA/SON blocks, through JJA 2026. Its shared-shrinkage medians per season are `(0.01, 0.0001, 0.01, 0.003)` for level, slope, seasonality and initial slope. The monthly reference remains a separate comparison. [START_HERE](START_HERE.md) gives the experiment order, including the ten-setting seasonal prior screen and the reviewer-comment-5 tail validation.
+The monthly window is March 1892–August 2026 (1,614 months). The seasonal reference has 538 complete DJF/MAM/JJA/SON blocks, through JJA 2026. Version 1.8.7 locks the scientific settings to the successful `uccle_copula_20260923T222238_406159Z.zip` run: shared-scale medians per season are `(0.0144513322, 0.000108839649, 0.00834348054, 0.00463877353)` for level, slope, seasonality and initial slope. The 1.8.6.1 seasonal-state initialization correction is retained. [FINAL_RUN.md](FINAL_RUN.md) gives the exact final-run, checking and manuscript-figure commands.
 
 ## Model and fit
 

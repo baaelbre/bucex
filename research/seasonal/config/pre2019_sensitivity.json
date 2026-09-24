@@ -1,0 +1,33 @@
+{
+  "extends": "pre2019.json",
+  "_comment": "Targeted prospective-risk sensitivity for the JJA 2019 TXx record. Run the posterior sensitivity stage; each report exports the one-step 39.7 C forecast probability.",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "constant_dispersion",
+      "seasonal_scale": false
+    },
+    {
+      "name": "xi_narrow",
+      "xi_sd": 0.15
+    },
+    {
+      "name": "xi_wide",
+      "xi_sd": 0.60
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "mcmc": {
+    "warmup": 2000,
+    "draws": 4000,
+    "chains": 4,
+    "chain_workers": 4,
+    "progress_every": 100
+  },
+  "save_fits": false,
+  "output": "results/serra_187_pre2019_sensitivity"
+}

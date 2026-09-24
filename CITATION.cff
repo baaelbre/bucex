@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "Please cite BUCEX and the associated paper when using this software. The revised manuscript is not yet published."
 title: "BUCEX: Bayesian unobserved-component models for means and extremes"
 type: software
-version: 1.8.6.1
+version: 1.8.7
 date-released: 2026-09-24
 authors:
   - family-names: "Van Velthoven"
