@@ -1,0 +1,25 @@
+{
+  "extends": "main.json",
+  "_comment": "Reviewer comment 5: seven predeclared nonoverlapping five-year monthly forecast windows, matched calendar cutoffs with seasonal comment5.json; these score monthly observations, not the daily-derived seasonal targets.",
+  "output": "results/serra_186_monthly_comment5",
+  "mcmc": {
+    "warmup": 1000,
+    "draws": 2000,
+    "chains": 4,
+    "chain_workers": 4
+  },
+  "validation": {
+    "training_ends": [
+      "1970-11",
+      "1980-11",
+      "1990-11",
+      "2000-11",
+      "2010-11",
+      "2015-11",
+      "2020-11"
+    ],
+    "horizon": 60,
+    "draws": 4000,
+    "save_fits": false
+  }
+}

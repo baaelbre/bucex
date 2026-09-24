@@ -189,5 +189,15 @@ def test_seasonal_adequacy_reports_keep_quarterly_units(tmp_path,monkeypatch):
     horizon=pd.read_csv(directory/'comparison/scores_by_origin.csv')
     assert 'horizons_1_4' in set(horizon.horizon_band)
     assert 'horizons_1_12' not in set(horizon.horizon_band)
+    prediction=directory/'predictive/reference/joint'
+    assert {'central_coverage.csv','directional_tails.csv','threshold_events.csv',
+            'threshold_cases.csv'} <= {path.name for path in prediction.iterdir()}
+    central=pd.read_csv(prediction/'central_coverage.csv')
+    assert {0.90,0.95,0.99} <= set(central.nominal)
+    cases=pd.read_csv(prediction/'threshold_cases.csv')
+    scores=pd.read_csv(prediction/'scores.csv')
+    brier=scores[scores.score.eq('exceedance_brier')].merge(
+        cases,on=['origin','channel','horizon','time'],validate='one_to_one')
+    np.testing.assert_allclose(brier.value,brier.brier)
     fit_config=bx.load_config(directory/'sensitivity/reference/joint/config.json')
     assert fit_config['model']['steps_per_year']==4

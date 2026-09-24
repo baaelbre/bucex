@@ -1,4 +1,11 @@
-# 1.8.5 (2026-09-23 )
+# 1.8.6 (2026-09-24)
+
+- Add predeclared monthly and seasonal expanding-window validation runs for reviewer comment 5, covering seven distinct five-year windows and reporting central 90%, 95% and 99% intervals.
+- Export the number of misses below and above each interval, directional 5%/1% quantile exceedances, and observed versus expected counts for fixed risk thresholds, with denominators by response, season and forecast year.
+- Compute event-probability scores from the conditional predictive CDF integrated over posterior and future-state draws instead of rounded ensemble event frequencies. Save individual cases and incremental tables after every completed origin.
+- Retain existing reference priors and old results; convergence and sparse 99% events still govern scientific interpretation.
+
+# 1.8.5 (2026-09-23)
 
 - Correct the seasonal reference initial-slope shared-scale median to 0.003 per season, giving a marginal prior SD of about 0.194°C per decade.
 - Set seasonal level, slope and seasonal innovation medians to 0.01, 0.0001 and 0.01 per seasonal update; leave monthly reference priors intact.

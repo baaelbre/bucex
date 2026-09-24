@@ -1,4 +1,4 @@
-# BUCEX 1.8.5 — seasonal prior screen and monthly comparison
+# BUCEX 1.8.6 — seasonal prior screen, matched comparison and tail validation
 
 Summer 2026 **is included**. Only January and February 1892 are excluded from
 these research runs. The raw source and bundled monthly CSVs remain intact.
@@ -30,18 +30,77 @@ python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-Expect `1.8.5` and the new source path. On biobot, four chains use four local
+Expect `1.8.6` and the new source path. On biobot, four chains use four local
 processes with one numerical thread each. Slurm is not required. Start long
 jobs inside tmux if available:
 
 ```bash
-tmux new -s serra185
+tmux new -s serra186
 ```
 
-Detach with Ctrl-b then d; reconnect using `tmux attach -t serra185`.
+Detach with Ctrl-b then d; reconnect using `tmux attach -t serra186`.
 No mid-chain checkpoint is available. The matched comparison can resume
 **completed model/origin jobs**; an interrupted fit restarts from the beginning.
 Changing the data, settings or package version requires a new comparison.
+
+## Reviewer comment 5: predeclared tail validation
+
+The reviewer asked for held-out **95% and 99% central interval coverage** in
+addition to 90%, and direct evidence about the upper extreme tail. This
+release reports all three interval levels, lower/upper misses separately,
+observed exceedances of the upper 95th and 99th predictive quantiles, and
+their lower-tail counterparts. Fixed scientific risk thresholds have observed
+and expected event counts with predictive Brier and log scores.
+
+Inspect the planned windows without fitting, then choose the seasonal run
+that matches the current seasonal analysis. The monthly command validates the
+monthly reference on monthly observations; its scores and denominators are
+not directly comparable to daily-derived seasonal target scores.
+
+```bash
+python -m research.seasonal.preflight --config research/seasonal/config/comment5.json --output results/serra_186_seasonal_comment5_plan
+python -m research.monthly.preflight --config research/monthly/config/comment5.json --output results/serra_186_monthly_comment5_plan
+python -u -m research.monthly.validate --config research/seasonal/config/comment5.json
+python -u -m research.monthly.validate --config research/monthly/config/comment5.json
+```
+
+The first two commands check the data, priors and resource plan without
+sampling. Inspect the declared `training_ends` in each config before running.
+The two validation commands are independent; run them in separate terminals if
+resources permit. Each uses four chain workers internally. Seven forecast
+origins (1970, 1980, 1990, 2000, 2010, 2015 and 2020, all after November)
+each produce five complete held-out years. Thus there are 140 seasonal cases
+or 420 monthly cases per response. At a nominal 1% directional tail rate,
+only 1.4 or 4.2 events per response are expected. Do not interpret a zero
+event count or a near-100% interval coverage as proof of correct far tails.
+
+The printed result path contains `joint/folds.csv` and per-origin
+`joint/convergence_*.json`, and these case-level tables:
+
+| File in `joint/` | Contents |
+|---|---|
+| `coverage_by_case.csv` | Every held-out 90/95/99 interval and directional quantile |
+| `central_coverage.csv` | Below/inside/above counts, expected misses, widths and case counts |
+| `directional_tails.csv` | Observed versus nominal 5%/1% lower and upper events |
+| `threshold_cases.csv`, `threshold_events.csv` | Analytic predictive risk probabilities, observed versus expected fixed-threshold events and event scores |
+| `scores.csv`, `held_out_pit.csv` | Paired case-level distribution and event scores; held-out PIT |
+
+The compact tables are refreshed after each completed origin. A lost process
+does not checkpoint the current chain, but its completed origin results can
+still be inspected. To rebuild tables from saved cases without refitting:
+
+```bash
+python -m research.monthly.tail_validation --run PATH_FROM_VALIDATION/joint
+```
+
+The 2015 and 2020 windows overlap the earlier ten-setting prior screen. If
+priors are selected using that screen, their scores here are exploratory,
+not an untouched post-selection test. Report those origins separately from
+the earlier windows and reserve genuinely unseen data for confirmation. Use
+the matching model from the main analyses, check each origin's MCMC
+convergence first, and report dates and denominators with the tail counts.
+The package does not substitute this run for the separate matched
+monthly-versus-seasonal comparison in Section 5 below.
 
 ## 2. Check the data and the priors first — no MCMC
 

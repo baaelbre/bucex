@@ -11,5 +11,6 @@ The model declarations in `models.py` use private level, slope and seasonal traj
 | Constant dispersion and fixed seasonal checks | `python -m research.monthly.prior_assessment --config research/monthly/config/adequacy.json --stage plan` | `adequacy.json` |
 | Innovation, shape and prior sensitivity | `python -m research.monthly.prior_assessment --config research/monthly/config/sensitivity.json --stage plan` | `sensitivity.json` |
 | Forecast origins | `python -m research.monthly.validate --config research/monthly/config/predictive.json` | `predictive.json` |
+| Reviewer comment 5: central 90/95/99% and directional tail validation | `python -m research.monthly.validate --config research/monthly/config/comment5.json` | `comment5.json` |
 
 Use `--stage all` for assessment fits after reviewing the plan. `independent.json` provides six separate marginal fits; `independence.json` keeps shared shrinkage with an identity copula. Configurations in `config/` also include anchor, dependence, figures, final and recovery checks. The separate [seasonal workflow](../seasonal/README.md) compares both resolutions using identical daily windows and seasonal forecast outcomes. See [START_HERE](../../START_HERE.md) for the run order.

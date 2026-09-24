@@ -7,6 +7,7 @@ import bucex as bx
 from research.monthly.run import arguments
 from research.monthly.report import convergence_parameters, new_run, scientific_targets
 from research.monthly.models import channel, marginal_prior, joint_model, fit_options
+from research.monthly.tail_validation import write_tail_tables
 
 
 def calibration(forecast, observed, *, channel=None):
@@ -59,7 +60,7 @@ def validate(config, *, directory=None):
         target = directory / label
         target.mkdir(exist_ok=True)
         scores, pits, coverages, joint_scores, compound, predictions, folds = [], [], [], [], [], [], []
-        event_counts = []
+        event_counts, threshold_cases = [], []
         for fold, (train, test) in enumerate(splits):
             print(f"{label}: fold {fold + 1}/{len(splits)}, training {train.stop} blocks", flush=True)
             training = values.iloc[:train.stop]
@@ -92,11 +93,29 @@ def validate(config, *, directory=None):
                 direction = '<' if bx.UCCLE_INFO[name]['tail'] == 'min' else '>'
                 threshold = config['risks'][name]
                 events = observed < threshold if direction == '<' else observed > threshold
-                event_counts.append(dict(origin=train.stop,channel=name,threshold=threshold,
-                    direction=direction,n_events=int(events.sum()),n_cases=len(events)))
                 kwargs = {"channel": name} if label == "joint" else {}
+                probability = forecast.probability_draws(
+                    threshold, direction=direction, **kwargs).mean(axis=0)
+                brier = (probability - events) ** 2
+                clipped = np.clip(probability, 1e-12, 1 - 1e-12)
+                log_score = -np.where(events, np.log(clipped), np.log1p(-clipped))
+                threshold_cases.append(pd.DataFrame(dict(
+                    origin=train.stop, channel=name, time=forecast.dates,
+                    horizon=np.arange(1, len(test) + 1), observed=observed,
+                    threshold=threshold, direction=direction, observed_event=events,
+                    event_probability=probability, brier=brier, log_score=log_score)))
+                event_counts.append(dict(origin=train.stop,channel=name,threshold=threshold,
+                    direction=direction,n_events=int(events.sum()),n_cases=len(events),
+                    expected_events=float(probability.sum())))
                 score = forecast.score(observed, thresholds=[config["risks"][name]],
                                        quantiles=(0.90, 0.95, 0.99), aggregate=False, **kwargs)
+                # Average the conditional CDF over parameter and future-state draws.
+                # Ensemble event frequencies can be exactly zero at rare thresholds.
+                for score_name, metric_values in (("exceedance_brier", brier),
+                                                  ("exceedance_log", log_score)):
+                    selected = score.score.eq(score_name)
+                    score.loc[selected, "value"] = metric_values[
+                        score.loc[selected, "time_index"].to_numpy(dtype=int)]
                 scores.append(score.assign(origin=train.stop, channel=name,
                     horizon=score['time_index'].to_numpy(dtype=int)+1,
                     time=forecast.dates[score["time_index"].to_numpy(dtype=int)]))
@@ -134,6 +153,10 @@ def validate(config, *, directory=None):
             pd.concat(coverages).to_csv(target / "coverage_by_case.csv", index=False)
             pd.concat(predictions).to_csv(target/'predictions.csv', index=False)
             pd.DataFrame(event_counts).to_csv(target/'event_counts.csv', index=False)
+            cases = pd.concat(threshold_cases, ignore_index=True)
+            cases.to_csv(target / 'threshold_cases.csv', index=False)
+            write_tail_tables(target, pd.concat(coverages, ignore_index=True), cases,
+                              steps_per_year=config['model']['steps_per_year'])
             if joint_scores:
                 pd.concat(joint_scores).to_csv(target / "joint_log_scores.csv", index=False)
             if compound:

@@ -2,6 +2,26 @@
 
 The seasonal model fits one mean or extreme per complete DJF/MAM/JJA/SON block, using the same model builder and sampler as [monthly research](../monthly/README.md). Season means weight all complete daily observations. The series ends with JJA 2026.
 
+## Reviewer comment 5: held-out extremes (1.8.6)
+
+`config/comment5.json` defines seven five-year seasonal forecast windows,
+four-chain fits, and separate 90%, 95%, 99% coverage and directional 1%/5%
+tail summaries. Run from the package root:
+
+```bash
+python -m research.seasonal.preflight --config research/seasonal/config/comment5.json --output results/serra_186_seasonal_comment5_plan
+python -u -m research.monthly.validate --config research/seasonal/config/comment5.json
+```
+
+Inspect the printed result directory under `joint/`: `folds.csv`,
+`convergence_*.json`, `central_coverage.csv`, `directional_tails.csv`,
+`threshold_events.csv` and the corresponding case tables. Reports include
+denominators by response, season and forecast year. With 140 held-out seasons
+per response, the expected number above a 99th percentile is only 1.4, so
+do not treat an absence of exceedances as evidence of tail calibration.
+The 2015 and 2020 windows reuse the 1.8.5 prior-screen periods; if that
+screen determines the prior, interpret those two windows as exploratory.
+
 1. `python -m research.seasonal.prepare` audits and derives seasonal blocks.
 2. `python -m research.seasonal.preflight` checks units, priors and computation.
 3. `python -m research.seasonal.fit --config research/seasonal/config/smoke.json` checks execution.
