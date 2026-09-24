@@ -114,20 +114,47 @@ def summarize(root, cases):
                         for name, value in sequences.items()], ignore_index=True)
     detail.groupby(['setting', 'channel'])['crps'].agg(mean_crps='mean', n='size').to_csv(
         root / 'grid_by_response.csv')
-    best = ranking.iloc[0]
     eligible = ranking.loc[ranking.numerical_checks_passed]
-    bx.save_config({'best_pilot_setting': best['setting'],
-        'best_mean_crps': float(best['mean_crps']),
+    raw = ranking.iloc[0]
+    best = None if eligible.empty else eligible.iloc[0]
+    bx.save_config({'best_pilot_setting': None if best is None else best['setting'],
+        'best_mean_crps': None if best is None else float(best['mean_crps']),
+        'lowest_raw_crps_setting': raw['setting'],
+        'lowest_raw_crps': float(raw['mean_crps']),
         'best_passing_pilot_setting': None if eligible.empty else eligible.iloc[0]['setting'],
         'finished_settings': len(completed), 'planned_settings': len(cases),
-        'numerical_checks_passed': bool(best['numerical_checks_passed']),
+        'numerical_checks_passed': not eligible.empty,
         'selection_basis': 'Mean marginal CRPS across six responses and identical held-out seasonal cases.',
-        'interpretation': 'Scores are provisional when numerical checks fail. Rerun promising settings with four long chains and assess reserved 2024--2026 seasons separately.'},
+        'interpretation': 'Only numerically passing settings are candidates. Rerun candidates with four long chains and assess reserved 2024--2026 seasons separately.'},
         root / 'selection.json')
-    print(f'Completed {len(completed)}/10; lowest held-out CRPS: {best["setting"]} '
-          f'({best["mean_crps"]:.4f} degC).', flush=True)
+    print(f'Completed {len(completed)}/10; lowest raw held-out CRPS: {raw["setting"]} '
+          f'({raw["mean_crps"]:.4f} degC).', flush=True)
     if eligible.empty:
-        print('No setting passes numerical checks yet; do not select a final prior.', flush=True)
+        print('No setting passes numerical checks yet; no pilot candidate is selected.', flush=True)
+
+
+def check_reference_mixing(config):
+    """Prevent a new grid from reusing a nonconverged reference fit."""
+    directory = config.get('mixing_gate')
+    if not directory:
+        return
+    source_digest = sha256(Path(config['data']['daily_source']).read_bytes()).hexdigest()
+    for origin in config['validation']['training_ends']:
+        target = Path(directory) / f'{origin[:4]}_copula'
+        provenance_path = target / 'provenance.json'
+        convergence_path = target / 'convergence.json'
+        if not provenance_path.exists() or not convergence_path.exists():
+            raise RuntimeError(f'Before the prior grid, run the full reference mixing check for {origin}: '
+                               f'python -m research.seasonal.diagnose_mixing --origin {origin} --output {target}')
+        provenance = bx.load_config(provenance_path)
+        verdict = bx.load_config(convergence_path)
+        if (verdict.get('status') != 'passed' or provenance.get('version') != bx.__version__
+            or provenance.get('source_sha256') != source_digest
+            or provenance.get('origin') != origin or provenance.get('mode') != 'copula'
+            or any(provenance['config'].get(key) != config.get(key)
+                   for key in ('data', 'model', 'priors', 'copula'))):
+            raise RuntimeError(f'{origin} reference mixing check is missing, failed, or belongs to '
+                               'a different model/data/version; do not run the sensitivity grid.')
 
 
 def fit_parallel(root, selected, all_cases, jobs):
@@ -200,9 +227,12 @@ def run(config, *, only=None, dry_run=False, jobs=1):
               f'initial={local["priors"]["initial_slope_sd"]:.4g}', flush=True)
     if dry_run:
         return root
+    check_reference_mixing(config)
     root.mkdir(parents=True, exist_ok=True)
     source = Path(config['data']['daily_source'])
-    plan = {'base_config': config, 'settings': [name for name, _ in cases],
+    plan = {'base_config': config, 'version': bx.__version__,
+            'initialization_sha256': sha256((Path(bx.__file__).parent / 'inference/fit/private_channel.py').read_bytes()).hexdigest(),
+            'settings': [name for name, _ in cases],
             'daily_source_sha256': sha256(source.read_bytes()).hexdigest()}
     plan_file = root / 'grid_plan.json'
     if plan_file.exists() and bx.load_config(plan_file) != plan:

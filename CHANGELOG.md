@@ -1,3 +1,9 @@
+# 1.8.6.1 (2026-09-24)
+
+- Fix dummy-seasonal initial states: map chronological phase effects to the lag-ordered coordinates used by the state transition in single-series and joint fits. Match the time-one convention for the initial level.
+- Reproduce the earlier 2015 TXn shape/scale failure without the copula and show that the corrected initializer removes its drifting low-likelihood chain in a focused two-chain test. The posterior likelihood and priors are unchanged.
+- Add reference mixing diagnostics with per-chain traces and scientific targets. Gate new seasonal prior-grid runs on passing four-chain reference checks at both origins; use a fresh output directory to avoid old fits.
+
 # 1.8.6 (2026-09-24)
 
 - Add predeclared monthly and seasonal expanding-window validation runs for reviewer comment 5, covering seven distinct five-year windows and reporting central 90%, 95% and 99% intervals.

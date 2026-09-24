@@ -11,7 +11,8 @@ from ...priors.structural import FSGaussianPriors, FSGEVPriors
 from ..config import MCMC
 from .fs_gev import FSGEVKernel, _gev_support_ok
 from .fs_utils import (canonicalize_ncp_params, infer_ncp_layout,
-                       map_centered_to_ncp, mu_from_ncp)
+                       map_centered_to_ncp, mu_from_ncp,
+                       seasonal_state_from_phase_effects, static_seasonal_design)
 from .model_space import StructuralModelState, initial_structural_state
 
 Array = np.ndarray
@@ -43,7 +44,7 @@ def _seasonal_initial(y: Array, period: int | None) -> Array:
          else 0.0 for index in range(int(period))]
     )
     full -= float(np.mean(full))
-    return full[:-1]
+    return seasonal_state_from_phase_effects(full)
 
 
 def _linear_initial(y: Array, gamma: Array, period: int | None) -> tuple[float, float]:
@@ -53,8 +54,7 @@ def _linear_initial(y: Array, gamma: Array, period: int | None) -> tuple[float, 
     if period is None:
         adjusted = values
     else:
-        full = np.r_[np.asarray(gamma, dtype=float), -np.sum(gamma)]
-        adjusted = values - full[np.arange(values.size) % int(period)]
+        adjusted = values - static_seasonal_design(values.size, int(period)-1) @ gamma
     time = np.arange(values.size, dtype=float)
     centered = time - float(np.mean(time))
     denominator = float(centered @ centered)
@@ -75,11 +75,12 @@ def _initial_channel_state(
     model = compiled.model
     layout = infer_ncp_layout(model)
     gamma = _seasonal_initial(y, model.period)
-    alpha0, beta0 = _linear_initial(y, gamma, model.period)
-    fitted = alpha0 + beta0 * np.arange(y.size, dtype=float)
+    intercept, beta0 = _linear_initial(y, gamma, model.period)
+    # baseline_mu_path evaluates the first observation at t=1.
+    alpha0 = intercept - beta0
+    fitted = alpha0 + beta0 * np.arange(1, y.size+1, dtype=float)
     if model.period is not None:
-        full_season = np.r_[gamma, -np.sum(gamma)]
-        fitted = fitted + full_season[np.arange(y.size) % int(model.period)]
+        fitted = fitted + static_seasonal_design(y.size, int(model.period)-1) @ gamma
     residual = y - fitted
     scale = max(float(np.std(residual, ddof=1)), 0.05)
     state = {
@@ -164,4 +165,3 @@ def _initial_channel_state(
         model_index=-1,
         gev_kernel=kernel,
     )
-

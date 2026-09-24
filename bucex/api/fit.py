@@ -22,6 +22,7 @@ from ..inference.config import (
 from ..inference.fit.disturbance import sample_posterior
 from ..inference.fit.fs_gaussian import FSGaussianKernel
 from ..inference.fit.fs_gev import FSGEVKernel
+from ..inference.fit.fs_utils import seasonal_state_from_phase_effects, static_seasonal_design
 from ..inference.plan import InferencePlan, inference_plan
 from ..models.compiler import CompiledModel, compile_model
 from ..models.multiseries import MultiSeriesModel
@@ -74,7 +75,7 @@ def _seasonal_initial(y: Array, period: int | None) -> Array:
     )
     full = np.nan_to_num(full, nan=0.0)
     full -= full.mean()
-    return full[:-1]
+    return seasonal_state_from_phase_effects(full)
 
 
 def _default_initial_values(
@@ -86,9 +87,8 @@ def _default_initial_values(
     if model.period is None:
         adjusted = np.asarray(y, dtype=float)
     else:
-        phase = np.arange(y.size) % int(model.period)
-        full = np.r_[gamma0, -gamma0.sum()]
-        adjusted = np.asarray(y, dtype=float) - full[phase]
+        adjusted = np.asarray(y, dtype=float) - static_seasonal_design(
+            y.size, int(model.period)-1) @ gamma0
     centered_time = time - float(np.mean(time))
     denominator = float(centered_time @ centered_time)
     beta0 = (
@@ -96,8 +96,10 @@ def _default_initial_values(
         if denominator == 0.0
         else float(centered_time @ adjusted) / denominator
     )
-    alpha0 = float(np.mean(adjusted) - beta0 * np.mean(time))
-    residual = adjusted - alpha0 - beta0 * time
+    intercept = float(np.mean(adjusted) - beta0 * np.mean(time))
+    residual = adjusted - intercept - beta0 * time
+    # The first observation uses the state at time 1, not time 0.
+    alpha0 = intercept - beta0
     scale = max(float(np.std(residual, ddof=1)), 0.25)
     state = {
         "alpha0": alpha0,

@@ -1,4 +1,15 @@
-# BUCEX 1.8.5
+# BUCEX 1.8.6.1
+
+This patch corrects the lag ordering of the dummy-seasonal starting state in
+single-series and joint fits. The earlier 2015 TXn pilot had a badly drifting
+chain; the same-seed short TXn-only comparison now produces a stable shape and
+observation scale. This is a starting-value correction; the model and priors
+are unchanged. The old ten-setting grid is not suitable for selecting a prior.
+Run the new four-chain mixing checks for both grid origins before repeating
+any sensitivity fit. The grid enforces this gate and writes to a fresh
+directory. See [seasonal research](research/seasonal/README.md).
+
+## Previous releases
 
 The seasonal reference now uses level, slope, seasonal and initial-slope
 shared-scale medians `(0.01, 0.0001, 0.01, 0.003)` per three-month update.

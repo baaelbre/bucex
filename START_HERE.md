@@ -1,4 +1,4 @@
-# BUCEX 1.8.6 — seasonal prior screen, matched comparison and tail validation
+# BUCEX 1.8.6.1 — seasonal initialization fix and mixing checks
 
 Summer 2026 **is included**. Only January and February 1892 are excluded from
 these research runs. The raw source and bundled monthly CSVs remain intact.
@@ -30,7 +30,7 @@ python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__, bucex.__file__)"
 ```
 
-Expect `1.8.6` and the new source path. On biobot, four chains use four local
+Expect `1.8.6.1` and the new source path. On biobot, four chains use four local
 processes with one numerical thread each. Slurm is not required. Start long
 jobs inside tmux if available:
 
@@ -42,6 +42,26 @@ Detach with Ctrl-b then d; reconnect using `tmux attach -t serra186`.
 No mid-chain checkpoint is available. The matched comparison can resume
 **completed model/origin jobs**; an interrupted fit restarts from the beginning.
 Changing the data, settings or package version requires a new comparison.
+
+## Check mixing before the prior grid or seasonal validation
+
+Older seasonal fits used chronological phase effects as the initial
+dummy-seasonal state, although the transition expects lag coordinates. Their
+GEV chains can start far outside a good fitting region. Use this release in a
+new directory, and do not treat the earlier 300-warm-up sensitivity grid as
+evidence for a prior choice. Run both reference checks first:
+
+```bash
+python -u -m research.seasonal.diagnose_mixing --origin 2015-11 --output results/serra_186_seasonal_mixing/2015_copula
+python -u -m research.seasonal.diagnose_mixing --origin 2020-11 --output results/serra_186_seasonal_mixing/2020_copula
+```
+
+Both must have `"status": "passed"` in `convergence.json`. The sensitivity
+grid requires these reports before fitting. Inspect `parameters.csv`,
+`targets.csv` and `traces.npz`; see `research/seasonal/README.md` for details.
+The old monthly fits also used the same initial-state convention: revisit any
+that failed their own four-chain convergence checks before using them in the
+paper. This correction changes starts, not the posterior model.
 
 ## Reviewer comment 5: predeclared tail validation
 

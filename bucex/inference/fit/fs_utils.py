@@ -313,6 +313,19 @@ def seasonal_rotation_matrix(K: int) -> Array:
     return S
 
 
+def seasonal_state_from_phase_effects(effects: Array) -> Array:
+    """Encode chronological zero-sum phase effects as the first dummy state.
+
+    With the lag rotation, the observations visit coordinates in the order
+    ``g[0], -sum(g), g[-1], ..., g[1]``.  In particular, storing the first
+    ``p-1`` chronological effects as the state gives a different annual cycle.
+    """
+    full = np.asarray(effects, dtype=float).reshape(-1)
+    if full.size < 2 or not np.all(np.isfinite(full)) or not np.isclose(full.sum(), 0.):
+        raise ValueError("Seasonal phase effects must be finite, zero-sum, and have period >= 2.")
+    return np.r_[full[0], full[:1:-1]]
+
+
 def static_seasonal_design(Tn: int, K: int) -> Array:
     """Design for the deterministic dummy-seasonal initial-state vector.
 
