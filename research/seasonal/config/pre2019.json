@@ -1,6 +1,6 @@
 {
   "extends": "final.json",
-  "_comment": "Prospective record-event analysis: fit only through MAM 2019 and forecast JJA 2019. The 39.7 C event is declared before fitting through additional_risks.",
+  "_comment": "Prospective record-event analysis: fit only through MAM 2019 and forecast JJA 2019. Both the old 36.6 C record and the observed 39.7 C value are explicitly evaluated.",
   "data": {
     "end": "2019-05"
   },
@@ -14,8 +14,9 @@
   },
   "additional_risks": {
     "TXx": [
+      36.6,
       39.7
     ]
   },
-  "output": "results/serra_187_pre2019_record"
+  "output": "results/serra_188_pre2019_record"
 }

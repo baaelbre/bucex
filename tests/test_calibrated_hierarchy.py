@@ -68,6 +68,37 @@ def test_initial_scale_conditional_normalization_and_prior_integration():
     assert np.isfinite(state.parameter_values()['shrinkage.shared.initial_slope'])
 
 
+def test_median_absolute_initial_slope_matches_manuscript_hierarchy():
+    """Check the second initial-slope convention against an independent density."""
+    z = norm.ppf(.75)
+    anchor = .001
+    spec = bx.SharedShrinkage({'level': .01}, initial_slope_sd=None,
+                              initial_slope_median=anchor)
+    conditional = spec.conditional_prior(bx.fs_priors('gaussian'), spec.anchors)
+    assert conditional.beta0.sd == pytest.approx(anchor / z)
+    table = pd.DataFrame(spec.calibration(horizon=120, period=4,
+                                         slope_time_unit=40)).set_index('component')
+    assert table.loc['initial_slope', 'anchor_kind'] == 'absolute_coefficient_median'
+    assert table.loc['initial_slope', 'initial_rate_sd_marginal'] == pytest.approx(
+        40 * anchor * np.exp(np.log(2)**2) / z)
+    coefficients = np.array([-.002, .0003, .001, -.0015])
+    for u in (-2., -.5, 0., 1.):
+        target = shared_scale_log_target(u, coefficients, anchor=anchor,
+                                         log_sd=spec.log_sd, scale_conversion=z)
+        reference = (norm.logpdf(coefficients, 0, anchor * np.exp(u) / z).sum()
+                     + norm.logpdf(u, 0, spec.log_sd))
+        zero = shared_scale_log_target(0., coefficients, anchor=anchor,
+                                       log_sd=spec.log_sd, scale_conversion=z)
+        reference_zero = (norm.logpdf(coefficients, 0, anchor / z).sum()
+                          + norm.logpdf(0., 0, spec.log_sd))
+        assert target-zero == pytest.approx(reference-reference_zero, abs=1e-10)
+    prior = bx.fs_priors('gaussian')
+    samples = bx.draw_marginal_prior(bx.MarginalPriors({'a':prior, 'b':prior},
+                                                       shrinkage=spec), 20000, seed=188)
+    scale = samples['shared']['initial_slope']
+    assert np.mean((samples['channels']['a']['initial.slope'] * z / scale)**2) == pytest.approx(1., abs=.04)
+
+
 def test_legacy_hierarchy_decode_does_not_add_a_new_prior():
     restored=_decode({'__dataclass__':'bucex.priors.shrinkage:SharedShrinkage',
         'fields':{'medians':{'level':.0025},'log_sd':np.log(2.)}}, {})

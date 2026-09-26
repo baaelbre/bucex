@@ -1,4 +1,23 @@
-# BUCEX 1.8.7
+# BUCEX 1.8.8
+
+The seasonal manuscript prior now has four median-absolute shared-scale
+hyperprior medians `(0.01, 0.0001, 0.01, 0.001)` per seasonal transition.
+The initial-slope conditional normal SD is `m_beta0 / Phi^-1(.75)`, matching
+the other three components and the manuscript. The old SD-anchored API remains
+available, and the archived 2026-09-23 configuration retains its prior.
+At 30 years the integrated contribution SDs are about 0.263, 0.181, 0.186
+and 0.288°C; the initial-rate SD is 0.096°C per decade. Existing 1.8.7
+posteriors cannot be treated as fits under these revised priors.
+
+The complete paper queue in `RUN_PAPER_EXPERIMENTS.sh` covers prior effects,
+full fit, physical-scale and width/shape sensitivity, structural and
+dependence alternatives, pre-2019 prediction, expanding-window validation,
+time-resolved additive-gap and rate-difference contrasts, and matched
+monthly/seasonal scoring. The main figures follow the chosen
+records/LOESS, all-six scale and PIT/QQ layouts. See `FINAL_RUN.md` for
+separate commands. Gates require adequate numerical diagnostics.
+
+## 1.8.7
 
 This release freezes the seasonal manuscript specification to the successful
 `uccle_copula_20260923T222238_406159Z.zip` settings while retaining the 1.8.6.1

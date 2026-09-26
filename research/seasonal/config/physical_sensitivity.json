@@ -1,0 +1,21 @@
+{
+  "extends": "main.json",
+  "_comment": "Predeclared half/double changes to each of the four median-absolute anchors. Use paired forecast cases; numerical checks precede interpretation.",
+  "variants": [
+    {"name": "reference"},
+    {"name": "half_level", "multipliers": {"level": 0.5}},
+    {"name": "double_level", "multipliers": {"level": 2.0}},
+    {"name": "half_slope", "multipliers": {"trend": 0.5}},
+    {"name": "double_slope", "multipliers": {"trend": 2.0}},
+    {"name": "half_seasonal", "multipliers": {"season": 0.5}},
+    {"name": "double_seasonal", "multipliers": {"season": 2.0}},
+    {"name": "half_initial_slope", "initial_slope_multiplier": 0.5},
+    {"name": "double_initial_slope", "initial_slope_multiplier": 2.0}
+  ],
+  "assessment": {"baseline": "reference"},
+  "mcmc": {"warmup": 2000, "draws": 4000, "chains": 4, "chain_workers": 4},
+  "validation": {"training_ends": ["2015-11", "2020-11"], "horizon": 20,
+                 "draws": 2000, "save_fits": false},
+  "save_fits": false,
+  "output": "results/serra_188_physical_sensitivity"
+}

@@ -28,18 +28,32 @@ def _local_linear(values, half_width=40):
 
 def exploratory_structure(data, *, reference=('1892-03', '1922-02'),
                           comparison=('1996-09', '2026-08')):
-    """Return the manuscript seasonal-cycle/LOESS figure and plotted data."""
+    """Six seasonal records beside six whole-record-centred LOESS smooths."""
     import matplotlib.pyplot as plt
 
     phase = data.index.month.map(bx.SEASON_NAMES)
     windows = [('1892--1921', reference, '#707881', '--'),
                ('1996--2026', comparison, '#24658a', '-')]
     cycle_rows, smooth_rows = [], []
-    figure, axes = plt.subplots(3, 4, figsize=(12.2, 8.3), layout='constrained')
+    figure = plt.figure(figsize=(15.2, 8.4), layout='constrained')
+    grid = figure.add_gridspec(3, 4, width_ratios=(1, 1, 1.05, 1.05))
+    records = [figure.add_subplot(grid[row, col]) for row in range(3) for col in range(2)]
+    overlay = figure.add_subplot(grid[:, 2:])
+    colors = dict(zip(SEASONS, ('#5b8fb0', '#d07a55', '#dba83b', '#7a9f72')))
+    smooth_colors = dict(zip(data.columns,
+        ('#24658a', '#a44839', '#14506e', '#873c30', '#4b83a3', '#c16b59')))
     for position, name in enumerate(data.columns):
-        row, pair = divmod(position, 2)
-        cycle_axis, smooth_axis = axes[row, 2 * pair:2 * pair + 2]
-        early_means = {}
+        record_axis = records[position]
+        for season in SEASONS:
+            selected = phase == season
+            record_axis.plot(data.index[selected], data.loc[selected, name],
+                             color=colors[season], lw=.7, alpha=.85, label=season)
+        record_axis.set_title(name, loc='left', weight='bold')
+        if position % 2 == 0:
+            record_axis.set_ylabel('temperature / °C')
+        if position >= 4:
+            record_axis.set_xlabel('year')
+        record_axis.tick_params(axis='x', labelrotation=45)
         for label, limits, color, linestyle in windows:
             start, end = pd.Period(limits[0], freq='M'), pd.Period(limits[1], freq='M')
             selected = data.loc[start.start_time:end.end_time, name]
@@ -49,29 +63,21 @@ def exploratory_structure(data, *, reference=('1892-03', '1922-02'),
             ).reindex(SEASONS)
             if summary['n'].isna().any():
                 raise ValueError(f'{name}: comparison windows do not contain all four seasons.')
-            x = np.arange(4)
-            cycle_axis.fill_between(x, summary.q25, summary.q75, color=color, alpha=.10, lw=0)
-            cycle_axis.plot(x, summary['mean'], color=color, ls=linestyle, marker='o', label=label)
             for season, values in summary.iterrows():
                 cycle_rows.append(dict(series=name, period=label, season=season, **values.to_dict()))
-            if label == windows[0][0]:
-                early_means = summary['mean'].to_dict()
-        cycle_axis.set_title(f'{name}: seasonal cycle', loc='left', weight='bold')
-        cycle_axis.set_xticks(range(4), SEASONS)
-        cycle_axis.set_ylabel('seasonal summary / °C')
-
-        anomaly = data[name].to_numpy() - np.asarray([early_means[s] for s in phase])
-        smooth = _local_linear(anomaly, half_width=40)
-        smooth_axis.scatter(data.index, anomaly, s=4, color='.58', alpha=.20, rasterized=True)
-        smooth_axis.plot(data.index, smooth, color='#24658a', lw=1.8)
-        smooth_axis.axhline(0, color='.45', lw=.7)
-        smooth_axis.set_title(f'{name}: centred trajectory', loc='left', weight='bold')
-        smooth_axis.set_ylabel('anomaly / °C')
+        seasonal_means = data[name].groupby(phase).mean().to_dict()
+        anomaly = data[name].to_numpy() - np.asarray([seasonal_means[s] for s in phase])
+        smooth = _local_linear(anomaly, half_width=max(3, int(round(len(data)*.09))))
+        overlay.plot(data.index, smooth, label=name, color=smooth_colors[name], lw=1.6,
+                     ls='-' if name.startswith('TX') else '--')
         smooth_rows.extend(dict(time=time, series=name, anomaly=value, smooth=fit)
                            for time, value, fit in zip(data.index, anomaly, smooth))
-    axes[0, 0].legend(loc='best', fontsize=8.5)
-    for column, axis in enumerate(axes[-1]):
-        axis.set_xlabel('season' if column % 2 == 0 else 'time')
+    records[0].legend(ncol=2, fontsize=8, loc='upper left')
+    overlay.axhline(0, color='.5', lw=.7)
+    overlay.set(xlabel='year', ylabel='temperature anomaly / °C',
+                title='Seasonally centred LOESS smoothers')
+    overlay.legend(ncol=2, fontsize=9)
+    overlay.tick_params(axis='x', labelrotation=45)
     return figure, pd.DataFrame(cycle_rows), pd.DataFrame(smooth_rows)
 
 
@@ -113,6 +119,6 @@ def prepare(config,output):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config',default='research/seasonal/config/main.json')
-    parser.add_argument('--output',default='results/serra_187_seasonal_data')
+    parser.add_argument('--output',default='results/serra_188_seasonal_data')
     args=parser.parse_args()
     print(prepare(bx.load_config(args.config),args.output))

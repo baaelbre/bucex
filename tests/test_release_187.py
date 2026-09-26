@@ -1,5 +1,4 @@
-"""Lock the final seasonal manuscript declaration for BUCEX 1.8.7."""
-from copy import deepcopy
+"""Keep the archived 1.8.7 reference distinct from the 1.8.8 manuscript fit."""
 from pathlib import Path
 
 import matplotlib
@@ -7,6 +6,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytest
+from scipy.stats import norm
 
 import bucex as bx
 from research.seasonal.prepare import exploratory_structure
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "research" / "seasonal" / "config"
 
 
-def test_reference_and_final_configs_lock_successful_run_settings():
+def test_archived_reference_and_new_final_config_have_distinct_priors():
     reference = bx.load_config(CONFIG / "reference_20260923.json")
     final = bx.load_config(CONFIG / "final.json")
     assert reference["reference_run"]["archive"] == "uccle_copula_20260923T222238_406159Z.zip"
@@ -33,29 +34,25 @@ def test_reference_and_final_configs_lock_successful_run_settings():
         "season": 0.008343480538225555,
     }
     assert reference["priors"]["initial_slope_sd"] == 0.0046387735335118195
+    assert reference["priors"]["initial_slope_median"] is None
     assert reference["mcmc"]["warmup"] == 2000 and reference["mcmc"]["draws"] == 4000
+    assert final["priors"]["innovation_median"] == {"level": .01, "trend": .0001, "season": .01}
+    assert final["priors"]["initial_slope_median"] == .001
+    assert final["priors"]["initial_slope_sd"] == pytest.approx(.001 / norm.ppf(.75))
     assert final["mcmc"]["warmup"] == 3000 and final["mcmc"]["draws"] == 8000
     assert final["mcmc"]["chains"] == final["mcmc"]["chain_workers"] == 4
-
-    # The final run changes runtime/output declarations, never the scientific
-    # model that generated the successful reference archive.
-    scientific_reference, scientific_final = deepcopy(reference), deepcopy(final)
-    for item in (scientific_reference, scientific_final):
-        item.pop("_comment", None)
-        item.pop("mcmc", None)
-        item.pop("output", None)
-    assert scientific_final == scientific_reference
+    assert "reference_run" not in final
 
 
 def test_pre2019_config_is_genuinely_prospective():
     config = bx.load_config(CONFIG / "pre2019.json")
     assert config["data"]["end"] == "2019-05"
     assert config["forecast_horizon"] == 1
-    assert config["additional_risks"]["TXx"] == [39.7]
+    assert config["additional_risks"]["TXx"] == [36.6, 39.7]
     assert config["contrasts"]["comparison"] == ["1989-03", "2019-02"]
 
 
-def test_exploratory_seasonal_figure_has_paired_cycle_and_smooth_panels():
+def test_exploratory_seasonal_figure_has_six_records_and_one_overlay():
     dates = pd.date_range("1990-03-01", periods=16, freq="3MS")
     phase = np.arange(len(dates)) % 4
     data = pd.DataFrame({name: i + 3 * np.sin(phase * np.pi / 2) + .1 * np.arange(len(dates))
@@ -64,7 +61,7 @@ def test_exploratory_seasonal_figure_has_paired_cycle_and_smooth_panels():
     figure, cycles, smooths = exploratory_structure(
         data, reference=("1990-03", "1992-02"), comparison=("1992-03", "1994-02")
     )
-    assert len(figure.axes) == 12
+    assert len(figure.axes) == 7
     assert set(cycles.season) == {"DJF", "MAM", "JJA", "SON"}
     assert cycles.groupby(["series", "period"]).size().eq(4).all()
     assert len(smooths) == len(data) * len(data.columns)

@@ -70,7 +70,10 @@ def joint_model(data, config):
                      for c in settings.get('components', ['level', 'slope', 'seasonal'])},
             log_sd=settings.get('log_sd', np.log(2.)),
             initial_slope_sd=(config['priors']['initial_slope_sd']
-                              if settings.get('pool_initial_slope', True) else None))
+                              if settings.get('pool_initial_slope', True)
+                              and config['priors'].get('initial_slope_median') is None else None),
+            initial_slope_median=(config['priors'].get('initial_slope_median')
+                                  if settings.get('pool_initial_slope', True) else None))
     return model, bx.MarginalPriors(
         {c.name: marginal_prior(c, data, config) for c in channels}, shrinkage=hierarchy)
 

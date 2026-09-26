@@ -1,6 +1,20 @@
 {
   "extends": "main.json",
-  "_comment": "Resolved scientific and Monte Carlo settings of uccle_copula_20260923T222238_406159Z.zip, expressed through the 1.8.7 configuration hierarchy. This is the reproducibility baseline, not the larger final-run budget.",
+  "_comment": "Archived 2026-09-23 scientific settings; retained for historical reproducibility. Do not use as the 1.8.8 manuscript reference.",
+  "reference_run": {
+    "archive": "uccle_copula_20260923T222238_406159Z.zip",
+    "archive_sha256": "2e337e0fbe09f8587ab1782e10c861507b35b73677163b7904e7d1e16d1ac64a",
+    "resolved_config_sha256": "9a0f9c082d92831bf1185b8e51b0093d20c2677f3bfee03988acbbab6c958c44"
+  },
+  "priors": {
+    "innovation_median": {
+      "level": 0.014451332204168785,
+      "trend": 0.00010883964876422239,
+      "season": 0.008343480538225555
+    },
+    "initial_slope_sd": 0.0046387735335118195,
+    "initial_slope_median": null
+  },
   "mcmc": {
     "warmup": 2000,
     "draws": 4000,

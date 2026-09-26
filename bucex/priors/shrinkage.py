@@ -31,10 +31,13 @@ class SharedShrinkage:
 
         SharedShrinkage(medians={"level": .0025, "slope": .0000125, "seasonal": .02})
 
-    Initial slopes also share a learned zero-centred normal-prior SD, whose
-    lognormal anchor is ``initial_slope_sd`` (default .0025 per update). This
-    is a separate hyperparameter, not the slope innovation scale or a shared
-    mean slope. Set ``initial_slope_sd=None`` to retain fixed channel priors.
+    Initial slopes can share a learned zero-centred normal-prior SD, whose
+    lognormal anchor is ``initial_slope_sd`` (default .0025 per update).
+    Alternatively, set ``initial_slope_sd=None`` and supply
+    ``initial_slope_median`` to use the median absolute initial slope as the
+    learned scale, with the same Phi^{-1}(.75) conversion as innovations.
+    Both conventions describe a separate hyperparameter, not a shared mean
+    slope. Set both to None to retain fixed channel priors.
     Components omitted from ``medians`` keep their declared channel priors.
     ``log_sd=log(2)`` places about 95% of each hyperprior between one quarter
     and four times its anchor. All anchors use the model's time/response units.
@@ -43,6 +46,7 @@ class SharedShrinkage:
     medians: Mapping[str, float]
     log_sd: float = float(np.log(2.))
     initial_slope_sd: float | None = .0025
+    initial_slope_median: float | None = None
 
     def __post_init__(self):
         aliases = {"trend": "slope", "season": "seasonal"}
@@ -54,12 +58,18 @@ class SharedShrinkage:
             if not np.isfinite(value) or value <= 0:
                 raise ValueError("SharedShrinkage anchors must be positive and finite.")
             medians[key] = float(value)
-        if (not medians and self.initial_slope_sd is None) or not np.isfinite(self.log_sd) or self.log_sd <= 0:
+        if self.initial_slope_sd is not None and self.initial_slope_median is not None:
+            raise ValueError("Choose initial_slope_sd or initial_slope_median, not both.")
+        if (not medians and self.initial_slope_sd is None and self.initial_slope_median is None) or not np.isfinite(self.log_sd) or self.log_sd <= 0:
             raise ValueError("Declare at least one anchor and a positive finite log_sd.")
         if self.initial_slope_sd is not None:
             if not np.isfinite(self.initial_slope_sd) or self.initial_slope_sd <= 0:
                 raise ValueError("initial_slope_sd must be positive and finite, or None.")
             object.__setattr__(self, "initial_slope_sd", float(self.initial_slope_sd))
+        if self.initial_slope_median is not None:
+            if not np.isfinite(self.initial_slope_median) or self.initial_slope_median <= 0:
+                raise ValueError("initial_slope_median must be positive and finite, or None.")
+            object.__setattr__(self, "initial_slope_median", float(self.initial_slope_median))
         # Stable scientific and sampling order, including after sorted JSON/archive decoding.
         object.__setattr__(self, "medians", {c: medians[c] for c in COMPONENT_FIELDS if c in medians})
         object.__setattr__(self, "log_sd", float(self.log_sd))
@@ -76,8 +86,8 @@ class SharedShrinkage:
     def conditional_prior(self, prior, medians):
         """Return a channel prior conditional on the named shared scales.
 
-        Innovation entries are physical-SD medians; initial_slope is a normal
-        prior SD. Both use the same lognormal scale-hierarchy machinery.
+        Innovation entries are physical-SD medians; initial_slope is either
+        a normal prior SD or a median absolute coefficient, as declared.
         """
         if set(medians) != set(self.anchors):
             raise ValueError("Conditional median names must match the hierarchy.")
@@ -88,13 +98,14 @@ class SharedShrinkage:
 
     @property
     def anchors(self):
-        """All shared scales; initial_slope uses SD rather than absolute median."""
-        return {**self.medians, **({"initial_slope": self.initial_slope_sd}
-                                  if self.initial_slope_sd is not None else {})}
+        """All shared scales in their declared units."""
+        initial = (self.initial_slope_median if self.initial_slope_median is not None
+                   else self.initial_slope_sd)
+        return {**self.medians, **({"initial_slope": initial} if initial is not None else {})}
 
-    @staticmethod
-    def coefficient_sd(component, scale):
-        return scale if component == "initial_slope" else scale / NORMAL_ABSOLUTE_MEDIAN
+    def coefficient_sd(self, component, scale):
+        return (scale if component == "initial_slope" and self.initial_slope_median is None
+                else scale / NORMAL_ABSOLUTE_MEDIAN)
 
     def sample_medians(self, size, *, rng):
         """Draw shared hyperparameters, once per joint prior draw."""
@@ -150,7 +161,8 @@ class SharedShrinkage:
                 raise ValueError(f"No response gain for {c}; declare its period.")
             sd = self.coefficient_sd(c, anchor)
             rows.append(dict(component=c, anchor=anchor,
-                anchor_kind="normal_SD" if c == "initial_slope" else "absolute_coefficient_median",
+                anchor_kind=("normal_SD" if c == "initial_slope" and self.initial_slope_median is None
+                             else "absolute_coefficient_median"),
                 horizon_updates=int(horizon), period=period, response_unit=unit,
                 log_sd=self.log_sd, hyperprior_lower=anchor*np.exp(ndtri(.025)*self.log_sd),
                 hyperprior_upper=anchor*np.exp(ndtri(.975)*self.log_sd),

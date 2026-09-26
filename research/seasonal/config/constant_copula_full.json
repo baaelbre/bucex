@@ -1,0 +1,5 @@
+{
+  "extends": "final.json",
+  "copula": {"structure": "constant"},
+  "output": "results/serra_188_constant_copula_full"
+}

@@ -1,3 +1,9 @@
+# 1.8.8 (2026-09-26)
+
+- Use manuscript seasonal median-absolute anchors `(0.01, 0.0001, 0.01, 0.001)` with a matching initial-slope hierarchy; preserve historical SD-anchored fits.
+- Add complete paper command queue, 30-year prior-effect simulation, time-resolved additive-gap contrasts, physical anchor sensitivity, and supporting-run convergence gate.
+- Align main exploratory, scale, and smoothed-PIT figures with the selected manuscript layouts.
+
 # 1.8.7 (2026-09-24)
 
 - Lock the seasonal manuscript reference to the resolved scientific settings,

@@ -34,6 +34,8 @@ def settings(config):
             cases.append((label, local))
     control = deepcopy(config)
     control['priors']['initial_slope_sd'] *= g['extra_initial_slope_factor']
+    if control['priors'].get('initial_slope_median') is not None:
+        control['priors']['initial_slope_median'] *= g['extra_initial_slope_factor']
     cases.append(('initial_slope_1.5', control))
     if len(cases) != 10 or len({name for name, _ in cases}) != 10:
         raise ValueError('The reference grid must contain ten unique named settings.')

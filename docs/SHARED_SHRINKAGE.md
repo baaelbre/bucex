@@ -1,4 +1,4 @@
-# Shared regularization in BUCEX 1.8.4
+# Shared regularization in BUCEX 1.8.8
 
 Every channel retains its own realized location trajectory, initial slope,
 innovation SDs, seasonal pattern and observation parameters. Hierarchical
@@ -12,12 +12,12 @@ coefficient and q = Phi^(-1)(.75). The physical innovation SD is abs(a[j,c]):
 a[j,c] | m[c] ~ Normal(0, (m[c]/q)^2)
 log(m[c]/anchor[c]) ~ Normal(0, log_sd^2)
 
-beta0[j] | kappa0 ~ Normal(0, kappa0^2)
-log(kappa0/initial_slope_sd) ~ Normal(0, log_sd^2)
+beta0[j] | m[initial_slope] ~ Normal(0, (m[initial_slope]/q)^2)
+log(m[initial_slope]/initial_slope_median) ~ Normal(0, log_sd^2)
 ```
 
 There are four separate positive hyperparameters in the default SERRA fit.
-The initial-slope SD kappa0 differs in units and meaning from the slope
+The initial-slope scale differs in units and meaning from the slope
 innovation scale. It is not tied numerically to that scale, and its mean is
 zero rather than a learned common warming rate. All four hyperparameters are
 sampled jointly with the channel parameters and states. Conditional coefficient
@@ -25,9 +25,11 @@ priors are normal; integrating shared scales gives normal scale mixtures.
 
 With log_sd=log(2), each scale's 95% hyperprior interval is about
 [0.257, 3.89] times its anchor. These are soft regularization assumptions.
-The medians in `medians` are conditional absolute-coefficient medians, whereas
-`initial_slope_sd` is a conditional normal SD. This distinction is recorded in
-the calibration table. See [physical calibration](PRIOR_CALIBRATION.md).
+The seasonal manuscript uses `initial_slope_median`, so all four shared scales
+are conditional absolute-coefficient medians. The older
+`initial_slope_sd` API remains available for loading historical fits and for
+monthly analyses; it instead denotes a conditional normal SD. The calibration
+table records which convention was used. See [physical calibration](PRIOR_CALIBRATION.md).
 
 ## API
 
@@ -44,7 +46,8 @@ channels = [
 model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula())
 regularization = bx.SharedShrinkage(
     medians={'level': .0025, 'slope': .0000125, 'seasonal': .02},
-    initial_slope_sd=.0025,
+    initial_slope_sd=None,
+    initial_slope_median=.001,
 )
 priors = bx.MarginalPriors(
     {c.name: bx.fs_priors(c.family, period=12) for c in channels},
@@ -55,8 +58,9 @@ priors = bx.MarginalPriors(
 ```
 
 Put parallel execution under `if __name__ == '__main__':` in standalone scripts.
-Use `initial_slope_sd=None` to keep each channel's declared fixed initial-slope
-prior. Research JSON uses `shared_shrinkage.pool_initial_slope: false`. Omit
+Set both `initial_slope_sd=None` and `initial_slope_median=None` to keep each
+channel's declared fixed initial-slope prior. Research JSON uses
+`shared_shrinkage.pool_initial_slope: false`. Omit
 `shrinkage` entirely for fixed independent priors. An initial-slope-only
 hierarchy is allowed with `medians={}` and a positive initial-slope anchor.
 
@@ -69,7 +73,8 @@ zero-centred normal FS coefficient priors; it does not combine with local lasso/
 ## Exact conditional update
 
 Let u = log(scale/anchor), and let v be the conditional normal coefficient SD
-at the anchor: anchor/q for innovations, anchor for initial slopes. For J
+at the anchor: anchor/q for innovations and for manuscript initial slopes;
+anchor for legacy SD-anchored initial slopes. For J
 eligible coefficients the conditional log density, up to constants, is
 
 ```text

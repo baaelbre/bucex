@@ -28,12 +28,16 @@ def configured_variant(config, variant):
             p['innovation_median'][aliases[component]]*=factor
         if new_hierarchy.get('pool_initial_slope',True):
             p['initial_slope_sd']*=factor
+            if p.get('initial_slope_median') is not None:
+                p['initial_slope_median']*=factor
     for key in ('seasonal_scale', 'scale_prior_sd', 'level', 'trend', 'seasonal'):
         if key in variant:
             m[key] = variant[key]
     for key,factor in variant.get('multipliers', {}).items():
         p['innovation_median'][key] *= factor
     p['initial_slope_sd'] *= variant.get('initial_slope_multiplier', 1.)
+    if p.get('initial_slope_median') is not None:
+        p['initial_slope_median'] *= variant.get('initial_slope_multiplier', 1.)
     p['seasonal_initial_sd'] *= variant.get('seasonal_initial_multiplier', 1.)
     if 'asis' in variant:
         config.setdefault('inference', {})['asis'] = variant['asis']

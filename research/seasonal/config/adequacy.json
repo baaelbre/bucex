@@ -9,6 +9,14 @@
       "seasonal_scale": false
     },
     {
+      "name": "narrow_seasonal_log_scale",
+      "scale_prior_sd": 0.15
+    },
+    {
+      "name": "wide_seasonal_log_scale",
+      "scale_prior_sd": 0.60
+    },
+    {
       "name": "fixed_location_seasonality",
       "seasonal": "static",
       "shared_shrinkage": {
@@ -29,7 +37,7 @@
     "draws": 4000
   },
   "save_fits": false,
-  "output": "results/serra_187_seasonal_adequacy",
+  "output": "results/serra_188_seasonal_adequacy",
   "validation": {
     "training_ends": [
       "2015-11",

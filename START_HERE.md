@@ -1,35 +1,23 @@
-# BUCEX 1.8.7 — final seasonal manuscript run
+# BUCEX 1.8.8 — seasonal manuscript
 
-Version 1.8.7 uses the model, thresholds, contrast periods, seeds and calibrated
-hyperparameters of `uccle_copula_20260923T222238_406159Z.zip`. It retains the
-1.8.6.1 dummy-seasonal initialization correction. The final configuration
-changes only the sampling budget: four chains, 3,000 warm-up and 8,000 retained
-iterations per chain.
-
-From the unpacked package root:
+From the unpacked package root, the complete paper queue is:
 
 ```bash
-python -m pip install -e ".[plot,test]"
-python -c "import bucex; print(bucex.__version__, bucex.__file__)"
-python -m research.seasonal.prepare --config research/seasonal/config/final.json --output results/serra_187_seasonal_data
-python -m research.seasonal.preflight --config research/seasonal/config/final.json --output results/serra_187_final_plan
-python -u -m research.seasonal.fit --config research/seasonal/config/final.json
+bash RUN_PAPER_EXPERIMENTS.sh
 ```
 
-The fit command prints a timestamped `uccle_copula_...` directory. Do not copy
-numbers into the manuscript until the strict gate passes:
+The script runs sequentially and stores logs and timestamped reports in
+`results/`. See [FINAL_RUN.md](FINAL_RUN.md) to run individual experiments in
+separate terminals or submit them as jobs. No scientific results in the old
+1.8.7 archive are reused: the manuscript priors changed.
 
-```bash
-python -m research.seasonal.check_final --run PATH_PRINTED_BY_FIT
-python -m research.seasonal.manuscript_figures --run PATH_PRINTED_BY_FIT --output results/serra_187_manuscript_figures
-```
+The four shared hyperprior medians per season are `(.01, .0001, .01, .001)`
+for level innovation, slope innovation, seasonal innovation and **initial
+slope**. All four are median absolute coefficients. Conditional normal SDs
+divide each by `Phi^{-1}(.75)`, and the four lognormal widths are `log(2)`.
+In particular, the final initial-rate prior SD is approximately 0.096°C per
+decade after integrating the hyperprior. Preflight reports the conversion.
 
-The figure command writes stable manuscript stems in PNG and PDF plus a source
-checksum manifest. It refuses a run whose `convergence.json` has not passed.
-See [FINAL_RUN.md](FINAL_RUN.md) for the sensitivity, held-out validation,
-monthly-block comparison and pre-2019 record-event commands.
-
-The analysis contains 538 complete meteorological seasons from MAM 1892
-through JJA 2026. January and February 1892 are excluded; JJA 2026 includes
-daily observations through 31 August 2026. Seasonal extrema use one extreme
-per block (`r=1`).
+The full-record fit has 538 seasons from MAM 1892 through JJA 2026 and uses
+four chains with 3,000 warm-up and 8,000 retained draws each. Convergence
+gates control which run reports can be interpreted or plotted.

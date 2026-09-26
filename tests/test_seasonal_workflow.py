@@ -139,17 +139,19 @@ def test_seasonal_reference_priors_have_declared_physical_scale():
     model,p=joint_model(data,c)
     assert model.copula.structure=='seasons'
     assert c['priors']['innovation_median']==dict(
-        level=0.014451332204168785,
-        trend=0.00010883964876422239,
-        season=0.008343480538225555)
-    assert c['priors']['initial_slope_sd']==0.0046387735335118195
+        level=0.01, trend=0.0001, season=0.01)
+    assert c['priors']['initial_slope_median']==0.001
+    assert c['priors']['initial_slope_sd']==pytest.approx(0.001/norm.ppf(.75))
     calibration=pd.DataFrame(p.shrinkage.calibration(period=4,**c['prior_calibration']))
-    assert calibration.loc[calibration.component.eq('initial_slope'),'initial_rate_sd_marginal'].iloc[0]==pytest.approx(.30,rel=.01)
+    assert calibration.loc[calibration.component.eq('initial_slope'),'initial_rate_sd_marginal'].iloc[0]==pytest.approx(.096,rel=.01)
     v=configured_variant(c,dict(shared_shrinkage={**c['priors']['shared_shrinkage'],
                         'log_sd':np.log(3.)},match_marginal_moments=True))
     _,vp=joint_model(data,v)
     widened=pd.DataFrame(vp.shrinkage.calibration(period=4,**c['prior_calibration']))
     np.testing.assert_allclose(calibration.displacement_sd_marginal,widened.displacement_sd_marginal)
+    changed=configured_variant(c,{'initial_slope_multiplier':2.})
+    assert changed['priors']['initial_slope_median']==pytest.approx(.002)
+    assert changed['priors']['initial_slope_sd']==pytest.approx(.002/norm.ppf(.75))
 
 
 def test_rank_ties_and_run_definition_across_season_boundary():

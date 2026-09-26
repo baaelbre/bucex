@@ -4,11 +4,12 @@
   "priors": {
     "innovation": "normal",
     "innovation_median": {
-      "level": 0.023365010330481075,
-      "trend": 0.00017597267032643508,
-      "season": 0.013489795003921634
+      "level": 0.016168066722416746,
+      "trend": 0.00016168066722416745,
+      "season": 0.016168066722416746
     },
-    "initial_slope_sd": 0.007499999999999999,
+    "initial_slope_sd": 0.0023970811591601665,
+    "initial_slope_median": null,
     "xi_prior": "normal",
     "xi_sd": 0.3,
     "xi_bounds": [
@@ -17,5 +18,5 @@
     ],
     "shared_shrinkage": null
   },
-  "output": "results/serra_187_seasonal_univariate"
+  "output": "results/serra_188_seasonal_univariate"
 }

@@ -315,7 +315,7 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                   "coefficient_reference_initialization": "deterministic, independent of current coefficients",
                   "shared_temporal_state": False, "hierarchical_model_selection": False,
                   "hierarchical_innovations": bool(priors.shrinkage and priors.shrinkage.medians),
-                  "hierarchical_initial_slopes": bool(priors.shrinkage and priors.shrinkage.initial_slope_sd is not None),
+                  "hierarchical_initial_slopes": bool(priors.shrinkage and "initial_slope" in priors.shrinkage.anchors),
                   "shared_shrinkage": None if priors.shrinkage is None else asdict(priors.shrinkage),
                   "shared_shrinkage_members": {} if shared is None else {c: [s.name for s in members] for c, members in shared.members.items()},
                   "innovation_marginal_prior": "normal scale mixture" if priors.shrinkage and priors.shrinkage.medians else "declared channel priors",

@@ -51,9 +51,11 @@ distribution is not Gaussian: multiplying this SD by 1.96 does not give its
 exact 95% interval. The hyperprior's own 95% scale interval is
 anchor*exp(±1.96*d), approximately [0.257,3.89] times the anchor.
 
-Initial slopes use the conditional normal SD directly; their conversion has
-no q divisor. The same exp(d²) inflation applies after integrating their
-lognormal shared SD. Hyperparameters are separate for the four coefficient
+For the 1.8.8 seasonal manuscript, the initial-slope scale is also the median
+absolute coefficient, so its conditional SD is the scale divided by q. The
+older `initial_slope_sd` convention instead uses the conditional SD directly.
+The same exp(d²) inflation applies after integrating either lognormal scale.
+Hyperparameters are separate for the four coefficient
 types; they are shared across responses, not across quantities with different
 units or dynamical roles.
 
@@ -64,11 +66,11 @@ COMPSTAT scales. The monthly innovation anchors are 0.008343480538,
 SDs are 0.379473, 0.196769 and 0.154919°C, and initial-rate SD is 0.30°C/decade.
 These replace the 1.8.2 exploratory quarter anchors in the draft workflow.
 
-The 1.8.5 seasonal reference uses separately declared per-season medians:
-level 0.01, slope 0.0001, seasonal 0.01 and initial slope 0.003. At H=120
+The 1.8.8 seasonal manuscript uses four per-season median-absolute anchors:
+level 0.01, slope 0.0001, seasonal 0.01 and initial slope 0.001. At H=120
 and 40 updates per decade, their integrated 30-year SDs are 0.263, 0.181
-and 0.186°C, with initial-rate SD 0.194°C/decade and initial-slope
-displacement 0.582°C. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
+and 0.186°C, with initial-rate SD 0.096°C/decade and initial-slope
+displacement 0.288°C. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
 [START_HERE](../START_HERE.md) for details. Hyperprior-width
 sensitivity uses `match_marginal_moments=true` to keep these effects fixed while
 changing log SD. Physical-effect sensitivity separately scales the anchors.
@@ -97,10 +99,13 @@ shared = bx.SharedShrinkage.from_effects(
 print(pd.DataFrame(shared.calibration(horizon=360, unit='degC')))
 ```
 
-`SharedShrinkage(medians=..., initial_slope_sd=...)` remains available. In that
-constructor the initial slope is **per update**; the `from_effects` constructor
+`SharedShrinkage(medians=..., initial_slope_sd=None,
+initial_slope_median=.001)` uses the same median-absolute convention for all
+four components. The legacy `initial_slope_sd` API remains available. Both
+initial-slope arguments are **per update**; the `from_effects` constructor
 explicitly converts from the stated rate unit. Omitting an innovation effect
-leaves its channel prior unpooled; `initial_slope_sd=None` disables its pooling.
+leaves its channel prior unpooled; setting both initial-slope arguments to None
+disables its pooling.
 `innovation_response_gains` is shared by calibration and fitted innovation
 effect diagnostics to keep the transition convention consistent.
 

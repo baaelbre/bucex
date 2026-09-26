@@ -93,42 +93,35 @@ def _band_panels(inputs, run, table, ylabel, *, zero=False):
 def _scale_panels(inputs, run):
     import matplotlib.pyplot as plt
 
-    figure, axes = plt.subplots(2, 3, figsize=(10.8, 6.5), sharex=True, layout="constrained")
-    for index, (name, axis) in enumerate(zip(SERIES, axes.flat)):
+    figure, axis = plt.subplots(figsize=(8.6, 4.4), layout="constrained")
+    offsets = np.linspace(-.19, .19, len(SERIES))
+    for name, offset in zip(SERIES, offsets):
         frame = inputs.csv(run / f"{name}_scale_by_season.csv").set_index("season").loc[list(SEASONS)]
-        x = np.arange(4)
+        x = np.arange(4) + offset
         color = _series_color(name)
-        axis.errorbar(x, frame["median"],
+        axis.errorbar(x, frame["median"], label=name,
                       yerr=[frame["median"] - frame.lower, frame.upper - frame["median"]],
-                      fmt="o-", color=color, capsize=3, lw=1.35)
-        axis.set_title(name, loc="left", weight="bold")
-        axis.set_xticks(x, SEASONS)
-        if index % 3 == 0:
-            axis.set_ylabel("observation scale / °C")
+                      fmt="o", color=color, capsize=2.5, ms=4,
+                      markerfacecolor=color if name.endswith('m') else 'white')
+        axis.plot(x, frame["median"], color=color, lw=1.1,
+                  ls='-' if name.endswith('m') else '--')
+    axis.set(xticks=np.arange(4), xticklabels=SEASONS,
+             xlabel="season", ylabel="observation scale / °C")
+    axis.legend(ncol=3, fontsize=8)
     return figure
-
-
-def _acf(values, lags=8):
-    values = np.asarray(values, dtype=float)
-    values = values - values.mean()
-    denominator = np.dot(values, values)
-    if denominator <= 0:
-        return np.zeros(lags + 1)
-    return np.asarray([1.] + [np.dot(values[:-lag], values[lag:]) / denominator
-                              for lag in range(1, lags + 1)])
 
 
 def _pit_panels(inputs, run):
     import matplotlib.pyplot as plt
 
-    figure = plt.figure(figsize=(12.4, 8.8), layout="constrained")
+    figure = plt.figure(figsize=(12.2, 7.2), layout="constrained")
     outer = figure.add_gridspec(2, 3)
     for position, name in enumerate(SERIES):
         frame = inputs.csv(run / f"{name}_smoothed_pit.csv", parse_dates=["time"])
         pit = frame.pit.to_numpy(float)
         scores = norm.ppf(np.clip(pit, 1e-10, 1 - 1e-10))
-        inner = outer[position // 3, position % 3].subgridspec(2, 2, wspace=.28, hspace=.34)
-        axes = [figure.add_subplot(inner[i, j]) for i in range(2) for j in range(2)]
+        inner = outer[position // 3, position % 3].subgridspec(1, 2, wspace=.28)
+        axes = [figure.add_subplot(inner[0, j]) for j in range(2)]
         axes[0].hist(pit, bins=np.linspace(0, 1, 11), color=_series_color(name), alpha=.72)
         axes[0].axhline(len(pit) / 10, color=INK, lw=.7, ls="--")
         axes[0].set(title=name, xlabel="PIT", ylabel="count")
@@ -138,15 +131,6 @@ def _pit_panels(inputs, run):
         axes[1].scatter(theoretical, ordered, s=5, color=_series_color(name), alpha=.6)
         axes[1].plot(limits, limits, color=INK, lw=.7, ls="--")
         axes[1].set(xlabel="normal quantile", ylabel="score quantile")
-        axes[2].plot(frame.time, scores, color=_series_color(name), lw=.55)
-        axes[2].axhline(0, color=INK, lw=.65)
-        axes[2].set(xlabel="time", ylabel="normal score")
-        correlations = _acf(scores)
-        axes[3].vlines(np.arange(1, len(correlations)), 0, correlations[1:], color=_series_color(name), lw=1.2)
-        bound = 1.96 / np.sqrt(len(scores))
-        axes[3].axhline(bound, color=INK, lw=.6, ls="--")
-        axes[3].axhline(-bound, color=INK, lw=.6, ls="--")
-        axes[3].set(xlabel="lag / seasons", ylabel="ACF", xlim=(.5, len(correlations) - .5))
         for axis in axes:
             axis.tick_params(labelsize=7.5)
             axis.xaxis.label.set_size(8)
@@ -546,7 +530,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True,
                         help="Timestamped final joint report from research.seasonal.fit.")
-    parser.add_argument("--output", type=Path, default=Path("results/serra_187_manuscript_figures"))
+    parser.add_argument("--output", type=Path, default=Path("results/serra_188_manuscript_figures"))
     parser.add_argument("--formats", nargs="+", choices=("png", "pdf", "svg"), default=("png", "pdf"))
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--allow-unconverged", action="store_true",
