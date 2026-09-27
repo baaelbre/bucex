@@ -562,7 +562,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True,
                         help="Timestamped final joint report from research.seasonal.fit.")
-    parser.add_argument("--output", type=Path, default=Path("results/serra_189_manuscript_figures"))
+    parser.add_argument("--output", type=Path, default=Path("results/serra_190_manuscript_figures"))
     parser.add_argument("--formats", nargs="+", choices=("png", "pdf", "svg"), default=("png", "pdf"))
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--allow-unconverged", action="store_true",

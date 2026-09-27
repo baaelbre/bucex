@@ -1,6 +1,6 @@
 {
   "extends": "../../monthly/config/main.json",
-  "_comment": "BUCEX 1.8.9 seasonal reference: median-absolute shared-scale anchors (0.01, 0.0001, 0.01, 0.01) per seasonal transition; initial seasonal coefficient SD 20 C. The 1.8.6.1 initialization correction is retained.",
+  "_comment": "BUCEX 1.9.0 reference: the tested log(3) hierarchy with all four median-absolute anchors second-moment matched to 1.8.9. Seasonal initial coefficient SD remains 20 C.",
   "data": {
     "frequency": "seasonal",
     "daily_source": "data/Uccle_31_08_26.csv",
@@ -19,12 +19,12 @@
   "priors": {
     "innovation": "normal",
     "innovation_median": {
-      "level": 0.01,
-      "trend": 0.0001,
-      "season": 0.01
+      "level": 0.004836005867750226,
+      "trend": 4.836005867750226e-05,
+      "season": 0.004836005867750226
     },
-    "initial_slope_sd": 0.01482602218505602,
-    "initial_slope_median": 0.01,
+    "initial_slope_sd": 0.007169873028232594,
+    "initial_slope_median": 0.004836005867750226,
     "seasonal_initial_sd": 20.0,
     "xi_prior": "normal",
     "xi_sd": 0.3,
@@ -38,7 +38,7 @@
         "slope",
         "seasonal"
       ],
-      "log_sd": 0.6931471805599453,
+      "log_sd": 1.0986122886681098,
       "pool_initial_slope": true
     }
   },
@@ -71,14 +71,42 @@
     "eta": 1.0,
     "prior_sd": 0.25
   },
-  "output": "results/serra_189_seasonal",
+  "output": "results/serra_190_seasonal",
   "validation": {
     "training_ends": [
       "2015-11",
       "2020-11"
     ],
     "horizon": 20,
-    "draws": 2000,
+    "draws": 4000,
     "save_fits": true
+  },
+  "credible_interval": 0.95,
+  "save_fits": true,
+  "trace_exports": false,
+  "forecast_draws": 4000,
+  "predictive_check_draws": 2000,
+  "innovation_effects": {
+    "years": [
+      10,
+      30
+    ],
+    "thresholds": [
+      0.05,
+      0.1,
+      0.2
+    ]
+  },
+  "mcmc": {
+    "chains": 4,
+    "chain_workers": 4,
+    "warmup": 2000,
+    "draws": 4000,
+    "progress_every": 100
+  },
+  "diagnostic_thresholds": {
+    "min_chains": 4,
+    "max_rhat": 1.01,
+    "min_ess": 400
   }
 }

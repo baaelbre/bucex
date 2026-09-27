@@ -1,27 +1,44 @@
 {
   "extends": "main.json",
-  "_comment": "Main-text prior sensitivity. Width variants preserve the marginal second moments of the signed structural coefficients; shape variants target the extreme-value risks.",
+  "_comment": "1.9.0: width and anchor controls around the tested wide reference; normal-shape and shape-support sensitivities retained.",
   "variants": [
     {
       "name": "reference"
     },
     {
-      "name": "tighter_hyperprior",
+      "name": "old_reference",
       "shared_shrinkage": {
-        "components": ["level", "slope", "seasonal"],
-        "log_sd": 0.4054651081081644,
-        "pool_initial_slope": true
+        "components": [
+          "level",
+          "slope",
+          "seasonal"
+        ],
+        "pool_initial_slope": true,
+        "log_sd": 0.6931471805599453
       },
       "match_marginal_moments": true
     },
     {
-      "name": "wider_hyperprior",
+      "name": "wider_log4",
       "shared_shrinkage": {
-        "components": ["level", "slope", "seasonal"],
-        "log_sd": 1.0986122886681098,
-        "pool_initial_slope": true
+        "components": [
+          "level",
+          "slope",
+          "seasonal"
+        ],
+        "pool_initial_slope": true,
+        "log_sd": 1.3862943611198906
       },
       "match_marginal_moments": true
+    },
+    {
+      "name": "wide_original_anchors",
+      "multipliers": {
+        "level": 2.0678221394822525,
+        "trend": 2.0678221394822525,
+        "season": 2.0678221394822525
+      },
+      "initial_slope_multiplier": 2.0678221394822525
     },
     {
       "name": "xi_narrow",
@@ -29,17 +46,23 @@
     },
     {
       "name": "xi_wide",
-      "xi_sd": 0.60
+      "xi_sd": 0.6
     },
     {
       "name": "xi_bounded",
-      "xi_sd": 0.30,
-      "xi_bounds": [-0.5, 0.5]
+      "xi_sd": 0.3,
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ]
     },
     {
       "name": "xi_uniform_bounded",
       "xi_prior": "uniform",
-      "xi_bounds": [-0.5, 0.5]
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ]
     }
   ],
   "assessment": {
@@ -52,8 +75,5 @@
     "chain_workers": 4,
     "progress_every": 100
   },
-  "save_fits": false,
-  "forecast_draws": 2000,
-  "predictive_check_draws": 200,
-  "output": "results/serra_189_manuscript_sensitivity"
+  "output": "results/serra_190_manuscript_sensitivity"
 }

@@ -1,7 +1,7 @@
 {
   "extends": "main.json",
   "_comment": "Reviewer comment 5: seven predeclared nonoverlapping five-year seasonal forecast windows; inspect per-fold convergence before interpretation. 99% tails remain sparse even with 140 forecast cases per response.",
-  "output": "results/serra_189_seasonal_comment5",
+  "output": "results/serra_190_seasonal_comment5",
   "mcmc": {
     "warmup": 2000,
     "draws": 4000,
@@ -20,6 +20,6 @@
     ],
     "horizon": 20,
     "draws": 4000,
-    "save_fits": false
+    "save_fits": true
   }
 }

@@ -20,10 +20,12 @@ def selected_config(config, *, series=None, copula=False):
     return config
 
 
-def run(config, *, series=None):
+def run(config, *, series=None, directory=None):
     config = selected_config(config, series=series)
     data = bx.load_uccle_multiseries(**config["data"])
-    directory = new_run(config["output"], f"uccle_{config['analysis']}")
+    directory = (new_run(config["output"], f"uccle_{config['analysis']}")
+                 if directory is None else Path(directory))
+    directory.mkdir(parents=True, exist_ok=True)
     frequency = config['data'].get('frequency','monthly')
     print(f"Fitting {data.index[0]:%Y-%m} through {data.attrs.get('last_included_day', str(data.index[-1]))}: {len(data)} {frequency} blocks.",flush=True)
     print(f"MCMC: {config['mcmc']['chains']} chains, {config['mcmc']['warmup']} warmup, {config['mcmc']['draws']} retained per chain.",flush=True)

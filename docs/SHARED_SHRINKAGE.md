@@ -1,4 +1,4 @@
-# Shared regularization in BUCEX 1.8.9
+# Shared regularization in BUCEX 1.9.0
 
 Every channel retains its own realized location trajectory, initial slope,
 innovation SDs, seasonal pattern and observation parameters. Hierarchical
@@ -23,13 +23,22 @@ zero rather than a learned common warming rate. All four hyperparameters are
 sampled jointly with the channel parameters and states. Conditional coefficient
 priors are normal; integrating shared scales gives normal scale mixtures.
 
-With log_sd=log(2), each scale's 95% hyperprior interval is about
-[0.257, 3.89] times its anchor. These are soft regularization assumptions.
+The 1.9.0 seasonal reference uses log_sd=log(3), giving each scale a 95%
+hyperprior interval of approximately [0.116,8.61] times its anchor. The anchors
+are (0.004836005867750226, 0.00004836005867750226, 0.004836005867750226,
+0.004836005867750226) for level, slope, seasonal and initial slope. They preserve
+the old marginal coefficient second moments while widening the log-scale prior.
+See [the run sheet](../FINAL_RUN.md) for the matched log(2)/log(4), fixed-anchor
+and one-component-at-a-time comparisons. Greater width allows smaller and
+larger shared scales; it does not guarantee a direction of posterior shrinkage.
+
 The seasonal manuscript uses `initial_slope_median`, so all four shared scales
-are conditional absolute-coefficient medians. The older
-`initial_slope_sd` API remains available for loading historical fits and for
-monthly analyses; it instead denotes a conditional normal SD. The calibration
-table records which convention was used. See [physical calibration](PRIOR_CALIBRATION.md).
+are conditional absolute-coefficient medians. The legacy `initial_slope_sd`
+API remains available and instead denotes a conditional normal SD. The rate-SD
+report applies the matching conversion: 40*m/q for a median-absolute seasonal
+anchor, or 40*m for an SD anchor. The calibration table records the convention.
+See [physical calibration](PRIOR_CALIBRATION.md). Generic/monthly defaults are
+unchanged; the new seasonal choice is an explicit research configuration.
 
 ## API
 

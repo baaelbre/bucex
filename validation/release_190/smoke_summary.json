@@ -1,0 +1,61 @@
+{
+  "version": "1.9.0",
+  "scope": "Computational smoke only; not a converged posterior.",
+  "chains": 4,
+  "draws_per_chain": 4,
+  "n_blocks": 22,
+  "forecast_seasons": 120,
+  "forecast_draws": 40,
+  "exact_posterior_target": true,
+  "saved_fit_roundtrip": true,
+  "report_and_sensitivity_figures": true,
+  "execution": {
+    "chain_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "chain_workers": 4,
+    "chain_workers_requested": 4,
+    "numerical_threads_per_chain": 1,
+    "seed_states": [
+      {
+        "entropy": 56100,
+        "pool_size": 4,
+        "spawn_key": [
+          0
+        ]
+      },
+      {
+        "entropy": 56100,
+        "pool_size": 4,
+        "spawn_key": [
+          1
+        ]
+      },
+      {
+        "entropy": 56100,
+        "pool_size": 4,
+        "spawn_key": [
+          2
+        ]
+      },
+      {
+        "entropy": 56100,
+        "pool_size": 4,
+        "spawn_key": [
+          3
+        ]
+      }
+    ],
+    "start_method": "spawn",
+    "worker_pids": [
+      11,
+      12,
+      8,
+      13
+    ]
+  },
+  "numerical_status": "needs_review"
+}

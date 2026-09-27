@@ -85,7 +85,7 @@ def run(directory, output, *, allow_unconverged=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--run', type=Path, required=True)
-    parser.add_argument('--output', type=Path, default=Path('results/serra_189_dynamic_comparison'))
+    parser.add_argument('--output', type=Path, default=Path('results/serra_190_dynamic_comparison'))
     parser.add_argument('--allow-unconverged', action='store_true', help='For figure/table development only.')
     args = parser.parse_args()
     print(run(args.run, args.output, allow_unconverged=args.allow_unconverged))

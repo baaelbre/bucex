@@ -107,6 +107,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     target_table = fit.contrast_diagnostics(targets, credible_interval=level)
     target_table['probability_positive'] = [float(np.mean(targets[key] > 0)) for key in target_table.index]
     target_table.to_csv(directory/'scientific_targets.csv')
+    target_table.to_csv(directory/'period_and_endpoint_targets.csv')
     parameter_table = convergence_parameters(diagnostic['parameters'], fit.n_chains)
     assessment = bx.convergence_assessment({'parameters': parameter_table, 'scientific_targets': target_table},
         **config.get('diagnostic_thresholds', {}))
@@ -115,7 +116,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         bx.save_config(config['contrasts'], directory/'contrast_definitions.json')
         target_table.loc[[key for key in target_table.index if '.' in key]].to_csv(directory/'period_contrasts.csv')
     bx.residual_serial_check(fit,lags=(1,4 if seasonal_blocks else 12),
-        draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
+        draws=config.get('predictive_check_draws',200),seed=config['seed'],level=level).assign(envelope_level=level).to_csv(
         directory/'residual_serial.csv',index=False)
     metrics = fit.sampler_diagnostics.get('draw_metrics',{})
     if metrics:
@@ -141,7 +142,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             bx.forecast_uncertainty(forecast,channel=name,levels=(level,)).to_csv(
                 directory/(label+'_forecast_uncertainty.csv'),index=False)
     predictive = fit.posterior_predictive(draws=config.get('predictive_check_draws',200),seed=config['seed'])
-    bx.posterior_predictive_checks(fit,prediction=predictive,seed=config['seed']).to_csv(
+    bx.posterior_predictive_checks(fit,prediction=predictive,seed=config['seed'],level=level).assign(envelope_level=level).to_csv(
         directory/'posterior_predictive_checks.csv',index=False)
     names = fit.channel_names if fit.is_multiseries_model else (None,)
     shape_rows = []
@@ -160,12 +161,10 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             band(fit.component_draws('seasonal',channel=name),label+'_seasonal')
         band(fit.channel_eta_draws(name,original_scale=True) if name else fit.eta_draws(original_scale=True),label+'_location')
         band(fit.sigma_draws(channel=name),label+'_observation_scale',ylabel='observation scale / °C')
-        effects=fit.innovation_effect_draws(rate_multiplier,channel=name,combine_chains=False)
-        practical=fit.contrast_diagnostics(effects,credible_interval=level)
-        practical['probability_effect_sd_over_0.1']= [np.mean(effects[key]>.1) for key in practical.index]
-        practical['horizon_months']=120
-        practical['horizon_updates']=rate_multiplier
-        practical.to_csv(directory/(label+'_innovation_effects.csv'))
+        from research.monthly.effects import write_innovation_effects
+        write_innovation_effects(fit, directory, label, channel=name,
+            steps_per_year=rate_multiplier/10, level=level,
+            **config.get('innovation_effects', {}))
         if channel.family=='gev':
             band(fit.return_level_draws(100,channel=name),label+'_return_level_100_blocks')
             lower, upper = channel.observation.xi_bounds
@@ -218,10 +217,10 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
     if shape_rows:
         pd.DataFrame(shape_rows).to_csv(directory/'shape_support.csv',index=False)
     if fit.is_multiseries_model:
-        bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed']).to_csv(
+        bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed'],level=level).assign(envelope_level=level).to_csv(
             directory/'residual_dependence.csv',index=False)
         if fit.n_time>=36:
-            bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed'],by_phase=True).to_csv(
+            bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed'],level=level,by_phase=True).assign(envelope_level=level).to_csv(
                 directory/('residual_dependence_by_season.csv' if seasonal_blocks else 'residual_dependence_by_month.csv'),index=False)
         if fit.model.copula is not None:
             fit.copula_summary(credible_interval=level).to_csv(directory/'copula_correlations.csv')

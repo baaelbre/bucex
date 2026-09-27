@@ -1,11 +1,11 @@
 {
   "extends": "main.json",
-  "_comment": "1.8.9 manuscript reference; 30-year seasonal forecast with 12,000 predictive draws. The four-chain fit remains a long job and requires convergence review.",
+  "_comment": "1.9.0 long reference: four chains; wide calibrated hierarchy; 120-season forecast. Requires numerical review.",
   "mcmc": {
     "warmup": 3000,
     "draws": 8000
   },
   "forecast_draws": 12000,
-  "predictive_check_draws": 400,
-  "output": "results/serra_189_seasonal_final"
+  "predictive_check_draws": 2000,
+  "output": "results/serra_190_seasonal_final"
 }

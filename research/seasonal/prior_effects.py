@@ -46,7 +46,7 @@ def run(config, output, *, draws=50000, seed=188):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', default='research/seasonal/config/final.json')
-    parser.add_argument('--output', default='results/serra_189_prior_effects')
+    parser.add_argument('--output', default='results/serra_190_prior_effects')
     parser.add_argument('--draws', type=int, default=50000)
     parser.add_argument('--seed', type=int, default=188)
     args = parser.parse_args()

@@ -1,19 +1,22 @@
-# BUCEX 1.8.9 — seasonal manuscript
+# BUCEX 1.9.0
 
-Unpack on BIOBOT, install once with `python3 -m pip install -e ".[plot,test]"`,
-and run `bash bash_scripts/submit_biobot.sh paper` from the release root.
-This submits 106 separate four-chain analysis jobs as an eight-way PBS array,
-plus five separate final fits. Use `BUCEX_MAX_JOBS=10` if ten 4-CPU/20-GB
-allocations can run concurrently; set `BUCEX_PYTHON` to your environment's
-absolute Python path if needed. See [FINAL_RUN.md](FINAL_RUN.md) for checks,
-submission variants, collection, and figure generation.
+The complete commands, settings and result audit are in [FINAL_RUN.md](FINAL_RUN.md).
+In the unpacked release directory, use your existing VSC environment:
 
-The seasonal priors use median-absolute anchors `(0.01, 0.0001, 0.01, 0.01)`
-and initial seasonal coefficient SD 20°C. The full reference fit makes 120
-seasonal (30-year) predictions with 12,000 predictive draws and 95% intervals.
-An integrated initial-rate prior SD near 0.96°C/decade follows from the
-new initial-slope median; review its sensitivity before drawing conclusions.
+```bash
+export BUCEX_PYTHON="$(command -v python3)"
+"$BUCEX_PYTHON" -m pip install -e '.[plot,test]'
 
-The last four-chain reference took about ten hours in the previous release.
-Independent jobs can overlap, but neither their completion within three hours
-nor adequate convergence is assumed.
+# Shorter screen: 25 posterior fits, 2 chains per fit.
+bash RUN_SCREEN_EXPERIMENTS.sh
+
+# Separate full paper runs: 25 posterior fits, 4 chains per fit.
+bash RUN_PAPER_EXPERIMENTS.sh
+```
+
+Use one tier at a time as appropriate. These commands do not submit validation
+or pre-2019 jobs. Add `--dry-run` to inspect a submission without launching it.
+Both tiers save fit archives and 30-year forecasts with 95% intervals.
+The reference has log(3) hyperprior width, with second-moment-matched anchors;
+24 alternatives examine widths, individual anchors, shape, scale and dependence.
+Paper fits require numerical review before their results enter the manuscript.

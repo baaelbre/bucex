@@ -1,4 +1,4 @@
-# BUCEX 1.8.9
+# BUCEX 1.9.0
 
 Bayesian unobserved component models for Gaussian temperature summaries and GEV block extremes. This release supports private structural trajectories for each series, continuous innovation priors, optional shared shrinkage of **prior scales**, and an optional Gaussian residual copula. The research workflows are [monthly](research/monthly/README.md) and [seasonal](research/seasonal/README.md).
 
@@ -7,7 +7,9 @@ python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__)"
 ```
 
-The monthly window is March 1892–August 2026 (1,614 months). The seasonal reference has 538 complete DJF/MAM/JJA/SON blocks, through JJA 2026. Version 1.8.9 uses the manuscript's shared-scale medians per season `(0.01, 0.0001, 0.01, 0.01)` for level, slope, seasonality and initial slope, all defined as conditional median absolute coefficients. The initial seasonal coefficient SD is 20°C. The 1.8.6.1 seasonal-state initialization correction is retained. [FINAL_RUN.md](FINAL_RUN.md) gives the independent PBS jobs and result audit.
+The seasonal reference has 538 complete DJF/MAM/JJA/SON blocks, MAM 1892–JJA 2026. Version 1.9.0 adopts the tested log(3) hyperprior width, with all four median-absolute anchors second-moment matched to 1.8.9. The initial seasonal coefficient SD stays 20°C. The monthly workflow and generic API retain their own declared settings. [FINAL_RUN.md](FINAL_RUN.md) gives the **25-fit screen and paper commands**: the new reference and 24 sensitivity alternatives, each with a saved fit and a 30-year forecast. Validation and pre-2019 fits are separate batches.
+
+The release adds 10- and 30-year innovation-effect summaries and practical-magnitude probabilities, corrects the initial-slope hyperparameter's displayed physical units, and applies 95% envelopes consistently in the research reports. These are software/configuration changes; the new production fits still need to be run and assessed.
 
 ## Model and fit
 

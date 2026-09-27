@@ -1,217 +1,212 @@
-"""One independent seasonal manuscript fit per PBS array element.
-
-Use --list to inspect the stable, one-based index before submitting. A screen
-is for triage only; paper jobs retain the declared four-chain configurations.
-"""
+"""One fit per job. Default: posterior sensitivity; validation is a separate batch."""
 from __future__ import annotations
-
 import argparse
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
 import traceback
-
+import numpy as np
 import bucex as bx
 from research.monthly.experiment import configured_variant
 from research.monthly.run import run as fit_full
-from research.monthly.sensitivity import run as fit_sensitivity
 from research.monthly.validate import validate
-from research.seasonal.compare import run as fit_comparison
-from research.seasonal.grid import settings as grid_settings
 
-
-STUDIES = ('manuscript_sensitivity', 'physical_sensitivity', 'adequacy',
-           'dependence_sensitivity', 'pre2019_sensitivity')
-CONFIG = Path('research/seasonal/config')
-ROOT = Path('results/serra_189_parallel')
-FINAL = {
-    'reference': 'final', 'pre2019': 'pre2019',
-    'constant_copula': 'constant_copula_full',
-    'independence': 'independence_full',
-    'monthly_supplement': 'research/monthly/config/final.json',
-}
-
+PROJECT = Path(__file__).resolve().parents[2]
+CONFIG = PROJECT/'research/seasonal/config'
+ROOT = Path('results/serra_190_parallel')
+BATCHES = ('posterior', 'reference', 'pre2019', 'validation', 'all')
+STUDIES = ('manuscript_sensitivity', 'physical_sensitivity', 'adequacy', 'dependence_sensitivity')
 
 @dataclass(frozen=True)
 class Task:
     id: str
     kind: str
-    study: str = ''
-    variant: str = ''
+    study: str
+    variant: str
     origin: str = ''
-    model: str = ''
 
 
-def tasks(group='array'):
-    """Every array task is one posterior fit or one forecast-origin refit."""
-    items = [Task('posterior_reference', 'posterior', 'manuscript_sensitivity', 'reference')]
-    for study in STUDIES:
-        config = bx.load_config(CONFIG/f'{study}.json')
-        for entry in config['variants']:
-            name = entry['name']
-            if name == 'reference':
-                if study == 'pre2019_sensitivity':
-                    items.append(Task('posterior_pre2019_reference', 'posterior', study, name))
-                continue
-            items.append(Task(f'posterior_{study}_{name}', 'posterior', study, name))
-    for study in STUDIES[:-1]:
-        config = bx.load_config(CONFIG/f'{study}.json')
-        for entry in config['variants']:
-            if entry['name'] == 'reference' and study != STUDIES[0]:
-                continue
-            for origin in config['validation']['training_ends']:
-                items.append(Task(f'forecast_{study}_{entry["name"]}_{origin}',
-                                  'forecast', study, entry['name'], origin))
-    for origin in bx.load_config(CONFIG/'comment5.json')['validation']['training_ends']:
-        items.append(Task(f'comment5_{origin}', 'comment5', origin=origin))
-    grid = bx.load_config(CONFIG/'grid.json')
-    for name, _ in grid_settings(grid):
-        if name == 'reference':
-            continue  # Exactly the same reference folds already run above.
-        for origin in ('2015-11', '2020-11'):
-            items.append(Task(f'grid_{name}_{origin}', 'grid', variant=name, origin=origin))
-    for origin in bx.load_config(CONFIG/'compare_full.json')['comparison']['training_ends']:
-        for model in ('monthly', 'seasonal'):
-            items.append(Task(f'blocks_{model}_{origin}', 'blocks', origin=origin, model=model))
-    if group == 'array':
-        return items
-    if group == 'long':
-        return [Task(f'final_{name}', 'final', study=path)
-                for name, path in FINAL.items()]
-    raise ValueError('group must be array or long')
+def settings():
+    return bx.load_config(CONFIG/'experiments.json')
 
 
-def task_config(task, tier):
-    if task.kind == 'final':
-        path = Path(task.study) if task.study.endswith('.json') else CONFIG/f'{task.study}.json'
-        return bx.load_config(path)
-    if task.kind in ('posterior', 'forecast'):
-        config = bx.load_config(CONFIG/f'{task.study}.json')
-        if task.kind == 'forecast':
-            entry = next(v for v in config['variants'] if v['name'] == task.variant)
-            config = configured_variant(config, entry)
-            config['validation']['training_ends'] = [task.origin]
-            config['validation']['save_fits'] = False
-        else:
-            config['variants'] = [next(v for v in config['variants']
-                                       if v['name'] == task.variant)]
-            # The historical posterior paths and targets matter here; save a
-            # short forecast in the report to avoid 30-year replication in
-            # every prior sensitivity fit.
-            config['forecast_horizon'] = 4
-            config['forecast_draws'] = 1000
-    elif task.kind == 'comment5':
-        config = bx.load_config(CONFIG/'comment5.json')
-        config['validation']['training_ends'] = [task.origin]
-    elif task.kind == 'grid':
-        source = bx.load_config(CONFIG/'grid.json')
-        config = next(local for name, local in grid_settings(source) if name == task.variant)
-        config['validation'].update(training_ends=[task.origin], horizon=20, draws=4000,
-                                    save_fits=False)
-        config['mcmc'].update(chains=4, chain_workers=4, warmup=2000, draws=4000)
-        config['diagnostic_thresholds'] = bx.load_config(CONFIG/'main.json')['diagnostic_thresholds']
-        config.pop('mixing_gate', None)
-    elif task.kind == 'blocks':
-        config = bx.load_config(CONFIG/'compare_full.json')
-        config['comparison']['training_ends'] = [task.origin]
-    else:
-        raise ValueError(task.kind)
-    config['figures'] = False
-    config['save_fits'] = False
-    config['trace_exports'] = False
-    if tier == 'screen':
-        config['mcmc'].update(chains=2, chain_workers=2, warmup=700, draws=1300)
-        config['diagnostic_thresholds'].update(min_chains=2, max_rhat=1.05, min_ess=100)
-        if task.kind == 'blocks':
-            config['comparison']['draws'] = 1500
-        elif task.kind in ('forecast', 'comment5', 'grid'):
-            config['validation']['draws'] = 1500
-        config['predictive_check_draws'] = 100
-    return config
+def resource_class(task, tier):
+    return ('long' if tier == 'paper' and task.variant == 'reference'
+            and task.kind in ('posterior', 'pre2019') else 'standard')
 
 
-def execute(task, *, tier='paper', root=ROOT):
-    if tier not in ('paper', 'screen'):
-        raise ValueError('Unknown tier.')
-    directory = Path(root)/tier/task.id
-    directory.mkdir(parents=True, exist_ok=True)
-    config = task_config(task, tier)
-    digest = hashlib.sha256(json.dumps(config, sort_keys=True, default=str).encode()).hexdigest()
-    manifest = directory/'task.json'
+def tasks(batch='posterior', *, tier='paper', resource='all'):
+    """Stable one-based ordering within the named batch and resource class."""
+    if batch not in BATCHES or tier not in ('screen','paper') or resource not in ('all','standard','long'):
+        raise ValueError('Unknown batch, tier or resource class.')
+    spec = settings();variants = {}
+    for study in spec['studies']:
+        for variant in bx.load_config(CONFIG/f'{study}.json')['variants']:
+            name=variant['name']
+            if name=='reference' and name in variants:continue
+            if name in variants:raise ValueError(f'Duplicate variant: {name}')
+            variants[name]=study
+    posterior=[Task('posterior_'+v,'posterior',s,v) for v,s in variants.items()]
+    record=[Task('pre2019_'+v['name'],'pre2019','pre2019_sensitivity',v['name'])
+            for v in bx.load_config(CONFIG/'pre2019_sensitivity.json')['variants']]
+    forecasts=[Task('forecast_reference_'+o,'forecast',variants['reference'],'reference',o)
+               for o in spec['reference_validation_origins']]
+    for v in spec['validation_variants']:
+        if v=='reference' or v not in variants:raise ValueError(f'Invalid validation variant: {v}')
+        forecasts.extend(Task(f'forecast_{v}_{o}','forecast',variants[v],v,o)
+                         for o in spec['sensitivity_validation_origins'])
+    all_tasks=posterior+record+forecasts
+    if len({t.id for t in all_tasks})!=len(all_tasks):raise ValueError('Duplicate task IDs.')
+    chosen={'posterior':posterior,'reference':posterior[:1],'pre2019':record,
+            'validation':forecasts,'all':all_tasks}[batch]
+    return [t for t in chosen if resource=='all' or resource_class(t,tier)==resource]
+
+
+def task_config(task,tier):
+    if tier not in ('screen','paper'):raise ValueError('Unknown tier.')
+    source=bx.load_config(CONFIG/f'{task.study}.json')
+    entry=next(v for v in source['variants'] if v['name']==task.variant)
+    c=configured_variant(source,entry);c.pop('variants',None);c['variant']=deepcopy(entry)
+    budget=settings()['tiers'][tier]
+    c['mcmc'].update(budget['mcmc']);c['diagnostic_thresholds']=deepcopy(budget['diagnostic_thresholds'])
+    for field in ('forecast_draws','predictive_check_draws','save_fits','figures','trace_exports'):
+        c[field]=budget[field]
+    c['validation'].update(draws=budget['validation_draws'],save_fits=budget['save_fits'])
+    if task.kind=='forecast':c['validation'].update(training_ends=[task.origin],horizon=20)
+    elif task.kind=='pre2019':
+        c['forecast_horizon']=1
+        if tier=='paper':c['forecast_draws']=10000
+    else:c['forecast_horizon']=120
+    if resource_class(task,tier)=='long':
+        final=bx.load_config(CONFIG/'final.json');c['mcmc']=deepcopy(final['mcmc'])
+        if task.kind=='posterior':c['forecast_draws']=final['forecast_draws']
+    c['credible_interval']=.95
+    c['experiment']=dict(task_id=task.id,tier=tier,batch_kind=task.kind,
+                         reference='1.9.0 wide, second-moment matched')
+    c['output']=str(ROOT/tier/task.id/'report')
+    return c
+
+
+def fingerprint(config):
+    """Do not pool changed source, settings or daily observations under one ID."""
+    digest=hashlib.sha256(json.dumps(config,sort_keys=True).encode()).hexdigest()
+    source=hashlib.sha256()
+    for folder in ('bucex','research'):
+        for path in sorted((PROJECT/folder).rglob('*.py')):
+            source.update(str(path.relative_to(PROJECT)).encode());source.update(path.read_bytes())
+    data=Path(config['data']['daily_source'])
+    if not data.is_absolute():data=PROJECT/data
+    return dict(config_sha256=digest,source_sha256=source.hexdigest(),
+                daily_sha256=hashlib.sha256(data.read_bytes()).hexdigest())
+
+
+def execute(task,*,tier='paper',root=ROOT):
+    directory=Path(root)/tier/task.id;directory.mkdir(parents=True,exist_ok=True)
+    c=task_config(task,tier);identity=dict(bucex_version=bx.__version__,**fingerprint(c))
+    manifest=directory/'task.json'
     if manifest.exists():
-        previous = json.loads(manifest.read_text())
-        if previous.get('config_sha256') != digest or previous.get('bucex_version') != bx.__version__:
-            raise ValueError(f'{directory}: saved configuration or package version changed')
-        if previous.get('status') == 'completed':
-            print(f'{task.id}: already completed at {previous["result"]}', flush=True)
+        previous=bx.load_config(manifest)
+        if any(previous.get(k)!=v for k,v in identity.items()):
+            raise ValueError(f'{directory}: configuration, source or data changed; use a new results root')
+        if previous.get('status')=='completed':
+            print(f'{task.id}: completed ({previous.get("numerical_status")}); {previous["result"]}',flush=True)
             return Path(previous['result'])
-        raise RuntimeError(f'{directory}: incomplete prior attempt; inspect it, then remove task.json to retry')
-    meta = dict(task=task.__dict__, tier=tier, bucex_version=bx.__version__,
-                config_sha256=digest, status='running', started=datetime.now(timezone.utc).isoformat())
-    manifest.write_text(json.dumps(meta, indent=2)+'\n')
-    bx.save_config(config, directory/'resolved_config.json')
+        raise RuntimeError(f'{directory}: incomplete prior attempt; inspect the scheduler and use a fresh results root to retry')
+    meta=dict(task=asdict(task),tier=tier,**identity,status='running',started=datetime.now(timezone.utc).isoformat())
+    with manifest.open('x') as handle:json.dump(meta,handle,indent=2)
+    bx.save_config(c,directory/'resolved_config.json')
     try:
-        if task.kind == 'posterior':
-            result = fit_sensitivity(config, variants=[task.variant], directory=directory/'sensitivity')
-        elif task.kind in ('forecast', 'comment5', 'grid'):
-            result = validate(config, directory=directory/'validation')
-        elif task.kind == 'blocks':
-            result = fit_comparison(config, directory=directory/'comparison_fit',
-                                    models=(task.model,), aggregate=False)
-        else:
-            result = fit_full(config)
-        meta.update(status='completed', result=str(Path(result).resolve()),
-                    finished=datetime.now(timezone.utc).isoformat())
-        if task.kind == 'posterior':
-            check = bx.load_config(Path(result)/task.variant/'joint'/'convergence.json')
-            meta['numerical_status'] = check['status']
-        elif task.kind in ('forecast', 'comment5', 'grid'):
+        if task.kind=='forecast':
+            result=validate(c,directory=directory/'report')
             import pandas as pd
-            meta['numerical_status'] = pd.read_csv(Path(result)/'joint'/'folds.csv').numerical_status.iloc[0]
-        elif task.kind == 'blocks':
-            check = bx.load_config(Path(result)/task.model/task.origin/'convergence.json')
-            meta['numerical_status'] = check['status']
-        elif task.kind == 'final':
-            check = bx.load_config(Path(result)/'convergence.json')
-            meta['numerical_status'] = check['status']
+            statuses=pd.read_csv(Path(result)/'joint/folds.csv').numerical_status
+            numerical=('passed_numerical_checks' if len(statuses) and statuses.eq('passed_numerical_checks').all() else 'needs_review')
+        else:
+            result=fit_full(c,directory=directory/'report')
+            numerical=bx.load_config(Path(result)/'convergence.json')['status']
+        meta.update(status='completed',result=str(Path(result).resolve()),numerical_status=numerical)
+        if tier=='paper' and task.id=='posterior_reference':
+            from research.seasonal.check_final import assess
+            check=assess(Path(result),directory/'resolved_config.json')
+            bx.save_config(check,Path(result)/'final_check.json');meta['final_check']=check['status']
     except BaseException as error:
-        meta.update(status='failed', error=str(error), traceback=traceback.format_exc(),
-                    finished=datetime.now(timezone.utc).isoformat())
-        manifest.write_text(json.dumps(meta, indent=2)+'\n')
-        raise
-    manifest.write_text(json.dumps(meta, indent=2)+'\n')
-    print(json.dumps(meta, indent=2), flush=True)
+        meta.update(status='failed',error=str(error),traceback=traceback.format_exc());raise
+    finally:
+        meta['finished']=datetime.now(timezone.utc).isoformat();bx.save_config(meta,manifest)
+    print(json.dumps(meta,indent=2),flush=True)
     return Path(result)
 
 
+def verify(tier='paper',*,output=None):
+    """Compile every declared model and check prior units and fold geometry; no fit."""
+    import pandas as pd
+    from research.monthly.models import joint_model,fit_options
+    from research.monthly.validate import validation_splits
+    cache,rows,posterior={},{},{}
+    for t in tasks('all',tier=tier):
+        c=task_config(t,tier);key=json.dumps(c['data'],sort_keys=True)
+        if key not in cache:cache[key]=bx.load_uccle_multiseries(**c['data'])
+        data=cache[key];model,prior=joint_model(data,c);bx.compile_model(model,data);fit_options(c,family=model.family)
+        if c['credible_interval']!=.95 or not c['save_fits']:raise ValueError('Expected 95% intervals and saved fits.')
+        if t.kind=='posterior':
+            if len(data)!=538 or c['forecast_horizon']!=120:raise ValueError('Full fits require 538 blocks and 30-year forecasts.')
+            posterior[t.variant]=c
+        elif t.kind=='pre2019':
+            if c['data']['end']!='2019-05' or c['forecast_horizon']!=1:raise ValueError('Record-event fit must be prospective.')
+        else:
+            splits=validation_splits(data,c['validation'])
+            if len(splits)!=1 or len(splits[0][1])!=20:raise ValueError('Expected one complete five-year validation fold.')
+        p=c['priors'];rows[t.id]=dict(task_id=t.id,kind=t.kind,variant=t.variant,origin=t.origin,resource=resource_class(t,tier),
+            n_blocks=len(data),chains=c['mcmc']['chains'],warmup=c['mcmc']['warmup'],draws=c['mcmc']['draws'],
+            forecast_horizon=c['forecast_horizon'] if t.kind!='forecast' else c['validation']['horizon'],
+            log_sd=p['shared_shrinkage']['log_sd'],level_anchor=p['innovation_median']['level'],
+            slope_anchor=p['innovation_median']['trend'],seasonal_anchor=p['innovation_median']['season'],
+            initial_slope_anchor=p['initial_slope_median'],xi_sd=p['xi_sd'],save_fits=c['save_fits'])
+    def moments(c):
+        p=c['priors'];tau=p['shared_shrinkage']['log_sd']
+        return np.square(list(p['innovation_median'].values())+[p['initial_slope_median']])*np.exp(2*tau*tau)
+    for name in ('old_reference','wider_log4'):
+        if not np.allclose(moments(posterior[name]),moments(posterior['reference']),rtol=1e-12,atol=0):
+            raise ValueError('Incorrect second-moment matching: '+name)
+    original=bx.load_config(CONFIG/'reference_189.json')['priors']
+    for key in ('level','trend','season'):
+        if not np.isclose(posterior['wide_original_anchors']['priors']['innovation_median'][key],original['innovation_median'][key],rtol=1e-12,atol=0):
+            raise ValueError('The anchor control must retain the original anchors.')
+    result=dict(version=bx.__version__,tier=tier,status='configuration_checks_passed',
+        counts={b:len(tasks(b,tier=tier)) for b in BATCHES},
+        scope='Model declarations, data windows, units, horizons and matched priors; no MCMC or scheduler execution.')
+    if output is not None:
+        output=Path(output);output.mkdir(parents=True,exist_ok=True)
+        bx.save_config(result,output/'preflight.json');pd.DataFrame(list(rows.values())).to_csv(output/'resolved_settings.csv',index=False)
+    return result
+
+
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--group', choices=('array', 'long'), default='array')
-    parser.add_argument('--tier', choices=('paper', 'screen'), default='paper')
-    parser.add_argument('--list', action='store_true')
-    parser.add_argument('--count', action='store_true')
-    parser.add_argument('--index', type=int, help='One-based PBS array index')
-    parser.add_argument('--task', help='Explicit task ID')
-    parser.add_argument('--root', type=Path, default=ROOT)
-    args = parser.parse_args()
-    available = tasks(args.group)
-    if args.count:
-        print(len(available)); return
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--batch',choices=BATCHES,default='posterior');parser.add_argument('--tier',choices=('screen','paper'),default='screen')
+    parser.add_argument('--resource',choices=('all','standard','long'),default='all')
+    action=parser.add_mutually_exclusive_group(required=True)
+    for flag in ('list','count','verify','resource-info'):action.add_argument('--'+flag,action='store_true')
+    action.add_argument('--index',type=int);action.add_argument('--task')
+    parser.add_argument('--root',type=Path,default=ROOT);args=parser.parse_args()
+    if args.verify:
+        print(json.dumps(verify(args.tier,output=args.root/args.tier/'plan'),indent=2));return
+    if args.resource_info:
+        key='paper_long' if args.tier=='paper' and args.resource=='long' else args.tier
+        r=settings()['resources'][key];print(r['cpus'],r['memory_gb'],r['hours']);return
+    available=tasks(args.batch,tier=args.tier,resource=args.resource)
+    if args.count:print(len(available));return
     if args.list:
-        for i, item in enumerate(available, 1):
-            print(f'{i:3d} {item.id}')
+        for i,t in enumerate(available,1):
+            c=task_config(t,args.tier)
+            print(f"{i:3d} {t.id:48s} {resource_class(t,args.tier):8s} chains={c['mcmc']['chains']} warmup={c['mcmc']['warmup']} retained={c['mcmc']['draws']}")
         return
-    if (args.index is None) == (args.task is None):
-        parser.error('Supply exactly one of --index or --task')
-    selected = (available[args.index-1] if args.index is not None and
-                1 <= args.index <= len(available) else next((x for x in available if x.id == args.task), None))
-    if selected is None:
-        parser.error('Unknown index or task ID')
-    execute(selected, tier=args.tier, root=args.root)
+    selected=(next((t for t in tasks('all',tier=args.tier) if t.id==args.task),None) if args.task else
+              available[args.index-1] if 1<=args.index<=len(available) else None)
+    if selected is None:parser.error('Unknown index or task ID')
+    execute(selected,tier=args.tier,root=args.root)
 
-
-if __name__ == '__main__':
-    main()
+if __name__=='__main__':main()

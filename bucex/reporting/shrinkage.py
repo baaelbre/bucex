@@ -3,7 +3,6 @@ from pathlib import Path
 
 from ..diagnostics.shrinkage import compare_shared_shrinkage, compare_initial_slope_priors
 from ..diagnostics.sensitivity import innovation_prior_diagnostics
-from ..priors.shrinkage import NORMAL_ABSOLUTE_MEDIAN
 from ..plotting import plot_chain_traces, trace_frame, publication_style
 
 
@@ -25,7 +24,8 @@ def save_shared_shrinkage_report(fit, directory, *, level=.95, figures=True,
     effects = comparison.copy()
     for c in effects.component.unique():
         row = calibration[calibration.component.eq(c)].iloc[0]
-        factor = rate_multiplier if c == "initial_slope" else row.response_gain / NORMAL_ABSOLUTE_MEDIAN
+        gain = rate_multiplier if c == "initial_slope" else row.response_gain
+        factor = fit.priors.shrinkage.coefficient_sd(c, 1.0) * gain
         mask = effects.component.eq(c)
         effects.loc[mask, ['lower','median','upper','anchor']] *= factor
         effects.loc[mask, 'scale'] = 'initial_rate_prior_SD' if c == 'initial_slope' else 'future_contribution_prior_SD'
@@ -65,7 +65,7 @@ def save_shared_shrinkage_report(fit, directory, *, level=.95, figures=True,
                     ax.errorbar(row["median"], i,
                         xerr=[[row["median"]-row["lower"]], [row["upper"]-row["median"]]], fmt="o")
                 ax.set(yticks=[0,1], yticklabels=["hyperprior", "posterior"],
-                    xlabel="initial slope prior SD" if component == "initial_slope" else f"shared {component} SD median")
+                    xlabel=("initial slope median absolute coefficient" if fit.priors.shrinkage.initial_slope_median is not None else "initial slope prior SD") if component == "initial_slope" else f"shared {component} SD median")
                 ax.ticklabel_format(axis="x", style="sci", scilimits=(-3,3), useMathText=True)
             figure.savefig(directory/"shared_shrinkage.png", dpi=dpi, bbox_inches="tight")
             plt.close(figure)

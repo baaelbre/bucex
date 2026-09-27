@@ -1,5 +1,5 @@
 {
   "extends": "main.json",
   "analysis": "joint",
-  "output": "results/serra_188_seasonal_independence"
+  "output": "results/serra_190_seasonal_independence"
 }

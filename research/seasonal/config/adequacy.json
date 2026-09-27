@@ -14,7 +14,7 @@
     },
     {
       "name": "wide_seasonal_log_scale",
-      "scale_prior_sd": 0.60
+      "scale_prior_sd": 0.6
     },
     {
       "name": "fixed_location_seasonality",
@@ -24,7 +24,7 @@
           "level",
           "slope"
         ],
-        "log_sd": 0.6931471805599453,
+        "log_sd": 1.0986122886681098,
         "pool_initial_slope": true
       }
     },
@@ -40,15 +40,14 @@
     "warmup": 2000,
     "draws": 4000
   },
-  "save_fits": false,
-  "output": "results/serra_189_seasonal_adequacy",
+  "output": "results/serra_190_adequacy",
   "validation": {
     "training_ends": [
       "2015-11",
       "2020-11"
     ],
     "horizon": 20,
-    "draws": 2000,
-    "save_fits": false
+    "draws": 4000,
+    "save_fits": true
   }
 }

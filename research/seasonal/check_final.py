@@ -38,7 +38,7 @@ def assess(run: Path, expected_config: Path) -> dict:
 
     stored = bx.load_config(run / "config.json") if (run / "config.json").is_file() else None
     if stored is not None and stored != expected:
-        issues.append("saved config does not exactly match research/seasonal/config/final.json")
+        issues.append(f"saved config does not exactly match {expected_config}")
 
     convergence = (bx.load_config(run / "convergence.json")
                    if (run / "convergence.json").is_file() else {})

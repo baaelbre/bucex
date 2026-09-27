@@ -1,3 +1,27 @@
+# BUCEX 1.9.0 (2026-09-27)
+
+- Adopt the tested log(3) seasonal hyperprior width with all four anchors
+  matched to the old marginal coefficient second moments. Freeze the original
+  1.8.9 reference as `research/seasonal/config/reference_189.json`.
+- Integrate 25 unique posterior fits: reference plus width/anchor, shape,
+  seasonal scale, initial seasonality and copula checks. Identity dependence
+  retains the same shared hierarchy. Static seasonality uses the new width.
+- Provide separate screen and paper launchers. Both save fits, use 95% bands
+  and forecast 30 years. Give the paper reference its longer chain budget.
+  Keep pre-2019 and validation batches separate from default submissions.
+- Export posterior innovation contributions at 10 and 30 years and
+  probabilities of effects below/above .05, .10 and .20°C.
+- Fix the displayed initial-slope hyperparameter's median-to-SD conversion;
+  preserve the legacy SD-anchored API. Align serial/copula predictive envelopes
+  with the declared 95% level. The likelihood/sampling target is unchanged.
+- Add source/config/data provenance checks, batch-aware collection, paired
+  validation origins and launcher dry runs. Avoid silently overwriting failed
+  attempts or pooling incompatible completed fits.
+
+See [FINAL_RUN.md](FINAL_RUN.md) for exact settings and commands, and
+[release verification](validation/RELEASE_VALIDATION_190.md) for software checks.
+The release does not contain completed production MCMC or validation results.
+
 # BUCEX 1.8.9
 
 The 1.8.9 seasonal manuscript reference has medians `(0.01, 0.0001,

@@ -15,7 +15,7 @@
     },
     {
       "name": "xi_wide",
-      "xi_sd": 0.60
+      "xi_sd": 0.6
     }
   ],
   "assessment": {
@@ -28,6 +28,5 @@
     "chain_workers": 4,
     "progress_every": 100
   },
-  "save_fits": false,
-  "output": "results/serra_189_pre2019_sensitivity"
+  "output": "results/serra_190_pre2019_sensitivity"
 }

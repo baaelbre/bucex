@@ -86,7 +86,7 @@ class SensitivityReport:
                         data = data[data.quantity.str.contains('channel.'+channel+'.', regex=False) |
                                     scalar_names.str.endswith('.'+channel)]
                     add(label, data, variant, channel)
-                for quantity in ('level', 'slope', 'risk'):
+                for quantity in ('level', 'slope', 'risk', 'seasonal', 'observation_scale'):
                     stem = 'slope_C_per_decade' if joint and quantity == 'slope' else quantity
                     path = directory/((channel+'_' if joint else '')+stem+'.csv')
                     if not path.exists():
@@ -97,6 +97,13 @@ class SensitivityReport:
                         raise ValueError("Posterior comparisons require exactly matching fitted dates.")
                     windows[channel] = dates
                     add('paths', data.assign(quantity=quantity), variant, channel)
+                for label, filename in (
+                        ('innovation_effects', f'{channel}_innovation_effects_by_horizon.csv'),
+                        ('innovation_effect_probabilities', f'{channel}_innovation_effect_probabilities.csv'),
+                        ('forecast_uncertainty', f'{channel}_forecast_uncertainty.csv')):
+                    path = directory/filename
+                    if path.exists():
+                        add(label, self._read(path), variant, channel)
                 assessment = json.loads((directory/'convergence.json').read_text(encoding='utf-8'))
                 checks.append(dict(stage='posterior', variant=variant, channel=channel,
                     origin='full_record', numerical_status=assessment['status'],
@@ -105,12 +112,14 @@ class SensitivityReport:
                 if joint and unique not in joint_seen:
                     joint_seen.add(unique)
                     for label, filename in (('shared_shrinkage','shared_shrinkage.csv'),
+                                            ('shared_shrinkage_effects','shared_shrinkage_effects.csv'),
+                                            ('initial_slope_prior_posterior','initial_slope_prior_posterior.csv'),
                                             ('joint_scientific_targets','period_and_endpoint_targets.csv'),
                                             ('joint_mcmc','mcmc.csv')):
                         path = directory/filename
                         if path.exists():
                             data = self._read(path)
-                            if label != 'shared_shrinkage' and 'quantity' not in data:
+                            if label in ('joint_scientific_targets', 'joint_mcmc') and 'quantity' not in data:
                                 data = data.rename(columns={data.columns[0]:'quantity'})
                             collected.setdefault(label, []).append(data.assign(variant=variant))
         if len(intervals) > 1:

@@ -3,11 +3,16 @@ include CITATION.cff
 include README.md
 include START_HERE.md
 include FINAL_RUN.md
+include BUCEX-1.9.0-commands.md
+include RUN_SCREEN_EXPERIMENTS.sh
+include RUN_PAPER_EXPERIMENTS.sh
+recursive-include bash_scripts *.sh
+recursive-include job_scripts *.pbs *.slurm
 include CHANGELOG.md
 include RELEASE_NOTES.md
 recursive-include docs *.md *.py
 recursive-include research *.py *.md *.json *.pbs
-recursive-include validation *.md
+recursive-include validation *.md *.json *.csv *.txt
 recursive-include data *.csv *.md
 recursive-include bucex/data *.json
 recursive-include tests *.py *.md *.bucex

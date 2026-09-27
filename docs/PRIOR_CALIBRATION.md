@@ -51,7 +51,7 @@ distribution is not Gaussian: multiplying this SD by 1.96 does not give its
 exact 95% interval. The hyperprior's own 95% scale interval is
 anchor*exp(±1.96*d), approximately [0.257,3.89] times the anchor.
 
-For the 1.8.9 seasonal manuscript, the initial-slope scale is also the median
+For the seasonal manuscript, the initial-slope scale is also the median
 absolute coefficient, so its conditional SD is the scale divided by q. The
 older `initial_slope_sd` convention instead uses the conditional SD directly.
 The same exp(d²) inflation applies after integrating either lognormal scale.
@@ -66,16 +66,28 @@ COMPSTAT scales. The monthly innovation anchors are 0.008343480538,
 SDs are 0.379473, 0.196769 and 0.154919°C, and initial-rate SD is 0.30°C/decade.
 These replace the 1.8.2 exploratory quarter anchors in the draft workflow.
 
-The 1.8.9 seasonal manuscript uses four per-season median-absolute anchors:
-level 0.01, slope 0.0001, seasonal 0.01 and initial slope 0.01. At H=120
-and 40 updates per decade, their integrated 30-year SDs are 0.263, 0.181
-and 0.186°C, with initial-rate SD 0.959°C/decade and initial-slope
-displacement 2.876°C. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
-[START_HERE](../START_HERE.md) for details. Hyperprior-width
-sensitivity uses `match_marginal_moments=true` to keep these effects fixed while
-changing log SD. Physical-effect sensitivity separately scales the anchors.
-This is a declared modelling assumption, not independent validation of a prior
-or a choice made to maximize smoothness or evidence of acceleration.
+The 1.9.0 seasonal reference uses log SD log(3), with median-absolute anchors
+0.004836005867750226 for level, seasonal and initial-slope coefficients, and
+0.00004836005867750226 for slope innovations. These equal the old seasonal
+anchors (.01,.0001,.01,.01) times exp(log(2)²-log(3)²). Since
+E[coefficient²]=(anchor/q)² exp(2*log_sd²), this preserves their marginal second
+moments while changing the prior shape and its mass near zero.
+
+At H=120 and 40 updates per decade, the integrated 30-year component SDs remain
+0.263°C (level), 0.181°C (slope innovations) and 0.186°C (seasonal innovations),
+with initial-rate SD 0.959°C/decade and initial-slope displacement SD 2.876°C.
+These are latent-component RMS calibrations, not observation forecast SDs.
+The log(2)/log(4) comparisons keep those second moments fixed; the log(3) with
+old anchors comparison isolates width with the anchors held fixed. Halving
+or doubling each anchor separately changes that component's RMS effect by the
+same factor. See [the run sheet](../FINAL_RUN.md).
+
+A posterior that resembles its prior signals limited learning about that
+quantity; changing the prior until the curves separate is not validation.
+The report therefore supplements the prior/posterior comparisons with posterior
+innovation contributions at 10 and 30 years and probabilities that these
+contributions' conditional SDs fall below .05, .10 and .20°C. Their uncertainty
+excludes observation noise and uncertainty in the initial/current state.
 
 ## API: specify effects directly
 

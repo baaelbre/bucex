@@ -1,4 +1,4 @@
-"""Keep the archived 1.8.7 reference distinct from the 1.8.8 manuscript fit."""
+"""Keep the archived reference distinct from the current calibrated wide fit."""
 from pathlib import Path
 
 import matplotlib
@@ -36,9 +36,10 @@ def test_archived_reference_and_new_final_config_have_distinct_priors():
     assert reference["priors"]["initial_slope_sd"] == 0.0046387735335118195
     assert reference["priors"]["initial_slope_median"] is None
     assert reference["mcmc"]["warmup"] == 2000 and reference["mcmc"]["draws"] == 4000
-    assert final["priors"]["innovation_median"] == {"level": .01, "trend": .0001, "season": .01}
-    assert final["priors"]["initial_slope_median"] == .01
-    assert final["priors"]["initial_slope_sd"] == pytest.approx(.01 / norm.ppf(.75))
+    factor = np.exp(np.log(2)**2-np.log(3)**2)
+    assert final["priors"]["innovation_median"] == pytest.approx({"level": .01*factor, "trend": .0001*factor, "season": .01*factor})
+    assert final["priors"]["initial_slope_median"] == pytest.approx(.01*factor)
+    assert final["priors"]["initial_slope_sd"] == pytest.approx(.01*factor / norm.ppf(.75))
     assert final["priors"]["seasonal_initial_sd"] == 20
     assert final["forecast_horizon"] == 120
     assert final["forecast_draws"] == 12000

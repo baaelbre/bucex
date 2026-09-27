@@ -22,7 +22,7 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
         data = tables['shared_shrinkage']
         names = list(data.variant.drop_duplicates())
         components = list(data.component.drop_duplicates())
-        fig, axes = plt.subplots(1,len(components),figsize=(5*len(components),3.5),squeeze=False,layout='constrained')
+        fig, axes = plt.subplots(1,len(components),figsize=(5*len(components),max(3.5,1.5+.34*len(names))),squeeze=False,layout='constrained')
         for ax, component in zip(axes[0], components):
             for i, variant in enumerate(names):
                 selected = data[(data.variant==variant)&(data.component==component)]
@@ -36,8 +36,12 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
                         xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],
                         fmt='s' if distribution=='prior' else 'o',color=colors[variant],alpha=alpha,
                         label=distribution if i==0 else None)
+            scale_types = set(data.loc[data.component.eq(component), 'scale'])
+            initial_label = ('initial slope median absolute coefficient' if scale_types == {'population_median'}
+                             else 'initial slope prior SD' if scale_types == {'normal_SD'}
+                             else 'initial slope shared scale (see table)')
             ax.set(yticks=range(len(names)),yticklabels=names,
-                   xlabel='initial slope prior SD' if component == 'initial_slope' else f'shared {component} SD median')
+                   xlabel=initial_label if component == 'initial_slope' else f'shared {component} SD median')
             ax.ticklabel_format(axis='x',style='sci',scilimits=(-3,3),useMathText=True)
         axes[0,0].legend(loc='center right')
         save(fig,'shared','shrinkage')
@@ -46,7 +50,7 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
         data = tables['prior_posterior'].query("scale == 'SD'")
         for channel, group in data.groupby('channel', sort=False):
             components = list(group.component.drop_duplicates())
-            fig, axes = plt.subplots(1,len(components),figsize=(4.4*len(components),3.7),squeeze=False,layout='constrained')
+            fig, axes = plt.subplots(1,len(components),figsize=(4.4*len(components),max(3.7,1.5+.34*len(variants))),squeeze=False,layout='constrained')
             for ax, component in zip(axes[0], components):
                 for i, variant in enumerate(variants):
                     rows = group[(group.component == component)&(group.variant == variant)]
@@ -64,7 +68,8 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
             axes[0,0].legend(loc='best')
             save(fig,channel,'prior_posterior')
     if 'paths' in tables:
-        labels = {'level': 'level / °C', 'slope': 'latent slope / °C per decade', 'risk': 'event probability'}
+        labels = {'level': 'level / °C', 'slope': 'latent slope / °C per decade', 'risk': 'event probability',
+                  'seasonal': 'seasonal contribution / °C', 'observation_scale': 'observation scale / °C'}
         for (channel, quantity), group in tables['paths'].groupby(['channel','quantity'],sort=False):
             fig, ax = plt.subplots(figsize=(10,3.8),layout='constrained')
             for variant, data in group.groupby('variant',sort=False):

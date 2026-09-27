@@ -1,5 +1,5 @@
 {
   "extends": "final.json",
   "copula": {"structure": "constant"},
-  "output": "results/serra_189_constant_copula_full"
+  "output": "results/serra_190_constant_copula_full"
 }

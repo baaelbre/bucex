@@ -1,6 +1,6 @@
 # Seasonal blocks, comparable prediction, and future r-largest models
 
-## Scope of 1.8.5
+## Scope of 1.9.0
 
 The release provides complete seasonal r=1 models for all six summaries, joint
 hierarchical shrinkage, seasonal-scale effects, four shrunk copula matrices,
@@ -62,15 +62,17 @@ change*; it is neither a shared seasonal pattern nor a shared observation scale.
 At H updates, the innovation-to-level gains are sqrt(H) and
 sqrt(H(H-1)(2H-1)/6). The dummy-season gain is computed from its actual transition
 matrix. At 30 years the monthly H=360 and seasonal H=120 dummy-season gains both
-equal sqrt(60). The 1.8.9 manuscript reference declares the following medians
+equal sqrt(60). The 1.9.0 manuscript reference declares the following medians
 per seasonal update:
 
 ```python
 import math
 
 shared = bx.SharedShrinkage(
-    medians={'level': .01, 'slope': .0001, 'seasonal': .01},
-    initial_slope_sd=None, initial_slope_median=.01, log_sd=math.log(2),
+    medians={'level': .004836005867750226, 'slope': .00004836005867750226,
+             'seasonal': .004836005867750226},
+    initial_slope_sd=None, initial_slope_median=.004836005867750226,
+    log_sd=math.log(3),
 )
 print(shared.calibration(horizon=120, period=4,
                          slope_time_unit=40, unit='degC'))
@@ -159,7 +161,7 @@ References:
 - Ferro & Segers (2003), *JRSS B* 65, 545–556.
   https://doi.org/10.1111/1467-9868.00401
 
-The main revision can retain monthly models while reporting a focused seasonal
-check in the supplement. Adoption of seasonal blocks should follow their
-predictive adequacy and the scientific event definition, not smoother-looking
-trajectories or an assumed asymptotic advantage.
+The current manuscript workflow uses seasonal blocks. Monthly-resolution
+comparisons remain available as separate checks on common forecast targets.
+Their interpretation should follow predictive adequacy and the scientific event
+definition, not smoother trajectories or an assumed asymptotic advantage.
