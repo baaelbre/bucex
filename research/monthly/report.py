@@ -133,6 +133,13 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
 
     forecast = fit.forecast(horizon,draws=config.get('forecast_draws'),seed=config['seed'])
     forecast.summary(level=level).to_csv(directory/'forecast.csv',index=False)
+    if seasonal_blocks and horizon >= 120:
+        # Keep quantile-based 30-year predictive widths separate from GEV
+        # moments, which need not exist for all retained shape values.
+        for name in fit.channel_names if fit.is_multiseries_model else (None,):
+            label = name or fit.series_name or 'series'
+            bx.forecast_uncertainty(forecast,channel=name,levels=(level,)).to_csv(
+                directory/(label+'_forecast_uncertainty.csv'),index=False)
     predictive = fit.posterior_predictive(draws=config.get('predictive_check_draws',200),seed=config['seed'])
     bx.posterior_predictive_checks(fit,prediction=predictive,seed=config['seed']).to_csv(
         directory/'posterior_predictive_checks.csv',index=False)

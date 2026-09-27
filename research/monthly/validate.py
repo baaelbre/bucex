@@ -75,7 +75,8 @@ def validate(config, *, directory=None):
             if getattr(fit.priors, "shrinkage", None) is not None:
                 bx.compare_shared_shrinkage(fit, level=config["credible_interval"]).to_csv(
                     target/f"shared_shrinkage_{train.stop}.csv", index=False)
-            targets = fit.contrast_diagnostics(scientific_targets(fit,{'model':config['model']}))
+            targets = fit.contrast_diagnostics(scientific_targets(fit,{'model':config['model']}),
+                                               credible_interval=config['credible_interval'])
             targets.to_csv(target / f"targets_{train.stop}.csv")
             assessment = bx.convergence_assessment({'parameters': convergence_parameters(diagnostics, fit.n_chains), 'scientific_targets': targets},
                 **config.get('diagnostic_thresholds', {}))

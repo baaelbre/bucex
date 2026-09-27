@@ -36,7 +36,7 @@ def study(config):
     return analyses
 
 
-def run(config,*,directory=None):
+def run(config,*,directory=None,models=('monthly','seasonal'),aggregate=True):
     analyses=study(config)
     reference=analyses['monthly'][0]
     fingerprint={name:hashlib.sha256(data.to_csv().encode()).hexdigest()
@@ -48,13 +48,21 @@ def run(config,*,directory=None):
         bx.save_config(dict(version=bx.__version__,data=fingerprint),directory/'provenance.json')
     else:
         directory=Path(directory)
-        if bx.load_config(directory/'config.json')!=config:
-            raise ValueError('Resume must retain the exact saved configuration.')
-        if (bx.load_config(directory/'monthly_reference.json')!=reference or
-            bx.load_config(directory/'provenance.json')!=dict(version=bx.__version__,data=fingerprint)):
-            raise ValueError('Monthly reference, data or package version changed; start a fresh comparison.')
+        directory.mkdir(parents=True,exist_ok=True)
+        if not (directory/'config.json').exists():
+            bx.save_config(config,directory/'config.json')
+            bx.save_config(reference,directory/'monthly_reference.json')
+            bx.save_config(dict(version=bx.__version__,data=fingerprint),directory/'provenance.json')
+        else:
+            if bx.load_config(directory/'config.json')!=config:
+                raise ValueError('Resume must retain the exact saved configuration.')
+            if (bx.load_config(directory/'monthly_reference.json')!=reference or
+                bx.load_config(directory/'provenance.json')!=dict(version=bx.__version__,data=fingerprint)):
+                raise ValueError('Monthly reference, data or package version changed; start a fresh comparison.')
     seasonal_data=analyses['seasonal'][1]
     for name,(local,data,splits) in analyses.items():
+        if name not in models:
+            continue
         for cutoff,(train,test) in zip(config['comparison']['training_ends'],splits):
             target=directory/name/cutoff;target.mkdir(parents=True,exist_ok=True)
             if (target/'complete.json').exists():
@@ -65,7 +73,8 @@ def run(config,*,directory=None):
             fit=bx.fit(training,model,priors=prior,**fit_options(local,family=model.family))
             diagnostics=fit.diagnostics()['parameters']
             diagnostics.to_csv(target/'mcmc.csv')
-            targets=fit.contrast_diagnostics(scientific_targets(fit,{'model':local['model']}))
+            targets=fit.contrast_diagnostics(scientific_targets(fit,{'model':local['model']}),
+                                             credible_interval=local['credible_interval'])
             targets.to_csv(target/'targets.csv')
             check=bx.convergence_assessment({'parameters':convergence_parameters(diagnostics,fit.n_chains),
                 'scientific_targets':targets},**local.get('diagnostic_thresholds',{}))
@@ -96,9 +105,11 @@ def run(config,*,directory=None):
             pd.concat(calibration).to_csv(target/'calibration.csv',index=False)
             bx.save_config(dict(version=bx.__version__,model=name,cutoff=cutoff,
                 status=check['status'],training_blocks=len(training)),target/'complete.json')
-            bx.save_block_comparison(directory,figures=config.get('figures',True))
+            if aggregate:
+                bx.save_block_comparison(directory,figures=config.get('figures',True))
             del fit,forecast
-    return bx.save_block_comparison(directory,figures=config.get('figures',True))
+    return (bx.save_block_comparison(directory,figures=config.get('figures',True))
+            if aggregate else directory)
 
 
 def main():
@@ -106,13 +117,16 @@ def main():
     parser.add_argument('--config',default='research/seasonal/config/compare.json')
     parser.add_argument('--run',type=Path,help='Resume completed folds using this run\'s saved config.')
     parser.add_argument('--plan',action='store_true')
+    parser.add_argument('--model',choices=('monthly','seasonal'),
+                        help='Fit only one frequency; combine completed jobs later.')
     args=parser.parse_args()
     config=bx.load_config(args.run/'config.json' if args.run else args.config)
     if args.plan:
         for name,(local,data,splits) in study(config).items():
             print(name,[(train.stop,len(test)) for train,test in splits],local['mcmc'])
     else:
-        print(run(config,directory=args.run))
+        print(run(config,directory=args.run,models=(args.model,) if args.model else ('monthly','seasonal'),
+                  aggregate=not bool(args.model)))
 
 
 if __name__=='__main__':

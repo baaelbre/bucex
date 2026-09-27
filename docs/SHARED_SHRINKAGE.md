@@ -1,4 +1,4 @@
-# Shared regularization in BUCEX 1.8.8
+# Shared regularization in BUCEX 1.8.9
 
 Every channel retains its own realized location trajectory, initial slope,
 innovation SDs, seasonal pattern and observation parameters. Hierarchical
@@ -47,7 +47,7 @@ model = bx.MultiSeriesModel(channels, copula=bx.GaussianCopula())
 regularization = bx.SharedShrinkage(
     medians={'level': .0025, 'slope': .0000125, 'seasonal': .02},
     initial_slope_sd=None,
-    initial_slope_median=.001,
+    initial_slope_median=.01,
 )
 priors = bx.MarginalPriors(
     {c.name: bx.fs_priors(c.family, period=12) for c in channels},

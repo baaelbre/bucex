@@ -1,4 +1,13 @@
-# BUCEX 1.8.8
+# BUCEX 1.8.9
+
+The 1.8.9 seasonal manuscript reference has medians `(0.01, 0.0001,
+0.01, 0.01)` per season and initial seasonal coefficient SD 20°C.
+The initial-rate prior SD is about 0.96°C/decade after integrating the
+hierarchy. It forecasts 120 seasons with 12,000 predictive draws and 95%
+intervals. See [FINAL_RUN.md](FINAL_RUN.md) for the 106 independent PBS array
+fits, five separate long fits, result collection and numerical gates.
+
+## 1.8.8 archive
 
 The seasonal manuscript prior now has four median-absolute shared-scale
 hyperprior medians `(0.01, 0.0001, 0.01, 0.001)` per seasonal transition.

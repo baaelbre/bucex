@@ -11,5 +11,5 @@
   "validation": {"training_ends": ["2015-11", "2020-11"], "horizon": 20,
                  "draws": 2000, "save_fits": false},
   "save_fits": false,
-  "output": "results/serra_188_dependence_sensitivity"
+  "output": "results/serra_189_dependence_sensitivity"
 }

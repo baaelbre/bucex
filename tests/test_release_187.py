@@ -37,8 +37,11 @@ def test_archived_reference_and_new_final_config_have_distinct_priors():
     assert reference["priors"]["initial_slope_median"] is None
     assert reference["mcmc"]["warmup"] == 2000 and reference["mcmc"]["draws"] == 4000
     assert final["priors"]["innovation_median"] == {"level": .01, "trend": .0001, "season": .01}
-    assert final["priors"]["initial_slope_median"] == .001
-    assert final["priors"]["initial_slope_sd"] == pytest.approx(.001 / norm.ppf(.75))
+    assert final["priors"]["initial_slope_median"] == .01
+    assert final["priors"]["initial_slope_sd"] == pytest.approx(.01 / norm.ppf(.75))
+    assert final["priors"]["seasonal_initial_sd"] == 20
+    assert final["forecast_horizon"] == 120
+    assert final["forecast_draws"] == 12000
     assert final["mcmc"]["warmup"] == 3000 and final["mcmc"]["draws"] == 8000
     assert final["mcmc"]["chains"] == final["mcmc"]["chain_workers"] == 4
     assert "reference_run" not in final

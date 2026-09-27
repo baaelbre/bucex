@@ -35,6 +35,11 @@
       "name": "xi_bounded",
       "xi_sd": 0.30,
       "xi_bounds": [-0.5, 0.5]
+    },
+    {
+      "name": "xi_uniform_bounded",
+      "xi_prior": "uniform",
+      "xi_bounds": [-0.5, 0.5]
     }
   ],
   "assessment": {
@@ -50,5 +55,5 @@
   "save_fits": false,
   "forecast_draws": 2000,
   "predictive_check_draws": 200,
-  "output": "results/serra_188_manuscript_sensitivity"
+  "output": "results/serra_189_manuscript_sensitivity"
 }

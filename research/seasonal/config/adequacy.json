@@ -27,6 +27,10 @@
         "log_sd": 0.6931471805599453,
         "pool_initial_slope": true
       }
+    },
+    {
+      "name": "previous_initial_season_sd",
+      "seasonal_initial_multiplier": 0.1125
     }
   ],
   "assessment": {
@@ -37,7 +41,7 @@
     "draws": 4000
   },
   "save_fits": false,
-  "output": "results/serra_188_seasonal_adequacy",
+  "output": "results/serra_189_seasonal_adequacy",
   "validation": {
     "training_ends": [
       "2015-11",

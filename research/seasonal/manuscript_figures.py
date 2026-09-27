@@ -278,6 +278,36 @@ def _compound(inputs, run):
     return figure
 
 
+def _forecast_uncertainty_panels(inputs, run):
+    """Thirty JJA forecasts: latent-location and observation uncertainty."""
+    import matplotlib.pyplot as plt
+
+    figure, axes = plt.subplots(2, 2, figsize=(10.5, 6.3), sharex='col',
+                                layout='constrained')
+    for column, (name, color) in enumerate((('TXm', TX), ('TXx', TX))):
+        frame = inputs.csv(run / f'{name}_forecast_uncertainty.csv', parse_dates=['time'])
+        frame = frame[frame.time.dt.month.eq(6)]
+        location = frame[frame.target.eq('location')].sort_values('time')
+        observation = frame[frame.target.eq('observation')].sort_values('time')
+        if len(location) != 30 or len(observation) != 30 or not all(frame.nominal.eq(.95)):
+            raise ValueError(f'{name}: expected 30 JJA forecasts and 95% intervals.')
+        years = observation.time.dt.year.to_numpy()
+        top, bottom = axes[:, column]
+        for table, label, tone in ((observation, 'Observation', color),
+                                   (location, 'Latent location', '#677682')):
+            top.fill_between(years, table.lower.to_numpy(), table.upper.to_numpy(),
+                             color=tone, alpha=.17, lw=0)
+            top.plot(years, table['median'].to_numpy(), color=tone, lw=1.6, label=label)
+            bottom.plot(years, table.interval_width.to_numpy(), color=tone, lw=1.8,
+                        marker='o', ms=2.5, label=label)
+        top.set_title(f'{name}: summer forecasts', loc='left', weight='bold')
+        top.set_ylabel('temperature / °C')
+        bottom.set(xlabel='JJA year', ylabel='95% interval width / °C')
+        if column == 0:
+            top.legend(loc='best', fontsize=8)
+    return figure
+
+
 def _variant_reports(roots):
     reports = {}
     for root in roots or ():
@@ -500,6 +530,8 @@ def build(run, output, *, formats=("png", "pdf"), dpi=220,
         _save(_copula(inputs, run), output, "copula_correlations", formats, dpi, figures)
         _save(_risk_panels(inputs, run), output, "seasonal_risks", formats, dpi, figures)
         _save(_risk_panels(inputs, run, forecast=True), output, "seasonal_risk_forecasts", formats, dpi, figures)
+        _save(_forecast_uncertainty_panels(inputs, run), output,
+              "seasonal_forecast_uncertainty_30y", formats, dpi, figures)
         _save(_compound(inputs, run), output, "compound_heat_conditional_risk", formats, dpi, figures)
         if sensitivity:
             _save(_sensitivity(inputs, sensitivity), output, "prior_sensitivity", formats, dpi, figures)
@@ -530,7 +562,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True,
                         help="Timestamped final joint report from research.seasonal.fit.")
-    parser.add_argument("--output", type=Path, default=Path("results/serra_188_manuscript_figures"))
+    parser.add_argument("--output", type=Path, default=Path("results/serra_189_manuscript_figures"))
     parser.add_argument("--formats", nargs="+", choices=("png", "pdf", "svg"), default=("png", "pdf"))
     parser.add_argument("--dpi", type=int, default=220)
     parser.add_argument("--allow-unconverged", action="store_true",

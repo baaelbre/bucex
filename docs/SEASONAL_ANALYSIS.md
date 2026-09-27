@@ -62,7 +62,7 @@ change*; it is neither a shared seasonal pattern nor a shared observation scale.
 At H updates, the innovation-to-level gains are sqrt(H) and
 sqrt(H(H-1)(2H-1)/6). The dummy-season gain is computed from its actual transition
 matrix. At 30 years the monthly H=360 and seasonal H=120 dummy-season gains both
-equal sqrt(60). The 1.8.8 manuscript reference declares the following medians
+equal sqrt(60). The 1.8.9 manuscript reference declares the following medians
 per seasonal update:
 
 ```python
@@ -70,7 +70,7 @@ import math
 
 shared = bx.SharedShrinkage(
     medians={'level': .01, 'slope': .0001, 'seasonal': .01},
-    initial_slope_sd=None, initial_slope_median=.001, log_sd=math.log(2),
+    initial_slope_sd=None, initial_slope_median=.01, log_sd=math.log(2),
 )
 print(shared.calibration(horizon=120, period=4,
                          slope_time_unit=40, unit='degC'))
@@ -78,8 +78,8 @@ print(shared.calibration(horizon=120, period=4,
 
 These medians imply integrated 30-year SDs of approximately 0.263°C for
 level innovations, 0.181°C for integrated slope innovations, 0.186°C for
-same-season change and 0.288°C from the initial slope. The corresponding
-initial-rate SD is 0.096°C/decade. They are not estimated from Uccle and not
+same-season change and 2.876°C from the initial slope. The corresponding
+initial-rate SD is 0.959°C/decade. They are not estimated from Uccle and not
 universal climate constants; the seasonal model is not an exact marginalization
 of the monthly one.
 Slope plots use 40 seasonal rather than 120 monthly updates per decade.

@@ -231,3 +231,15 @@ Introduced shared components with fixed loadings, weighted zero-sum departures,
 centered joint inference, Gaussian reference validation, component/risk/forecast
 results and shared-model persistence. Retired particle inference from the
 active API. Earlier release archives retain their own detailed history.
+# 1.8.9 (2026-09-27)
+
+- Seasonal manuscript priors: initial seasonal coefficient SD 20°C and shared
+  initial-slope median absolute coefficient 0.01 per season; the prior-rate SD
+  is approximately 0.96°C per decade after integrating the shared scale.
+- Full reference: 30-year forecast, 12,000 predictive draws, 95% bands, and
+  quantile-based uncertainty widths for each of the six responses.
+- Split sensitivity, seven validation origins and matched monthly/seasonal
+  forecast comparisons into 106 independent PBS array fits; retain separate
+  full reference, pre-2019, dependence and monthly supplement jobs.
+- Add a convergence-aware collector, mid-century pairwise gap contrasts and
+  consolidated manuscript forecast uncertainty panels.

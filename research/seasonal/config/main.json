@@ -1,6 +1,6 @@
 {
   "extends": "../../monthly/config/main.json",
-  "_comment": "BUCEX 1.8.8 seasonal manuscript reference: four median-absolute shared-scale anchors (0.01, 0.0001, 0.01, 0.001) per seasonal transition. The 1.8.6.1 dummy-seasonal initialization correction is retained.",
+  "_comment": "BUCEX 1.8.9 seasonal reference: median-absolute shared-scale anchors (0.01, 0.0001, 0.01, 0.01) per seasonal transition; initial seasonal coefficient SD 20 C. The 1.8.6.1 initialization correction is retained.",
   "data": {
     "frequency": "seasonal",
     "daily_source": "data/Uccle_31_08_26.csv",
@@ -23,8 +23,9 @@
       "trend": 0.0001,
       "season": 0.01
     },
-    "initial_slope_sd": 0.001482602218505602,
-    "initial_slope_median": 0.001,
+    "initial_slope_sd": 0.01482602218505602,
+    "initial_slope_median": 0.01,
+    "seasonal_initial_sd": 20.0,
     "xi_prior": "normal",
     "xi_sd": 0.3,
     "xi_bounds": [
@@ -46,7 +47,7 @@
     "slope_time_unit": 40,
     "unit": "degC"
   },
-  "forecast_horizon": 40,
+  "forecast_horizon": 120,
   "contrasts": {
     "months": [
       3,
@@ -70,7 +71,7 @@
     "eta": 1.0,
     "prior_sd": 0.25
   },
-  "output": "results/serra_188_seasonal",
+  "output": "results/serra_189_seasonal",
   "validation": {
     "training_ends": [
       "2015-11",

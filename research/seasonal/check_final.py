@@ -5,6 +5,7 @@ import argparse
 import json
 from pathlib import Path
 import sys
+import pandas as pd
 
 import bucex as bx
 
@@ -29,6 +30,7 @@ def assess(run: Path, expected_config: Path) -> dict:
             f"{name}_level.csv", f"{name}_slope_C_per_decade.csv",
             f"{name}_scale_by_season.csv", f"{name}_smoothed_pit.csv",
             f"{name}_risk.csv", f"{name}_forecast_season_risk.csv",
+            f"{name}_forecast_uncertainty.csv",
         ])
     missing = [name for name in required if not (run / name).is_file()]
     if missing:
@@ -59,6 +61,17 @@ def assess(run: Path, expected_config: Path) -> dict:
         mcmc = stored.get("mcmc", {})
         if (mcmc.get("chains"), mcmc.get("warmup"), mcmc.get("draws")) != (4, 3000, 8000):
             issues.append("final MCMC budget must be 4 chains, 3000 warm-up and 8000 retained draws")
+        if (stored.get('forecast_horizon'), stored.get('forecast_draws'),
+                stored.get('credible_interval')) != (120, 12000, .95):
+            issues.append('final forecast must cover 120 seasons using 12000 draws and 95% intervals')
+    for name in SERIES:
+        file = run/f'{name}_forecast_uncertainty.csv'
+        if file.exists():
+            frame = pd.read_csv(file)
+            if (not set(('horizon','nominal','target','lower','upper')) <= set(frame) or
+                    len(frame) != 360 or frame.horizon.max() != 120 or
+                    not frame.nominal.eq(.95).all()):
+                issues.append(f'{name}: invalid 30-year forecast uncertainty or interval level')
 
     return {
         "bucex_version": bx.__version__,

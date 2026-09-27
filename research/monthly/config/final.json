@@ -4,7 +4,8 @@
     "warmup": 2000,
     "draws": 4000
   },
-  "forecast_draws": 4000,
+  "forecast_horizon": 360,
+  "forecast_draws": 8000,
   "predictive_check_draws": 400,
-  "output": "results/serra_184_final"
+  "output": "results/serra_189_monthly_supplement_final"
 }

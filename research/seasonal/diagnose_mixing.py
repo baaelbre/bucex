@@ -86,7 +86,8 @@ def main():
     elapsed = perf_counter() - start
     report = fit.diagnostics()['parameters']
     report.to_csv(target / 'parameters.csv')
-    targets = fit.contrast_diagnostics(scientific_targets(fit, {'model': config['model']}))
+    targets = fit.contrast_diagnostics(scientific_targets(fit, {'model': config['model']}),
+                                       credible_interval=config['credible_interval'])
     targets.to_csv(target / 'targets.csv')
     # Keep every compact parameter trace, so a failed TNm or copula check
     # can be investigated without repeating a multi-hour fit. Exclude paths

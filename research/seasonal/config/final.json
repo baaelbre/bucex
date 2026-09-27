@@ -1,11 +1,11 @@
 {
   "extends": "main.json",
-  "_comment": "1.8.8 manuscript priors (four median-absolute anchors) with an expanded four-chain sampling budget; inspect convergence before reporting.",
+  "_comment": "1.8.9 manuscript reference; 30-year seasonal forecast with 12,000 predictive draws. The four-chain fit remains a long job and requires convergence review.",
   "mcmc": {
     "warmup": 3000,
     "draws": 8000
   },
-  "forecast_draws": 4000,
+  "forecast_draws": 12000,
   "predictive_check_draws": 400,
-  "output": "results/serra_188_seasonal_final"
+  "output": "results/serra_189_seasonal_final"
 }

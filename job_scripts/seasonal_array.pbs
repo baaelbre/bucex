@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#PBS -N bx189_array
+#PBS -l nodes=1:ppn=4
+#PBS -l mem=20gb
+#PBS -l walltime=12:00:00
+#PBS -j oe
+set -euo pipefail
+cd "${BUCEX_PROJECT_ROOT:-${PBS_O_WORKDIR:?submit from release root}}"
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+mkdir -p job_scripts/logs
+index="${PBS_ARRAYID:-${PBS_ARRAY_INDEX:?PBS array index missing}}"
+python_exe="${BUCEX_PYTHON:-python3}"
+echo "$(date -u) $(hostname) task=$index tier=${BUCEX_TIER:-paper} python=$python_exe"
+"$python_exe" -u -m research.seasonal.jobs --tier "${BUCEX_TIER:-paper}" --index "$index"

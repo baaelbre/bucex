@@ -1,131 +1,92 @@
-# BUCEX 1.8.8 manuscript experiments
+# BUCEX 1.8.9 manuscript run sheet
 
-All commands start at the unpacked `bucex-1.8.8` root. Use `tmux` or a BIOBOT
-job for long fits. The complete **sequential** queue is
-`bash RUN_PAPER_EXPERIMENTS.sh`; it logs each job to
-`results/serra_188_logs/` and halts on a failed command or numerical gate.
-Each fit uses four parallel chains (`chain_workers=4`); it does not create ten
-jobs at once. Numerical library threads are limited to one per chain.
-
-## 1. Prepare and check the declared prior
+All commands run from the unpacked release root. Install dependencies in the
+BIOBOT Python environment once and specify an absolute interpreter if needed:
 
 ```bash
-python -m pip install -e '.[plot,test]'
-python -c 'import bucex; print(bucex.__version__, bucex.__file__)'
-python -m pytest -q
-python -m research.seasonal.prepare --config research/seasonal/config/final.json --output results/serra_188_seasonal_data
-python -m research.seasonal.preflight --config research/seasonal/config/final.json --output results/serra_188_final_plan
-python -m research.seasonal.prior_effects --config research/seasonal/config/final.json --output results/serra_188_prior_effects
-python -u -m research.seasonal.fit --config research/seasonal/config/smoke.json
+python3 -m pip install -e '.[plot,test]'
+export BUCEX_PYTHON="$(command -v python3)"
+python3 -m research.seasonal.jobs --list
 ```
 
-The preflight must report 538 complete seasons ending 31 August 2026, anchors
-`0.01, 0.0001, 0.01, 0.001`, and prior 30-year contribution SDs about
-`0.263, 0.181, 0.186, 0.288` degrees C. The final number is initial-slope
-displacement; its rate SD is `0.096` degrees C per decade. Smoke fits check
-execution only.
-The combined same-season latent-location contrast has prior SD about 0.468°C
-over 30 years; the effects script also exports simulation quantiles rather
-than treating its non-Gaussian mixture as a normal interval.
-
-## 2. Full reference and convergence gate
+## Submit on BIOBOT (PBS)
 
 ```bash
-python -u -m research.seasonal.fit --config research/seasonal/config/final.json
-python -m research.seasonal.check_final --run PATH_PRINTED_BY_FINAL_FIT
-python -m research.seasonal.dynamic_comparison --run PATH_PRINTED_BY_FINAL_FIT --output results/serra_188_dynamic_comparison
+export BUCEX_MAX_JOBS=8  # increase to 10 only if 40 cores and ~200 GB are available
+bash bash_scripts/submit_biobot.sh paper
+qstat -u "$USER"
 ```
 
-This is four chains, 3,000 warm-up plus 8,000 retained draws each. Save its
-timestamped directory as `FINAL_RUN`. Do not report results if `check_final`
-exits with status 2. The old `reference_20260923.json` remains an archival
-configuration and has the previous prior; it is not this manuscript fit.
-The last command exports time-resolved within-season gaps between summaries,
-relative to each pair's 1892--1922 seasonal gap, and local differences in
-warming rates. It uses complete paired posterior draws. The CSVs retain
-pointwise intervals and probabilities for practical gap/rate thresholds;
-period-average comparisons alone cannot answer when additivity changed.
+The array contains **106 independent one-fit tasks**. Its elements include
+posterior sensitivity to hyperprior width, the four physical medians (including
+the old initial-slope anchor), GEV shape and bounds, seasonal dispersion and
+initial state, seasonal dependence, pre-2019 record risks, two held-out
+origins for every prior/structural variant, seven reviewer-comment-5 origins,
+and four matched monthly/seasonal forecast origins. The separate long jobs
+fit the reference, pre-2019 record, constant copula, independence, and monthly
+supplement. The PBS array cap is eight at once by default; every task has its
+own result and convergence file. Change the cap according to available
+physical cores and memory. PBS logs are under `job_scripts/logs/`.
 
-## 3. Prior and model sensitivity
+For a quick numerical screen instead, run
+`bash bash_scripts/submit_biobot.sh screen`. These are two-chain,
+700-warmup/1,300-retained fits. They are **not** manuscript results. The
+four-chain paper array retains each study's declared budget (typically
+2,000 warmup and 4,000 retained draws per chain), and the primary reference
+retains 3,000/8,000. The preceding reference took roughly ten hours; running
+fits concurrently reduces calendar time but cannot make the final reference
+finish in one to three hours. Array elements have 12-hour and primary jobs
+24-hour walltime requests. Adjust PBS directives to your site limits.
 
-`--stage all` fits each candidate on the full record and at the two declared
-held-out origins, then writes comparison reports. Run these as **separate**
-studies with their own timestamped roots:
+For an individual task in a separate terminal (without PBS):
 
 ```bash
-python -u -m research.monthly.prior_assessment --config research/seasonal/config/manuscript_sensitivity.json --stage all
-python -u -m research.monthly.prior_assessment --config research/seasonal/config/physical_sensitivity.json --stage all
-python -u -m research.monthly.prior_assessment --config research/seasonal/config/adequacy.json --stage all
+python3 -m research.seasonal.jobs --task posterior_physical_sensitivity_double_slope
+python3 -m research.seasonal.jobs --group long --task final_reference
 ```
 
-The first varies hyperprior width and GEV shape (including a bounded shape
-case); the second halves/doubles each of the four manuscript anchors; the
-third compares the width/presence of seasonal observation dispersion and fixed
-location seasonality. The width variants keep the four
-marginal coefficient second moments fixed. Every variant's numerical check
-must pass before attributing a difference to the prior.
+If PBS is unavailable and you have a reserved compute node, the local runner
+uses `BUCEX_MAX_JOBS` simultaneous processes:
 
 ```bash
-python -u -m research.monthly.prior_assessment --config research/seasonal/config/dependence_sensitivity.json --stage all
+BUCEX_MAX_JOBS=4 bash bash_scripts/run_biobot_local.sh screen
 ```
 
-This tests LKJ concentrations 1, 2 and 4, with matched held-out forecasts.
-
-## 4. Dependence alternatives and prospective event
+## Audit, aggregate, and make figures
 
 ```bash
-python -u -m research.seasonal.fit --config research/seasonal/config/constant_copula_full.json
-python -u -m research.seasonal.fit --config research/seasonal/config/independence_full.json
-python -u -m research.seasonal.fit --config research/seasonal/config/pre2019.json
-python -u -m research.monthly.sensitivity --config research/seasonal/config/pre2019_sensitivity.json
+python3 -m research.seasonal.collect_jobs --tier paper --require-complete --figures
 ```
 
-The first two keep the main seasonal priors and full sampling budget but
-change contemporaneous dependence. The prospective fit stops after MAM 2019;
-JJA 2019 is predicted one season ahead. The final command varies shape prior
-and observation dispersion for that forecast. Record the pre-2019 run and
-sensitivity directories as `PRE2019_RUN` and `PRE2019_SENSITIVITY`.
+The collector writes `results/serra_189_parallel/paper/collected/status.json`
+even if a task is missing or a convergence check is flagged. It merges
+nonoverlapping forecast origins, reports paired forecast cases, aggregates
+matched block comparisons, and **refuses a complete-paper gate** if any job
+is missing, numerically flagged or a two-chain screen. A failed/interrupted
+task leaves `task.json`; inspect its traceback, remove that manifest only,
+and rerun the same task. Completed tasks with an unchanged config are skipped.
 
-## 5. Reviewer validation and monthly-block comparison
+Retrieve the reference path from
+`results/serra_189_parallel/paper/final_reference/task.json` and run:
 
 ```bash
-python -m research.seasonal.preflight --config research/seasonal/config/comment5.json --output results/serra_188_comment5_plan
-python -u -m research.monthly.validate --config research/seasonal/config/comment5.json
-python -u -m research.monthly.run --config research/monthly/config/final.json
-python -m research.seasonal.compare --config research/seasonal/config/compare_full.json --plan
-python -u -m research.seasonal.compare --config research/seasonal/config/compare_full.json
+RUN=$(python3 -c 'import json; print(json.load(open("results/serra_189_parallel/paper/final_reference/task.json"))["result"])')
+python3 -m research.seasonal.check_final --run "$RUN"
+python3 -m research.seasonal.dynamic_comparison --run "$RUN" \
+  --output results/serra_189_dynamic_comparison
+python3 -m research.seasonal.manuscript_figures --run "$RUN" \
+  --output results/serra_189_manuscript_figures
 ```
 
-Validation uses seven expanding windows, each holding out 20 seasons; examine
-the seven `joint/convergence_*.json` files before comparing held-out PIT,
-coverage, CRPS, logarithmic scores and tails. The monthly full-record run is
-supplementary. The comparison uses four matched cutoffs and scores both block
-resolutions on the **same seasonal observations**, not their raw likelihoods.
-Its monthly side retains the separately declared monthly prior settings.
-Save the validation and block-comparison roots as `VALIDATION_RUN` and
-`BLOCK_RUN`.
+The full fit forecasts 120 seasonal steps (30 years) from JJA 2026, with
+12,000 predictive draws and **95%** posterior/prediction bands. The companion
+monthly full run forecasts 360 months with 8,000 draws. The figure script
+includes forecast interval-width figures, a six-response scale figure,
+observed seasonal records and LOESS overview, level/slope panels,
+and PIT/QQ summaries. Check its CLI for optional pre-2019 inputs.
 
-## 6. Check supporting fits and make figures
-
-```bash
-python -m research.seasonal.paper_gate PRIOR_RUN PHYSICAL_RUN ADEQUACY_RUN DEPENDENCE_RUN \
-  CONSTANT_COPULA_RUN INDEPENDENCE_RUN PRE2019_RUN PRE2019_SENSITIVITY \
-  VALIDATION_RUN BLOCK_RUN
-python -m research.seasonal.manuscript_figures \
-  --run FINAL_RUN \
-  --sensitivity PRIOR_RUN/sensitivity ADEQUACY_RUN/sensitivity \
-  --validation VALIDATION_RUN/joint \
-  --block-comparison BLOCK_RUN \
-  --pre2019 PRE2019_RUN PRE2019_SENSITIVITY \
-  --output results/serra_188_manuscript_figures
-```
-
-Replace the uppercase paths by the directories printed by each command.
-`paper_gate` fails for missing or flagged convergence reports. The physical
-anchor study remains available in its supplementary comparison report; it is
-omitted from the already dense main sensitivity panel. The figure builder
-requires a passing full-record `convergence.json` and records source checksums.
-
-The shell queue stores these paths automatically. An interrupted monthly vs
-seasonal comparison resumes with `python -m research.seasonal.compare --run
-PATH_TO_BLOCK_RUN`; incomplete MCMC chains in other jobs require a fresh run.
+Prior sensitivity is reported with numerical warnings visible. The wider
+initial-slope prior implies approximately 0.96°C/decade marginal initial-rate
+SD and 2.88°C over 30 years; the reference choice is a modelling decision,
+not a result. No posterior, forecast, additive-gap or threshold claim should
+be transferred from the earlier 1.8.8 fits to this release.

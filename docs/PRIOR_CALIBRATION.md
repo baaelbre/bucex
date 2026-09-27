@@ -51,7 +51,7 @@ distribution is not Gaussian: multiplying this SD by 1.96 does not give its
 exact 95% interval. The hyperprior's own 95% scale interval is
 anchor*exp(±1.96*d), approximately [0.257,3.89] times the anchor.
 
-For the 1.8.8 seasonal manuscript, the initial-slope scale is also the median
+For the 1.8.9 seasonal manuscript, the initial-slope scale is also the median
 absolute coefficient, so its conditional SD is the scale divided by q. The
 older `initial_slope_sd` convention instead uses the conditional SD directly.
 The same exp(d²) inflation applies after integrating either lognormal scale.
@@ -66,11 +66,11 @@ COMPSTAT scales. The monthly innovation anchors are 0.008343480538,
 SDs are 0.379473, 0.196769 and 0.154919°C, and initial-rate SD is 0.30°C/decade.
 These replace the 1.8.2 exploratory quarter anchors in the draft workflow.
 
-The 1.8.8 seasonal manuscript uses four per-season median-absolute anchors:
-level 0.01, slope 0.0001, seasonal 0.01 and initial slope 0.001. At H=120
+The 1.8.9 seasonal manuscript uses four per-season median-absolute anchors:
+level 0.01, slope 0.0001, seasonal 0.01 and initial slope 0.01. At H=120
 and 40 updates per decade, their integrated 30-year SDs are 0.263, 0.181
-and 0.186°C, with initial-rate SD 0.096°C/decade and initial-slope
-displacement 0.288°C. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
+and 0.186°C, with initial-rate SD 0.959°C/decade and initial-slope
+displacement 2.876°C. See [SEASONAL_ANALYSIS](SEASONAL_ANALYSIS.md) and
 [START_HERE](../START_HERE.md) for details. Hyperprior-width
 sensitivity uses `match_marginal_moments=true` to keep these effects fixed while
 changing log SD. Physical-effect sensitivity separately scales the anchors.
@@ -100,7 +100,7 @@ print(pd.DataFrame(shared.calibration(horizon=360, unit='degC')))
 ```
 
 `SharedShrinkage(medians=..., initial_slope_sd=None,
-initial_slope_median=.001)` uses the same median-absolute convention for all
+initial_slope_median=.01)` uses the same median-absolute convention for all
 four components. The legacy `initial_slope_sd` API remains available. Both
 initial-slope arguments are **per update**; the `from_effects` constructor
 explicitly converts from the stated rate unit. Omitting an innovation effect
