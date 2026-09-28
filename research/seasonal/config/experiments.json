@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.2: one response per task, no pooling or copula. All batches support bounded parallel execution on biobot. Shape variants apply only to the four extrema; the prospective 2019 study applies only to TXx.",
+  "_comment": "1.9.3: one HPC array element per experiment/origin; six independent responses run in parallel. All shrinkage Normal SDs are fixed.",
   "studies": [
     "manuscript_sensitivity",
     "physical_sensitivity",
@@ -20,9 +20,6 @@
     "2020-11"
   ],
   "validation_variants": [
-    "narrow_log2_fixed_anchors",
-    "wide_log4_fixed_anchors",
-    "original_innovation_anchors",
     "half_level",
     "double_level",
     "half_slope",
@@ -37,7 +34,9 @@
     "xi_wide",
     "quarter_seasonal",
     "double_slope_half_seasonal",
-    "double_slope_quarter_seasonal"
+    "double_slope_quarter_seasonal",
+    "half_all_shrinkage",
+    "double_all_shrinkage"
   ],
   "tiers": {
     "screen": {
@@ -61,13 +60,13 @@
     },
     "paper": {
       "mcmc": {
-        "chains": 4,
-        "chain_workers": 4,
+        "chains": 2,
+        "chain_workers": 2,
         "warmup": 2000,
         "draws": 4000
       },
       "diagnostic_thresholds": {
-        "min_chains": 4,
+        "min_chains": 2,
         "max_rhat": 1.01,
         "min_ess": 400
       },
@@ -81,18 +80,18 @@
   },
   "resources": {
     "screen": {
-      "cpus": 2,
-      "memory_gb": 12,
+      "cpus": 12,
+      "memory_gb": 24,
       "hours": 6
     },
     "paper": {
-      "cpus": 4,
-      "memory_gb": 20,
+      "cpus": 12,
+      "memory_gb": 64,
       "hours": 12
     },
     "paper_long": {
-      "cpus": 4,
-      "memory_gb": 32,
+      "cpus": 12,
+      "memory_gb": 96,
       "hours": 24
     }
   },

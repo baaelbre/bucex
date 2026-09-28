@@ -36,7 +36,7 @@ def run(config, *, series=None, directory=None):
     if config["analysis"] == "independent":
         for name in data:
             item = channel(name, data, config)
-            if config['priors'].get('independent_shrinkage') is not None:
+            if (config['priors'].get('independent_shrinkage') is not None or config['priors'].get('innovation_sd') is not None):
                 model, prior = independent_model(data[[name]], config)
                 fit = bx.fit(data[[name]], model=model, priors=prior,
                              **fit_options(config, family=item.family))

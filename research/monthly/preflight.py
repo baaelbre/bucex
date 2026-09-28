@@ -20,7 +20,7 @@ def inspect(config):
     if joint:
         model, prior = joint_model(data, config)
         bx.plan(model, data, parameterization='fs', asis=config['inference']['asis'])
-    elif config['priors'].get('independent_shrinkage') is not None:
+    elif (config['priors'].get('independent_shrinkage') is not None or config['priors'].get('innovation_sd') is not None):
         for name in data:
             model, prior = independent_model(data[[name]], config)
             bx.plan(model, data[[name]], parameterization='fs', asis=config['inference']['asis'])
@@ -34,6 +34,10 @@ def inspect(config):
         calibration.append(dict(component='initial_slope',anchor=sd,anchor_kind='fixed_normal_SD',
             displacement_sd_marginal=units.get('horizon',360)*sd,
             initial_rate_sd_marginal=units.get('slope_time_unit',120)*sd))
+    if config['priors'].get('innovation_sd') is not None:
+        from research.monthly.fixed_priors import calibration as fixed_calibration
+        calibration=fixed_calibration(next(iter(prior.channels.values())),period=config['model']['period'],
+            horizon=config.get('prior_calibration',{}).get('horizon',120),rate_multiplier=10*config['model']['steps_per_year']).to_dict('records')
     bytes_per_state = mcmc.chains*mcmc.draws*(len(data)+1)*8
     return dict(version=bx.__version__, analysis=config['analysis'],
         start=str(data.index[0].date()), end=str(data.index[-1].date()), n_blocks=len(data),

@@ -34,7 +34,7 @@ def study_plan(config):
             joint_model(data, case)
         elif case['analysis'] == 'independent':
             for name in data:
-                if case['priors'].get('independent_shrinkage') is not None:
+                if (case['priors'].get('independent_shrinkage') is not None or case['priors'].get('innovation_sd') is not None):
                     independent_model(data[[name]],case)
                 else:
                     marginal_prior(channel(name, data, case), data, case)
@@ -46,7 +46,8 @@ def study_plan(config):
         n_months=len(data) if config['data'].get('frequency','monthly')=='monthly' else None,
         block_frequency=config['data'].get('frequency','monthly'), series=list(data.columns),
         candidates=[dict(name=v['name'], analysis=case['analysis'],
-            innovation_median=case['priors']['innovation_median'],
+            innovation_median=case['priors'].get('innovation_median'),
+            innovation_sd=case['priors'].get('innovation_sd'),
             shared_shrinkage=case['priors'].get('shared_shrinkage'),
             model=case['model'], priors=case['priors'], copula=case.get('copula'))
             for v, case in zip(variants, cases)],

@@ -1,4 +1,4 @@
-"""BUCEX 1.9.2: one response per task, with no cross-response borrowing."""
+"""BUCEX 1.9.3: one response per task, with no cross-response borrowing."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -18,7 +18,7 @@ from research.monthly.validate import validate
 
 PROJECT = Path(__file__).resolve().parents[2]
 CONFIG = PROJECT/'research/seasonal/config'
-ROOT = Path('results/serra_192_parallel')
+ROOT = Path('results/serra_193_parallel')
 BATCHES = ('posterior','reference','pre2019','experiments','validation','validation10','all')
 STUDIES = ('manuscript_sensitivity','physical_sensitivity','adequacy')
 
@@ -49,7 +49,7 @@ def _fold_dates():
 
 
 def tasks(batch='posterior', *, tier='paper', resource='all'):
-    """Stable IDs and ordering; scientifically redundant mean/shape fits are omitted."""
+    """Stable IDs and ordering; each full experiment contains all six responses."""
     if batch not in BATCHES or tier not in ('screen','paper') or resource not in ('all','standard','long'):
         raise ValueError('Unknown batch, tier or resource class.')
     spec=settings();variants={}
@@ -60,7 +60,7 @@ def tasks(batch='posterior', *, tier='paper', resource='all'):
             if name in variants:raise ValueError(f'Duplicate variant: {name}')
             variants[name]=study
     def channels(variant):
-        return [ch for ch in spec['series'] if not variant.startswith('xi_') or bx.UCCLE_INFO[ch]['family']=='gev']
+        return list(spec['series'])
     posterior=[Task(f'posterior_{v}_{ch}','posterior',s,v,ch)
                for v,s in variants.items() for ch in channels(v)]
     record=[Task(f'pre2019_{v["name"]}_TXx','pre2019','pre2019_sensitivity',v['name'],'TXx')
@@ -113,10 +113,10 @@ def task_config(task,tier):
     c['credible_interval']=.95
     c['experiment']=dict(task_id=task.id,tier=tier,batch_kind=task.kind,channel=task.channel,
         design=task.design if task.kind=='forecast' else task.kind,
-        reference='1.9.2 separate single-response fits; private normal-lognormal innovation priors; separate initial slopes')
+        reference='1.9.3 independent analyses; calibrated fixed Normal SDs; no shrinkage hyperpriors')
     if (c['analysis']!='independent' or c.get('copula') is not None or
-        c['priors'].get('shared_shrinkage') is not None or c['priors'].get('independent_shrinkage') is None):
-        raise ValueError('1.9.2 requires separate analyses and private innovation hyperparameters.')
+        c['priors'].get('shared_shrinkage') is not None or c['priors'].get('independent_shrinkage') is not None or c['priors'].get('innovation_sd') is None):
+        raise ValueError('1.9.3 requires independent analyses, fixed Normal SDs and no shrinkage hyperpriors.')
     c['output']=str(ROOT/tier/task.id/'report')
     return c
 
@@ -201,24 +201,22 @@ def verify(tier='paper',*,output=None):
             if len(splits)!=1 or len(splits[0][1])!=t.horizon:raise ValueError('Expected one complete declared validation fold.')
         if len(model.channels)!=1 or model.copula is not None or list(prior.channels)!=[t.channel]:
             raise ValueError('A fit must contain precisely its own response and no copula.')
-        if not isinstance(prior.shrinkage,bx.IndependentShrinkage) or set(prior.shrinkage.anchors)-{'level','slope','seasonal'}:
-            raise ValueError('Innovation hyperparameters must be private; initial rates stay separate.')
+        if prior.shrinkage is not None:
+            raise ValueError('All shrinkage priors must have fixed SDs, without hyperpriors.')
         p=c['priors'];rows.append(dict(task_id=t.id,kind=t.kind,variant=t.variant,channel=t.channel,origin=t.origin,
             resource=resource_class(t,tier),n_blocks=len(data),chains=c['mcmc']['chains'],warmup=c['mcmc']['warmup'],draws=c['mcmc']['draws'],
             forecast_horizon=c['forecast_horizon'] if t.kind!='forecast' else t.horizon,
-            log_sd=p['independent_shrinkage']['log_sd'],level_anchor=p['innovation_median']['level'],
-            slope_anchor=p['innovation_median']['trend'],seasonal_anchor=p['innovation_median']['season'],
+            level_prior_sd=p['innovation_sd']['level'],slope_prior_sd=p['innovation_sd']['trend'],
+            seasonal_prior_sd=p['innovation_sd']['season'],initial_slope_prior_sd=p['initial_slope_sd'],
             analysis='independent',pool_initial_slope=False,design=t.design if t.kind=='forecast' else t.kind,
             initial_rate_sd_C_per_decade=40*p['initial_slope_sd'],xi_sd=p['xi_sd'],save_fits=c['save_fits']))
-    def moments(c):
-        p=c['priors'];tau=p['independent_shrinkage']['log_sd']
-        return np.square(list(p['innovation_median'].values()))*np.exp(2*tau*tau)
-    for name in ('narrow_log2_matched','wide_log4_matched'):
-        if not np.allclose(moments(posterior[name]),moments(posterior['reference']),rtol=1e-12,atol=0):
-            raise ValueError('Incorrect second-moment matching: '+name)
+    ref=posterior['reference'];z=.6744897501960817
+    for field,median in ref['calibration']['reference_m0'].items():
+        actual=ref['priors']['initial_slope_sd'] if field=='initial_slope' else ref['priors']['innovation_sd'][field]
+        if not np.isclose(actual,median/z,rtol=1e-14):raise ValueError('Incorrect reference Normal calibration: '+field)
     result=dict(version=bx.__version__,tier=tier,status='configuration_checks_passed',
         counts={b:len(tasks(b,tier=tier)) for b in BATCHES},
-        scope='Single-response models, data windows, units, horizons and matched priors; no MCMC execution.')
+        scope='Single-response models, data windows, units, horizons and fixed Normal calibration; no MCMC execution.')
     if output is not None:
         output=Path(output);output.mkdir(parents=True,exist_ok=True)
         bx.save_config(result,output/'preflight.json');pd.DataFrame(rows).to_csv(output/'resolved_settings.csv',index=False)

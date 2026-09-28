@@ -1,3 +1,5 @@
+> The active 1.9.3 seasonal grid fits six separate responses with fixed Normal shrinkage SDs and no copula. See [the current run guide](../BUCEX-1.9.3-commands.md) and [current calibration](PRIOR_CALIBRATION.md). The 1.9.0 hierarchy/copula sections below document historical capabilities. Calendar, aggregation and raw-extreme definitions remain applicable.
+
 # Seasonal blocks, comparable prediction, and future r-largest models
 
 ## Scope of 1.9.0

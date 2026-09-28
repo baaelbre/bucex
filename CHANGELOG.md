@@ -1,3 +1,13 @@
+# 1.9.3 — fixed Normal shrinkage and parallel HPC experiments
+
+- Remove shrinkage hyperpriors from the active seasonal grid; use median-absolute calibration (0.01, 0.0001, 0.01, 0.01), including the initial slope.
+- Add direct `innovation_sd` inputs, four-component SD multipliers and fixed-prior calibration reports; retain coefficient prior/posterior comparisons.
+- Replace learned-width/matched-moment controls with global half/double SD controls; preserve stronger seasonal shrinkage, slope combinations, shape priors and model alternatives.
+- Run six separate responses per experiment with two parallel chains each, reserving twelve cores for both screen and paper. Longer paper chains and stricter diagnostics remain.
+- Submit using only the login host's standard library. Add Gallade compute-node environment creation, startup probe dependencies, per-response failure tracking and compute-node collection.
+- Provide 23 full-record settings and 88 experiment/origin bundles across all batches (508 response fits). Retain 30-year forecasts and both validation designs.
+- Freeze 1.9.2 configuration snapshots for historical tests; no new empirical performance claim is made.
+
 # 1.9.2 — separate-response seasonal workflow
 
 - Add single-response `IndependentShrinkage`, preserving the normal–lognormal marginal innovation prior while removing cross-response borrowing.

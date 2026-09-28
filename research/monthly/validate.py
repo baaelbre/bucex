@@ -51,7 +51,7 @@ def validate(config, *, directory=None):
     if config["analysis"] == "independent":
         for name in data:
             item = channel(name, initial, config)
-            if config['priors'].get('independent_shrinkage') is not None:
+            if (config['priors'].get('independent_shrinkage') is not None or config['priors'].get('innovation_sd') is not None):
                 model, prior = independent_model(initial[[name]], config)
                 analyses.append((name, data[[name]], model, prior, None))
             else:

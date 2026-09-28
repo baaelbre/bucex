@@ -4,5 +4,6 @@
     "warmup": 500,
     "draws": 500
   },
-  "output": "results/serra_191_seasonal_pilot"
+  "output": "results/serra_193_seasonal_pilot",
+  "_comment": "Fixed Normal priors, independently fitted summaries; sensitivity factors multiply Normal prior SDs."
 }

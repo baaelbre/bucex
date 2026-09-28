@@ -1,11 +1,11 @@
-# Seasonal Uccle analysis — 1.9.2
+# Seasonal Uccle analysis: 1.9.3
 
-The current job grid fits TXm, TNm, TXx, TXn, TNx and TNn separately. All six use the same reference prior settings, with independent innovation hyperparameters, initial slopes and state trajectories. There is no copula or borrowing across responses.
+TXm, TNm, TXx, TXn, TNx and TNn are fitted separately, with the same fixed Normal prior settings and separate trajectories, innovation coefficients and initial slopes. There are no learned shrinkage hyperparameters, copula or cross-response borrowing in the active grid.
 
-The [command guide](../../BUCEX-1.9.2-commands.md) gives bounded parallel screen/paper commands for biobot. The full grid has 148 posterior tasks, four prospective pre-2019 TXx tasks, 354 five-year validation tasks and 18 original-design ten-year tasks. Each task fits one response. Full-record fits use 538 complete seasons, MAM 1892–JJA 2026, and forecast 120 seasons.
+The [command guide](../../BUCEX-1.9.3-commands.md) lists the calibration, all 23 settings and Gallade screen/paper commands. Six fits run simultaneously within each experiment job, with two parallel chains each and twelve reserved cores. The full grid has 138 posterior fits, four prospective pre-2019 TXx fits, 348 five-year validation fits and 18 original-design ten-year fits. Full-record fits use 538 complete seasons and forecast 120 seasons.
 
-`config/main.json` declares the reference. `config/experiments.json` declares the studies, origins and budgets. `jobs --verify` checks the actual single-response models, prior units and complete folds. `local` schedules jobs; `collect_jobs` pairs validation by response and identical cases; `export_results` writes a compact review ZIP.
+`config/main.json` declares the reference; `config/experiments.json` declares studies, origins and budgets. `job_plan` builds the submission plan with the standard library alone. `bundles` launches six response tasks; `jobs` enforces one response per task and verifies configurations. `collect_jobs` pairs marginal scores on identical cases. `export_results` writes compact evidence. `local` remains available for local/biobot scheduling.
 
-Private scale outputs are called `independent_shrinkage*.csv`. The single-channel model container preserves the established Gaussian/GEV sampler, minima transformations and seasonal scale handling; it never receives the other five responses.
+`fixed_prior_settings.csv` records fixed coefficient SDs and physical calibration. Initial-slope and innovation prior/posterior reports remain available; hyperparameter posterior plots are absent. The single-channel container preserves Gaussian/GEV samplers, minima transformations and seasonal scale handling and never receives the other responses.
 
-Frozen `reference_191.json`, `reference_189.json` and `reference_20260923.json` retain historical specifications. Legacy grid/compare tools and old command guides are not the current 1.9.2 workflow. Use the root launchers for the new analysis.
+Frozen `reference_*.json` and `config/history_192/` retain older specifications for reproducibility. Legacy copula/hierarchical tools and 1.9.1/1.9.2 command guides are historical, not the active 1.9.3 grid.

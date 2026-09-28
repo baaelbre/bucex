@@ -1,62 +1,26 @@
 {
   "extends": "main.json",
-  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
+  "_comment": "Global half/double fixed Normal SDs replace learned-width controls; no matched-width distinction exists for a fixed Normal family.",
   "variants": [
     {
       "name": "reference"
     },
     {
-      "name": "narrow_log2_matched",
-      "match_marginal_moments": true,
-      "independent_shrinkage": {
-        "components": [
-          "level",
-          "slope",
-          "seasonal"
-        ],
-        "log_sd": 0.6931471805599453
+      "name": "half_all_shrinkage",
+      "sd_multipliers": {
+        "level": 0.5,
+        "trend": 0.5,
+        "season": 0.5,
+        "initial_slope": 0.5
       }
     },
     {
-      "name": "wide_log4_matched",
-      "match_marginal_moments": true,
-      "independent_shrinkage": {
-        "components": [
-          "level",
-          "slope",
-          "seasonal"
-        ],
-        "log_sd": 1.3862943611198906
-      }
-    },
-    {
-      "name": "original_innovation_anchors",
-      "multipliers": {
-        "level": 2.0678221394822525,
-        "trend": 2.0678221394822525,
-        "season": 2.0678221394822525
-      }
-    },
-    {
-      "name": "narrow_log2_fixed_anchors",
-      "independent_shrinkage": {
-        "components": [
-          "level",
-          "slope",
-          "seasonal"
-        ],
-        "log_sd": 0.6931471805599453
-      }
-    },
-    {
-      "name": "wide_log4_fixed_anchors",
-      "independent_shrinkage": {
-        "components": [
-          "level",
-          "slope",
-          "seasonal"
-        ],
-        "log_sd": 1.3862943611198906
+      "name": "double_all_shrinkage",
+      "sd_multipliers": {
+        "level": 2.0,
+        "trend": 2.0,
+        "season": 2.0,
+        "initial_slope": 2.0
       }
     },
     {
@@ -87,12 +51,5 @@
   "assessment": {
     "baseline": "reference"
   },
-  "mcmc": {
-    "warmup": 2000,
-    "draws": 4000,
-    "chains": 4,
-    "chain_workers": 4,
-    "progress_every": 100
-  },
-  "output": "results/serra_192_manuscript_sensitivity"
+  "output": "results/serra_193_manuscript_sensitivity"
 }

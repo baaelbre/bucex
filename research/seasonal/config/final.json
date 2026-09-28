@@ -1,11 +1,11 @@
 {
   "extends": "main.json",
-  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
+  "_comment": "Fixed Normal priors, independently fitted summaries; sensitivity factors multiply Normal prior SDs.",
   "mcmc": {
     "warmup": 3000,
     "draws": 8000
   },
   "forecast_draws": 12000,
   "predictive_check_draws": 2000,
-  "output": "results/serra_192_seasonal_final"
+  "output": "results/serra_193_seasonal_final"
 }

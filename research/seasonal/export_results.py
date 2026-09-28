@@ -1,4 +1,4 @@
-"""Export compact evidence for review, leaving posterior state archives on biobot."""
+"""Export compact evidence for review, leaving posterior state archives on the host."""
 import argparse
 from pathlib import Path
 import zipfile

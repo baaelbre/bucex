@@ -6,7 +6,7 @@ import pytest
 import bucex as bx
 from research.monthly.models import joint_model, fit_options
 from research.monthly.report import write_report
-from research.seasonal import jobs
+from tests import _jobs_192 as jobs
 
 
 def test_frozen_191_has_identity_dependence_and_separate_initial_rates():

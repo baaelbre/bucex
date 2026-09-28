@@ -104,6 +104,9 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             response_unit='degC', rate_unit='°C per decade')
         pd.DataFrame(fit.priors.shrinkage.calibration(period=config['model']['period'],
             **config.get('prior_calibration', {}))).to_csv(directory/'prior_calibration.csv',index=False)
+    if config.get('priors', {}).get('innovation_sd') is not None:
+        from research.monthly.fixed_priors import save as save_fixed_priors
+        save_fixed_priors(fit,directory,config,level=level)
     targets = scientific_targets(fit, config)
     target_table = fit.contrast_diagnostics(targets, credible_interval=level)
     target_table['probability_positive'] = [float(np.mean(targets[key] > 0)) for key in target_table.index]

@@ -1,7 +1,7 @@
-# Paper runs in 1.9.2
+# Paper runs in 1.9.3
 
-Use the paper section of [BUCEX-1.9.2-commands.md](BUCEX-1.9.2-commands.md).
+Follow [the paper commands](BUCEX-1.9.3-commands.md). Both screen and paper use two chains per response, six simultaneous separate fits and twelve cores per experiment job. The long paper reference uses 3,000 warm-up and 8,000 retained iterations per chain; other paper fits use 2,000/4,000.
 
-`bash bash_scripts/run_local.sh paper reference` runs the six long reference fits, one response per task. `RUN_PAPER_EXPERIMENTS.sh` includes all posterior sensitivities and prospective 2019 TXx checks. `RUN_PAPER_ALL.sh` also includes five-year and original-design ten-year validation.
+The declared reference is fixed Normal shrinkage with median absolute coefficients `(0.01, 0.0001, 0.01, 0.01)` for level, slope, seasonal innovations and initial slope. No shrinkage scale is learned. All six analyses use the same prior settings.
 
-Each reference report has its own `final_check.json`. The collector preserves missing tasks, failed computations and numerical warnings. Run its `--require-complete` gate only after inspecting the reports. No joint/copula model or pooled hyperparameter is used by this job grid.
+Each full-record reference report has its own `final_check.json`. The collector preserves missing tasks, failed computations and numerical warnings. Inspect those reports before using `COLLECT_HPC_RESULTS.sh paper experiments --require-complete`. A numerical pass does not establish forecast adequacy or select the best prior. The full forecast horizon is 120 seasons, with 95% reported intervals and 90/95/99% held-out coverage checks.

@@ -1,0 +1,187 @@
+{
+  "_comment": "Quick prior screen: 3x3 level/slope grid and one broader initial-slope control. Choose by paired held-out CRPS; rerun selected settings with four long chains.",
+  "analysis": "joint",
+  "data": {
+    "series": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
+    ],
+    "start": "1892-01",
+    "end": "2026-08",
+    "exclude_months": [
+      "1892-01",
+      "1892-02"
+    ],
+    "frequency": "seasonal",
+    "daily_source": "data/Uccle_31_08_26.csv"
+  },
+  "model": {
+    "period": 4,
+    "level": "dynamic",
+    "trend": "dynamic",
+    "seasonal": "dynamic",
+    "seasonal_scale": true,
+    "scale_prior_sd": 0.3,
+    "steps_per_year": 4,
+    "scale_time_unit": 40
+  },
+  "priors": {
+    "innovation": "normal",
+    "innovation_median": {
+      "level": 0.004836005867750226,
+      "trend": 4.836005867750226e-05,
+      "season": 0.004836005867750226
+    },
+    "initial_level_mean": 0.0,
+    "baseline_sd": 20.0,
+    "initial_slope_sd": 0.0125,
+    "seasonal_initial_sd": 20.0,
+    "observation_variance": [
+      2.0,
+      2.0
+    ],
+    "xi_prior": "normal",
+    "xi_sd": 0.3,
+    "xi_bounds": [
+      null,
+      null
+    ],
+    "tg_spike_shape": 0.5,
+    "tg_tail_shape": 0.5,
+    "shared_shrinkage": {
+      "components": [
+        "level",
+        "slope",
+        "seasonal"
+      ],
+      "log_sd": 1.0986122886681098,
+      "pool_initial_slope": false
+    },
+    "initial_slope_median": null
+  },
+  "mcmc": {
+    "draws": 300,
+    "warmup": 300,
+    "chains": 2,
+    "seed": 56100,
+    "progress": true,
+    "progress_every": 100,
+    "chain_workers": 2
+  },
+  "inference": {
+    "asis": false,
+    "laplace": {
+      "max_iterations": 30,
+      "tolerance": 1e-05,
+      "mh_steps": 1
+    }
+  },
+  "seed": 56101,
+  "output": "results/serra_191_seasonal_grid",
+  "forecast_horizon": 120,
+  "forecast_draws": 4000,
+  "credible_interval": 0.95,
+  "risks": {
+    "TXm": 25,
+    "TNm": 18,
+    "TXx": 35,
+    "TXn": 0,
+    "TNx": 25,
+    "TNn": -10
+  },
+  "copula": null,
+  "validation": {
+    "initial": 1188,
+    "horizon": 12,
+    "step": 12,
+    "save_fits": false,
+    "training_ends": [
+      "2015-11",
+      "2020-11"
+    ],
+    "draws": 800
+  },
+  "figures": false,
+  "predictive_check_draws": 2000,
+  "prior_draws": 10000,
+  "prior_predictive_draws": 0,
+  "save_fits": false,
+  "continue_on_error": false,
+  "figure_format": "png",
+  "figure_dpi": 180,
+  "forecast_months": null,
+  "contrasts": {
+    "reference": [
+      "1892-03",
+      "1922-02"
+    ],
+    "comparison": [
+      "1996-09",
+      "2026-08"
+    ],
+    "months": [
+      3,
+      6,
+      9,
+      12
+    ],
+    "rate_multiplier": 40.0,
+    "pairs": []
+  },
+  "diagnostic_thresholds": {
+    "max_rhat": 1.05,
+    "min_ess": 100,
+    "min_chains": 2
+  },
+  "figure_style": "manuscript",
+  "figure_colors": {
+    "TXm": "#24658a",
+    "TXx": "#24658a",
+    "TXn": "#24658a",
+    "TNm": "#a44839",
+    "TNx": "#a44839",
+    "TNn": "#a44839"
+  },
+  "trace_exports": false,
+  "prior_calibration": {
+    "horizon": 120,
+    "slope_time_unit": 40,
+    "unit": "degC"
+  },
+  "additional_risks": {
+    "TXx": [
+      39.7
+    ]
+  },
+  "innovation_effects": {
+    "years": [
+      10,
+      30
+    ],
+    "thresholds": [
+      0.05,
+      0.1,
+      0.2
+    ]
+  },
+  "report_joint_risks": false,
+  "cross_summary_contrasts": false,
+  "grid": {
+    "level_factors": [
+      0.5,
+      1.0,
+      2.0
+    ],
+    "slope_factors": [
+      0.5,
+      1.0,
+      2.0
+    ],
+    "extra_initial_slope_factor": 1.5
+  },
+  "mixing_gate": "results/serra_191_seasonal_mixing"
+}

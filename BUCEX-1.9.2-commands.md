@@ -1,3 +1,5 @@
+> Historical command guide. For the active 1.9.3 fixed-prior HPC workflow use [BUCEX-1.9.3-commands.md](BUCEX-1.9.3-commands.md).
+
 # BUCEX 1.9.2 — separate analyses on biobot
 
 Each task fits **one** of TXm, TNm, TXx, TXn, TNx or TNn. It sees only that response. There is no copula, no shared latent state, no shared innovation hyperparameter and no pooled initial slope. Identical numerical prior settings are reused in six independent analyses. Each task has its own output directory and reproducible random seed.

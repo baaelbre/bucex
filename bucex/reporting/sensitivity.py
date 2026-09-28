@@ -67,7 +67,7 @@ class SensitivityReport:
                 directory = Path(directory)
                 config = json.loads((directory/'config.json').read_text(encoding='utf-8'))
                 joint = config.get('analysis') in {'joint', 'copula'}
-                named = joint or config.get('priors', {}).get('independent_shrinkage') is not None
+                named = joint or config.get('priors', {}).get('independent_shrinkage') is not None or config.get('priors', {}).get('innovation_sd') is not None
                 intervals.add(config['credible_interval'])
                 event = config.get('risks', {}).get(channel)
                 if channel in events and events[channel] != event:
@@ -106,7 +106,7 @@ class SensitivityReport:
                     if path.exists():
                         add(label, self._read(path), variant, channel)
                 if named and not joint:
-                    for label in ('independent_shrinkage','independent_shrinkage_effects','initial_slope_prior_posterior'):
+                    for label in ('independent_shrinkage','independent_shrinkage_effects','initial_slope_prior_posterior','fixed_prior_settings'):
                         path=directory/(label+'.csv')
                         if path.exists():add(label,self._read(path),variant,channel)
                 assessment = json.loads((directory/'convergence.json').read_text(encoding='utf-8'))

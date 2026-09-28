@@ -19,12 +19,12 @@ def run(config, output, *, draws=50000, seed=188):
     gain = bx.innovation_response_gains(horizon, period=config['model']['period'])
     gain['initial_slope'] = float(horizon)
     rng = np.random.default_rng(seed)
-    shared = spec.sample_medians(draws, rng=rng)
+    shared = {} if spec is None else spec.sample_medians(draws, rng=rng)
     contributions = {}
     for name in data.columns:
         if independent:
             _, priors = independent_model(data[[name]], config)
-            shared = spec.sample_medians(draws, rng=rng)
+            shared = {} if spec is None else spec.sample_medians(draws, rng=rng)
         contributions[name] = {}
         for component in ('level', 'slope', 'seasonal', 'initial_slope'):
             # A standardized path's endpoint contribution has variance gain^2.
@@ -47,8 +47,13 @@ def run(config, output, *, draws=50000, seed=188):
             rows.append(dict(series=name, component=component, n=draws, mean=float(np.mean(values)),
                              sd=float(np.std(values, ddof=1)), lower_95=lower, median=median, upper_95=upper))
     pd.DataFrame(rows).to_csv(output/'thirty_year_effects.csv', index=False)
-    calibration=spec.calibration(period=4, **config['prior_calibration'])
-    if 'initial_slope' not in shared:
+    if spec is None:
+        from research.monthly.fixed_priors import calibration as fixed_calibration
+        calibration=fixed_calibration(next(iter(priors.channels.values())),period=4,horizon=horizon,
+            rate_multiplier=config['prior_calibration']['slope_time_unit']).to_dict('records')
+    else:
+        calibration=spec.calibration(period=4, **config['prior_calibration'])
+    if spec is not None and 'initial_slope' not in shared:
         sd=config['priors']['initial_slope_sd']
         calibration.append(dict(component='initial_slope',anchor_kind='fixed_normal_SD',anchor=sd,
             displacement_sd_marginal=horizon*sd,
@@ -63,7 +68,7 @@ def run(config, output, *, draws=50000, seed=188):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', default='research/seasonal/config/final.json')
-    parser.add_argument('--output', default='results/serra_192_prior_effects')
+    parser.add_argument('--output', default='results/serra_193_prior_effects')
     parser.add_argument('--draws', type=int, default=50000)
     parser.add_argument('--seed', type=int, default=188)
     args = parser.parse_args()

@@ -1,62 +1,54 @@
 {
-  "version": "1.9.2",
-  "unique_tests": 307,
-  "latest_result_passed": 307,
-  "test_runs": [
-    {
-      "file": "bx192_regression.xml",
-      "tests": 286,
-      "failures": 1
-    },
-    {
-      "file": "bx192_new_tests.xml",
-      "tests": 19,
-      "failures": 0
-    },
-    {
-      "file": "bx192_runner.xml",
-      "tests": 1,
-      "failures": 0
-    },
-    {
-      "file": "bx192_integration.xml",
-      "tests": 2,
-      "failures": 0
-    }
-  ],
-  "note": "The broad regression run found only a stale 1.9.1 version assertion. It was updated to 1.9.2 and the affected test passed on rerun. The union of latest test outcomes is reported; this is not a claim of one uninterrupted 307-test run.",
+  "version": "1.9.3",
+  "tested_at": "2026-09-28T17:24:51.235764+00:00",
+  "unique_tests": 320,
+  "latest_result_passed": 320,
+  "test_run": "validation/release_193/tests.xml",
   "runtime": {
     "python": "3.12.14",
     "numpy": "2.3.5",
     "scipy": "1.17.0",
     "pandas": "2.2.3"
   },
+  "reference_fingerprint": {
+    "config_sha256": "56ddd864ec4ce7f3cd3ff7c3be264ba669a5278ad37083da97eb21c5446c5854",
+    "source_sha256": "4368f062d57cbfbfd6956c3b1f6728a78a67eb00b68826c35667e2968d19942d",
+    "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+  },
+  "counts": {
+    "posterior": 138,
+    "reference": 6,
+    "pre2019": 4,
+    "experiments": 142,
+    "validation": 348,
+    "validation10": 18,
+    "all": 508
+  },
+  "bundle_counts": {
+    "posterior": 23,
+    "reference": 1,
+    "pre2019": 4,
+    "experiments": 27,
+    "validation": 58,
+    "validation10": 3,
+    "all": 88
+  },
+  "chains_per_response": 2,
+  "cpus_per_experiment": 12,
   "checks": [
-    "Exact one-coefficient hyperconditional compared with independent Normal densities",
-    "Private and shared constructions have identical single-response marginal prior draws at matched settings",
-    "Private hierarchy rejects multiple responses; all 524 configurations contain one response and no copula",
-    "Gaussian, GEV maxima, GEV minima, fixed seasonality and constant dispersion fits",
-    "Saved fits, warm starts, 120-season forecasts and 90/95/99 percent validation",
-    "Serial and parallel-chain draws match exactly at fixed seeds",
-    "Actual bounded local subprocess runner records failure and continues its queue",
-    "Actual task execution, resume, per-response collector, figures and compact export",
-    "Screen and paper top-level ALL wrappers dry-run at 12x2 and 6x4 chain workers"
+    "All 320 regression and new-release tests passed in one run",
+    "Six actual short response fits with two parallel chains each and fixed Normal priors",
+    "Median-absolute calibration and SD multiplier checks",
+    "Saved fits, thirty-year forecasts, prior/posterior reports and held-out validation paths",
+    "All 508 paper task specifications compile and declared folds are complete",
+    "Scheduler stub checks probe dependencies, resource classes and exported environment",
+    "Six real lightweight child processes overlap and propagate one deliberate failure",
+    "Submission dry runs and Python 3.9 grammar check require only stdlib on login",
+    "21 shell scripts pass bash -n",
+    "TNn actual single-response probe CLI completed successfully"
   ],
   "production_fits_run": false,
   "hpc_submission_tested": false,
-  "biobot_execution_tested": false,
-  "counts": {
-    "posterior": 148,
-    "reference": 6,
-    "pre2019": 4,
-    "experiments": 152,
-    "validation": 354,
-    "validation10": 18,
-    "all": 524
-  },
-  "reference_fingerprint": {
-    "config_sha256": "959f2b272b1a928db5a6d61fa31f72450b5b5c6173544cb26c9990f1e685f817",
-    "source_sha256": "5c633adbc79a4bf34904062ce4cd79c65650f32faa5448bc55ece999950279cc",
-    "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
-  }
+  "full_twelve_worker_mcmc_tested_locally": false,
+  "note": "Local CPU allocation is smaller than twelve; the full probe correctly refuses it. Six short two-chain scientific fits were tested separately and bundle scheduling with lightweight real processes. The mandatory compute-node probe tests all twelve chain workers on the HPC before releasing production arrays."
 }

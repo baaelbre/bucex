@@ -1,52 +1,34 @@
-# BUCEX 1.9.2
+# BUCEX 1.9.3
 
-Bayesian unobserved component models for Gaussian temperature summaries and GEV block extremes. This release supports private structural trajectories for each series, continuous innovation priors, optional shared shrinkage of **prior scales**, and an optional Gaussian residual copula. The research workflows are [monthly](research/monthly/README.md) and [seasonal](research/seasonal/README.md).
+Bayesian unobserved-component models for Gaussian temperature summaries and GEV block extremes.
+
+The active seasonal workflow fits **six separate analyses with fixed Normal shrinkage priors**. All six use the requested median absolute coefficients `(0.01, 0.0001, 0.01, 0.01)` for level, slope and seasonal innovations and initial slope. There are no shrinkage hyperpriors or copula parameters in the current grid. Estimated innovation coefficients and state trajectories remain private to each response.
+
+[Start here](START_HERE.md) · [HPC commands and sensitivity grid](BUCEX-1.9.3-commands.md) · [Verification](validation/RELEASE_VALIDATION_193.md)
+
+One HPC experiment runs six responses in parallel, with two chains each and **12 cores in both screen and paper tiers**. Paper runs use longer chains and stricter diagnostics. The 23 full-record settings test fixed prior SDs directly, together with shape-prior and model alternatives. Root launchers now submit HPC jobs; the local/biobot runner remains available separately.
 
 ```bash
+# Local installation; for Gallade use SETUP_HPC_ENV.sh as documented.
 python -m pip install -e ".[plot,test]"
-python -c "import bucex; print(bucex.__version__)"
+python -m pytest
 ```
 
-The seasonal workflow now fits **six separate analyses**, with private innovation hyperparameters and initial slopes. No copula or parameter pooling is used. See [the 1.9.2 command guide](BUCEX-1.9.2-commands.md) for screen/paper jobs running in parallel on biobot. The full set has 524 single-response tasks, including posterior sensitivities and both validation designs. Full-record forecasts span 30 years.
-
-The reference preserves the 1.9.1 marginal normal–lognormal innovation priors while removing cross-response borrowing. New checks include quarter-strength seasonal anchors and doubled-slope combinations with half/quarter seasonal anchors. Output keeps 95% intervals, central 90/95/99% validation coverage, and individual numerical diagnostics. Production fits still need to be run and assessed.
-
-`bx.IndependentShrinkage(...)` attaches a private scale hyperprior to a single named response and rejects multiple responses in the same fit. The separate jobs reuse the established sampler and report APIs. The general library retains its joint-model support for historical analyses; the example below illustrates that optional library API, not the 1.9.2 paper specification.
-
-## Model and fit
+The fixed Normal prior SD is `m0 / Phi^-1(.75)`. A simple univariate API example is:
 
 ```python
 import bucex as bx
 
-channels = (
-    bx.Channel("TXm", bx.Gaussian(scale=bx.SeasonalScale(12)),
-               (bx.LocalLinearTrend(), bx.DummySeasonal(12))),
-    bx.Channel("TXx", bx.GEV(scale=bx.SeasonalScale(12)),
-               (bx.LocalLinearTrend(), bx.DummySeasonal(12))),
+q = 0.6744897501960817
+prior = bx.fs_priors(
+    "gaussian", period=4, innovation="normal",
+    innovation_sd={"level": .01/q, "trend": .0001/q, "season": .01/q},
+    initial_slope=bx.NormalPrior(0., .01/q),
 )
-model = bx.MultiSeriesModel(channels, copula=bx.SeasonalGaussianCopula())
-priors = bx.MarginalPriors({
-    c.name: bx.fs_priors(c.family, period=12, innovation="normal")
-    for c in channels
-})
-data = bx.load_uccle_multiseries(series=["TXm", "TXx"], end="2026-08-01")
-fit = bx.fit(data, model, priors=priors, parameterization="fs",
-             mcmc=bx.MCMC(chains=4, warmup=1000, draws=1000, seed=2026))
-fit.save("two_series.bucex")
 ```
 
-`MarginalPriors(..., shrinkage=bx.SharedShrinkage(...))` can learn common normal-prior widths for level, slope, seasonal innovations and initial slopes. Each series retains its own state path and innovation SD. See [shared shrinkage](docs/SHARED_SHRINKAGE.md) and [physical calibration](docs/PRIOR_CALIBRATION.md). Univariate `bx.fit(y, bx.Model(...), priors=bx.fs_priors(...))` remains available. Continuous normal, lasso, horseshoe, triple-gamma and PC prior profiles remain supported.
+These are prior SDs for the signed FS coefficients, not fixed process innovation SDs. Initial-state and observation priors are separate. The full research configuration, including meteorological-season scale effects and initial seasonal SD 20, is in `research/seasonal/config/main.json`.
 
-The default observation scale is constant through time. `SeasonalScale(12)` adds repeating calendar-month effects, and `SeasonalScale(4, calendar="meteorological")` adds repeating season effects. Whether those effects improve the scientific fit is tested in both workflows with `constant_dispersion` alternatives; the research configs do not assume that the answer is known.
+Full-record fits cover 538 complete seasons and produce 30-year forecasts. Reports retain 95% intervals, 90/95/99% held-out coverage, marginal scores, prior/posterior comparisons and individual numerical diagnostics. Production fits must still be run and assessed.
 
-Models use finite, aligned observations for the private multiseries sampler. Gaussian channels use conditional FFBS; mixed or GEV channels use exact-likelihood-corrected Laplace–MH. The copula is fitted jointly with the margins and is used for forecasts and joint scores. A Gaussian copula models residual dependence, not a common latent warming factor. Seasonal aggregation and raw daily rank/clustering checks are available, while the fitted seasonal extrema use one extreme per block.
-
-## Checks
-
-```bash
-python -m pytest -q
-python -m research.monthly.preflight --config research/monthly/config/main.json
-python -m research.seasonal.jobs --tier screen --verify
-```
-
-The smoke configurations exercise code paths on short windows; their few draws are not scientific evidence. Long empirical runs, convergence checks and held-out predictions remain prerequisites for manuscript claims.
+Gaussian fits use conditional FFBS; GEV fits use Laplace proposals with an exact-likelihood Metropolis–Hastings correction. The library retains optional historical copula and hierarchical-prior APIs for reproducibility; they are not enabled by this release's seasonal experiment grid. See the [seasonal workflow](research/seasonal/README.md) and [prior calibration](docs/PRIOR_CALIBRATION.md).

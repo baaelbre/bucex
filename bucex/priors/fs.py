@@ -30,7 +30,7 @@ def triple_gamma_median(spike_shape=.5, tail_shape=.5):
     return float(np.exp(brentq(lambda x:cdf(x)-.5,-50.,50.,xtol=1e-9)))
 
 
-def fs_priors(family, *, period=12, innovation="normal", innovation_median=None,
+def fs_priors(family, *, period=12, innovation="normal", innovation_median=None, innovation_sd=None,
               initial_level=None, initial_slope=None, seasonal_initial_sd=2.25,
               observation_variance=None, xi_prior=None, xi_max_abs=None,
               spike_shape=.5, tail_shape=.5):
@@ -44,6 +44,10 @@ def fs_priors(family, *, period=12, innovation="normal", innovation_median=None,
     learning explicitly with the lower-level prior dataclasses if required.
     All three families have zero probability of an exactly zero innovation.
 
+    For fixed Normal coefficient priors, ``innovation_sd`` accepts their SDs
+    directly (level, trend, season); omit ``innovation_median`` in that case.
+    These SDs are fixed settings, with no sampled scale hyperparameter.
+
     Initial level defaults to N(0,20²), without reading/centering on the data.
     Shape defaults to unrestricted N(0,.3²). Optional xi_max_abs and
     GEV.xi_bounds intersect the prior support; the observation-dependent GEV
@@ -55,6 +59,12 @@ def fs_priors(family, *, period=12, innovation="normal", innovation_median=None,
         raise ValueError("family must be gaussian or gev.")
     if innovation not in {"normal", "lasso", "triple_gamma"}:
         raise ValueError("innovation must be normal, lasso, or triple_gamma.")
+    if innovation_sd is not None:
+        if innovation != "normal" or innovation_median is not None:
+            raise ValueError("innovation_sd requires Normal priors and no innovation_median.")
+        if set(innovation_sd) != {"level","trend","season"} or any(not np.isfinite(v) or v <= 0 for v in innovation_sd.values()):
+            raise ValueError("Declare positive finite Normal SDs for level, trend, and season.")
+        innovation_median = {k:float(v)*ndtri(.75) for k,v in innovation_sd.items()}
     medians = dict(innovation_median or {"level":.01,"trend":.00005,"season":.02})
     if set(medians) != {"level","trend","season"} or any(not np.isfinite(v) or v <= 0 for v in medians.values()):
         raise ValueError("Declare positive finite innovation medians for level, trend, and season.")

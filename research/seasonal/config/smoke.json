@@ -6,8 +6,8 @@
   "mcmc": {
     "warmup": 3,
     "draws": 4,
-    "chains": 4,
-    "chain_workers": 4,
+    "chains": 2,
+    "chain_workers": 2,
     "progress_every": 1
   },
   "contrasts": {
@@ -24,5 +24,6 @@
   "forecast_draws": 40,
   "predictive_check_draws": 12,
   "prior_draws": 500,
-  "output": "results/serra_191_seasonal_smoke"
+  "output": "results/serra_193_seasonal_smoke",
+  "_comment": "Fixed Normal priors, independently fitted summaries; sensitivity factors multiply Normal prior SDs."
 }

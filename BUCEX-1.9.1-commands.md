@@ -1,3 +1,5 @@
+> Historical command guide. For the active 1.9.3 fixed-prior HPC workflow use [BUCEX-1.9.3-commands.md](BUCEX-1.9.3-commands.md).
+
 > Historical 1.9.1 guide. For the current separate analyses on biobot, use [BUCEX-1.9.2-commands.md](BUCEX-1.9.2-commands.md).
 
 # BUCEX 1.9.1 — HPC sensitivities and biobot validation

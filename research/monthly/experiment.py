@@ -36,6 +36,15 @@ def configured_variant(config, variant):
             m[key] = variant[key]
     for key,factor in variant.get('multipliers', {}).items():
         p['innovation_median'][key] *= factor
+    for key, factor in variant.get('sd_multipliers', {}).items():
+        if not np.isfinite(factor) or factor <= 0:
+            raise ValueError('Prior SD multipliers must be positive and finite.')
+        if key == 'initial_slope':
+            p['initial_slope_sd'] *= factor
+        elif key in ('level','trend','season') and p.get('innovation_sd') is not None:
+            p['innovation_sd'][key] *= factor
+        else:
+            raise ValueError('sd_multipliers requires explicit Normal innovation_sd settings.')
     p['initial_slope_sd'] *= variant.get('initial_slope_multiplier', 1.)
     if p.get('initial_slope_median') is not None:
         p['initial_slope_median'] *= variant.get('initial_slope_multiplier', 1.)

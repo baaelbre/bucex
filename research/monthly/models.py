@@ -27,6 +27,8 @@ def channel(name, data, config):
 def marginal_prior(item, data, config):
     """Proper continuous priors; no estimated/data-centred hyperparameters."""
     p = config['priors']
+    if p.get('innovation_sd') is not None and (p.get('independent_shrinkage') is not None or p.get('shared_shrinkage') is not None):
+        raise ValueError('Fixed Normal SDs cannot be combined with a shrinkage hyperprior.')
     if p.get('shared_shrinkage') is not None and config['analysis'] == 'independent':
         raise ValueError('Shared shrinkage requires a joint fit of the series; use analysis=joint or copula.')
     center = p.get('initial_level_mean', 0.)
@@ -36,7 +38,8 @@ def marginal_prior(item, data, config):
     xi = (bx.UniformPrior(*bounds) if p.get('xi_prior', 'normal') == 'uniform'
           else bx.NormalPrior(p.get('xi_mean', 0.), p.get('xi_sd', .3)))
     return bx.fs_priors(item.family, period=config['model']['period'],
-        innovation=p.get('innovation', 'normal'), innovation_median=p['innovation_median'],
+        innovation=p.get('innovation', 'normal'), innovation_median=p.get('innovation_median'),
+        innovation_sd=p.get('innovation_sd'),
         initial_level=bx.NormalPrior(item.transform_sign*center, p.get('baseline_sd', 20.)),
         initial_slope=bx.NormalPrior(0., p['initial_slope_sd']),
         seasonal_initial_sd=p['seasonal_initial_sd'],
@@ -85,6 +88,8 @@ def independent_model(data, config):
     if config['analysis'] != 'independent' or len(data.columns) != 1:
         raise ValueError('Independent analyses require exactly one response per fit.')
     p = config['priors']
+    if p.get('innovation_sd') is not None and (p.get('independent_shrinkage') is not None or p.get('shared_shrinkage') is not None):
+        raise ValueError('Fixed Normal SDs cannot be combined with a shrinkage hyperprior.')
     if p.get('shared_shrinkage') is not None or config.get('copula') is not None:
         raise ValueError('Independent analyses cannot have shared shrinkage or a copula.')
     item = channel(data.columns[0], data, config)
@@ -111,6 +116,6 @@ def fit_options(config, *, family='mixed', tail=None):
         mcmc=bx.MCMC(**config['mcmc']), **inference_options(config))
     if tail is not None:
         options['tail'] = tail
-    if config['analysis'] == 'independent' and family == 'gev' and config['priors'].get('independent_shrinkage') is None:
+    if config['analysis'] == 'independent' and family == 'gev' and config['priors'].get('independent_shrinkage') is None and config['priors'].get('innovation_sd') is None:
         options['init'] = {'xi': 0.}
     return options

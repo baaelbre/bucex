@@ -10,7 +10,7 @@ from bucex.inference.fit.shrinkage import shared_scale_log_target
 from bucex.priors.shrinkage import NORMAL_ABSOLUTE_MEDIAN as Z75
 from research.monthly.models import independent_model,fit_options,joint_model
 from research.monthly.report import write_report
-from research.seasonal import jobs
+from tests import _jobs_192 as jobs
 
 
 def small_config(name,variant='reference'):

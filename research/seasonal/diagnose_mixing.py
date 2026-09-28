@@ -72,7 +72,7 @@ def main():
     if args.mode == 'independent':
         local = local[[args.name]]
         item = channel(args.name, local, config)
-        if config['priors'].get('independent_shrinkage') is not None:
+        if (config['priors'].get('independent_shrinkage') is not None or config['priors'].get('innovation_sd') is not None):
             model, prior = independent_model(local, config)
             options = fit_options(config, family=item.family)
         else:

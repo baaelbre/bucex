@@ -1,6 +1,6 @@
 {
   "extends": "pre2019.json",
-  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
+  "_comment": "Fixed Normal priors, independently fitted summaries; sensitivity factors multiply Normal prior SDs.",
   "variants": [
     {
       "name": "reference"
@@ -24,9 +24,9 @@
   "mcmc": {
     "warmup": 2000,
     "draws": 4000,
-    "chains": 4,
-    "chain_workers": 4,
+    "chains": 2,
+    "chain_workers": 2,
     "progress_every": 100
   },
-  "output": "results/serra_192_pre2019_sensitivity"
+  "output": "results/serra_193_pre2019_sensitivity"
 }

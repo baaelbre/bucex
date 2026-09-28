@@ -18,14 +18,7 @@
     },
     {
       "name": "fixed_location_seasonality",
-      "seasonal": "static",
-      "independent_shrinkage": {
-        "components": [
-          "level",
-          "slope"
-        ],
-        "log_sd": 1.0986122886681098
-      }
+      "seasonal": "static"
     },
     {
       "name": "previous_initial_season_sd",
@@ -39,7 +32,7 @@
     "warmup": 2000,
     "draws": 4000
   },
-  "output": "results/serra_192_adequacy",
+  "output": "results/serra_193_adequacy",
   "validation": {
     "training_ends": [
       "2015-11",
@@ -49,5 +42,5 @@
     "draws": 4000,
     "save_fits": true
   },
-  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response."
+  "_comment": "Fixed Normal priors, independently fitted summaries; sensitivity factors multiply Normal prior SDs."
 }

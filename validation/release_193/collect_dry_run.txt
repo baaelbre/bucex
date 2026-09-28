@@ -1,0 +1,1 @@
+sbatch --parsable --clusters=gallade --account=gvo00048 --chdir=/workspace/scratch/30dfa8f04d16/release193/bucex-1.9.3 --job-name=bx193_collect --nodes=1 --ntasks=1 --cpus-per-task=1 --mem=12G --time=02:00:00 --export=ALL --output=/workspace/scratch/30dfa8f04d16/release193/bucex-1.9.3/job_scripts/logs/bx193_collect_%j.log job_scripts/collect.slurm 

@@ -42,7 +42,7 @@ def run(config, *, variants=None, directory=None):
                     write_report(fit, target, config=local, risks=local['risks'],
                         horizon=local['forecast_horizon'], level=local['credible_interval'],
                         save_fit=local.get('save_fits', True))
-                elif local['priors'].get('independent_shrinkage') is not None:
+                elif (local['priors'].get('independent_shrinkage') is not None or local['priors'].get('innovation_sd') is not None):
                     model, prior = independent_model(data[[name]],local)
                     fit = bx.fit(data[[name]],model,priors=prior,**fit_options(local,family=model.family))
                     write_report(fit,target,config=local,risks=local['risks'],
