@@ -1,3 +1,10 @@
+# 1.9.5
+
+Pooled half-normal hierarchical shrinkage, calibrated half-t/Cauchy sensitivity,
+106 fits per tier and a single resource-bounded BIOBOT queue. Adds explicit
+annual risk/return-level reports and full pre-2019 evaluation. See
+`RELEASE_NOTES.md` and `BUCEX-1.9.5-commands.md`.
+
 # 1.9.4 — matched shrinkage comparison
 
 Direct Normal-SD hierarchies; matched independent/shared mixtures; separate initial rates; 49 screen experiments; longer chains; mixed CPU routing; pooled/separate collection and influence checks. See RELEASE_NOTES.md.

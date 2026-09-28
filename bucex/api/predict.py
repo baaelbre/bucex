@@ -521,12 +521,14 @@ class Forecast:
         )
 
     def conditional_cdf(self, observed: Array, *, channel: str | None = None) -> Array:
-        """Original-scale marginal CDF for each posterior draw and time block."""
+        """Original-scale CDF at a time vector or draw-by-time thresholds."""
 
         index = self._channel_index(channel)
-        observed_array = np.asarray(observed, dtype=float).reshape(-1)
-        if observed_array.size != self.horizon:
-            raise ValueError("observed must have length equal to the forecast horizon.")
+        observed_array = np.asarray(observed, dtype=float)
+        if observed_array.shape == (self.horizon,):
+            observed_array = observed_array[None, :]
+        elif observed_array.shape != (self.n_draws, self.horizon):
+            raise ValueError("observed must be a horizon vector or a draw-by-horizon matrix.")
         if self.is_multiseries_forecast:
             assert channel is not None
             observation_model = self.observation_model[channel]
@@ -549,7 +551,7 @@ class Forecast:
             if xi is not None:
                 xi = np.asarray(xi, dtype=float)[:, None]
         cdf = observation_model.cdf(
-            sign * observed_array[None, :],
+            sign * observed_array,
             eta_model,
             sigma=sigma,
             xi=xi,

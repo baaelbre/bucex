@@ -23,17 +23,17 @@ def main(argv=None):
     cap=int(os.environ.get('VSC_ARRAY_LIMIT','4'))
     if cap<1:p.error('VSC_ARRAY_LIMIT must be positive')
     # Do not execute a Gallade Python binary on the login node.
-    request=os.environ.get('BUCEX_PYTHON',str(PROJECT/'bucex_env_gallade_py311_194/bin/python'))
+    request=os.environ.get('BUCEX_PYTHON',str(PROJECT/'bucex_env_gallade_py311_195/bin/python'))
     found=shutil.which(request) if '/' not in request else request
     if not found:p.error('Cannot locate BUCEX_PYTHON: '+request)
     path=Path(found).absolute();compute_python=str(path.parent.resolve()/path.name)
     if not a.dry_run and not os.access(compute_python,os.X_OK):p.error('Compute Python is not executable; finish SETUP_HPC_ENV.sh first: '+compute_python)
-    root=Path(os.environ.get('BUCEX_RESULTS_ROOT',str(PROJECT/'results/serra_194'))).resolve()
+    root=Path(os.environ.get('BUCEX_RESULTS_ROOT',str(PROJECT/'results/serra_195'))).resolve()
     logs=PROJECT/'job_scripts/logs';logs.mkdir(parents=True,exist_ok=True)
     env=dict(os.environ,BUCEX_PROJECT_ROOT=str(PROJECT),BUCEX_PYTHON=compute_python,
              BUCEX_RESULTS_ROOT=str(root),BUCEX_TIER=a.tier,BUCEX_BATCH=a.batch,
              BUCEX_RETRY_FAILED='1' if a.retry_failed else '0')
-    default_setup=PROJECT/'bucex_env_gallade_py311_194/environment.sh'
+    default_setup=PROJECT/'bucex_env_gallade_py311_195/environment.sh'
     if 'BUCEX_ENV_SETUP' not in env and default_setup.is_file():env['BUCEX_ENV_SETUP']=str(default_setup)
     if not a.dry_run and env.get('BUCEX_ENV_SETUP') and not Path(env['BUCEX_ENV_SETUP']).is_file():
         p.error('Cannot read BUCEX_ENV_SETUP: '+env['BUCEX_ENV_SETUP'])
@@ -58,26 +58,26 @@ def main(argv=None):
         if account:base+=['--account='+account]
         if cluster:base+=['--clusters='+cluster]
         if partition:base+=['--partition='+partition]
-        probe=submit(base+['--job-name=bx194_probe','--cpus-per-task=12','--mem=16G','--time=00:20:00',
-            '--output='+str(logs/'bx194_probe_%j.log'),PROJECT/'job_scripts/probe.slurm'],'probe')
+        probe=submit(base+['--job-name=bx195_probe','--cpus-per-task=12','--mem=16G','--time=00:20:00',
+            '--output='+str(logs/'bx195_probe_%j.log'),PROJECT/'job_scripts/probe.slurm'],'probe')
         for resource in RESOURCES:
             group=[g for g in groups if g['resource']==resource]
             if not group:continue
             r=group[0]
             if any((g['cpus'],g['memory_gb'],g['hours'])!=(r['cpus'],r['memory_gb'],r['hours']) for g in group):raise ValueError('Mixed resources in one array')
-            submit(base+['--job-name=bx194_'+a.tier+'_'+resource,'--array=1-{}%{}'.format(len(group),cap),
+            submit(base+['--job-name=bx195_'+a.tier+'_'+resource,'--array=1-{}%{}'.format(len(group),cap),
                 '--cpus-per-task='+str(r['cpus']),'--mem='+str(r['memory_gb'])+'G','--time='+str(r['hours'])+':00:00',
                 '--dependency=afterok:'+probe,'--kill-on-invalid-dep=yes',
                 '--output='+str(logs/(a.tier+'_'+a.batch+'_'+resource+'_%A_%a.log')),PROJECT/'job_scripts/seasonal_array.slurm'],resource)
     else:
         base=['qsub','-V']+(['-A',account] if account else [])
-        probe=submit(base+['-N','bx194_probe','-l','nodes=1:ppn=12,mem=16gb,walltime=00:20:00',
+        probe=submit(base+['-N','bx195_probe','-l','nodes=1:ppn=12,mem=16gb,walltime=00:20:00',
             '-o',str(logs),'-e',str(logs),PROJECT/'job_scripts/probe.pbs'],'probe')
         for resource in RESOURCES:
             group=[g for g in groups if g['resource']==resource]
             if not group:continue
             r=group[0]
-            submit(base+['-N','bx194_'+a.tier[0]+'_'+resource[:3],'-t','1-{}%{}'.format(len(group),cap),
+            submit(base+['-N','bx195_'+a.tier[0]+'_'+resource[:3],'-t','1-{}%{}'.format(len(group),cap),
                 '-W','depend=afterok:'+probe,'-l','nodes=1:ppn={},mem={}gb,walltime={}:00:00'.format(r['cpus'],r['memory_gb'],r['hours']),
                 '-o',str(logs),'-e',str(logs),PROJECT/'job_scripts/seasonal_array.pbs'],resource)
     if not a.dry_run:

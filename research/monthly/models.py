@@ -20,7 +20,8 @@ def shrinkage_specification(config, *, independent=False):
         if settings.get('pool_initial_slope', False):
             raise ValueError('The direct-SD research hierarchy leaves initial rates separate.')
         return cls.from_sd({c: p['innovation_sd'][aliases[c]] for c in components},
-                           log_sd=settings.get('log_sd', np.log(3.)))
+                           log_sd=settings.get('log_sd', np.log(3.)),
+                           hyperprior=settings.get('hyperprior','lognormal'), df=settings.get('df',4.))
     return cls(medians={c: p['innovation_median'][aliases[c]] for c in components},
         log_sd=settings.get('log_sd', np.log(2.)),
         initial_slope_sd=(p['initial_slope_sd'] if not independent and

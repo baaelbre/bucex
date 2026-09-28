@@ -1,11 +1,17 @@
-# Seasonal Uccle analysis: 1.9.3
+# Seasonal paper workflow — 1.9.5
 
-TXm, TNm, TXx, TXn, TNx and TNn are fitted separately, with the same fixed Normal prior settings and separate trajectories, innovation coefficients and initial slopes. There are no learned shrinkage hyperparameters, copula or cross-response borrowing in the active grid.
+See [the complete launch guide](../../BUCEX-1.9.5-commands.md). The active
+configuration is `config/main.json`: three pooled half-normal innovation scales,
+separate fixed normal initial rates, no copula. Use `jobs --verify` to check all
+configurations and `overnight --dry-run` to inspect the resource-bounded queue.
 
-The [command guide](../../BUCEX-1.9.3-commands.md) lists the calibration, all 23 settings and Gallade screen/paper commands. Six fits run simultaneously within each experiment job, with two parallel chains each and twelve reserved cores. The full grid has 138 posterior fits, four prospective pre-2019 TXx fits, 348 five-year validation fits and 18 original-design ten-year fits. Full-record fits use 538 complete seasons and forecast 120 seasons.
+`all` includes 106 fits per tier: 41 seasonal full-record settings, six pre-2019
+fits, 43 five-year validation fits, nine ten-year split validations, six matched
+monthly/seasonal validations and one full-record monthly supplement. The
+`deferred` batch holds the 12 optional unpooled comparisons and is excluded.
 
-`config/main.json` declares the reference; `config/experiments.json` declares studies, origins and budgets. `job_plan` builds the submission plan with the standard library alone. `bundles` launches six response tasks; `jobs` enforces one response per task and verifies configurations. `collect_jobs` pairs marginal scores on identical cases. `export_results` writes compact evidence. `local` remains available for local/biobot scheduling.
-
-`fixed_prior_settings.csv` records fixed coefficient SDs and physical calibration. Initial-slope and innovation prior/posterior reports remain available; hyperparameter posterior plots are absent. The single-channel container preserves Gaussian/GEV samplers, minima transformations and seasonal scale handling and never receives the other responses.
-
-Frozen `reference_*.json` and `config/history_192/` retain older specifications for reproducibility. Legacy copula/hierarchical tools and 1.9.1/1.9.2 command guides are historical, not the active 1.9.3 grid.
+`finish` collects diagnostics and paired validation, creates prior simulations,
+builds reference figures and writes a dated review ZIP without large fit
+archives. Each task retains its resolved configuration and provenance. Screen
+results remain distinct from paper results. A completed job may still be
+flagged for convergence or model adequacy.

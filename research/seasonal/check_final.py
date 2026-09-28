@@ -67,12 +67,16 @@ def assess(run: Path, expected_config: Path) -> dict:
         issues.append(f"report version is {metadata.get('bucex_version')!r}, expected {bx.__version__!r}")
     if stored is not None:
         if stored.get('analysis') not in ('independent','joint') or stored.get('copula') is not None:
-            issues.append('1.9.4 requires independent residuals')
+            issues.append('1.9.5 reference uses a product observation likelihood')
         p=stored.get('priors', {})
         target_sd={'level':.01,'trend':.0001,'season':.01}
         if any(abs(p.get('innovation_sd',{}).get(k,0)-v)>1e-14 for k,v in target_sd.items()):
             issues.append('reference innovation priors must use the manuscript Normal SDs (0.01, 0.0001, 0.01)')
         h=p.get('shared_shrinkage') or p.get('independent_shrinkage')
+        if not p.get('shared_shrinkage') or h.get('hyperprior')!='half_normal':
+            issues.append('1.9.5 reference requires pooled half-normal innovation scales')
+        if p.get('seasonal_initial_sd')!=20 or p.get('baseline_sd')!=20:
+            issues.append('initial level and seasonal coordinate SDs must equal 20')
         if abs(p.get('initial_slope_sd',0)-.01)>1e-14 or (h and h.get('pool_initial_slope',False)):
             issues.append('initial rates must have fixed Normal SD 0.01 and remain separate')
         if h and h.get('scale_parameterization')!='normal_sd':issues.append('expected direct Normal SD anchors')

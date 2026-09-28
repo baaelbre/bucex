@@ -1,4 +1,4 @@
-"""BUCEX 1.9.4 matched fixed, independent-mixture and shared-shrinkage jobs."""
+"""BUCEX 1.9.5 pooled half-normal reference and parallel paper experiments."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from functools import lru_cache
 import hashlib
 import json
+import os
+import socket
 from pathlib import Path
 import shutil
 import traceback
@@ -17,7 +19,7 @@ from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
 from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan
 
-ROOT = Path('results/serra_194')
+ROOT = Path('results/serra_195')
 
 @dataclass(frozen=True)
 class Task:
@@ -33,6 +35,7 @@ class Task:
     origin: str = ''
     horizon: int = 20
     design: str = 'calendar_5y'
+    frequency: str = 'seasonal'
 
 
 def settings():
@@ -40,8 +43,9 @@ def settings():
 
 
 def resource_class(task, tier):
+    if task.frequency=='monthly': return 'monthly'
     resource='shared' if task.scope=='shared' else 'separate'
-    return resource+('_long' if tier=='paper' and task.kind=='posterior' and task.variant in BASELINES else '')
+    return resource+('_long' if tier=='paper' and task.kind in ('posterior','pre2019') and task.variant in BASELINES else '')
 
 
 @lru_cache(maxsize=1)
@@ -60,38 +64,46 @@ def tasks(batch='posterior', *, tier='paper', resource='all'):
         channels=['joint'] if g['scope']=='shared' else g['series']
         for id,ch in zip(g['task_ids'],channels):
             result.append(Task(id,g['kind'],g['family'],g['variant'],ch,g['id'],g['scope'],
-                tuple(g['series'] if ch=='joint' else [ch]),g['resource'],origin,g['horizon'],g['design']))
+                tuple(g['series'] if ch=='joint' else [ch]),g['resource'],origin,g['horizon'],g['design'],g['frequency']))
     return result
 
 
 def result_directory(directory,task):
     report=Path(directory)/'report'
-    return report if task.channel=='joint' and task.kind=='posterior' else report/task.channel
+    return report if task.channel=='joint' and task.kind!='forecast' else report/task.channel
 
 
 def task_config(task,tier):
-    spec=settings();entry=next(v for v in spec['variants'] if v['name']==task.variant)
-    c=configured_variant(bx.load_config(CONFIG/'main.json'),entry)
+    spec=settings();entry=next(v for v in spec['variants']+spec.get('deferred_variants',[]) if v['name']==task.variant)
+    c=configured_variant(bx.load_config(CONFIG/('monthly_reference.json' if task.frequency=='monthly' else 'main.json')),entry)
     budget=spec['tiers'][tier]
     c['mcmc'].update(budget['mcmc']);c['diagnostic_thresholds']=deepcopy(budget['diagnostic_thresholds'])
+    if task.frequency=='monthly':c['mcmc'].update(budget['block_mcmc'])
     for field in ('forecast_draws','predictive_check_draws','save_fits','figures','trace_exports'):
         c[field]=budget[field]
     c['validation'].update(draws=budget['validation_draws'],save_fits=budget['save_fits'])
     if task.kind=='forecast':
         c['validation'].update(training_ends=[task.origin],horizon=task.horizon)
-    c['forecast_horizon']=120
+    c['forecast_horizon']=360 if task.frequency=='monthly' else 120
     if resource_class(task,tier).endswith('_long'):
         final=bx.load_config(CONFIG/'final.json')
         c['mcmc'].update(final['mcmc']);c['forecast_draws']=final['forecast_draws']
+    if task.kind=='pre2019':
+        c['data']['end']='2019-05';c['forecast_horizon']=1
+        c['forecast_draws']=4000 if tier=='screen' else 20000
+        c['risk_periods']=None
+    if task.kind=='block':
+        c['mcmc'].update(budget['block_mcmc'])
+        c['validation'].update(training_ends=[task.origin],horizon=task.horizon*(3 if task.frequency=='monthly' else 1))
     c['data']['series']=list(task.series)
-    seed_key=f'{task.channel}/{task.kind}/{task.origin}/{tier}'.encode()
+    seed_key=f'{task.channel}/{task.kind}/{task.origin}/{task.frequency}/{tier}'.encode()
     seed=int.from_bytes(hashlib.sha256(seed_key).digest()[:4],'little')
     c['mcmc']['seed']=seed;c['seed']=(seed+1)%(2**32)
     c['credible_interval']=.95;c['variant']=deepcopy(entry)
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
         batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        reference='1.9.4: direct Normal SD calibration; matched independent/shared mixtures; separate initial rates')
+        frequency=task.frequency,reference='1.9.5: pooled half-normal innovation scales; separately calibrated initial rates')
     if c.get('copula') is not None or c.get('contrasts') is not None:
         raise ValueError('This comparison has independent residuals and no historical contrasts.')
     hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')
@@ -128,7 +140,7 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
         archive.mkdir(parents=True)
         for old in ('task.json','resolved_config.json','report'):
             if (directory/old).exists():shutil.move(str(directory/old),str(archive/old))
-    meta=dict(task=asdict(task),tier=tier,**identity,status='running',started=datetime.now(timezone.utc).isoformat())
+    meta=dict(task=asdict(task),tier=tier,**identity,status='running',pid=os.getpid(),hostname=socket.gethostname(),started=datetime.now(timezone.utc).isoformat())
     with manifest.open('x') as handle:json.dump(meta,handle,indent=2)
     bx.save_config(c,directory/'resolved_config.json')
     try:
@@ -138,6 +150,9 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
             import pandas as pd
             statuses=pd.read_csv(result/'folds.csv').numerical_status
             numerical=('passed_numerical_checks' if len(statuses) and statuses.eq('passed_numerical_checks').all() else 'needs_review')
+        elif task.kind=='block':
+            from research.seasonal.block_job import run as run_block
+            numerical=run_block(c,task,result)
         else:
             fit_full(c,directory=directory/'report')
             
@@ -145,7 +160,7 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
                 shutil.copy2(directory/'report/data_window.json',result/'data_window.json')
             numerical=bx.load_config(result/'convergence.json')['status']
         meta.update(status='completed',result=str(result),numerical_status=numerical)
-        if tier=='paper' and task.kind=='posterior' and task.variant in BASELINES:
+        if tier=='paper' and task.kind=='posterior' and task.variant in BASELINES and task.frequency=='seasonal':
             from research.seasonal.check_final import assess
             check=assess(result,directory/'resolved_config.json')
             bx.save_config(check,result/'final_check.json');meta['final_check']=check['status']
@@ -163,10 +178,13 @@ def verify(tier='screen',*,output=None):
     import pandas as pd
     from research.monthly.models import independent_model,joint_model,fit_options
     from research.monthly.validate import validation_splits
-    full=bx.load_uccle_multiseries(**bx.load_config(CONFIG/'main.json')['data'])
-    rows=[];compiled=set();priors={}
-    for t in tasks('all',tier=tier):
-        c=task_config(t,tier);data=full[list(t.series)]
+    rows=[];compiled=set();priors={};datasets={}
+    for t in tasks('all',tier=tier)+tasks('deferred',tier=tier):
+        c=task_config(t,tier)
+        data_config=dict(c['data']);data_config.pop('series',None)
+        key=json.dumps(data_config,sort_keys=True)
+        if key not in datasets:datasets[key]=bx.load_uccle_multiseries(**data_config)
+        data=datasets[key].loc[:,list(t.series)]
         model,prior=(joint_model if t.scope=='shared' else independent_model)(data,c)
         signature=json.dumps([list(t.series),c['model'],c['priors']],sort_keys=True)
         if signature not in compiled:
@@ -175,12 +193,16 @@ def verify(tier='screen',*,output=None):
         if model.copula is not None or c['credible_interval']!=.95 or not c['save_fits']:
             raise ValueError('Expected no copula, 95% intervals and retained fit archives.')
         if t.kind=='posterior':
-            if len(data)!=538 or c['forecast_horizon']!=120:
-                raise ValueError('Expected 538 seasons and 30-year forecasts.')
-        else:
+            count,horizon=(1614,360) if t.frequency=='monthly' else (538,120)
+            if len(data)!=count or c['forecast_horizon']!=horizon:
+                raise ValueError('Expected the complete record and 30-year forecasts.')
+        elif t.kind in ('forecast','block'):
             splits=validation_splits(data,c['validation'])
-            if len(splits)!=1 or len(splits[0][1])!=t.horizon:
+            if len(splits)!=1 or len(splits[0][1])!=t.horizon*(3 if t.frequency=='monthly' else 1):
                 raise ValueError('Validation requires a complete declared fold.')
+        elif t.kind=='pre2019':
+            if str(data.attrs.get('last_included_day'))!='2019-05-31' or c['forecast_horizon']!=1:
+                raise ValueError('Pre-2019 must end in May 2019 with a one-season forecast.')
         if (prior.shrinkage is None)!=(t.scope=='fixed'):
             raise ValueError('Wrong shrinkage scope.')
         if t.scope!='shared' and len(prior.channels)!=1:
@@ -191,21 +213,23 @@ def verify(tier='screen',*,output=None):
             if not np.isclose(p.beta0.sd,c['priors']['initial_slope_sd']):
                 raise ValueError('Initial-rate SD differs from its declaration.')
         p=c['priors'];h=prior.shrinkage
-        if t.kind=='posterior':priors[(t.scope,c['variant']['setting'],t.channel)]=prior
+        if t.kind=='posterior' and t.frequency=='seasonal':priors[(t.scope,c['variant']['setting'],t.channel)]=prior
         rows.append(dict(task_id=t.id,group_id=t.group_id,kind=t.kind,variant=t.variant,
             scope=t.scope,channel=t.channel,series=','.join(t.series),origin=t.origin,resource=t.resource,
             chains=c['mcmc']['chains'],warmup=c['mcmc']['warmup'],draws=c['mcmc']['draws'],
-            n_blocks=len(data),forecast_horizon=t.horizon if t.kind=='forecast' else 120,
+            n_blocks=len(data),forecast_horizon=c['validation']['horizon'] if t.kind in ('forecast','block') else c['forecast_horizon'],
             level_sd_anchor=p['innovation_sd']['level'],slope_sd_anchor=p['innovation_sd']['trend'],
-            seasonal_sd_anchor=p['innovation_sd']['season'],log_sd=None if h is None else h.log_sd,
-            initial_rate_sd_C_per_decade=40*p['initial_slope_sd'],pool_initial_slope=False,
+            seasonal_sd_anchor=p['innovation_sd']['season'],log_sd=h.log_sd if h and h.hyperprior=='lognormal' else None,
+            hyperprior=None if h is None else h.hyperprior,
+            initial_rate_sd_C_per_decade=10*c['model']['steps_per_year']*p['initial_slope_sd'],pool_initial_slope=False,
             innovation_sd_convention='fixed_normal_sd' if h is None else 'conditional_normal_sd_anchor',
-            marginal_sd_inflation=1. if h is None else float(np.exp(h.log_sd**2))))
+            marginal_sd_inflation=1. if h is None else h.rms_multiplier))
     matched=[]
     for (scope,setting,ch),prior in priors.items():
         if scope!='independent':continue
         pooled=priors[('shared',setting,'joint')]
-        if (prior.shrinkage.anchors!=pooled.shrinkage.anchors or prior.shrinkage.log_sd!=pooled.shrinkage.log_sd
+        if (prior.shrinkage.anchors!=pooled.shrinkage.anchors or prior.shrinkage.hyperprior!=pooled.shrinkage.hyperprior
+            or prior.shrinkage.df!=pooled.shrinkage.df or prior.shrinkage.log_sd!=pooled.shrinkage.log_sd
             or prior.shrinkage.scale_parameterization!=pooled.shrinkage.scale_parameterization
             or json.dumps(asdict(prior.channels[ch]),sort_keys=True,default=lambda a:a.tolist())
                !=json.dumps(asdict(pooled.channels[ch]),sort_keys=True,default=lambda a:a.tolist())):
@@ -244,7 +268,7 @@ def main():
             c=task_config(t,a.tier)
             print(f"{i:3d} {t.id:65s} {t.scope:12s} {c['mcmc']['chains']} chains, {c['mcmc']['warmup']} warmup + {c['mcmc']['draws']} retained")
         return
-    selected=(next((t for t in tasks('all',tier=a.tier) if t.id==a.task),None) if a.task else
+    selected=(next((t for t in tasks('all',tier=a.tier)+tasks('deferred',tier=a.tier) if t.id==a.task),None) if a.task else
               available[a.index-1] if a.index and 1<=a.index<=len(available) else None)
     if selected is None:p.error('Unknown index or task ID')
     execute(selected,tier=a.tier,root=a.root,retry_failed=a.retry_failed)

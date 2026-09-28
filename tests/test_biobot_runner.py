@@ -32,6 +32,6 @@ sys.exit(int(sys.argv[2]))
     assert all(r['threads']=='1' for r in intervals)
     records=list((tmp_path/'results/screen').glob('local_run_*.json'))
     summary=json.loads(records[0].read_text())
-    assert len(summary['outcomes'])==4 and not summary['not_started']
+    assert len(summary['outcomes'])==len(selected) and not summary['not_started']
     assert sum(r['exit_code']!=0 for r in summary['outcomes'])==1
-    assert len(list((tmp_path/'results/screen/logs').glob('*.log')))==4
+    assert len(list((tmp_path/'results/screen/logs').glob('*.log')))==len(selected)

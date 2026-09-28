@@ -1,0 +1,27 @@
+{
+  "extends": "main.json",
+  "_comment": "Monthly supplement with the same 30-year innovation SD calibration.",
+  "data": {
+    "frequency": "monthly"
+  },
+  "model": {
+    "period": 12,
+    "steps_per_year": 12,
+    "scale_time_unit": 120
+  },
+  "priors": {
+    "innovation_sd": {
+      "level": 0.005773502691896258,
+      "trend": 1.9164616555084414e-05,
+      "season": 0.01
+    },
+    "initial_slope_sd": 0.0033333333333333335
+  },
+  "prior_calibration": {
+    "horizon": 360,
+    "slope_time_unit": 120,
+    "unit": "degC"
+  },
+  "forecast_horizon": 360,
+  "output": "results/serra_195/monthly"
+}

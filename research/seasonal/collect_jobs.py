@@ -55,7 +55,7 @@ def collect(root=ROOT,tier='screen',*,batch='experiments',figures=False,require_
     bx.save_config(report,out/'status.json');pd.DataFrame(rows).to_csv(out/'tasks.csv',index=False)
     if require_complete and (incomplete or flagged or tier!='paper'):
         raise RuntimeError(f'{len(incomplete)} incomplete, {len(flagged)} flagged; see {out}/status.json')
-    completed=[t for t in expected if t.kind=='posterior' and records[t.id]['status']=='completed']
+    completed=[t for t in expected if t.kind=='posterior' and t.frequency=='seasonal' and records[t.id]['status']=='completed']
     for ch in dict.fromkeys(ch for t in completed for ch in t.series):
         group=[t for t in completed if ch in t.series]
         posterior={t.variant:{ch:Path(records[t.id]['result'])} for t in group}
@@ -69,7 +69,7 @@ def collect(root=ROOT,tier='screen',*,batch='experiments',figures=False,require_
         for scope,baseline in [('shared','reference'),('independent','independent_reference'),('fixed','fixed_reference')]:
             names=[t.variant for t in group if t.scope==scope and t.study=='structural']
             save(names,baseline,base/'by_scope'/scope,figures)
-        for family in ('width','adequacy','influence'):
+        for family in ('hyperprior','adequacy','influence'):
             names=['reference']+[t.variant for t in group if t.study==family]
             save(names,'reference',base/family,figures and len(names)<=10)
     forecasts=[t for t in expected if t.kind=='forecast'];matched=[]
@@ -91,6 +91,24 @@ def collect(root=ROOT,tier='screen',*,batch='experiments',figures=False,require_
         matched.append(dict(variant=variant,channel=ch,design=design,origins=sorted(origins),
             numerically_passed=all(records[t.id].get('numerical_status')=='passed_numerical_checks' for t in refs+group)))
     bx.save_config(dict(comparisons=matched,note='Matching forecast cases only; convergence flags remain visible. Hierarchical residual independence is a working assumption.'),out/'paired_validation.json')
+    pre=[]
+    for t in expected:
+        if t.kind=='pre2019' and records[t.id]['status']=='completed':
+            path=Path(records[t.id]['result'])/'pre2019_TXx_risk_curve.csv'
+            if path.exists():pre.append(pd.read_csv(path).assign(variant=t.variant,numerical_status=records[t.id].get('numerical_status')))
+    if pre:pd.concat(pre).to_csv(out/'pre2019_risk_sensitivity.csv',index=False)
+    blocks=[t for t in expected if t.kind=='block' and records[t.id]['status']=='completed']
+    if blocks:
+        target=out/'block_comparison';windows={}
+        for t in blocks:
+            source=Path(records[t.id]['result']);dest=target/t.frequency/t.origin;dest.mkdir(parents=True,exist_ok=True)
+            info=bx.load_config(source/'complete.json')
+            key=tuple(info[k] for k in ('training_start','training_end','test_start','test_end','daily_sha256'))
+            if t.origin in windows and windows[t.origin]!=key:raise ValueError('Mismatched daily block-comparison windows.')
+            windows[t.origin]=key
+            for name in ('complete.json','config.json','scores.csv','calibration.csv','convergence.json'):
+                shutil.copy2(source/name,dest/name)
+        bx.save_block_comparison(target,figures=figures)
     return out
 
 

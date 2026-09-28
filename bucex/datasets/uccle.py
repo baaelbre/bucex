@@ -148,15 +148,19 @@ def load_uccle_multiseries(
     if frequency != "monthly":
         raise ValueError("frequency must be monthly or seasonal.")
     if daily_source is not None:
-        raise ValueError("Monthly CSV loading does not use daily_source; first derive_uccle_monthly if needed.")
-    values = [load_uccle_series(name, data_dir, start=start, end=end) for name in selected]
-    if any(not item.index.equals(values[0].index) for item in values[1:]):
-        raise ValueError("Uccle channels must have the same dates; choose an explicit common range.")
-    frame = pd.concat(
-        values,
-        axis=1,
-        join="inner",
-    )
+        if data_dir is not None:
+            raise ValueError("Pass daily_source or monthly data_dir, not both.")
+        cutoff = end
+        if isinstance(end, str) and len(end) == 7:
+            cutoff = str(pd.Period(end, freq="M").end_time.date())
+        frame = derive_uccle_monthly(daily_source, end=cutoff).loc[:, list(selected)]
+        if start is not None:
+            frame = frame.loc[pd.Timestamp(start):]
+    else:
+        values = [load_uccle_series(name, data_dir, start=start, end=end) for name in selected]
+        if any(not item.index.equals(values[0].index) for item in values[1:]):
+            raise ValueError("Uccle channels must have the same dates; choose an explicit common range.")
+        frame = pd.concat(values, axis=1, join="inner")
     if frame.isna().any().any():
         raise ValueError("Uccle channels are not completely aligned.")
     exclusions = pd.PeriodIndex(list(exclude_months or ()), freq="M")

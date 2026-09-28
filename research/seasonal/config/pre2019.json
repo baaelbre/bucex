@@ -1,22 +1,15 @@
 {
   "extends": "final.json",
-  "_comment": "Fixed Normal priors, independently fitted summaries; sensitivity factors multiply Normal prior SDs.",
+  "_comment": "Pooled half-normal fit through May 2019; no future data.",
   "data": {
     "end": "2019-05"
   },
   "forecast_horizon": 1,
-  "forecast_draws": 10000,
-  "contrasts": {
-    "comparison": [
-      "1989-03",
-      "2019-02"
-    ]
-  },
-  "additional_risks": {
-    "TXx": [
-      36.6,
-      39.7
-    ]
-  },
-  "output": "results/serra_193_pre2019_record"
+  "forecast_draws": 20000,
+  "contrasts": null,
+  "output": "results/serra_195/pre2019",
+  "risk_periods": null,
+  "experiment": {
+    "batch_kind": "pre2019"
+  }
 }

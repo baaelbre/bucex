@@ -89,9 +89,9 @@ def run(config,*,directory=None,models=('monthly','seasonal'),aggregate=True):
                 draws=config['comparison'].get('draws',2000),seed=config['seed'])
             scores=[];calibration=[]
             for channel in data:
-                aggregate=forecast.aggregate(frequency='season',channel=channel)
-                actual=aggregate.aggregate_values(data[channel].iloc[list(test)].to_numpy())
-                expected=seasonal_data.loc[pd.DatetimeIndex(aggregate.periods.start),channel].to_numpy()
+                aggregated=forecast.aggregate(frequency='season',channel=channel)
+                actual=aggregated.aggregate_values(data[channel].iloc[list(test)].to_numpy())
+                expected=seasonal_data.loc[pd.DatetimeIndex(aggregated.periods.start),channel].to_numpy()
                 if not np.allclose(actual,expected,rtol=0,atol=1e-10):
                     raise ValueError('Daily seasonal and monthly-derived targets disagree; check data provenance.')
                 score,cal=bx.score_seasonal_forecast(forecast,seasonal_data[channel],channel=channel,

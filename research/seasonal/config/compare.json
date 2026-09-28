@@ -1,17 +1,14 @@
 {
-  "extends": "reference_191.json",
-  "mcmc": {
-    "warmup": 500,
-    "draws": 500
-  },
+  "extends": "main.json",
   "comparison": {
-    "monthly_config": "research/monthly/config/main.json",
+    "monthly_config": "research/seasonal/config/monthly_reference.json",
     "training_ends": [
+      "2010-11",
       "2015-11",
       "2020-11"
     ],
     "horizon_seasons": 20,
-    "draws": 2000
+    "draws": 4000
   },
-  "output": "results/serra_191_block_comparison"
+  "output": "results/serra_195/block_comparison"
 }

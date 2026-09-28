@@ -19,7 +19,7 @@ def run(tier, batch, root, max_jobs, *, dry_run=False, retry_failed=False, serie
     if max_jobs < 1:raise ValueError('max_jobs must be positive')
     root=Path(root).resolve();directory=root/tier;directory.mkdir(parents=True,exist_ok=True)
     # One concurrency budget across all batches for this root and tier.
-    with (directory/'.local.lock').open('a+') as lock:
+    with (root/'.biobot.lock').open('a+') as lock:
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise RuntimeError(f'A {tier} runner is already active in {root}; use its existing queue.')
         print(json.dumps(verify(tier,output=directory/'plan'),indent=2),flush=True)

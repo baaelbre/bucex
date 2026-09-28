@@ -190,19 +190,49 @@ class AggregateForecast:
     def conditional_cdf(self, observed):
         """CDF of each aggregate, conditional on paired future state paths."""
         observed = np.asarray(observed, dtype=float)
-        if observed.shape != (self.n_periods,) or not np.all(np.isfinite(observed)):
+        if observed.shape not in ((self.n_periods,), (self.forecast.n_draws,self.n_periods)) or not np.all(np.isfinite(observed)):
             raise ValueError('Observed values must be finite and match aggregate periods.')
         if self.reduction == 'mean':
             mean, variance = self.conditional_moments()
-            return ndtr((observed[None,:]-mean)/np.sqrt(variance))
-        expanded = np.zeros(self.forecast.horizon)
-        for value, idx in zip(observed, self.groups):
-            expanded[idx] = value
+            return ndtr((observed-mean)/np.sqrt(variance))
+        expanded = np.zeros(observed.shape[:-1]+(self.forecast.horizon,))
+        for j, idx in enumerate(self.groups):
+            expanded[...,idx] = observed[...,j,None]
         cdf = self.forecast.conditional_cdf(expanded, channel=self.channel)
         with np.errstate(divide='ignore'):
             logs = np.log(cdf) if self.reduction == 'max' else np.log1p(-cdf)
             totals = np.stack([logs[:,idx].sum(axis=1) for idx in self.groups],axis=1)
         return np.exp(totals) if self.reduction == 'max' else -np.expm1(totals)
+
+    def return_level(self, return_period, *, iterations=42):
+        """Conditional annual/seasonal GEV extreme quantiles in original units.
+
+        Each draw solves the product of its constituent seasonal CDFs (or
+        survivals for minima). The period counts aggregate windows; 1/p is a
+        stationary-equivalent period, not a nonstationary waiting time.
+        """
+        r=float(return_period)
+        if not np.isfinite(r) or r<=1 or self.reduction not in ('max','min'):
+            raise ValueError('Return levels require block extrema and a finite period > 1.')
+        if not self.n_periods:return np.empty((self.forecast.n_draws,0))
+        base=self.forecast.return_level(r,channel=self.channel)
+        left=[];right=[];cache={}
+        p=1-1/r
+        for idx in self.groups:
+            expanded_r=-1/np.expm1(np.log(p)/len(idx))
+            if len(idx) not in cache:
+                cache[len(idx)]=self.forecast.return_level(expanded_r,channel=self.channel)
+            outer=cache[len(idx)][:,idx]
+            reduce=np.max if self.reduction=='max' else np.min
+            a=reduce(base[:,idx],axis=1);b=reduce(outer,axis=1)
+            left.append(np.minimum(a,b));right.append(np.maximum(a,b))
+        lo=np.stack(left,axis=1);hi=np.stack(right,axis=1)
+        target=p if self.reduction=='max' else 1/r
+        for _ in range(iterations):
+            mid=(lo+hi)/2
+            below=self.conditional_cdf(mid)<target
+            lo=np.where(below,mid,lo);hi=np.where(below,hi,mid)
+        return (lo+hi)/2
 
     def conditional_log_density(self, observed):
         """Exact conditional density for Gaussian means and block extrema.

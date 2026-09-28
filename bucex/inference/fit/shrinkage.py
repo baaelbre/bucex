@@ -1,8 +1,9 @@
 """Exact conditional updates of shared FS normal-prior scales.
 
-The update is on u=log(m/anchor), where the hyperprior is Gaussian. In NCP
-coordinates m enters only the coefficient prior. Its normalizing constants
-contribute -J*u; standardized paths do not enter this conditional density.
+The update is on u=log(scale/anchor). In NCP coordinates the scale enters only
+the coefficient prior. Its normalization contributes -J*u. Half-family priors
+also require the +u change-of-variable term; a lognormal prior is already
+Gaussian in u. Standardized paths do not enter this conditional density.
 """
 from dataclasses import dataclass
 
@@ -12,7 +13,9 @@ from ...priors.shrinkage import COEFFICIENT_FIELDS, NORMAL_ABSOLUTE_MEDIAN, Inde
 from .fs_utils import _active_scale_names, _slice_sample_real
 
 
-def shared_scale_log_target(u, coefficients, *, anchor, log_sd, scale_conversion=NORMAL_ABSOLUTE_MEDIAN):
+def shared_scale_log_target(u, coefficients, *, anchor, log_sd=float(np.log(2.)),
+                            scale_conversion=NORMAL_ABSOLUTE_MEDIAN,
+                            hyperprior="lognormal", df=4.):
     """Log density w.r.t. du, including the coefficient-scale normalization."""
     if not np.isfinite(u):
         return -np.inf
@@ -20,7 +23,17 @@ def shared_scale_log_target(u, coefficients, *, anchor, log_sd, scale_conversion
     square = float(np.sum((coefficients * scale_conversion / anchor)**2))
     with np.errstate(over="ignore", invalid="ignore"):
         penalty = 0. if square == 0. else square * np.exp(-2*u)
-        value = -.5*(u/log_sd)**2 - coefficients.size*u - .5*penalty
+        if hyperprior == "lognormal":
+            value = -.5*(u/log_sd)**2 - coefficients.size*u - .5*penalty
+        elif hyperprior == "half_normal":
+            # d tau / du = tau: -(K-1)u, not -K u.
+            value = -(coefficients.size-1)*u - .5*penalty - .5*np.exp(2*u)
+        elif hyperprior in {"half_t", "half_cauchy"}:
+            nu = 1. if hyperprior == "half_cauchy" else df
+            value = (-(coefficients.size-1)*u - .5*penalty
+                     - .5*(nu+1)*np.logaddexp(0., 2*u-np.log(nu)))
+        else:
+            raise ValueError("Unknown shared-scale hyperprior.")
     return float(value) if np.isfinite(value) else -np.inf
 
 
@@ -48,7 +61,8 @@ class SharedShrinkageState:
         for component, anchor in specification.anchors.items():
             value = (initial or {}).get(f"shrinkage.{prefix}.{component}")
             if value is None:
-                multipliers[component] = float(rng.normal(0., specification.log_sd))
+                scale = specification.sample_medians(1, rng=rng)[component][0]
+                multipliers[component] = float(np.log(max(scale, np.finfo(float).tiny)/anchor))
             elif not np.isfinite(value) or value <= 0:
                 raise ValueError("A shared-shrinkage warm start must contain positive finite medians.")
             else:
@@ -70,7 +84,8 @@ class SharedShrinkageState:
             coefficients = [s.params_state[COEFFICIENT_FIELDS[component]] for s in self.members[component]]
             target = lambda u: shared_scale_log_target(u, coefficients, anchor=anchor,
                 log_sd=self.specification.log_sd,
-                scale_conversion=1. / self.specification.coefficient_sd(component, 1.))
+                scale_conversion=1. / self.specification.coefficient_sd(component, 1.),
+                hyperprior=self.specification.hyperprior, df=self.specification.df)
             self.log_multipliers[component], evaluations = _slice_sample_real(
                 self.log_multipliers[component], target, rng, width=.5)
             metrics[f"{self.scope}_shrinkage_slice_evaluations.{component}"] = evaluations

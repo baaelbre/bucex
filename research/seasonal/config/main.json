@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.4: shared Normal coefficient SDs; initial rates separate. Matched independent-mixture and fixed-Normal comparisons are declared in experiments.json.",
+  "_comment": "1.9.5 pooled half-normal reference; three learned innovation SDs, fixed initial-rate prior. No copula.",
   "analysis": "joint",
   "data": {
     "series": [
@@ -57,7 +57,7 @@
         "slope",
         "seasonal"
       ],
-      "log_sd": 1.0986122886681098,
+      "hyperprior": "half_normal",
       "pool_initial_slope": false
     }
   },
@@ -65,7 +65,7 @@
     "draws": 2000,
     "warmup": 1000,
     "chains": 2,
-    "seed": 19401,
+    "seed": 19501,
     "progress": true,
     "progress_every": 100,
     "chain_workers": 2
@@ -78,8 +78,8 @@
       "mh_steps": 1
     }
   },
-  "seed": 19402,
-  "output": "results/serra_194/shared",
+  "seed": 19502,
+  "output": "results/serra_195/reference",
   "forecast_horizon": 120,
   "forecast_draws": 4000,
   "credible_interval": 0.95,
@@ -135,6 +135,7 @@
   },
   "additional_risks": {
     "TXx": [
+      36.6,
       39.7
     ]
   },
@@ -152,7 +153,7 @@
   "report_joint_risks": false,
   "cross_summary_contrasts": false,
   "calibration": {
-    "convention": "normal_standard_deviation",
+    "convention": "half_normal_hyperprior_scale",
     "reference_sd": {
       "level": 0.01,
       "trend": 0.0001,
@@ -160,6 +161,24 @@
       "initial_slope": 0.01
     },
     "initial_slope_variance": 0.0001,
-    "note": "Innovation entries are fixed Normal SDs in the fixed comparison, and conditional Normal SD anchors in the two mixtures. No Phi conversion and no width-dependent recentering. Independent and shared mixtures have identical one-response marginal priors."
-  }
+    "note": "Half-normal hyperprior scales A equal marginal RMS signed coefficients. Initial slope prior SD fixed separately. Alternative families explicitly calibrated."
+  },
+  "shrinkage_scope": "shared",
+  "risk_return_periods": [
+    10,
+    20,
+    50,
+    100
+  ],
+  "risk_periods": {
+    "reference": [
+      "1892-03",
+      "1922-02"
+    ],
+    "comparison": [
+      "1996-09",
+      "2026-08"
+    ]
+  },
+  "annual_risk": true
 }

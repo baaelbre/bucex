@@ -1,0 +1,20 @@
+{
+  "cpu_budget": 32,
+  "draws": 10,
+  "note": "Rough planning estimate only: short startup/warmup, memory limits, other users, heavier-tail variants, monthly fits and reporting can change runtime. These draws are not used in either tier.",
+  "projected": {
+    "paper": {
+      "longest_fit_hours": 8.665358412148299,
+      "optimistic_sampling_hours": 33.97403742839874
+    },
+    "screen": {
+      "longest_fit_hours": 0.9998490475555728,
+      "optimistic_sampling_hours": 6.561509374583448
+    }
+  },
+  "seconds_per_parallel_iteration": 1.1998188570666874,
+  "two_parallel_chains": true,
+  "version": "1.9.5",
+  "wall_seconds": 17.99728285600031,
+  "warmup": 5
+}

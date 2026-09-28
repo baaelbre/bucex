@@ -53,17 +53,19 @@ def compare_shared_shrinkage(fit, *, level=.95):
         scope = "independent" if isinstance(spec, IndependentShrinkage) else "shared"
         values = fit.parameter(f"shrinkage.{scope}.{component}", combine_chains=False)
         for distribution in ("prior", "posterior"):
-            interval = (anchor*np.exp(spec.log_sd*ndtri(quantiles)) if distribution == "prior"
+            interval = (spec.scale_quantile(component, quantiles) if distribution == "prior"
                         else np.quantile(values, quantiles))
             rows.append(dict(component=component, distribution=distribution,
                 scale=("normal_SD" if spec.uses_normal_sd(component)
                        else ("coefficient_absolute_median" if scope == "independent" else "population_median")),
-                anchor=anchor, log_sd=spec.log_sd,
+                anchor=anchor, log_sd=spec.log_sd if spec.hyperprior=='lognormal' else np.nan,
+                hyperprior=spec.hyperprior,
                 lower=interval[0], median=interval[1], upper=interval[2], credible_interval=level,
                 rhat=rhat(values) if distribution == "posterior" else np.nan,
                 ess_bulk=ess_bulk(values) if distribution == "posterior" else np.nan,
                 ess_tail=ess_tail(values) if distribution == "posterior" else np.nan,
-                probability_above_anchor=float(np.mean(values > anchor)) if distribution == "posterior" else .5))
+                probability_above_anchor=(float(np.mean(values > anchor)) if distribution == "posterior"
+                                          else float(1-spec.scale_cdf(component,anchor)))))
     return pd.DataFrame(rows)
 
 

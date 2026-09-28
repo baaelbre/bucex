@@ -20,8 +20,10 @@ PROJECT=Path(__file__).resolve().parents[1]
 
 
 def config(name,variant='reference'):
-    task=next(t for t in jobs.tasks('posterior') if t.channel==name and t.variant=="fixed_"+variant)
+    task=next(t for t in jobs.tasks('deferred') if t.channel==name and t.variant=='fixed_reference')
     c=jobs.task_config(task,'screen');c['data']['start']='2016-03'
+    if variant!='reference':
+        c=configured_variant(c,next(v for v in jobs.settings()['variants'] if v['name']==variant and v['family']=='structural') | {'scope':'fixed'})
     c['mcmc'].update(chains=2,chain_workers=2,warmup=3,draws=10,progress=False)
     c.update(figures=False,forecast_draws=24,predictive_check_draws=12,prior_draws=80,contrasts=None)
     return c
@@ -46,8 +48,8 @@ def test_fixed_normal_calibration_has_no_scale_mixture():
 
 def test_every_bundle_matches_tasks_and_cpu_budget():
     for tier in ('screen','paper'):
-        groups=plan(tier,'all');assert len(groups)==101
-        assert len(plan(tier,'posterior'))==49
+        groups=plan(tier,'all');assert len(groups)==106
+        assert len(plan(tier,'posterior'))==41
         all_members=[]
         for group in groups:
             members=bundles.members(group,tier);all_members.extend(members)
@@ -58,9 +60,9 @@ def test_every_bundle_matches_tasks_and_cpu_budget():
                 c=jobs.task_config(t,tier)
                 assert c['copula'] is None
                 assert not (c['priors'].get('shared_shrinkage') or {}).get('pool_initial_slope',False)
-        assert len(all_members)==271 and len({t.id for t in all_members})==271
+        assert len(all_members)==106 and len({t.id for t in all_members})==106
     assert len(plan('paper','experiments','shared_long'))==1
-    assert len(plan('paper','experiments','separate_long'))==2
+    assert len(plan('paper','experiments','separate_long'))==0
 
 
 def test_sd_sensitivity_changes_normal_sd_not_variance():
@@ -119,13 +121,13 @@ print(str(n)+';gallade')
         env=dict(os.environ,PATH=str(tmp_path)+os.pathsep+os.environ['PATH'],BUCEX_PYTHON=sys.executable,
             BUCEX_RESULTS_ROOT=str(tmp_path/'results'),TEST_COUNTER=str(counter),TEST_COMMANDS=str(commands)),capture_output=True,text=True,check=True)
     records=[json.loads(line) for line in commands.read_text().splitlines()]
-    assert [r['resource'] for r in records]==['probe','shared','separate','shared_long','separate_long']
+    assert [r['resource'] for r in records]==['probe','shared','shared_long']
     assert all('--dependency=afterok:100' in r['args'] for r in records[1:])
-    assert '--cpus-per-task=12' in records[2]['args']
+    assert '--cpus-per-task=2' in records[2]['args']
 
 
 def test_bundle_starts_six_separate_processes_and_propagates_failure(tmp_path,monkeypatch):
-    group=next(g for g in plan('screen','comparison') if g['scope']=='fixed')
+    group=next(g for g in plan('screen','deferred') if g['scope']=='fixed')
     monkeypatch.setattr(bundles,'allocation',lambda required:None)
     real_popen=subprocess.Popen
     worker='''import json,os,sys,time

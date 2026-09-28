@@ -21,7 +21,12 @@ def configured_variant(config, variant):
                                   components=['level','slope','seasonal'],pool_initial_slope=False))
         p.pop('shared_shrinkage',None); p.pop('independent_shrinkage',None)
         if scope != 'fixed':
-            hierarchy['log_sd'] = variant.get('log_sd',hierarchy['log_sd'])
+            if 'log_sd' in variant:
+                hierarchy['log_sd'] = variant['log_sd']
+            elif hierarchy.get('hyperprior','lognormal')=='lognormal':
+                hierarchy.setdefault('log_sd',float(np.log(3.)))
+            for field in ('hyperprior','df'):
+                if field in variant: hierarchy[field]=variant[field]
             p['shared_shrinkage' if scope == 'shared' else 'independent_shrinkage'] = hierarchy
         config['analysis'] = 'joint' if scope == 'shared' else 'independent'
         config['copula'] = None

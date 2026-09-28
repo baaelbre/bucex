@@ -1,0 +1,36 @@
+"""Collect a completed/partial tier, render review figures, and export evidence."""
+import argparse
+from datetime import datetime,timezone
+from pathlib import Path
+import bucex as bx
+from research.seasonal.jobs import ROOT,BATCHES,tasks,task_config
+from research.seasonal.collect_jobs import collect
+from research.seasonal.prior_effects import run as prior_effects
+from research.seasonal.manuscript_figures import build
+from research.seasonal.export_results import export
+
+
+def finish(root,tier,batch='all'):
+    root=Path(root);out=collect(root,tier,batch=batch,figures=True)
+    for task in tasks('comparison',tier=tier):
+        prior_effects(task_config(task,tier),out/'prior_calibration'/task.variant,draws=50000,seed=195)
+    reference=root/tier/'posterior_reference/report'
+    marker=root/tier/'posterior_reference/task.json'
+    if marker.exists() and bx.load_config(marker).get('status')=='completed':
+        pre=[]
+        for task in tasks('pre2019',tier=tier):
+            path=root/tier/task.id
+            if (path/'task.json').exists() and bx.load_config(path/'task.json').get('status')=='completed':pre.append(path/'report')
+        passed=bx.load_config(reference/'convergence.json').get('status')=='passed_numerical_checks'
+        figures=out/('manuscript_figures' if passed and tier=='paper' else 'diagnostic_figures_NOT_FINAL')
+        build(reference,figures,allow_unconverged=not passed,pre2019=pre)
+    stamp=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ')
+    archive,count=export(root,tier,root/'exports'/f'bucex195_{tier}_{batch}_{stamp}.zip',figures=True)
+    print(f'{out}\n{archive}: {count} review files; posterior archives remain in their fit directories.',flush=True)
+    return out
+
+
+if __name__=='__main__':
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',type=Path,default=ROOT)
+    p.add_argument('--tier',choices=('screen','paper'),required=True);p.add_argument('--batch',choices=BATCHES,default='all')
+    a=p.parse_args();finish(a.root,a.tier,a.batch)

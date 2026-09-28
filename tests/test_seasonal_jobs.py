@@ -11,8 +11,8 @@ from research.seasonal.collect_jobs import collect,merge_folds
 
 def test_batches_are_disjoint_and_paper_has_one_reference_per_response():
     groups=[jobs.tasks(b) for b in ('posterior','validation','validation10')]
-    assert [len(g) for g in groups]==[159,73,39]
-    assert len({t.id for g in groups for t in g})==271
+    assert [len(g) for g in groups]==[41,43,9]
+    assert len({t.id for g in groups for t in g})==93
     assert all(t.kind=='posterior' for t in jobs.tasks())
     for tier,nchains in [('screen',2),('paper',2)]:
         for task in jobs.tasks('all',tier=tier):
@@ -20,9 +20,9 @@ def test_batches_are_disjoint_and_paper_has_one_reference_per_response():
             assert c['mcmc']['chains']==c['mcmc']['chain_workers']==nchains
             assert c['credible_interval']==.95 and c['save_fits'] and c['validation']['save_fits']
             assert 'variants' not in c  # no second application of an anchor multiplier
-            if task.kind=='posterior':assert c['forecast_horizon']==120
+            if task.kind=='posterior':assert c['forecast_horizon']==(360 if task.frequency=='monthly' else 120)
             elif task.kind=='pre2019':assert c['forecast_horizon']==1 and c['data']['end']=='2019-05'
-            else:assert c['validation']['training_ends']==[task.origin] and c['validation']['horizon']==task.horizon
+            else:assert c['validation']['training_ends']==[task.origin] and c['validation']['horizon']==task.horizon*(3 if task.frequency=='monthly' else 1)
     assert [t.id for t in jobs.tasks('posterior',tier='paper',resource='shared_long')]==['posterior_reference']
     assert not jobs.tasks('posterior',tier='screen',resource='shared_long')
     full=jobs.task_config(jobs.tasks('reference')[0],'paper')
@@ -30,16 +30,16 @@ def test_batches_are_disjoint_and_paper_has_one_reference_per_response():
 
 
 def test_calibration_and_matched_width_controls():
-    configs={t.variant:jobs.task_config(t,'screen') for t in jobs.tasks()}
+    configs={t.variant:jobs.task_config(t,'screen') for t in jobs.tasks()+jobs.tasks('deferred')}
     ref=configs['reference']['priors']
     assert ref['innovation_sd']==pytest.approx(dict(level=.01,trend=.0001,season=.01))
     assert ref['initial_slope_sd']==pytest.approx(.01)
     assert ref['shared_shrinkage']['scale_parameterization']=='normal_sd'
     assert configs['fixed_reference']['priors'].get('shared_shrinkage') is None
-    for name in ('width_log2','width_log4'):
-        assert configs[name]['priors']['innovation_sd']==ref['innovation_sd']
-        assert configs['independent_'+name]['priors']['independent_shrinkage']==configs[name]['priors']['shared_shrinkage']
-    assert not any('half_all' in n or 'double_slope_half' in n for n in configs)
+    assert configs['independent_reference']['priors']['independent_shrinkage']==ref['shared_shrinkage']
+    assert configs['half_t4']['priors']['shared_shrinkage']['hyperprior']=='half_t'
+    assert configs['half_cauchy']['priors']['shared_shrinkage']['hyperprior']=='half_cauchy'
+    assert 'half_all' in configs and 'double_slope_half_seasonal' in configs
 
 
 def test_each_physical_sensitivity_changes_only_its_declared_prior_anchor():
@@ -66,7 +66,7 @@ def test_manifest_reuses_only_identical_completed_task(tmp_path,monkeypatch):
     assert jobs.execute(task,tier='screen',root=tmp_path)==result and len(invoked)==1
     with pytest.raises(RuntimeError,match='incomplete'):collect(tmp_path,'screen',batch='posterior',require_complete=True)
     status=bx.load_config(tmp_path/'screen/collected/posterior/status.json')
-    assert status['completed']==1 and len(status['missing_or_failed'])==158
+    assert status['completed']==1 and len(status['missing_or_failed'])==40
     manifest=tmp_path/'screen'/task.id/'task.json'
     m=bx.load_config(manifest);m['source_sha256']='changed';bx.save_config(m,manifest)
     with pytest.raises(ValueError,match='changed'):jobs.execute(task,tier='screen',root=tmp_path)

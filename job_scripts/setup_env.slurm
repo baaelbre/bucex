@@ -10,7 +10,7 @@ unset PYTHONHOME PYTHONPATH VIRTUAL_ENV
 python -m venv "$BUCEX_VENV"
 "$BUCEX_VENV/bin/python" -m pip install --upgrade pip
 "$BUCEX_VENV/bin/python" -m pip install -e "$PWD[plot]"
-"$BUCEX_VENV/bin/python" -c 'import sys,bucex,numpy,scipy,pandas,matplotlib; print(sys.executable,sys.version,bucex.__version__); assert bucex.__version__=="1.9.4"'
+"$BUCEX_VENV/bin/python" -c 'import sys,bucex,numpy,scipy,pandas,matplotlib; print(sys.executable,sys.version,bucex.__version__); assert bucex.__version__=="1.9.5"'
 # Written only after successful installation/imports; used on subsequent nodes.
 {
     printf '# Source only on a compute node for this cluster.\n'

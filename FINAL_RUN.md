@@ -1,12 +1,17 @@
-# After screening
+# Paper reference — 1.9.5
 
-The paper tier is prepared but is not the default screen. It uses two chains
-with 4,000 warm-up + 12,000 retained draws for alternatives; the three reference
-specifications use 6,000 + 20,000. The reference forecasts contain 12,000 draws
-over 120 seasons. These budgets do not override convergence failures.
+Use the BIOBOT guide in `BUCEX-1.9.5-commands.md` and the `paper` tier. A paper
+reference has 2 chains, each with 6,000 warm-up and 20,000 retained draws. It
+fits 538 complete seasons through August 2026, with shared half-normal
+innovation scales (0.01, 0.0001, 0.01), separate initial-rate SD 0.01, initial
+level/seasonal SD 20, and no copula.
 
-Select scientific settings after reviewing the matched comparison, hyperprior
-sensitivity, pooling influence and validation. `RUN_PAPER_EXPERIMENTS.sh`
-uses the same grid as the screen; `RUN_PAPER_BIOBOT.sh` provides the workstation
-route. `--require-complete` on the collector requires completed paper fits
-without numerical flags.
+The forecast covers 120 seasonal transitions with 12,000 draws and 95%
+intervals. The separate pre-2019 reference ends in May 2019 and uses a
+one-season forecast with 20,000 predictive draws. Its retrospective held-out
+observations never enter training.
+
+Do not treat job completion as convergence. Inspect `convergence.json` and
+`final_check.json`, and assess prior sensitivity and held-out calibration.
+The automatic collection writes review ZIPs and labels unconverged figures
+as diagnostic. The full `.bucex` archives remain in the task reports.

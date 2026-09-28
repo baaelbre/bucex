@@ -1,0 +1,113 @@
+{
+  "version": "1.9.4",
+  "tested_at": "2026-09-28T20:48:33.278292+00:00",
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "pandas": "2.2.3"
+  },
+  "reference_fingerprint": {
+    "config_sha256": "becdd932864b87f33b763e1ffa7290c810064cfe2b97e0a1e42e96f91cb634ae",
+    "source_sha256": "2a2cc6311bb28aeafef35678ae5014a4ff4a8825196879365c53f47d011ea07f",
+    "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+  },
+  "counts": {
+    "reference": 1,
+    "comparison": 13,
+    "posterior": 159,
+    "experiments": 159,
+    "influence": 6,
+    "validation": 73,
+    "validation10": 39,
+    "all": 271
+  },
+  "experiment_counts": {
+    "reference": 1,
+    "comparison": 3,
+    "posterior": 49,
+    "experiments": 49,
+    "influence": 6,
+    "validation": 43,
+    "validation10": 9,
+    "all": 101
+  },
+  "chains_per_fit": 2,
+  "cpus_per_experiment": {
+    "shared": 2,
+    "separate": 12
+  },
+  "test_runs": [
+    {
+      "scope": "Full regression before updating four legacy expectations",
+      "file": "validation/release_194/tests.xml",
+      "tests": 321,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 317
+    },
+    {
+      "scope": "Four affected legacy tests after fixes",
+      "file": "validation/release_194/rerun_tests.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 4
+    },
+    {
+      "scope": "New 1.9.4 inference, priors, model, reporting and diagnostics",
+      "file": "validation/release_194/new_tests.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 5
+    },
+    {
+      "scope": "Submission guards after final launcher change",
+      "file": "validation/release_194/launch_tests.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 2
+    }
+  ],
+  "final_test_status": "All 321 existing tests and five new tests passed across the full run and affected-test reruns. The initial four legacy expectation failures and their passing rerun are retained for provenance.",
+  "checks": [
+    "All 271 screen configurations and all 271 paper configurations compile; 72 exact independent/shared marginal-prior matches per tier.",
+    "Thirteen actual startup fits: one coupled six-response fit, six independent mixtures, six fixed-prior fits; two parallel chains per fit; archives reload.",
+    "Direct Normal SD log-hyperparameter density checked against independent normal-density calculations, including the minus-J-times-log-scale term.",
+    "Integrated-mixture prior checked by numerical quadrature against generated samples; initial slopes remain private fixed Normals.",
+    "Mixed shared/separate reports and figures, scientific-target traces, fixed-dispersion convergence diagnostics and static-seasonality configurations checked.",
+    "Scheduler stubs verify probe gating, CPU plans and no compute-Python execution on the login node; missing environment setup fails before submission.",
+    "HPC screen/paper dry runs and local biobot dry run pass.",
+    "Python sources compile, login scripts parse with Python 3.9 grammar, and all 23 shell entry points pass bash -n."
+  ],
+  "production_fits_run": false,
+  "hpc_submission_tested": false,
+  "full_twelve_worker_mcmc_tested_locally": false,
+  "note": "Startup fits use intentionally short chains and establish execution only. The local container exposes two CPUs; response fits in the 13-fit probe ran sequentially with two parallel chains each. Production convergence and sensitivity remain to be assessed from the screen results.",
+  "budget_revision": {
+    "date": "2026-09-28T20:51:46.787947+00:00",
+    "screen_warmup_per_chain": 1000,
+    "screen_retained_per_chain": 2000,
+    "checks": [
+      "Only MCMC warmup and retained count changed in the two active JSON configuration files.",
+      "All 271 resolved screen budgets use two chains, 1000 warmup and 2000 retained; all 271 paper budgets remain unchanged.",
+      "Screen model/configuration preflight and all 72 matched marginal-prior checks pass."
+    ],
+    "production_fits_run": false
+  },
+  "compatibility_revision": {
+    "date": "2026-09-28T20:58:37.755453+00:00",
+    "fix": "Replace same-quote reuse in the bundle status f-string; compile all production Python modules with the selected compute interpreter before starting probe fits.",
+    "legacy_grammar_files": 207,
+    "original_failure_reproduced": true,
+    "fixed_legacy_grammar_status": "passed",
+    "python_311_execution_tested_locally": false,
+    "note": "The local runtime is Python 3.12. The legacy lib2to3 tokenizer/grammar catches the reported quote-reuse failure; ast feature_version on 3.12 does not. Actual Python 3.11 execution is verified by the Gallade probe."
+  }
+}

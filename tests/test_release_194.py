@@ -18,7 +18,7 @@ from bucex.inference.fit.shrinkage import SharedShrinkageState
 
 
 def config(variant,channel=None):
-    task=next(t for t in jobs.tasks('posterior',tier='screen') if t.variant==variant and
+    task=next(t for t in jobs.tasks('posterior',tier='screen')+jobs.tasks('deferred',tier='screen') if t.variant==variant and
               (channel is None or channel==t.channel))
     return jobs.task_config(task,'screen')
 
@@ -63,8 +63,8 @@ def test_direct_sd_prior_matches_independent_integrated_cdf():
 
 
 def test_scopes_widths_and_omissions_are_explicit():
-    assert len(plan('screen','experiments'))==49
-    assert len(jobs.tasks('experiments',tier='screen'))==159
+    assert len(plan('screen','experiments'))==41
+    assert len(jobs.tasks('experiments',tier='screen'))==41
     for v in ('reference','independent_reference','fixed_reference'):
         c=config(v)
         assert c['priors']['innovation_sd']==dict(level=.01,trend=.0001,season=.01)
@@ -74,10 +74,9 @@ def test_scopes_widths_and_omissions_are_explicit():
     for ch in bx.UCCLE_SERIES:
         c=config('leave_out_'+ch)
         assert len(c['data']['series'])==5 and ch not in c['data']['series']
-    for factor in (2,4):
-        shared=config('width_log'+str(factor));private=config('independent_width_log'+str(factor))
-        assert shared['priors']['shared_shrinkage']==private['priors']['independent_shrinkage']
-        assert shared['priors']['innovation_sd']==dict(level=.01,trend=.0001,season=.01)
+    shared=config('reference');private=config('independent_reference')
+    assert shared['priors']['shared_shrinkage']==private['priors']['independent_shrinkage']
+    assert shared['priors']['innovation_sd']==dict(level=.01,trend=.0001,season=.01)
     c=config('fixed_location_seasonality');d=bx.load_uccle_multiseries(**c['data'])
     _,p=joint_model(d,c)
     assert set(p.shrinkage.anchors)=={'level','slope'}

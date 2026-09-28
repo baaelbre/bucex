@@ -1,28 +1,44 @@
-# BUCEX 1.9.4
+# BUCEX 1.9.5
 
-- Adds direct Normal-SD hierarchy constructors and uses the same convention in
-  conditional updates, prior draws, serialization, calibration and figures.
-- Provides matched independent/shared marginal priors and a fixed Normal comparator.
-- Keeps all six initial-rate priors separate with reference SD 0.01 per seasonal update.
-- Replaces the active screen with 49 experiments / 159 fits, including width,
-  shape, seasonality and pooling-influence checks.
-- Uses 1,000 warm-up + 2,000 retained draws per chain for screening, with two chains.
-- Routes shared fits to two CPUs and bundles of six separate fits to twelve CPUs.
-- Retains the Gallade compute-node probe and dependency gate; submission does
-  not execute the compute Python on the login CPU.
-- Adds a biobot launcher and a collector accepting shared and separate report layouts.
-- Exports scientific-target traces. Declared constant observation-scale
-  placeholders are excluded from MCMC gates; sampled constants remain flagged.
-- Removes historical contrasts and record/endpoint experiments from the active
-  screen. The default screen does not run validation.
+## Pooled half-normal reference
 
-No copula parameters or common temperature trajectory are fitted. The shared
-hierarchy borrows information about regularization and does not model residual
-cross-summary correlation. The independent/shared comparison has identical
-one-response marginal priors. Fixed Normal and scale-mixture priors differ.
+Adds half-normal, half-t and half-Cauchy hyperpriors for the normal SDs of signed
+non-centred innovation coefficients. The reference pools three scales across
+six distinct latent paths. Initial slopes retain their fixed normal prior SD
+of 0.01 per seasonal transition. Level and seasonal-coordinate initial SDs are
+20. The exact log-scale hyperconditional includes the Jacobian and all normal
+coefficient normalization terms. Legacy lognormal constructors and archives
+retain their meaning.
 
-All results go to a fresh `results/serra_194` tree. Existing 1.9.3 fits are not
-relabelled or reused as 1.9.4 results. See `RELEASE_VALIDATION.json` for software
-checks and their scope.
+## Experiments and execution
 
-Startup correction: fix the bundle status f-string for Python 3.10/3.11 and compile production modules with the compute-node interpreter before the probe. Scientific settings and the reduced screen budget are unchanged.
+The default suite contains 106 fits per tier, including 41 full-record seasonal
+settings, six pre-2019 fits, 52 standard/split validation fits, six matched
+monthly/seasonal validation fits and a full-record monthly supplement. All use
+pooled shrinkage. Fixed/unpooled and private-hierarchy reference fits are kept
+in an explicit `deferred` batch, excluded from the default.
+
+A single BIOBOT queue runs paper and screen together with bounded CPU and
+estimated memory reservations. Chains and independent fits run in parallel.
+The queue prioritizes reference fits, records process failures, preserves failed
+attempts and skips completed matching configurations. It never treats screen
+draws as paper draws. A startup probe exercises all three hyperprior families
+before production fits begin. Collection and compact exports run automatically.
+
+## Interpretation and reporting
+
+Calibration uses the half-normal's marginal RMS coefficient scale. Half-t4
+matches second moments; half-Cauchy matches a shared-scale upper quantile and
+is marked as having no finite second moment. Monthly innovations are translated
+to match the seasonal model's 30-year prior effects.
+
+Risk reporting adds exact pre-2019 threshold probabilities, all six observed
+summer predictions, period-average risks, local return periods, multiple return
+levels and conditional annual extrema. Annual aggregation uses complete
+meteorological years and pairs all seasonal distributions within a draw.
+Forecasts span 30 years with 95% intervals; predictive validation additionally
+reports 90%, 95% and 99% coverage. Numerical flags remain visible throughout.
+
+See `BUCEX-1.9.5-commands.md` for all budgets, calibration constants, optional
+batches, monitoring and the runtime limits of a full overnight study. No full
+scientific fit has been run or declared converged during release preparation.

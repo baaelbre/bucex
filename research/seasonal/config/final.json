@@ -8,5 +8,10 @@
   },
   "forecast_draws": 12000,
   "predictive_check_draws": 2000,
-  "output": "results/serra_194/final"
+  "output": "results/serra_195/final",
+  "diagnostic_thresholds": {
+    "min_chains": 2,
+    "max_rhat": 1.01,
+    "min_ess": 400
+  }
 }

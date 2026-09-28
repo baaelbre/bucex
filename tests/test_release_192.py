@@ -123,7 +123,7 @@ def test_task_execution_collection_figures_and_compact_export(tmp_path,monkeypat
     import zipfile
     import matplotlib.pyplot as plt
     real_config=jobs.task_config
-    selected=[replace(t,series=('TXm','TNm')) for t in jobs.tasks('all',tier='screen') if t.channel=='joint' and t.variant in ('reference','double_slope')
+    selected=[replace(t,series=('TXm','TNm')) for t in jobs.tasks('all',tier='screen') if t.channel=='joint' and t.frequency=='seasonal' and t.variant in ('reference','double_slope')
               and (t.kind=='posterior' or (t.kind=='forecast' and t.origin=='2020-11'))]
     assert len(selected)==4
     def config(task,tier):

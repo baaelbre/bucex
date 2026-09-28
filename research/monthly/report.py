@@ -229,6 +229,9 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
 
     if shape_rows:
         pd.DataFrame(shape_rows).to_csv(directory/'shape_support.csv',index=False)
+    if config.get('risk_return_periods'):
+        from research.seasonal.risk_report import save as save_risk_report
+        save_risk_report(fit,forecast,predictive,config,directory,level=level)
     if fit.is_multiseries_model and len(fit.channel_names) > 1:
         bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed'],level=level).assign(envelope_level=level).to_csv(
             directory/'residual_dependence.csv',index=False)

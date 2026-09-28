@@ -54,7 +54,7 @@ def test_pre2019_config_is_genuinely_prospective():
     assert config["data"]["end"] == "2019-05"
     assert config["forecast_horizon"] == 1
     assert config["additional_risks"]["TXx"] == [36.6, 39.7]
-    assert config["contrasts"]["comparison"] == ["1989-03", "2019-02"]
+    assert config['contrasts'] is None
 
 
 def test_exploratory_seasonal_figure_has_six_records_and_one_overlay():

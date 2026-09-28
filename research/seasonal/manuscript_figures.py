@@ -19,7 +19,7 @@ import bucex as bx
 from research.seasonal.prepare import exploratory_structure
 
 
-SERIES = ("TXm", "TNm", "TXx", "TXn", "TNx", "TNn")
+SERIES = ("TXm", "TXx", "TXn", "TNm", "TNx", "TNn")
 SEASONS = ("DJF", "MAM", "JJA", "SON")
 TX = "#24658a"
 TN = "#a44839"
@@ -60,7 +60,7 @@ def _save(figure, output, name, formats, dpi, figures):
     figures.append({"name": name, "files": [path.name for path in paths]})
 
 
-def _report_directory(path: Path, marker="period_contrasts.csv"):
+def _report_directory(path: Path, marker="scientific_targets.csv"):
     path = path.resolve()
     if (path / marker).is_file():
         return path
@@ -480,6 +480,28 @@ def _pre2019(inputs, roots):
         reference = next(iter(reports))
     else:
         reference = "reference"
+    direct=reports[reference]
+    if (direct/'pre2019_observed_predictions.csv').exists():
+        forecast=inputs.csv(direct/'pre2019_observed_predictions.csv').set_index('channel').loc[list(SERIES)]
+        curve=inputs.csv(direct/'pre2019_TXx_risk_curve.csv')
+        figure,axes=plt.subplots(1,2,figsize=(10.2,4.1),layout='constrained')
+        x=np.arange(len(SERIES))
+        axes[0].errorbar(x,forecast['median'],yerr=[forecast['median']-forecast.lower,forecast.upper-forecast['median']],
+            fmt='o',color=TX,capsize=4,label='predictive median and 95% PI')
+        axes[0].scatter(x,forecast.observed,marker='D',color=TN,s=24,label='observed')
+        axes[0].set(xticks=x,xticklabels=SERIES,ylabel='temperature / °C')
+        axes[0].legend(fontsize=8)
+        axes[1].fill_between(curve.threshold,100*curve.lower,100*curve.upper,color=TX,alpha=.18,label='95% conditional-risk interval')
+        axes[1].plot(curve.threshold,100*curve['mean'],color=TX,label='predictive probability')
+        for threshold,color in ((35.,'#ba861f'),(36.6,'.45'),(39.7,TN)):
+            row=curve[np.isclose(curve.threshold,threshold)].iloc[0]
+            axes[1].scatter(threshold,100*row['mean'],color=color,zorder=4)
+            axes[1].axvline(threshold,color=color,lw=.7,ls='--')
+        axes[1].set(xlabel='TXx threshold / °C',ylabel='JJA exceedance probability / %')
+        axes[1].legend(fontsize=7)
+        axes[0].set_title('A  Summer 2019 viewed from May',loc='left',weight='bold')
+        axes[1].set_title('B  Record-threshold risk',loc='left',weight='bold')
+        return figure
     figure, axes = plt.subplots(1, 2, figsize=(9.8, 3.9), layout="constrained")
     forecast = inputs.csv(reports[reference] / "forecast.csv", parse_dates=["time"])
     row = forecast[(forecast.channel == "TXx") & (forecast.time.dt.month == 6)].iloc[0]
@@ -519,8 +541,9 @@ def build(run, output, *, formats=("png", "pdf"), dpi=220,
                                          "axes.titlesize": 10, "xtick.labelsize": 8,
                                          "ytick.labelsize": 8, "legend.fontsize": 8}):
         data = bx.load_uccle_multiseries(**config["data"])
+        periods=config.get('contrasts') or config.get('risk_periods') or dict(reference=['1892-03','1922-02'],comparison=['1996-09','2026-08'])
         figure, cycle, smooth = exploratory_structure(
-            data, reference=config["contrasts"]["reference"], comparison=config["contrasts"]["comparison"])
+            data, reference=periods['reference'], comparison=periods['comparison'])
         cycle.to_csv(output / "exploratory_seasonal_cycles.csv", index=False)
         smooth.to_csv(output / "exploratory_seasonal_smooths.csv", index=False)
         _save(figure, output, "exploratory_seasonal_blocks", formats, dpi, figures)
@@ -530,9 +553,10 @@ def build(run, output, *, formats=("png", "pdf"), dpi=220,
               "seasonal_slopes", formats, dpi, figures)
         _save(_scale_panels(inputs, run), output, "seasonal_scales", formats, dpi, figures)
         _save(_pit_panels(inputs, run), output, "seasonal_pit_qq", formats, dpi, figures)
-        change, rates = _contrast_figures(inputs, run)
-        _save(change, output, "seasonal_change_contrasts", formats, dpi, figures)
-        _save(rates, output, "seasonal_rate_summary", formats, dpi, figures)
+        if config.get('contrasts'):
+            change, rates = _contrast_figures(inputs, run)
+            _save(change, output, "seasonal_change_contrasts", formats, dpi, figures)
+            _save(rates, output, "seasonal_rate_summary", formats, dpi, figures)
         _save(_shared_shrinkage(inputs, run), output, "shared_shrinkage", formats, dpi, figures)
         if config.get('analysis') == 'copula':
             _save(_copula(inputs, run), output, "copula_correlations", formats, dpi, figures)
