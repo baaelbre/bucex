@@ -1,7 +1,6 @@
 {
-  "version": "1.9.3",
-  "tested_at": "2026-09-28T17:24:51.235764+00:00",
-  "test_run": "validation/release_193/tests.xml",
+  "version": "1.9.4",
+  "tested_at": "2026-09-28T20:48:33.278292+00:00",
   "runtime": {
     "python": "3.12.14",
     "numpy": "2.3.5",
@@ -9,60 +8,86 @@
     "pandas": "2.2.3"
   },
   "reference_fingerprint": {
-    "config_sha256": "279c4d088d35154cd69b721ab7503ead4a71841159848fb8c3a75ad1f40680b9",
-    "source_sha256": "aabc34c1eb27489aceeea646066991271a346ffa8ca43fa235e4b0d5f459021d",
+    "config_sha256": "ef1a6c1b06af7a3abcea74a1cb8cc06ce9c742cd719e4d0b5e57888f8f5a0a6c",
+    "source_sha256": "0ce9ba0247d073481aae9e416d746990d736f4d7549b42babc3dea586bffe9ac",
     "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
   },
   "counts": {
-    "posterior": 138,
-    "reference": 6,
-    "pre2019": 4,
-    "experiments": 142,
-    "validation": 348,
-    "validation10": 18,
-    "all": 508
-  },
-  "bundle_counts": {
-    "posterior": 23,
     "reference": 1,
-    "pre2019": 4,
-    "experiments": 27,
-    "validation": 58,
-    "validation10": 3,
-    "all": 88
+    "comparison": 13,
+    "posterior": 159,
+    "experiments": 159,
+    "influence": 6,
+    "validation": 73,
+    "validation10": 39,
+    "all": 271
   },
-  "chains_per_response": 2,
-  "cpus_per_experiment": 12,
+  "experiment_counts": {
+    "reference": 1,
+    "comparison": 3,
+    "posterior": 49,
+    "experiments": 49,
+    "influence": 6,
+    "validation": 43,
+    "validation10": 9,
+    "all": 101
+  },
+  "chains_per_fit": 2,
+  "cpus_per_experiment": {
+    "shared": 2,
+    "separate": 12
+  },
+  "test_runs": [
+    {
+      "scope": "Full regression before updating four legacy expectations",
+      "file": "validation/release_194/tests.xml",
+      "tests": 321,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 317
+    },
+    {
+      "scope": "Four affected legacy tests after fixes",
+      "file": "validation/release_194/rerun_tests.xml",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 4
+    },
+    {
+      "scope": "New 1.9.4 inference, priors, model, reporting and diagnostics",
+      "file": "validation/release_194/new_tests.xml",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 5
+    },
+    {
+      "scope": "Submission guards after final launcher change",
+      "file": "validation/release_194/launch_tests.xml",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 2
+    }
+  ],
+  "final_test_status": "All 321 existing tests and five new tests passed across the full run and affected-test reruns. The initial four legacy expectation failures and their passing rerun are retained for provenance.",
   "checks": [
-    "Original broad regression: 320 passed; manuscript prior correction: 22 targeted tests passed",
-    "Six actual short response fits with two parallel chains each and fixed Normal priors",
-    "Direct Normal SD calibration and SD multiplier checks",
-    "Saved fits, thirty-year forecasts, prior/posterior reports and held-out validation paths",
-    "All 508 paper task specifications compile and declared folds are complete",
-    "Scheduler stub checks probe dependencies, resource classes and exported environment",
-    "Six real lightweight child processes overlap and propagate one deliberate failure",
-    "Submission dry runs and Python 3.9 grammar check require only stdlib on login",
-    "21 shell scripts pass bash -n",
-    "TNn actual single-response probe CLI completed successfully"
+    "All 271 screen configurations and all 271 paper configurations compile; 72 exact independent/shared marginal-prior matches per tier.",
+    "Thirteen actual startup fits: one coupled six-response fit, six independent mixtures, six fixed-prior fits; two parallel chains per fit; archives reload.",
+    "Direct Normal SD log-hyperparameter density checked against independent normal-density calculations, including the minus-J-times-log-scale term.",
+    "Integrated-mixture prior checked by numerical quadrature against generated samples; initial slopes remain private fixed Normals.",
+    "Mixed shared/separate reports and figures, scientific-target traces, fixed-dispersion convergence diagnostics and static-seasonality configurations checked.",
+    "Scheduler stubs verify probe gating, CPU plans and no compute-Python execution on the login node; missing environment setup fails before submission.",
+    "HPC screen/paper dry runs and local biobot dry run pass.",
+    "Python sources compile, login scripts parse with Python 3.9 grammar, and all 23 shell entry points pass bash -n."
   ],
   "production_fits_run": false,
   "hpc_submission_tested": false,
   "full_twelve_worker_mcmc_tested_locally": false,
-  "note": "Reference corrected to the manuscript direct Normal SDs (0.01, 0.0001, 0.01, 0.01), beta0 variance 0.0001. All 508 paper configurations compile. Short two-chain fits cover all six responses; no corrected production jobs were run here. Use a new results root.",
-  "revision": "paper_sd_20260928",
-  "test_runs": [
-    {
-      "scope": "Original 1.9.3 full regression, prior to manuscript SD correction",
-      "tests": 320,
-      "passed": 320,
-      "file": "validation/release_193/tests.xml"
-    },
-    {
-      "scope": "Affected prior, model, HPC bundle, report and gate tests after manuscript SD correction",
-      "tests": 22,
-      "passed": 22,
-      "file": "validation/release_193/paper_priors_correction/tests.xml"
-    }
-  ],
-  "corrected_at": "2026-09-28T17:48:40.443216+00:00"
+  "note": "Startup fits use intentionally short chains and establish execution only. The local container exposes two CPUs; response fits in the 13-fit probe ran sequentially with two parallel chains each. Production convergence and sensitivity remain to be assessed from the screen results."
 }

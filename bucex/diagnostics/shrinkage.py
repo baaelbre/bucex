@@ -32,7 +32,8 @@ def draw_marginal_prior(priors, size=2000, *, seed=None):
                 samples["initial.slope"] = (rng.normal(size=size) *
                                              priors.shrinkage.coefficient_sd(component, median))
             else:
-                samples[f"sd.{component}"] = np.abs(rng.normal(size=size)) * median / NORMAL_ABSOLUTE_MEDIAN
+                samples[f"sd.{component}"] = (np.abs(rng.normal(size=size)) *
+                    priors.shrinkage.coefficient_sd(component, median))
         channels[name] = samples
     independent = isinstance(priors.shrinkage, IndependentShrinkage)
     return {"channels": channels, "shared": {} if independent else shared,
@@ -55,7 +56,7 @@ def compare_shared_shrinkage(fit, *, level=.95):
             interval = (anchor*np.exp(spec.log_sd*ndtri(quantiles)) if distribution == "prior"
                         else np.quantile(values, quantiles))
             rows.append(dict(component=component, distribution=distribution,
-                scale=("normal_SD" if component == "initial_slope" and spec.initial_slope_median is None
+                scale=("normal_SD" if spec.uses_normal_sd(component)
                        else ("coefficient_absolute_median" if scope == "independent" else "population_median")),
                 anchor=anchor, log_sd=spec.log_sd,
                 lower=interval[0], median=interval[1], upper=interval[2], credible_interval=level,

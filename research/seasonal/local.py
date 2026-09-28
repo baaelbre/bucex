@@ -1,4 +1,4 @@
-"""Bounded single-response jobs on biobot, with logs, resume and failure accounting."""
+"""Bounded separate and shared jobs on biobot, with logs, resume and failure accounting."""
 from __future__ import annotations
 import argparse
 from collections import deque
@@ -23,9 +23,9 @@ def run(tier, batch, root, max_jobs, *, dry_run=False, retry_failed=False, serie
         try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise RuntimeError(f'A {tier} runner is already active in {root}; use its existing queue.')
         print(json.dumps(verify(tier,output=directory/'plan'),indent=2),flush=True)
-        selected=[t for t in tasks(batch,tier=tier) if not series or t.channel in series]
+        selected=[t for t in tasks(batch,tier=tier) if not series or set(t.series).intersection(series)]
         chains=max(task_config(t,tier)['mcmc']['chain_workers'] for t in selected)
-        print(f'{len(selected)} single-response tasks; at most {max_jobs} fits x {chains} chain workers = {max_jobs*chains} workers.',flush=True)
+        print(f'{len(selected)} fit tasks (shared fits include all declared summaries); at most {max_jobs} fits x {chains} chain workers = {max_jobs*chains} workers.',flush=True)
         if dry_run:
             for t in selected:print(t.id)
             return 0

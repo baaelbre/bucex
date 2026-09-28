@@ -1,33 +1,47 @@
-# BUCEX 1.9.3
+# BUCEX 1.9.4
 
-Bayesian unobserved-component models for Gaussian temperature summaries and GEV block extremes.
+Bayesian unobserved-component models for temperature means and extremes.
 
-The active seasonal workflow fits **six separate analyses with fixed Normal shrinkage priors**. All six use the fixed Normal prior SDs `(0.01, 0.0001, 0.01, 0.01)` for level, slope and seasonal innovations and initial slope. There are no shrinkage hyperpriors or copula parameters in the current grid. Estimated innovation coefficients and state trajectories remain private to each response.
+This release implements a matched comparison of fixed Normal shrinkage priors,
+independent Normal–lognormal mixtures, and shared hierarchical shrinkage.
+Initial rates remain separate. Observation residuals are conditionally independent.
 
-[Start here](START_HERE.md) · [HPC commands and sensitivity grid](BUCEX-1.9.3-commands.md) · [Verification](validation/RELEASE_VALIDATION_193.md)
+Start with **[BUCEX-1.9.4-commands.md](BUCEX-1.9.4-commands.md)** for the screen
+commands on Gallade and biobot. The default screen contains 49 experiments
+(159 fits). Validation is a separate batch.
 
-One HPC experiment runs six responses in parallel, with two chains each and **12 cores in both screen and paper tiers**. Paper runs use longer chains and stricter diagnostics. The 23 full-record settings test fixed prior SDs directly, together with shape-prior and model alternatives. Root launchers now submit HPC jobs; the local/biobot runner remains available separately.
-
-```bash
-# Local installation; for Gallade use SETUP_HPC_ENV.sh as documented.
-python -m pip install -e ".[plot,test]"
-python -m pytest
-```
-
-The innovation prior SDs are tau_alpha=0.01, tau_beta=0.0001 and tau_gamma=0.01; initial-slope SD is sqrt(P_beta0)=0.01. A simple univariate API example is:
+- `research/seasonal/config/main.json`: the shared reference.
+- `research/seasonal/config/experiments.json`: the complete comparison grid and budgets.
+- `docs/SENSITIVITY_GRID_194.csv`: all settings in a table.
+- `research/seasonal/jobs.py`: fitting, configuration checks and provenance.
+- `research/seasonal/job_plan.py`: scheduler planning using only the standard library.
+- `bucex/`: the model, inference, diagnostics and reporting API.
 
 ```python
+import numpy as np
 import bucex as bx
 
-prior = bx.fs_priors(
-    "gaussian", period=4, innovation="normal",
-    innovation_sd={"level": .01, "trend": .0001, "season": .01},
-    initial_slope=bx.NormalPrior(0., .01),
+shared = bx.SharedShrinkage.from_sd(
+    {"level": 0.01, "slope": 0.0001, "seasonal": 0.01},
+    log_sd=np.log(3),
+)
+private = bx.IndependentShrinkage.from_sd(
+    {"level": 0.01, "slope": 0.0001, "seasonal": 0.01},
+    log_sd=np.log(3),
 )
 ```
 
-These are prior SDs for the signed FS coefficients, not fixed process innovation SDs. Initial-state and observation priors are separate. The full research configuration, including meteorological-season scale effects and initial seasonal SD 20, is in `research/seasonal/config/main.json`.
+Both use direct conditional Normal SDs. The private specification is for a
+single-response model; the shared specification pools regularization across
+response-specific innovation coefficients. `from_sd` leaves initial rates
+under their separately declared priors. Legacy median-parameterized archives
+remain readable.
 
-Full-record fits cover 538 complete seasons and produce 30-year forecasts. Reports retain 95% intervals, 90/95/99% held-out coverage, marginal scores, prior/posterior comparisons and individual numerical diagnostics. Production fits must still be run and assessed.
+The package requires Python >= 3.10. For a new workstation environment:
 
-Gaussian fits use conditional FFBS; GEV fits use Laplace proposals with an exact-likelihood Metropolis–Hastings correction. The library retains optional historical copula and hierarchical-prior APIs for reproducibility; they are not enabled by this release's seasonal experiment grid. See the [seasonal workflow](research/seasonal/README.md) and [prior calibration](docs/PRIOR_CALIBRATION.md).
+```bash
+python -m pip install -e ".[plot,test]"
+```
+
+Production inference is not run as part of building a release. Screen results
+must be assessed for convergence, prior sensitivity and predictive adequacy.

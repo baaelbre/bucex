@@ -137,7 +137,9 @@ def test_seasonal_reference_priors_have_declared_physical_scale():
     c=bx.load_config(ROOT/'research/seasonal/config/reference_191.json')
     data=pd.DataFrame({n:np.zeros(5) for n in c['data']['series']})
     model,p=joint_model(data,c)
-    np.testing.assert_array_equal(model.copula.correlation_matrix({},tuple(data)),np.eye(6))
+    # A missing copula and a fixed identity copula both give independent residuals.
+    if model.copula is not None:
+        np.testing.assert_array_equal(model.copula.correlation_matrix({},tuple(data)),np.eye(6))
     factor=np.exp(np.log(2)**2-np.log(3)**2)
     assert c['priors']['innovation_median']==pytest.approx(dict(
         level=.01*factor, trend=.0001*factor, season=.01*factor))

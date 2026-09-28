@@ -70,9 +70,7 @@ class SharedShrinkageState:
             coefficients = [s.params_state[COEFFICIENT_FIELDS[component]] for s in self.members[component]]
             target = lambda u: shared_scale_log_target(u, coefficients, anchor=anchor,
                 log_sd=self.specification.log_sd,
-                scale_conversion=(1. if component == "initial_slope" and
-                                  self.specification.initial_slope_median is None
-                                  else NORMAL_ABSOLUTE_MEDIAN))
+                scale_conversion=1. / self.specification.coefficient_sd(component, 1.))
             self.log_multipliers[component], evaluations = _slice_sample_real(
                 self.log_multipliers[component], target, rng, width=.5)
             metrics[f"{self.scope}_shrinkage_slice_evaluations.{component}"] = evaluations

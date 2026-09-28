@@ -27,6 +27,10 @@ class SharedShrinkage:
     state innovations. This hierarchy shares regularization, not a latent
     trajectory or residual correlation. Use a copula for the latter.
 
+    ``from_sd(anchors, log_sd=...)`` instead declares conditional Normal SDs
+    directly and leaves initial rates separate. The legacy median convention
+    remains the default here so archived specifications keep their meaning.
+
     Example::
 
         SharedShrinkage(medians={"level": .0025, "slope": .0000125, "seasonal": .02})
@@ -47,8 +51,11 @@ class SharedShrinkage:
     log_sd: float = float(np.log(2.))
     initial_slope_sd: float | None = .0025
     initial_slope_median: float | None = None
+    scale_parameterization: str = "absolute_median"
 
     def __post_init__(self):
+        if self.scale_parameterization not in {"absolute_median", "normal_sd"}:
+            raise ValueError("scale_parameterization must be absolute_median or normal_sd.")
         aliases = {"trend": "slope", "season": "seasonal"}
         medians = {}
         for supplied, value in self.medians.items():
@@ -104,8 +111,23 @@ class SharedShrinkage:
         return {**self.medians, **({"initial_slope": initial} if initial is not None else {})}
 
     def coefficient_sd(self, component, scale):
-        return (scale if component == "initial_slope" and self.initial_slope_median is None
+        return (scale if self.uses_normal_sd(component)
                 else scale / NORMAL_ABSOLUTE_MEDIAN)
+
+    def uses_normal_sd(self, component):
+        return ((component == "initial_slope" and self.initial_slope_median is None)
+                or (component != "initial_slope" and self.scale_parameterization == "normal_sd"))
+
+    @classmethod
+    def from_sd(cls, anchors, *, log_sd=float(np.log(3.))):
+        """Learn Normal coefficient SDs directly; initial rates stay separate.
+
+        log(tau_c / anchors[c]) ~ Normal(0, log_sd**2) and
+        s_cj | tau_c ~ Normal(0, tau_c**2). The anchors are conditional SDs
+        at the centre of the lognormal hyperprior, not marginal RMS SDs.
+        """
+        return cls(anchors, log_sd=log_sd, initial_slope_sd=None,
+                   scale_parameterization="normal_sd")
 
     def sample_medians(self, size, *, rng):
         """Draw shared hyperparameters, once per joint prior draw."""
@@ -161,7 +183,7 @@ class SharedShrinkage:
                 raise ValueError(f"No response gain for {c}; declare its period.")
             sd = self.coefficient_sd(c, anchor)
             rows.append(dict(component=c, anchor=anchor,
-                anchor_kind=("normal_SD" if c == "initial_slope" and self.initial_slope_median is None
+                anchor_kind=("normal_SD" if self.uses_normal_sd(c)
                              else "absolute_coefficient_median"),
                 horizon_updates=int(horizon), period=period, response_unit=unit,
                 log_sd=self.log_sd, hyperprior_lower=anchor*np.exp(ndtri(.025)*self.log_sd),

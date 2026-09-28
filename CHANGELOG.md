@@ -1,3 +1,7 @@
+# 1.9.4 — matched shrinkage comparison
+
+Direct Normal-SD hierarchies; matched independent/shared mixtures; separate initial rates; 49 screen experiments; longer chains; mixed CPU routing; pooled/separate collection and influence checks. See RELEASE_NOTES.md.
+
 # 1.9.3 correction — manuscript prior SDs (paper_sd_20260928)
 
 - Match the latest manuscript directly: Normal innovation SDs (0.01, 0.0001, 0.01), initial-slope variance 0.0001 and hence SD 0.01. Remove the earlier median-to-SD conversion.

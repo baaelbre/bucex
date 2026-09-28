@@ -8,7 +8,7 @@ from research.seasonal import local,jobs
 
 
 def test_local_runner_bounds_concurrency_and_records_failure(tmp_path,monkeypatch):
-    selected=jobs.tasks('reference')[:4]
+    selected=jobs.tasks('comparison',tier='screen')[:4]
     monkeypatch.setattr(local,'tasks',lambda *a,**k:selected)
     monkeypatch.setattr(local,'verify',lambda *a,**k:dict(status='test_preflight'))
     real_popen=subprocess.Popen

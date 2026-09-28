@@ -38,12 +38,13 @@ def test_archived_reference_and_new_final_config_have_distinct_priors():
     assert reference["mcmc"]["warmup"] == 2000 and reference["mcmc"]["draws"] == 4000
     assert final['priors']['innovation_sd']==pytest.approx({'level':.01,'trend':.0001,'season':.01})
     assert final['priors'].get('independent_shrinkage') is None
-    assert final['priors'].get('shared_shrinkage') is None
+    assert final['priors']['shared_shrinkage']['scale_parameterization']=='normal_sd'
+    assert not final['priors']['shared_shrinkage']['pool_initial_slope']
     assert final['priors']['initial_slope_sd']==pytest.approx(.01)
     assert final["priors"]["seasonal_initial_sd"] == 20
     assert final["forecast_horizon"] == 120
     assert final["forecast_draws"] == 12000
-    assert final["mcmc"]["warmup"] == 3000 and final["mcmc"]["draws"] == 8000
+    assert final["mcmc"]["warmup"] == 6000 and final["mcmc"]["draws"] == 20000
     assert final["mcmc"]["chains"] == final["mcmc"]["chain_workers"] == 2
     assert "reference_run" not in final
 

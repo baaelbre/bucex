@@ -118,12 +118,12 @@ def test_single_response_validation_uses_original_scale_and_all_coverages(tmp_pa
 
 
 def test_task_execution_collection_figures_and_compact_export(tmp_path,monkeypatch):
-    from research.seasonal import collect_jobs
+    from research.seasonal import collect_jobs, jobs
     from research.seasonal.export_results import export
     import zipfile
     import matplotlib.pyplot as plt
     real_config=jobs.task_config
-    selected=[t for t in jobs.tasks('all') if t.channel=='TXm' and t.variant in ('reference','double_slope')
+    selected=[replace(t,series=('TXm','TNm')) for t in jobs.tasks('all',tier='screen') if t.channel=='joint' and t.variant in ('reference','double_slope')
               and (t.kind=='posterior' or (t.kind=='forecast' and t.origin=='2020-11'))]
     assert len(selected)==4
     def config(task,tier):
@@ -138,19 +138,20 @@ def test_task_execution_collection_figures_and_compact_export(tmp_path,monkeypat
     monkeypatch.setattr(collect_jobs,'tasks',lambda *a,**k:selected)
     for task in selected:
         result=jobs.execute(task,tier='screen',root=tmp_path)
-        assert result.name=='TXm'
-        assert bx.load_config(result.parents[1]/'task.json')['status']=='completed'
+        assert result.name==('report' if task.kind=='posterior' else 'joint')
+        assert bx.load_config(tmp_path/'screen'/task.id/'task.json')['status']=='completed'
         assert jobs.execute(task,tier='screen',root=tmp_path)==result
     out=collect_jobs.collect(tmp_path,'screen',batch='all',figures=True)
     status=bx.load_config(out/'status.json')
     assert status['completed']==4 and not status['missing_or_failed']
     pair=bx.load_config(out/'paired_validation.json')['comparisons']
-    assert len(pair)==1 and pair[0]['channel']=='TXm' and pair[0]['origins']==['2020-11']
+    assert len(pair)==2 and {p['channel'] for p in pair}=={'TXm','TNm'}
+    assert all(p['origins']==['2020-11'] for p in pair)
     images=list(out.rglob('*.png'));assert images
     assert plt.get_fignums()==[]
     path,count=export(tmp_path,'screen',tmp_path/'compact.zip')
     with zipfile.ZipFile(path) as archive:
         assert len(archive.namelist())==count
         assert all(not n.endswith(('.bucex','.png')) for n in archive.namelist())
-        assert any(n.endswith('independent_shrinkage.csv') for n in archive.namelist())
+        assert any(n.endswith('shared_shrinkage.csv') for n in archive.namelist())
     with pytest.raises(FileExistsError):export(tmp_path,'screen',path)

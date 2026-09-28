@@ -20,7 +20,7 @@ PROJECT=Path(__file__).resolve().parents[1]
 
 
 def config(name,variant='reference'):
-    task=next(t for t in jobs.tasks('posterior') if t.channel==name and t.variant==variant)
+    task=next(t for t in jobs.tasks('posterior') if t.channel==name and t.variant=="fixed_"+variant)
     c=jobs.task_config(task,'screen');c['data']['start']='2016-03'
     c['mcmc'].update(chains=2,chain_workers=2,warmup=3,draws=10,progress=False)
     c.update(figures=False,forecast_draws=24,predictive_check_draws=12,prior_draws=80,contrasts=None)
@@ -45,21 +45,22 @@ def test_fixed_normal_calibration_has_no_scale_mixture():
 
 
 def test_every_bundle_matches_tasks_and_cpu_budget():
-    for tier,cores in [('screen',12),('paper',12)]:
-        groups=plan(tier,'all');assert len(groups)==88
-        assert len(plan(tier,'posterior'))==23
+    for tier in ('screen','paper'):
+        groups=plan(tier,'all');assert len(groups)==101
+        assert len(plan(tier,'posterior'))==49
         all_members=[]
         for group in groups:
             members=bundles.members(group,tier);all_members.extend(members)
-            assert group['cpus']==cores
             assert group['required_workers']==len(members)*2
-            if group['kind']!='pre2019':assert len(members)==6
+            assert group['cpus']==(2 if group['scope']=='shared' else 12)
+            assert len(members)==(1 if group['scope']=='shared' else 6)
             for t in members:
                 c=jobs.task_config(t,tier)
-                assert c['priors'].get('shared_shrinkage') is None
-                assert c['priors'].get('independent_shrinkage') is None
-        assert len(all_members)==508 and len({t.id for t in all_members})==508
-    assert len(plan('paper','experiments','long'))==2
+                assert c['copula'] is None
+                assert not (c['priors'].get('shared_shrinkage') or {}).get('pool_initial_slope',False)
+        assert len(all_members)==271 and len({t.id for t in all_members})==271
+    assert len(plan('paper','experiments','shared_long'))==1
+    assert len(plan('paper','experiments','separate_long'))==2
 
 
 def test_sd_sensitivity_changes_normal_sd_not_variance():
@@ -118,13 +119,13 @@ print(str(n)+';gallade')
         env=dict(os.environ,PATH=str(tmp_path)+os.pathsep+os.environ['PATH'],BUCEX_PYTHON=sys.executable,
             BUCEX_RESULTS_ROOT=str(tmp_path/'results'),TEST_COUNTER=str(counter),TEST_COMMANDS=str(commands)),capture_output=True,text=True,check=True)
     records=[json.loads(line) for line in commands.read_text().splitlines()]
-    assert [r['resource'] for r in records]==['probe','standard','long']
+    assert [r['resource'] for r in records]==['probe','shared','separate','shared_long','separate_long']
     assert all('--dependency=afterok:100' in r['args'] for r in records[1:])
-    assert '--cpus-per-task=12' in records[1]['args']
+    assert '--cpus-per-task=12' in records[2]['args']
 
 
 def test_bundle_starts_six_separate_processes_and_propagates_failure(tmp_path,monkeypatch):
-    group=plan('screen','reference')[0]
+    group=next(g for g in plan('screen','comparison') if g['scope']=='fixed')
     monkeypatch.setattr(bundles,'allocation',lambda required:None)
     real_popen=subprocess.Popen
     worker='''import json,os,sys,time
@@ -138,12 +139,12 @@ sys.exit(int(sys.argv[2]))
         return real_popen([sys.executable,'-c',worker,str(tmp_path/(id+'.json')),'2' if id.endswith('TXn') else '0'],**kwargs)
     monkeypatch.setattr(bundles.subprocess,'Popen',launch)
     assert bundles.run(group,tier='screen',root=tmp_path/'results')==1
-    intervals=[json.loads(p.read_text()) for p in tmp_path.glob('posterior_reference_*.json')]
+    intervals=[json.loads(p.read_text()) for p in tmp_path.glob('posterior_fixed_reference_*.json')]
     assert len(intervals)==6
     points=sorted([(r['start'],1) for r in intervals]+[(r['end'],-1) for r in intervals])
     assert np.cumsum([x[1] for x in points]).max()==6
     assert all(r['threads']=='1' for r in intervals)
-    meta=bx.load_config(tmp_path/'results/screen/bundles/posterior_reference/bundle.json')
+    meta=bx.load_config(tmp_path/'results/screen/bundles/posterior_fixed_reference/bundle.json')
     assert meta['status']=='failed' and len(meta['outcomes'])==6
     assert sum(r['exit_code']!=0 for r in meta['outcomes'])==1
 

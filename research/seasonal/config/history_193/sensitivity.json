@@ -1,0 +1,4 @@
+{
+  "extends": "manuscript_sensitivity.json",
+  "_comment": "Alias for the current complete width/shape sensitivity study."
+}

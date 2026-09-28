@@ -1,4 +1,4 @@
-"""Run the six independent response fits inside one allocated HPC experiment."""
+"""Run a shared fit or a bundle of separate fits inside an HPC allocation."""
 from __future__ import annotations
 import argparse
 from datetime import datetime,timezone
@@ -12,12 +12,12 @@ import sys
 import time
 import bucex as bx
 from research.seasonal.jobs import ROOT,PROJECT,tasks,task_config
-from research.seasonal.job_plan import plan,BATCHES
+from research.seasonal.job_plan import plan,BATCHES,RESOURCES
 
 
 def members(group,tier):
-    selected=[t for t in tasks('all',tier=tier) if t.id.replace('_'+t.channel,'',1)==group['id']]
-    if [t.channel for t in selected]!=group['series']:raise ValueError('Runtime tasks differ from the submission plan: '+group['id'])
+    selected=[t for t in tasks('all',tier=tier) if t.group_id==group['id']]
+    if [t.id for t in selected]!=group['task_ids']:raise ValueError('Runtime tasks differ from the submission plan: '+group['id'])
     for task in selected:
         c=task_config(task,tier)
         if c['mcmc']['chains']!=group['chains'] or c['mcmc']['chain_workers']!=group['chain_workers']:
@@ -51,7 +51,7 @@ def run(group,*,tier='screen',root=ROOT,retry_failed=False):
         active={};interrupted=False
         def stop(signum,frame):raise KeyboardInterrupt
         previous={s:signal.signal(s,stop) for s in (signal.SIGINT,signal.SIGTERM)}
-        print(f'{group["id"]}: {len(selected)} separate responses x {group["chain_workers"]} chains = {group["required_workers"]} workers',flush=True)
+        print(f'{group["id"]}: {len(selected)} fits ({group['scope']}) x {group["chain_workers"]} chains = {group["required_workers"]} workers',flush=True)
         try:
             for task in selected:
                 log=(logs/(task.id+'.log')).open('a');log.write('\nSTART '+meta['started']+'\n');log.flush()
@@ -94,11 +94,11 @@ def run(group,*,tier='screen',root=ROOT,retry_failed=False):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--tier',choices=('screen','paper'),default='screen');p.add_argument('--batch',choices=BATCHES,default='experiments')
-    p.add_argument('--resource',choices=('all','standard','long'),default='all');p.add_argument('--root',type=Path,default=ROOT)
+    p.add_argument('--resource',choices=('all',*RESOURCES),default='all');p.add_argument('--root',type=Path,default=ROOT)
     p.add_argument('--index',type=int);p.add_argument('--bundle');p.add_argument('--list',action='store_true');p.add_argument('--retry-failed',action='store_true')
     a=p.parse_args();groups=plan(a.tier,a.batch,a.resource)
     if a.list:
-        for i,g in enumerate(groups,1):print(i,g['id'],g['parallel_responses'],g['chains'],g['cpus'])
+        for i,g in enumerate(groups,1):print(i,g['id'],g['parallel_fits'],g['chains'],g['cpus'])
         return 0
     selected=(next((g for g in plan(a.tier,'all') if g['id']==a.bundle),None) if a.bundle else
               groups[a.index-1] if a.index and 1<=a.index<=len(groups) else None)

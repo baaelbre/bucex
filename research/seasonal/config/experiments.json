@@ -1,9 +1,428 @@
 {
-  "_comment": "1.9.3: one HPC array element per experiment/origin; six independent responses run in parallel. All shrinkage Normal SDs are fixed.",
-  "studies": [
-    "manuscript_sensitivity",
-    "physical_sensitivity",
-    "adequacy"
+  "_comment": "Matched three-way comparison. Fixed and independent scopes run six separate fits; shared scope runs one coupled fit. Default experiments are full-record sensitivity only.",
+  "series": [
+    "TXm",
+    "TNm",
+    "TXx",
+    "TXn",
+    "TNx",
+    "TNn"
+  ],
+  "variants": [
+    {
+      "name": "reference",
+      "scope": "shared",
+      "setting": "reference",
+      "family": "structural"
+    },
+    {
+      "name": "half_level",
+      "sd_multipliers": {
+        "level": 0.5
+      },
+      "scope": "shared",
+      "setting": "half_level",
+      "family": "structural"
+    },
+    {
+      "name": "double_level",
+      "sd_multipliers": {
+        "level": 2.0
+      },
+      "scope": "shared",
+      "setting": "double_level",
+      "family": "structural"
+    },
+    {
+      "name": "half_slope",
+      "sd_multipliers": {
+        "trend": 0.5
+      },
+      "scope": "shared",
+      "setting": "half_slope",
+      "family": "structural"
+    },
+    {
+      "name": "double_slope",
+      "sd_multipliers": {
+        "trend": 2.0
+      },
+      "scope": "shared",
+      "setting": "double_slope",
+      "family": "structural"
+    },
+    {
+      "name": "half_seasonal",
+      "sd_multipliers": {
+        "season": 0.5
+      },
+      "scope": "shared",
+      "setting": "half_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "double_seasonal",
+      "sd_multipliers": {
+        "season": 2.0
+      },
+      "scope": "shared",
+      "setting": "double_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "half_initial_slope",
+      "sd_multipliers": {
+        "initial_slope": 0.5
+      },
+      "scope": "shared",
+      "setting": "half_initial_slope",
+      "family": "structural"
+    },
+    {
+      "name": "double_initial_slope",
+      "sd_multipliers": {
+        "initial_slope": 2.0
+      },
+      "scope": "shared",
+      "setting": "double_initial_slope",
+      "family": "structural"
+    },
+    {
+      "name": "quarter_seasonal",
+      "sd_multipliers": {
+        "season": 0.25
+      },
+      "scope": "shared",
+      "setting": "quarter_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "independent_reference",
+      "scope": "independent",
+      "setting": "reference",
+      "family": "structural"
+    },
+    {
+      "name": "independent_half_level",
+      "sd_multipliers": {
+        "level": 0.5
+      },
+      "scope": "independent",
+      "setting": "half_level",
+      "family": "structural"
+    },
+    {
+      "name": "independent_double_level",
+      "sd_multipliers": {
+        "level": 2.0
+      },
+      "scope": "independent",
+      "setting": "double_level",
+      "family": "structural"
+    },
+    {
+      "name": "independent_half_slope",
+      "sd_multipliers": {
+        "trend": 0.5
+      },
+      "scope": "independent",
+      "setting": "half_slope",
+      "family": "structural"
+    },
+    {
+      "name": "independent_double_slope",
+      "sd_multipliers": {
+        "trend": 2.0
+      },
+      "scope": "independent",
+      "setting": "double_slope",
+      "family": "structural"
+    },
+    {
+      "name": "independent_half_seasonal",
+      "sd_multipliers": {
+        "season": 0.5
+      },
+      "scope": "independent",
+      "setting": "half_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "independent_double_seasonal",
+      "sd_multipliers": {
+        "season": 2.0
+      },
+      "scope": "independent",
+      "setting": "double_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "independent_half_initial_slope",
+      "sd_multipliers": {
+        "initial_slope": 0.5
+      },
+      "scope": "independent",
+      "setting": "half_initial_slope",
+      "family": "structural"
+    },
+    {
+      "name": "independent_double_initial_slope",
+      "sd_multipliers": {
+        "initial_slope": 2.0
+      },
+      "scope": "independent",
+      "setting": "double_initial_slope",
+      "family": "structural"
+    },
+    {
+      "name": "independent_quarter_seasonal",
+      "sd_multipliers": {
+        "season": 0.25
+      },
+      "scope": "independent",
+      "setting": "quarter_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_reference",
+      "scope": "fixed",
+      "setting": "reference",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_half_level",
+      "sd_multipliers": {
+        "level": 0.5
+      },
+      "scope": "fixed",
+      "setting": "half_level",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_double_level",
+      "sd_multipliers": {
+        "level": 2.0
+      },
+      "scope": "fixed",
+      "setting": "double_level",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_half_slope",
+      "sd_multipliers": {
+        "trend": 0.5
+      },
+      "scope": "fixed",
+      "setting": "half_slope",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_double_slope",
+      "sd_multipliers": {
+        "trend": 2.0
+      },
+      "scope": "fixed",
+      "setting": "double_slope",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_half_seasonal",
+      "sd_multipliers": {
+        "season": 0.5
+      },
+      "scope": "fixed",
+      "setting": "half_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_double_seasonal",
+      "sd_multipliers": {
+        "season": 2.0
+      },
+      "scope": "fixed",
+      "setting": "double_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_half_initial_slope",
+      "sd_multipliers": {
+        "initial_slope": 0.5
+      },
+      "scope": "fixed",
+      "setting": "half_initial_slope",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_double_initial_slope",
+      "sd_multipliers": {
+        "initial_slope": 2.0
+      },
+      "scope": "fixed",
+      "setting": "double_initial_slope",
+      "family": "structural"
+    },
+    {
+      "name": "fixed_quarter_seasonal",
+      "sd_multipliers": {
+        "season": 0.25
+      },
+      "scope": "fixed",
+      "setting": "quarter_seasonal",
+      "family": "structural"
+    },
+    {
+      "name": "width_log2",
+      "scope": "shared",
+      "setting": "width_log2",
+      "family": "width",
+      "log_sd": 0.6931471805599453
+    },
+    {
+      "name": "width_log4",
+      "scope": "shared",
+      "setting": "width_log4",
+      "family": "width",
+      "log_sd": 1.3862943611198906
+    },
+    {
+      "name": "independent_width_log2",
+      "scope": "independent",
+      "setting": "width_log2",
+      "family": "width",
+      "log_sd": 0.6931471805599453
+    },
+    {
+      "name": "independent_width_log4",
+      "scope": "independent",
+      "setting": "width_log4",
+      "family": "width",
+      "log_sd": 1.3862943611198906
+    },
+    {
+      "name": "xi_narrow",
+      "xi_sd": 0.15,
+      "scope": "shared",
+      "setting": "xi_narrow",
+      "family": "adequacy"
+    },
+    {
+      "name": "xi_wide",
+      "xi_sd": 0.6,
+      "scope": "shared",
+      "setting": "xi_wide",
+      "family": "adequacy"
+    },
+    {
+      "name": "xi_bounded",
+      "xi_sd": 0.3,
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ],
+      "scope": "shared",
+      "setting": "xi_bounded",
+      "family": "adequacy"
+    },
+    {
+      "name": "xi_uniform_bounded",
+      "xi_prior": "uniform",
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ],
+      "scope": "shared",
+      "setting": "xi_uniform_bounded",
+      "family": "adequacy"
+    },
+    {
+      "name": "constant_dispersion",
+      "seasonal_scale": false,
+      "scope": "shared",
+      "setting": "constant_dispersion",
+      "family": "adequacy"
+    },
+    {
+      "name": "narrow_seasonal_log_scale",
+      "scale_prior_sd": 0.15,
+      "scope": "shared",
+      "setting": "narrow_seasonal_log_scale",
+      "family": "adequacy"
+    },
+    {
+      "name": "wide_seasonal_log_scale",
+      "scale_prior_sd": 0.6,
+      "scope": "shared",
+      "setting": "wide_seasonal_log_scale",
+      "family": "adequacy"
+    },
+    {
+      "name": "fixed_location_seasonality",
+      "seasonal": "static",
+      "scope": "shared",
+      "setting": "fixed_location_seasonality",
+      "family": "adequacy"
+    },
+    {
+      "name": "previous_initial_season_sd",
+      "seasonal_initial_multiplier": 0.1125,
+      "scope": "shared",
+      "setting": "previous_initial_season_sd",
+      "family": "adequacy"
+    },
+    {
+      "name": "leave_out_TXm",
+      "scope": "shared",
+      "setting": "leave_out_TXm",
+      "family": "influence",
+      "exclude_series": [
+        "TXm"
+      ]
+    },
+    {
+      "name": "leave_out_TNm",
+      "scope": "shared",
+      "setting": "leave_out_TNm",
+      "family": "influence",
+      "exclude_series": [
+        "TNm"
+      ]
+    },
+    {
+      "name": "leave_out_TXx",
+      "scope": "shared",
+      "setting": "leave_out_TXx",
+      "family": "influence",
+      "exclude_series": [
+        "TXx"
+      ]
+    },
+    {
+      "name": "leave_out_TXn",
+      "scope": "shared",
+      "setting": "leave_out_TXn",
+      "family": "influence",
+      "exclude_series": [
+        "TXn"
+      ]
+    },
+    {
+      "name": "leave_out_TNx",
+      "scope": "shared",
+      "setting": "leave_out_TNx",
+      "family": "influence",
+      "exclude_series": [
+        "TNx"
+      ]
+    },
+    {
+      "name": "leave_out_TNn",
+      "scope": "shared",
+      "setting": "leave_out_TNn",
+      "family": "influence",
+      "exclude_series": [
+        "TNn"
+      ]
+    }
   ],
   "reference_validation_origins": [
     "1970-11",
@@ -14,99 +433,101 @@
     "2015-11",
     "2020-11"
   ],
-  "sensitivity_validation_origins": [
-    "2010-11",
-    "2015-11",
-    "2020-11"
-  ],
   "validation_variants": [
+    "independent_reference",
+    "fixed_reference",
     "half_level",
     "double_level",
     "half_slope",
     "double_slope",
     "half_seasonal",
-    "double_seasonal",
-    "half_initial_slope",
-    "double_initial_slope",
+    "quarter_seasonal",
     "fixed_location_seasonality",
     "constant_dispersion",
     "xi_narrow",
-    "xi_wide",
-    "quarter_seasonal",
-    "double_slope_half_seasonal",
-    "double_slope_quarter_seasonal",
-    "half_all_shrinkage",
-    "double_all_shrinkage"
+    "xi_wide"
   ],
-  "tiers": {
-    "screen": {
-      "mcmc": {
-        "chains": 2,
-        "chain_workers": 2,
-        "warmup": 700,
-        "draws": 1300
-      },
-      "diagnostic_thresholds": {
-        "min_chains": 2,
-        "max_rhat": 1.05,
-        "min_ess": 100
-      },
-      "forecast_draws": 1500,
-      "predictive_check_draws": 400,
-      "validation_draws": 1500,
-      "save_fits": true,
-      "figures": false,
-      "trace_exports": false
-    },
-    "paper": {
-      "mcmc": {
-        "chains": 2,
-        "chain_workers": 2,
-        "warmup": 2000,
-        "draws": 4000
-      },
-      "diagnostic_thresholds": {
-        "min_chains": 2,
-        "max_rhat": 1.01,
-        "min_ess": 400
-      },
-      "forecast_draws": 4000,
-      "predictive_check_draws": 2000,
-      "validation_draws": 4000,
-      "save_fits": true,
-      "figures": false,
-      "trace_exports": false
-    }
-  },
-  "resources": {
-    "screen": {
-      "cpus": 12,
-      "memory_gb": 24,
-      "hours": 6
-    },
-    "paper": {
-      "cpus": 12,
-      "memory_gb": 64,
-      "hours": 12
-    },
-    "paper_long": {
-      "cpus": 12,
-      "memory_gb": 96,
-      "hours": 24
-    }
-  },
+  "sensitivity_validation_origins": [
+    "2010-11",
+    "2015-11",
+    "2020-11"
+  ],
   "original_validation_fractions": [
     0.6,
     0.8,
     0.9
   ],
   "original_validation_horizon": 40,
-  "series": [
-    "TXm",
-    "TNm",
-    "TXx",
-    "TXn",
-    "TNx",
-    "TNn"
-  ]
+  "tiers": {
+    "screen": {
+      "mcmc": {
+        "chains": 2,
+        "chain_workers": 2,
+        "warmup": 2000,
+        "draws": 5000
+      },
+      "diagnostic_thresholds": {
+        "min_chains": 2,
+        "max_rhat": 1.05,
+        "min_ess": 200
+      },
+      "forecast_draws": 2000,
+      "predictive_check_draws": 500,
+      "validation_draws": 2000,
+      "save_fits": true,
+      "figures": false,
+      "trace_exports": false
+    },
+    "paper": {
+      "mcmc": {
+        "chains": 2,
+        "chain_workers": 2,
+        "warmup": 4000,
+        "draws": 12000
+      },
+      "diagnostic_thresholds": {
+        "min_chains": 2,
+        "max_rhat": 1.01,
+        "min_ess": 400
+      },
+      "forecast_draws": 6000,
+      "predictive_check_draws": 2000,
+      "validation_draws": 6000,
+      "save_fits": true,
+      "figures": false,
+      "trace_exports": false
+    }
+  },
+  "resources": {
+    "screen_shared": {
+      "cpus": 2,
+      "memory_gb": 16,
+      "hours": 12
+    },
+    "screen_separate": {
+      "cpus": 12,
+      "memory_gb": 36,
+      "hours": 12
+    },
+    "paper_shared": {
+      "cpus": 2,
+      "memory_gb": 32,
+      "hours": 24
+    },
+    "paper_separate": {
+      "cpus": 12,
+      "memory_gb": 72,
+      "hours": 24
+    },
+    "paper_shared_long": {
+      "cpus": 2,
+      "memory_gb": 48,
+      "hours": 48
+    },
+    "paper_separate_long": {
+      "cpus": 12,
+      "memory_gb": 96,
+      "hours": 48
+    }
+  }
 }

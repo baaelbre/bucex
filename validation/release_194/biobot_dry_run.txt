@@ -1,0 +1,33 @@
+{
+  "version": "1.9.4",
+  "tier": "screen",
+  "status": "configuration_checks_passed",
+  "counts": {
+    "reference": 1,
+    "comparison": 13,
+    "posterior": 159,
+    "experiments": 159,
+    "influence": 6,
+    "validation": 73,
+    "validation10": 39,
+    "all": 271
+  },
+  "experiments": 49,
+  "experiment_fits": 159,
+  "matched_marginal_prior_pairs": 72,
+  "scope": "All specifications, folds, CPU plans and exact independent/shared marginal-prior matching; no MCMC."
+}
+13 fit tasks (shared fits include all declared summaries); at most 12 fits x 2 chain workers = 24 workers.
+posterior_reference
+posterior_independent_reference_TXm
+posterior_independent_reference_TNm
+posterior_independent_reference_TXx
+posterior_independent_reference_TXn
+posterior_independent_reference_TNx
+posterior_independent_reference_TNn
+posterior_fixed_reference_TXm
+posterior_fixed_reference_TNm
+posterior_fixed_reference_TXx
+posterior_fixed_reference_TXn
+posterior_fixed_reference_TNx
+posterior_fixed_reference_TNn

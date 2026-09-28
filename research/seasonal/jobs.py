@@ -1,4 +1,4 @@
-"""BUCEX 1.9.3: one response per task, with no cross-response borrowing."""
+"""BUCEX 1.9.4 matched fixed, independent-mixture and shared-shrinkage jobs."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -15,12 +15,9 @@ import bucex as bx
 from research.monthly.experiment import configured_variant
 from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
+from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan
 
-PROJECT = Path(__file__).resolve().parents[2]
-CONFIG = PROJECT/'research/seasonal/config'
-ROOT = Path('results/serra_193_paperpriors')
-BATCHES = ('posterior','reference','pre2019','experiments','validation','validation10','all')
-STUDIES = ('manuscript_sensitivity','physical_sensitivity','adequacy')
+ROOT = Path('results/serra_194')
 
 @dataclass(frozen=True)
 class Task:
@@ -29,6 +26,10 @@ class Task:
     study: str
     variant: str
     channel: str
+    group_id: str
+    scope: str
+    series: tuple
+    resource: str
     origin: str = ''
     horizon: int = 20
     design: str = 'calendar_5y'
@@ -39,8 +40,8 @@ def settings():
 
 
 def resource_class(task, tier):
-    return ('long' if tier == 'paper' and task.variant == 'reference'
-            and task.kind in ('posterior','pre2019') else 'standard')
+    resource='shared' if task.scope=='shared' else 'separate'
+    return resource+('_long' if tier=='paper' and task.kind=='posterior' and task.variant in BASELINES else '')
 
 
 @lru_cache(maxsize=1)
@@ -49,78 +50,55 @@ def _fold_dates():
 
 
 def tasks(batch='posterior', *, tier='paper', resource='all'):
-    """Stable IDs and ordering; each full experiment contains all six responses."""
-    if batch not in BATCHES or tier not in ('screen','paper') or resource not in ('all','standard','long'):
-        raise ValueError('Unknown batch, tier or resource class.')
-    spec=settings();variants={}
-    for study in spec['studies']:
-        for variant in bx.load_config(CONFIG/f'{study}.json')['variants']:
-            name=variant['name']
-            if name=='reference' and name in variants:continue
-            if name in variants:raise ValueError(f'Duplicate variant: {name}')
-            variants[name]=study
-    def channels(variant):
-        return list(spec['series'])
-    posterior=[Task(f'posterior_{v}_{ch}','posterior',s,v,ch)
-               for v,s in variants.items() for ch in channels(v)]
-    record=[Task(f'pre2019_{v["name"]}_TXx','pre2019','pre2019_sensitivity',v['name'],'TXx')
-            for v in bx.load_config(CONFIG/'pre2019_sensitivity.json')['variants']]
-    forecasts=[Task(f'forecast_reference_{ch}_{o}','forecast',variants['reference'],'reference',ch,o)
-               for o in spec['reference_validation_origins'] for ch in channels('reference')]
-    for v in spec['validation_variants']:
-        if v=='reference' or v not in variants:raise ValueError(f'Invalid validation variant: {v}')
-        forecasts.extend(Task(f'forecast_{v}_{ch}_{o}','forecast',variants[v],v,ch,o)
-                         for o in spec['sensitivity_validation_origins'] for ch in channels(v))
     import pandas as pd
-    dates=_fold_dates()
-    original=[]
-    for fraction in spec['original_validation_fractions']:
-        n=int(np.floor(len(dates)*fraction))
-        origin=(dates[n-1]+pd.DateOffset(months=3)-pd.Timedelta(days=1)).strftime('%Y-%m')
-        original.extend(Task(f'forecast_reference_{ch}_split{round(100*fraction)}_h40',
-            'forecast',variants['reference'],'reference',ch,origin,
-            spec['original_validation_horizon'],'fraction_10y') for ch in channels('reference'))
-    all_tasks=posterior+record+forecasts+original
-    if len({t.id for t in all_tasks})!=len(all_tasks):raise ValueError('Duplicate task IDs.')
-    chosen={'posterior':posterior,'reference':[t for t in posterior if t.variant=='reference'],
-            'pre2019':record,'experiments':posterior+record,'validation':forecasts,
-            'validation10':original,'all':all_tasks}[batch]
-    return [t for t in chosen if resource=='all' or resource_class(t,tier)==resource]
+    result=[]
+    for g in plan(tier,batch,resource):
+        origin=g['origin']
+        if g['fraction'] is not None:
+            dates=_fold_dates();n=int(np.floor(len(dates)*g['fraction']))
+            origin=(dates[n-1]+pd.DateOffset(months=3)-pd.Timedelta(days=1)).strftime('%Y-%m')
+        channels=['joint'] if g['scope']=='shared' else g['series']
+        for id,ch in zip(g['task_ids'],channels):
+            result.append(Task(id,g['kind'],g['family'],g['variant'],ch,g['id'],g['scope'],
+                tuple(g['series'] if ch=='joint' else [ch]),g['resource'],origin,g['horizon'],g['design']))
+    return result
+
+
+def result_directory(directory,task):
+    report=Path(directory)/'report'
+    return report if task.channel=='joint' and task.kind=='posterior' else report/task.channel
 
 
 def task_config(task,tier):
-    if tier not in ('screen','paper'):raise ValueError('Unknown tier.')
-    source=bx.load_config(CONFIG/f'{task.study}.json')
-    entry=next(v for v in source['variants'] if v['name']==task.variant)
-    c=configured_variant(source,entry);c.pop('variants',None);c['variant']=deepcopy(entry)
-    budget=settings()['tiers'][tier]
+    spec=settings();entry=next(v for v in spec['variants'] if v['name']==task.variant)
+    c=configured_variant(bx.load_config(CONFIG/'main.json'),entry)
+    budget=spec['tiers'][tier]
     c['mcmc'].update(budget['mcmc']);c['diagnostic_thresholds']=deepcopy(budget['diagnostic_thresholds'])
-    for field in ('forecast_draws','predictive_check_draws','save_fits','figures','trace_exports'):c[field]=budget[field]
+    for field in ('forecast_draws','predictive_check_draws','save_fits','figures','trace_exports'):
+        c[field]=budget[field]
     c['validation'].update(draws=budget['validation_draws'],save_fits=budget['save_fits'])
-    if task.kind=='forecast':c['validation'].update(training_ends=[task.origin],horizon=task.horizon)
-    elif task.kind=='pre2019':
-        c['forecast_horizon']=1
-        if tier=='paper':c['forecast_draws']=10000
-    else:c['forecast_horizon']=120
-    if resource_class(task,tier)=='long':
-        final=bx.load_config(CONFIG/'final.json');c['mcmc']=deepcopy(final['mcmc'])
-        if task.kind=='posterior':c['forecast_draws']=final['forecast_draws']
-    c['data']['series']=[task.channel]
-    # Stable per-response/origin streams; unaffected by process count or job order.
+    if task.kind=='forecast':
+        c['validation'].update(training_ends=[task.origin],horizon=task.horizon)
+    c['forecast_horizon']=120
+    if resource_class(task,tier).endswith('_long'):
+        final=bx.load_config(CONFIG/'final.json')
+        c['mcmc'].update(final['mcmc']);c['forecast_draws']=final['forecast_draws']
+    c['data']['series']=list(task.series)
     seed_key=f'{task.channel}/{task.kind}/{task.origin}/{tier}'.encode()
     seed=int.from_bytes(hashlib.sha256(seed_key).digest()[:4],'little')
     c['mcmc']['seed']=seed;c['seed']=(seed+1)%(2**32)
-    c['credible_interval']=.95
-    c['experiment']=dict(task_id=task.id,tier=tier,batch_kind=task.kind,channel=task.channel,
+    c['credible_interval']=.95;c['variant']=deepcopy(entry)
+    c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
+        batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        reference='1.9.3 independent analyses; calibrated fixed Normal SDs; no shrinkage hyperpriors')
-    if (c['analysis']!='independent' or c.get('copula') is not None or
-        c['priors'].get('shared_shrinkage') is not None or c['priors'].get('independent_shrinkage') is not None or c['priors'].get('innovation_sd') is None):
-        raise ValueError('1.9.3 requires independent analyses, fixed Normal SDs and no shrinkage hyperpriors.')
+        reference='1.9.4: direct Normal SD calibration; matched independent/shared mixtures; separate initial rates')
+    if c.get('copula') is not None or c.get('contrasts') is not None:
+        raise ValueError('This comparison has independent residuals and no historical contrasts.')
+    hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')
+    if hierarchy and (hierarchy['scale_parameterization']!='normal_sd' or hierarchy.get('pool_initial_slope',False)):
+        raise ValueError('Expected direct coefficient SDs and separate initial rates.')
     c['output']=str(ROOT/tier/task.id/'report')
     return c
-
-
 def fingerprint(config):
     """Never reuse completed work after changes to scientific settings, source or data."""
     digest=hashlib.sha256(json.dumps(config,sort_keys=True).encode()).hexdigest()
@@ -143,7 +121,7 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
             raise ValueError(f'{directory}: configuration, source or data changed; use a new results root')
         if previous.get('status')=='completed':
             print(f'{task.id}: completed ({previous.get("numerical_status")}); skipped',flush=True)
-            return directory/'report'/task.channel
+            return result_directory(directory,task)
         if previous.get('status')!='failed' or not retry_failed:
             raise RuntimeError(f'{directory}: prior attempt is {previous.get("status")}; inspect its log. --retry-failed only retries recorded failures; unfinished running tasks need a fresh root.')
         archive=directory/'attempts'/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ')
@@ -154,7 +132,7 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
     with manifest.open('x') as handle:json.dump(meta,handle,indent=2)
     bx.save_config(c,directory/'resolved_config.json')
     try:
-        result=directory/'report'/task.channel
+        result=result_directory(directory,task)
         if task.kind=='forecast':
             validate(c,directory=directory/'report')
             import pandas as pd
@@ -162,10 +140,12 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
             numerical=('passed_numerical_checks' if len(statuses) and statuses.eq('passed_numerical_checks').all() else 'needs_review')
         else:
             fit_full(c,directory=directory/'report')
-            shutil.copy2(directory/'report/data_window.json',result/'data_window.json')
+            
+            if result != directory/'report':
+                shutil.copy2(directory/'report/data_window.json',result/'data_window.json')
             numerical=bx.load_config(result/'convergence.json')['status']
         meta.update(status='completed',result=str(result),numerical_status=numerical)
-        if tier=='paper' and task.kind=='posterior' and task.variant=='reference':
+        if tier=='paper' and task.kind=='posterior' and task.variant in BASELINES:
             from research.seasonal.check_final import assess
             check=assess(result,directory/'resolved_config.json')
             bx.save_config(check,result/'final_check.json');meta['final_check']=check['status']
@@ -177,76 +157,96 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
     return result
 
 
-def verify(tier='paper',*,output=None):
-    """Compile all distinct specifications and verify all complete folds; no MCMC."""
+
+def verify(tier='screen',*,output=None):
+    """Compile every model, verify folds/resources, and prove prior matching."""
     import pandas as pd
-    from research.monthly.models import independent_model,fit_options
+    from research.monthly.models import independent_model,joint_model,fit_options
     from research.monthly.validate import validation_splits
-    cache={};compiled=set();rows=[];posterior={}
+    full=bx.load_uccle_multiseries(**bx.load_config(CONFIG/'main.json')['data'])
+    rows=[];compiled=set();priors={}
     for t in tasks('all',tier=tier):
-        c=task_config(t,tier);window=dict(c['data'],series=settings()['series']);key=json.dumps(window,sort_keys=True)
-        if key not in cache:cache[key]=bx.load_uccle_multiseries(**window)
-        data=cache[key][[t.channel]];model,prior=independent_model(data,c)
-        signature=json.dumps([c['data'],c['model'],c['priors']],sort_keys=True)
-        if signature not in compiled:bx.compile_model(model,data);compiled.add(signature)
+        c=task_config(t,tier);data=full[list(t.series)]
+        model,prior=(joint_model if t.scope=='shared' else independent_model)(data,c)
+        signature=json.dumps([list(t.series),c['model'],c['priors']],sort_keys=True)
+        if signature not in compiled:
+            bx.compile_model(model,data);compiled.add(signature)
         fit_options(c,family=model.family)
-        if c['credible_interval']!=.95 or not c['save_fits']:raise ValueError('Expected 95% intervals and saved fits.')
+        if model.copula is not None or c['credible_interval']!=.95 or not c['save_fits']:
+            raise ValueError('Expected no copula, 95% intervals and retained fit archives.')
         if t.kind=='posterior':
-            if len(data)!=538 or c['forecast_horizon']!=120:raise ValueError('Full fits require 538 blocks and 30-year forecasts.')
-            posterior[t.variant]=c
-        elif t.kind=='pre2019':
-            if c['data']['end']!='2019-05' or c['forecast_horizon']!=1:raise ValueError('Record-event fit must be prospective.')
+            if len(data)!=538 or c['forecast_horizon']!=120:
+                raise ValueError('Expected 538 seasons and 30-year forecasts.')
         else:
             splits=validation_splits(data,c['validation'])
-            if len(splits)!=1 or len(splits[0][1])!=t.horizon:raise ValueError('Expected one complete declared validation fold.')
-        if len(model.channels)!=1 or model.copula is not None or list(prior.channels)!=[t.channel]:
-            raise ValueError('A fit must contain precisely its own response and no copula.')
-        if prior.shrinkage is not None:
-            raise ValueError('All shrinkage priors must have fixed SDs, without hyperpriors.')
-        p=c['priors'];rows.append(dict(task_id=t.id,kind=t.kind,variant=t.variant,channel=t.channel,origin=t.origin,
-            resource=resource_class(t,tier),n_blocks=len(data),chains=c['mcmc']['chains'],warmup=c['mcmc']['warmup'],draws=c['mcmc']['draws'],
-            forecast_horizon=c['forecast_horizon'] if t.kind!='forecast' else t.horizon,
-            level_prior_sd=p['innovation_sd']['level'],slope_prior_sd=p['innovation_sd']['trend'],
-            seasonal_prior_sd=p['innovation_sd']['season'],initial_slope_prior_sd=p['initial_slope_sd'],
-            analysis='independent',pool_initial_slope=False,design=t.design if t.kind=='forecast' else t.kind,
-            initial_rate_sd_C_per_decade=40*p['initial_slope_sd'],xi_sd=p['xi_sd'],save_fits=c['save_fits']))
-    ref=posterior['reference']
-    for field,sd in ref['calibration']['reference_sd'].items():
-        actual=ref['priors']['initial_slope_sd'] if field=='initial_slope' else ref['priors']['innovation_sd'][field]
-        if not np.isclose(actual,sd,rtol=1e-14):raise ValueError('Incorrect reference Normal calibration: '+field)
+            if len(splits)!=1 or len(splits[0][1])!=t.horizon:
+                raise ValueError('Validation requires a complete declared fold.')
+        if (prior.shrinkage is None)!=(t.scope=='fixed'):
+            raise ValueError('Wrong shrinkage scope.')
+        if t.scope!='shared' and len(prior.channels)!=1:
+            raise ValueError('Separate scopes must contain exactly one response.')
+        if prior.shrinkage is not None and 'initial_slope' in prior.shrinkage.anchors:
+            raise ValueError('Initial rates must remain separate.')
+        for ch,p in prior.channels.items():
+            if not np.isclose(p.beta0.sd,c['priors']['initial_slope_sd']):
+                raise ValueError('Initial-rate SD differs from its declaration.')
+        p=c['priors'];h=prior.shrinkage
+        if t.kind=='posterior':priors[(t.scope,c['variant']['setting'],t.channel)]=prior
+        rows.append(dict(task_id=t.id,group_id=t.group_id,kind=t.kind,variant=t.variant,
+            scope=t.scope,channel=t.channel,series=','.join(t.series),origin=t.origin,resource=t.resource,
+            chains=c['mcmc']['chains'],warmup=c['mcmc']['warmup'],draws=c['mcmc']['draws'],
+            n_blocks=len(data),forecast_horizon=t.horizon if t.kind=='forecast' else 120,
+            level_sd_anchor=p['innovation_sd']['level'],slope_sd_anchor=p['innovation_sd']['trend'],
+            seasonal_sd_anchor=p['innovation_sd']['season'],log_sd=None if h is None else h.log_sd,
+            initial_rate_sd_C_per_decade=40*p['initial_slope_sd'],pool_initial_slope=False,
+            innovation_sd_convention='fixed_normal_sd' if h is None else 'conditional_normal_sd_anchor',
+            marginal_sd_inflation=1. if h is None else float(np.exp(h.log_sd**2))))
+    matched=[]
+    for (scope,setting,ch),prior in priors.items():
+        if scope!='independent':continue
+        pooled=priors[('shared',setting,'joint')]
+        if (prior.shrinkage.anchors!=pooled.shrinkage.anchors or prior.shrinkage.log_sd!=pooled.shrinkage.log_sd
+            or prior.shrinkage.scale_parameterization!=pooled.shrinkage.scale_parameterization
+            or json.dumps(asdict(prior.channels[ch]),sort_keys=True,default=lambda a:a.tolist())
+               !=json.dumps(asdict(pooled.channels[ch]),sort_keys=True,default=lambda a:a.tolist())):
+            raise ValueError('Independent/shared one-response priors are not matched.')
+        matched.append(dict(setting=setting,channel=ch,matched=True))
+    groups=plan(tier,'experiments')
     result=dict(version=bx.__version__,tier=tier,status='configuration_checks_passed',
         counts={b:len(tasks(b,tier=tier)) for b in BATCHES},
-        scope='Single-response models, data windows, units, horizons and fixed Normal calibration; no MCMC execution.')
+        experiments=len(groups),experiment_fits=sum(g['parallel_fits'] for g in groups),
+        matched_marginal_prior_pairs=len(matched),
+        scope='All specifications, folds, CPU plans and exact independent/shared marginal-prior matching; no MCMC.')
     if output is not None:
         output=Path(output);output.mkdir(parents=True,exist_ok=True)
-        bx.save_config(result,output/'preflight.json');pd.DataFrame(rows).to_csv(output/'resolved_settings.csv',index=False)
+        bx.save_config(result,output/'preflight.json')
+        pd.DataFrame(rows).to_csv(output/'resolved_settings.csv',index=False)
+        pd.DataFrame(matched).to_csv(output/'matched_marginal_priors.csv',index=False)
+        pd.DataFrame(plan(tier,'all')).to_csv(output/'experiment_plan.csv',index=False)
     return result
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--batch',choices=BATCHES,default='posterior');parser.add_argument('--tier',choices=('screen','paper'),default='screen')
-    parser.add_argument('--resource',choices=('all','standard','long'),default='all')
-    action=parser.add_mutually_exclusive_group(required=True)
-    for flag in ('list','count','verify','resource-info'):action.add_argument('--'+flag,action='store_true')
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--batch',choices=BATCHES,default='experiments');p.add_argument('--tier',choices=('screen','paper'),default='screen')
+    p.add_argument('--resource',choices=('all',*RESOURCES),default='all')
+    action=p.add_mutually_exclusive_group(required=True)
+    for flag in ('list','count','verify'):action.add_argument('--'+flag,action='store_true')
     action.add_argument('--index',type=int);action.add_argument('--task')
-    parser.add_argument('--retry-failed',action='store_true')
-    parser.add_argument('--root',type=Path,default=ROOT);args=parser.parse_args()
-    if args.verify:
-        print(json.dumps(verify(args.tier,output=args.root/args.tier/'plan'),indent=2));return
-    if args.resource_info:
-        key='paper_long' if args.tier=='paper' and args.resource=='long' else args.tier
-        r=settings()['resources'][key];print(r['cpus'],r['memory_gb'],r['hours']);return
-    available=tasks(args.batch,tier=args.tier,resource=args.resource)
-    if args.count:print(len(available));return
-    if args.list:
+    p.add_argument('--retry-failed',action='store_true');p.add_argument('--root',type=Path,default=ROOT)
+    a=p.parse_args()
+    if a.verify:
+        print(json.dumps(verify(a.tier,output=a.root/a.tier/'plan'),indent=2));return
+    available=tasks(a.batch,tier=a.tier,resource=a.resource)
+    if a.count:print(len(available));return
+    if a.list:
         for i,t in enumerate(available,1):
-            c=task_config(t,args.tier)
-            print(f"{i:3d} {t.id:60s} {resource_class(t,args.tier):8s} chains={c['mcmc']['chains']} warmup={c['mcmc']['warmup']} retained={c['mcmc']['draws']}")
+            c=task_config(t,a.tier)
+            print(f"{i:3d} {t.id:65s} {t.scope:12s} {c['mcmc']['chains']} chains, {c['mcmc']['warmup']} warmup + {c['mcmc']['draws']} retained")
         return
-    selected=(next((t for t in tasks('all',tier=args.tier) if t.id==args.task),None) if args.task else
-              available[args.index-1] if 1<=args.index<=len(available) else None)
-    if selected is None:parser.error('Unknown index or task ID')
-    execute(selected,tier=args.tier,root=args.root,retry_failed=args.retry_failed)
+    selected=(next((t for t in tasks('all',tier=a.tier) if t.id==a.task),None) if a.task else
+              available[a.index-1] if a.index and 1<=a.index<=len(available) else None)
+    if selected is None:p.error('Unknown index or task ID')
+    execute(selected,tier=a.tier,root=a.root,retry_failed=a.retry_failed)
 
 if __name__=='__main__':main()

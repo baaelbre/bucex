@@ -68,7 +68,8 @@ def save_shared_shrinkage_report(fit, directory, *, level=.95, figures=True,
                     ax.errorbar(row["median"], i,
                         xerr=[[row["median"]-row["lower"]], [row["upper"]-row["median"]]], fmt="o")
                 ax.set(yticks=[0,1], yticklabels=["hyperprior", "posterior"],
-                    xlabel=("initial slope median absolute coefficient" if fit.priors.shrinkage.initial_slope_median is not None else "initial slope prior SD") if component == "initial_slope" else f"{component} SD prior median")
+                    xlabel=(f"{component} coefficient prior SD" if fit.priors.shrinkage.uses_normal_sd(component)
+                            else f"{component} absolute coefficient prior median"))
                 ax.ticklabel_format(axis="x", style="sci", scilimits=(-3,3), useMathText=True)
             figure.savefig(directory/f"{stem}.png", dpi=dpi, bbox_inches="tight")
             plt.close(figure)

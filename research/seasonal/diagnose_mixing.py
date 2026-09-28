@@ -46,7 +46,7 @@ def main():
     p.add_argument('--draws', type=int, default=1500)
     p.add_argument('--chains', type=int, default=4)
     p.add_argument('--asis', action='store_true')
-    p.add_argument('--output', default='results/serra_192_seasonal_mixing/2015_independent')
+    p.add_argument('--output', default='results/serra_194_seasonal_mixing/2015_independent')
     args = p.parse_args()
     config = bx.load_config(args.config)
     data = bx.load_uccle_multiseries(**config['data'])

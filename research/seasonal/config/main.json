@@ -1,6 +1,6 @@
 {
-  "_comment": "1.9.3: separate analyses; fixed Normal shrinkage SDs; no copula or shrinkage hyperpriors.",
-  "analysis": "independent",
+  "_comment": "1.9.4: shared Normal coefficient SDs; initial rates separate. Matched independent-mixture and fixed-Normal comparisons are declared in experiments.json.",
+  "analysis": "joint",
   "data": {
     "series": [
       "TXm",
@@ -49,13 +49,23 @@
       "level": 0.01,
       "trend": 0.0001,
       "season": 0.01
+    },
+    "shared_shrinkage": {
+      "scale_parameterization": "normal_sd",
+      "components": [
+        "level",
+        "slope",
+        "seasonal"
+      ],
+      "log_sd": 1.0986122886681098,
+      "pool_initial_slope": false
     }
   },
   "mcmc": {
-    "draws": 4000,
+    "draws": 5000,
     "warmup": 2000,
     "chains": 2,
-    "seed": 56100,
+    "seed": 19401,
     "progress": true,
     "progress_every": 100,
     "chain_workers": 2
@@ -68,8 +78,8 @@
       "mh_steps": 1
     }
   },
-  "seed": 56101,
-  "output": "results/serra_193_seasonal",
+  "seed": 19402,
+  "output": "results/serra_194/shared",
   "forecast_horizon": 120,
   "forecast_draws": 4000,
   "credible_interval": 0.95,
@@ -102,27 +112,10 @@
   "figure_format": "png",
   "figure_dpi": 180,
   "forecast_months": null,
-  "contrasts": {
-    "reference": [
-      "1892-03",
-      "1922-02"
-    ],
-    "comparison": [
-      "1996-09",
-      "2026-08"
-    ],
-    "months": [
-      3,
-      6,
-      9,
-      12
-    ],
-    "rate_multiplier": 40.0,
-    "pairs": []
-  },
+  "contrasts": null,
   "diagnostic_thresholds": {
-    "max_rhat": 1.01,
-    "min_ess": 400,
+    "max_rhat": 1.05,
+    "min_ess": 200,
     "min_chains": 2
   },
   "figure_style": "manuscript",
@@ -159,7 +152,7 @@
   "report_joint_risks": false,
   "cross_summary_contrasts": false,
   "calibration": {
-    "convention": "fixed_normal_standard_deviations",
+    "convention": "normal_standard_deviation",
     "reference_sd": {
       "level": 0.01,
       "trend": 0.0001,
@@ -167,7 +160,6 @@
       "initial_slope": 0.01
     },
     "initial_slope_variance": 0.0001,
-    "revision": "paper_sd_20260928",
-    "note": "tau_alpha, tau_beta and tau_gamma are Normal prior SDs directly; P_beta0=0.0001 is a variance, so initial_slope_sd=0.01. No median-to-SD conversion. Sensitivity multiplies prior SDs."
+    "note": "Innovation entries are fixed Normal SDs in the fixed comparison, and conditional Normal SD anchors in the two mixtures. No Phi conversion and no width-dependent recentering. Independent and shared mixtures have identical one-response marginal priors."
   }
 }

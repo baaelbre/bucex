@@ -20,12 +20,15 @@ def assess(run: Path, expected_config: Path) -> dict:
     expected = bx.load_config(expected_config)
     issues: list[str] = []
     series = expected["data"]["series"]
-    if len(series) != 1: issues.append("final check requires one response per fit")
+    if expected.get('analysis')=='independent' and len(series)!=1: issues.append('separate fits require one response')
     required = [
         "config.json", "data_window.json", "run.json", "convergence.json",
-        "mcmc.csv", "scientific_targets.csv", "period_contrasts.csv",
-        "fixed_prior_settings.csv", "initial_slope_prior_posterior.csv",
+        "mcmc.csv", "scientific_targets.csv", "initial_slope_prior_posterior.csv",
     ]
+    priors=expected['priors']
+    required.append('shared_shrinkage.csv' if priors.get('shared_shrinkage') else
+                    'independent_shrinkage.csv' if priors.get('independent_shrinkage') else 'fixed_prior_settings.csv')
+    if expected.get('contrasts'):required.append('period_contrasts.csv')
     if expected.get('analysis') == 'copula':
         required.append('copula_correlations.csv')
     if expected.get('report_joint_risks', True):
@@ -63,17 +66,19 @@ def assess(run: Path, expected_config: Path) -> dict:
     if metadata.get("bucex_version") != bx.__version__:
         issues.append(f"report version is {metadata.get('bucex_version')!r}, expected {bx.__version__!r}")
     if stored is not None:
-        if stored.get('analysis') != 'independent' or stored.get('copula') is not None:
-            issues.append('1.9.3 final analysis must be a separate single-response fit')
+        if stored.get('analysis') not in ('independent','joint') or stored.get('copula') is not None:
+            issues.append('1.9.4 requires independent residuals')
         p=stored.get('priors', {})
         target_sd={'level':.01,'trend':.0001,'season':.01}
         if any(abs(p.get('innovation_sd',{}).get(k,0)-v)>1e-14 for k,v in target_sd.items()):
             issues.append('reference innovation priors must use the manuscript Normal SDs (0.01, 0.0001, 0.01)')
-        if abs(p.get('initial_slope_sd',0)-.01)>1e-14 or p.get('shared_shrinkage') is not None or p.get('independent_shrinkage') is not None:
-            issues.append('initial rates must have fixed Normal SD 0.01 (variance 0.0001), with no shrinkage hyperprior')
+        h=p.get('shared_shrinkage') or p.get('independent_shrinkage')
+        if abs(p.get('initial_slope_sd',0)-.01)>1e-14 or (h and h.get('pool_initial_slope',False)):
+            issues.append('initial rates must have fixed Normal SD 0.01 and remain separate')
+        if h and h.get('scale_parameterization')!='normal_sd':issues.append('expected direct Normal SD anchors')
         mcmc = stored.get("mcmc", {})
-        if (mcmc.get("chains"), mcmc.get("warmup"), mcmc.get("draws")) != (2, 3000, 8000):
-            issues.append("final MCMC budget must be 2 chains, 3000 warm-up and 8000 retained draws")
+        if (mcmc.get("chains"), mcmc.get("warmup"), mcmc.get("draws")) != (2, 6000, 20000):
+            issues.append("final MCMC budget must be 2 chains, 6000 warm-up and 20000 retained draws")
         if (stored.get('forecast_horizon'), stored.get('forecast_draws'),
                 stored.get('credible_interval')) != (120, 12000, .95):
             issues.append('final forecast must cover 120 seasons using 12000 draws and 95% intervals')

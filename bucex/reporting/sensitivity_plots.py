@@ -41,7 +41,9 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
                              else 'initial slope prior SD' if scale_types == {'normal_SD'}
                              else 'initial slope shared scale (see table)')
             ax.set(yticks=range(len(names)),yticklabels=names,
-                   xlabel=initial_label if component == 'initial_slope' else f'shared {component} SD median')
+                   xlabel=initial_label if component == 'initial_slope' else
+                          f'shared {component} coefficient prior SD' if scale_types == {'normal_SD'} else
+                          f'shared {component} absolute coefficient prior median')
             ax.ticklabel_format(axis='x',style='sci',scilimits=(-3,3),useMathText=True)
         axes[0,0].legend(loc='center right')
         save(fig,'shared','shrinkage')

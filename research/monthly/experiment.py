@@ -12,6 +12,22 @@ from research.monthly.report import save_band
 def configured_variant(config, variant):
     config = deepcopy(config)
     p, m = config['priors'], config['model']
+    if 'scope' in variant:
+        scope = variant['scope']
+        if scope not in {'fixed','independent','shared'}:
+            raise ValueError('Unknown shrinkage scope.')
+        hierarchy = deepcopy(p.get('shared_shrinkage') or p.get('independent_shrinkage') or
+                             dict(scale_parameterization='normal_sd',log_sd=float(np.log(3.)),
+                                  components=['level','slope','seasonal'],pool_initial_slope=False))
+        p.pop('shared_shrinkage',None); p.pop('independent_shrinkage',None)
+        if scope != 'fixed':
+            hierarchy['log_sd'] = variant.get('log_sd',hierarchy['log_sd'])
+            p['shared_shrinkage' if scope == 'shared' else 'independent_shrinkage'] = hierarchy
+        config['analysis'] = 'joint' if scope == 'shared' else 'independent'
+        config['copula'] = None
+        config['shrinkage_scope'] = scope
+        excluded = set(variant.get('exclude_series',[]))
+        config['data']['series'] = [s for s in config['data']['series'] if s not in excluded]
     hierarchy_key = 'independent_shrinkage' if p.get('independent_shrinkage') is not None else 'shared_shrinkage'
     old_hierarchy = p.get(hierarchy_key)
     for key in ('innovation', 'xi_prior', 'xi_sd', 'xi_bounds', 'tg_spike_shape', 'tg_tail_shape',
@@ -26,7 +42,8 @@ def configured_variant(config, variant):
         factor=np.exp(old_d**2-new_d**2)
         aliases={'level':'level','slope':'trend','seasonal':'season'}
         for component in new_hierarchy.get('components',['level','slope','seasonal']):
-            p['innovation_median'][aliases[component]]*=factor
+            field = 'innovation_sd' if new_hierarchy.get('scale_parameterization') == 'normal_sd' else 'innovation_median'
+            p[field][aliases[component]]*=factor
         if hierarchy_key == 'shared_shrinkage' and new_hierarchy.get('pool_initial_slope',True):
             p['initial_slope_sd']*=factor
             if p.get('initial_slope_median') is not None:

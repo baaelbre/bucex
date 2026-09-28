@@ -3,6 +3,39 @@ import numpy as np
 import bucex as bx
 
 
+def shrinkage_specification(config, *, independent=False):
+    """One construction for matched private and shared scale priors."""
+    p = config['priors']
+    key = 'independent_shrinkage' if independent else 'shared_shrinkage'
+    settings = p.get(key)
+    if settings is None:
+        return None
+    cls = bx.IndependentShrinkage if independent else bx.SharedShrinkage
+    aliases = {'level': 'level', 'slope': 'trend', 'seasonal': 'season'}
+    components = settings.get('components', list(aliases))
+    components = [c for c in components if config['model'].get(aliases[c] if c != 'seasonal' else 'seasonal', 'dynamic') == 'dynamic']
+    if not components:
+        return None
+    if settings.get('scale_parameterization') == 'normal_sd':
+        if settings.get('pool_initial_slope', False):
+            raise ValueError('The direct-SD research hierarchy leaves initial rates separate.')
+        return cls.from_sd({c: p['innovation_sd'][aliases[c]] for c in components},
+                           log_sd=settings.get('log_sd', np.log(3.)))
+    return cls(medians={c: p['innovation_median'][aliases[c]] for c in components},
+        log_sd=settings.get('log_sd', np.log(2.)),
+        initial_slope_sd=(p['initial_slope_sd'] if not independent and
+                         settings.get('pool_initial_slope', True) and p.get('initial_slope_median') is None else None),
+        initial_slope_median=(p.get('initial_slope_median') if not independent and
+                             settings.get('pool_initial_slope', True) else None))
+
+
+def check_scale_convention(p):
+    for key in ('shared_shrinkage', 'independent_shrinkage'):
+        if p.get('innovation_sd') is not None and p.get(key) is not None:
+            if p[key].get('scale_parameterization') != 'normal_sd':
+                raise ValueError('Explicit innovation_sd needs normal_sd parameterization with a shrinkage hyperprior.')
+
+
 def channel(name, data, config):
     """Private location components and a separately declared observation scale."""
     info, settings = bx.UCCLE_INFO[name], config['model']
@@ -27,8 +60,7 @@ def channel(name, data, config):
 def marginal_prior(item, data, config):
     """Proper continuous priors; no estimated/data-centred hyperparameters."""
     p = config['priors']
-    if p.get('innovation_sd') is not None and (p.get('independent_shrinkage') is not None or p.get('shared_shrinkage') is not None):
-        raise ValueError('Fixed Normal SDs cannot be combined with a shrinkage hyperprior.')
+    check_scale_convention(p)
     if p.get('shared_shrinkage') is not None and config['analysis'] == 'independent':
         raise ValueError('Shared shrinkage requires a joint fit of the series; use analysis=joint or copula.')
     center = p.get('initial_level_mean', 0.)
@@ -59,26 +91,14 @@ def joint_model(data, config):
     settings = dict(config.get('copula') or {'eta': 1.})
     structure = settings.pop('structure', 'constant')
     if mode == 'joint':
-        copula = bx.GaussianCopula(correlation=np.eye(len(channels)))
+        copula = None if config.get('copula') is None else bx.GaussianCopula(correlation=np.eye(len(channels)))
     elif structure == 'constant':
         copula = bx.GaussianCopula(eta=settings.get('eta', 1.))
     else:
         copula = bx.SeasonalGaussianCopula(structure=structure,
             period=config['model']['period'], **settings)
     model = bx.MultiSeriesModel(channels, copula=copula)
-    settings = config['priors'].get('shared_shrinkage')
-    hierarchy = None
-    if settings is not None:
-        aliases = {'level': 'level', 'slope': 'trend', 'seasonal': 'season'}
-        hierarchy = bx.SharedShrinkage(
-            medians={c: config['priors']['innovation_median'][aliases[c]]
-                     for c in settings.get('components', ['level', 'slope', 'seasonal'])},
-            log_sd=settings.get('log_sd', np.log(2.)),
-            initial_slope_sd=(config['priors']['initial_slope_sd']
-                              if settings.get('pool_initial_slope', True)
-                              and config['priors'].get('initial_slope_median') is None else None),
-            initial_slope_median=(config['priors'].get('initial_slope_median')
-                                  if settings.get('pool_initial_slope', True) else None))
+    hierarchy = shrinkage_specification(config)
     return model, bx.MarginalPriors(
         {c.name: marginal_prior(c, data, config) for c in channels}, shrinkage=hierarchy)
 
@@ -88,19 +108,11 @@ def independent_model(data, config):
     if config['analysis'] != 'independent' or len(data.columns) != 1:
         raise ValueError('Independent analyses require exactly one response per fit.')
     p = config['priors']
-    if p.get('innovation_sd') is not None and (p.get('independent_shrinkage') is not None or p.get('shared_shrinkage') is not None):
-        raise ValueError('Fixed Normal SDs cannot be combined with a shrinkage hyperprior.')
+    check_scale_convention(p)
     if p.get('shared_shrinkage') is not None or config.get('copula') is not None:
         raise ValueError('Independent analyses cannot have shared shrinkage or a copula.')
     item = channel(data.columns[0], data, config)
-    settings = p.get('independent_shrinkage')
-    hierarchy = None
-    if settings is not None:
-        aliases = {'level': 'level', 'slope': 'trend', 'seasonal': 'season'}
-        hierarchy = bx.IndependentShrinkage(
-            medians={c: p['innovation_median'][aliases[c]]
-                     for c in settings.get('components', aliases)},
-            log_sd=settings.get('log_sd', np.log(3.)))
+    hierarchy = shrinkage_specification(config, independent=True)
     return (bx.MultiSeriesModel((item,), copula=None),
             bx.MarginalPriors({item.name: marginal_prior(item, data, config)}, shrinkage=hierarchy))
 

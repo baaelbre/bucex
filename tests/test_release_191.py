@@ -13,7 +13,9 @@ def test_frozen_191_has_identity_dependence_and_separate_initial_rates():
     config=bx.load_config(jobs.CONFIG/'reference_191.json')
     data=bx.load_uccle_multiseries(**config['data'])
     model,priors=joint_model(data,config)
-    np.testing.assert_array_equal(model.copula.correlation_matrix({},tuple(data)),np.eye(6))
+    # A missing copula and a fixed identity copula both give independent residuals.
+    if model.copula is not None:
+        np.testing.assert_array_equal(model.copula.correlation_matrix({},tuple(data)),np.eye(6))
     assert 'initial_slope' not in priors.shrinkage.anchors
     assert all(p.beta0.sd*40==.5 for p in priors.channels.values())
 

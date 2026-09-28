@@ -1,3 +1,5 @@
+> The active 1.9.4 comparison is described in BUCEX-1.9.4-commands.md and docs/SHARED_SHRINKAGE.md. The notes below describe earlier manuscript iterations.
+
 # Working manuscript alignment — 1.9.0
 
 The paper model has six private Gaussian/GEV location trajectories, shared

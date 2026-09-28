@@ -39,10 +39,17 @@ def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", lev
     plt.close(figure)
 
 
-def convergence_parameters(table, n_chains):
+def convergence_parameters(table, n_chains, fit=None):
     """Screen scientific parameters; fixed shrinkage hyperparameters remain in mcmc.csv."""
     names = [name for name in table.index if str(name).startswith(
         ('sd.', 'initial.', 'sigma', 'xi', 'copula.', 'scale.', 'scale_slope', 'scale_rw_sd', 'evolution.', 'shrinkage.shared.', 'shrinkage.independent.'))]
+    if fit is not None and fit.is_multiseries_model:
+        # The named sampler exports zero seasonal-scale placeholders for a
+        # constant observation scale. They are declared constants, not chains.
+        for name in fit.channel_names:
+            scale = getattr(fit.model.channel(name).observation, 'scale', None)
+            if scale is None or getattr(scale, 'period', 1) == 1:
+                names = [n for n in names if not str(n).startswith('scale.seasonal.'+name+'[')]
     return table.loc[names].assign(chains=n_chains)
 
 
@@ -104,15 +111,17 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             response_unit='degC', rate_unit='°C per decade')
         pd.DataFrame(fit.priors.shrinkage.calibration(period=config['model']['period'],
             **config.get('prior_calibration', {}))).to_csv(directory/'prior_calibration.csv',index=False)
-    if config.get('priors', {}).get('innovation_sd') is not None:
+    if config.get('priors', {}).get('innovation_sd') is not None and getattr(fit.priors, 'shrinkage', None) is None:
         from research.monthly.fixed_priors import save as save_fixed_priors
         save_fixed_priors(fit,directory,config,level=level)
     targets = scientific_targets(fit, config)
     target_table = fit.contrast_diagnostics(targets, credible_interval=level)
     target_table['probability_positive'] = [float(np.mean(targets[key] > 0)) for key in target_table.index]
     target_table.to_csv(directory/'scientific_targets.csv')
+    if config.get('shrinkage_scope') is not None:
+        bx.trace_frame(targets).to_csv(directory/'scientific_target_traces.csv.gz',index=False)
     target_table.to_csv(directory/'period_and_endpoint_targets.csv')
-    parameter_table = convergence_parameters(diagnostic['parameters'], fit.n_chains)
+    parameter_table = convergence_parameters(diagnostic['parameters'], fit.n_chains, fit)
     assessment = bx.convergence_assessment({'parameters': parameter_table, 'scientific_targets': target_table},
         **config.get('diagnostic_thresholds', {}))
     bx.save_config(assessment, directory/'convergence.json')

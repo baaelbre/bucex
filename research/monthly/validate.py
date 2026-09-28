@@ -83,7 +83,7 @@ def validate(config, *, directory=None):
                 'cross_summary_contrasts':config.get('cross_summary_contrasts',True)}),
                                                credible_interval=config['credible_interval'])
             targets.to_csv(target / f"targets_{train.stop}.csv")
-            assessment = bx.convergence_assessment({'parameters': convergence_parameters(diagnostics, fit.n_chains), 'scientific_targets': targets},
+            assessment = bx.convergence_assessment({'parameters': convergence_parameters(diagnostics, fit.n_chains, fit), 'scientific_targets': targets},
                 **config.get('diagnostic_thresholds', {}))
             bx.save_config(assessment, target / f"convergence_{train.stop}.json")
             bx.save_config(fit.sampler_diagnostics.get('execution', {}), target / f"execution_{train.stop}.json")

@@ -2,45 +2,78 @@
   "extends": "main.json",
   "variants": [
     {
-      "name": "reference"
+      "name": "xi_narrow",
+      "xi_sd": 0.15,
+      "scope": "shared",
+      "setting": "xi_narrow",
+      "family": "adequacy"
+    },
+    {
+      "name": "xi_wide",
+      "xi_sd": 0.6,
+      "scope": "shared",
+      "setting": "xi_wide",
+      "family": "adequacy"
+    },
+    {
+      "name": "xi_bounded",
+      "xi_sd": 0.3,
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ],
+      "scope": "shared",
+      "setting": "xi_bounded",
+      "family": "adequacy"
+    },
+    {
+      "name": "xi_uniform_bounded",
+      "xi_prior": "uniform",
+      "xi_bounds": [
+        -0.5,
+        0.5
+      ],
+      "scope": "shared",
+      "setting": "xi_uniform_bounded",
+      "family": "adequacy"
     },
     {
       "name": "constant_dispersion",
-      "seasonal_scale": false
+      "seasonal_scale": false,
+      "scope": "shared",
+      "setting": "constant_dispersion",
+      "family": "adequacy"
     },
     {
       "name": "narrow_seasonal_log_scale",
-      "scale_prior_sd": 0.15
+      "scale_prior_sd": 0.15,
+      "scope": "shared",
+      "setting": "narrow_seasonal_log_scale",
+      "family": "adequacy"
     },
     {
       "name": "wide_seasonal_log_scale",
-      "scale_prior_sd": 0.6
+      "scale_prior_sd": 0.6,
+      "scope": "shared",
+      "setting": "wide_seasonal_log_scale",
+      "family": "adequacy"
     },
     {
       "name": "fixed_location_seasonality",
-      "seasonal": "static"
+      "seasonal": "static",
+      "scope": "shared",
+      "setting": "fixed_location_seasonality",
+      "family": "adequacy"
     },
     {
       "name": "previous_initial_season_sd",
-      "seasonal_initial_multiplier": 0.1125
+      "seasonal_initial_multiplier": 0.1125,
+      "scope": "shared",
+      "setting": "previous_initial_season_sd",
+      "family": "adequacy"
     }
   ],
   "assessment": {
     "baseline": "reference"
-  },
-  "mcmc": {
-    "warmup": 2000,
-    "draws": 4000
-  },
-  "output": "results/serra_193_adequacy",
-  "validation": {
-    "training_ends": [
-      "2015-11",
-      "2020-11"
-    ],
-    "horizon": 20,
-    "draws": 4000,
-    "save_fits": true
-  },
-  "_comment": "Fixed Normal priors, independently fitted summaries; sensitivity factors multiply Normal prior SDs."
+  }
 }

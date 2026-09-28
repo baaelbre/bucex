@@ -1,0 +1,5 @@
+{
+  "extends": "reference_191.json",
+  "analysis": "joint",
+  "output": "results/serra_191_seasonal_independence"
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bounded local execution; one task is one summary, never a joint six-response fit.
+# Bounded local execution; one task is a separate response fit or one coupled shared fit.
 set -euo pipefail
 cd -P "$(dirname "$0")/.."
 source bash_scripts/runtime.sh

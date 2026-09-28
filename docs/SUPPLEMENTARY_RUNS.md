@@ -1,12 +1,12 @@
-# Additional paper experiments
+# Supplementary checks for 1.9.4
 
-After the smoke and reference fits in [START_HERE](../START_HERE.md), use
-the configured prior assessment study with `--stage plan` to inspect model
-variants and resource budgets. Use `--stage all` to run full-record fits and
-paired forecast checks. Seasonal `manuscript_sensitivity.json` tests the
-hyperprior width and GEV shape; `physical_sensitivity.json` varies each of
-the four anchors; `adequacy.json` varies the observation-scale seasonality
-and latent seasonality; `dependence_sensitivity.json` varies the LKJ
-concentration. Full constant-copula and independent-dependence fits have
-their own configs. See [FINAL_RUN.md](../FINAL_RUN.md) for the complete
-command sequence. Keep fitted outputs from each version separate.
+See `SENSITIVITY_GRID_194.csv` for the 49 experiment settings and the commands
+file for submission. The structural grid is matched across fixed, independent
+mixture and shared specifications. Hyperprior-width checks are matched between
+the two mixtures; additional shape, observation-scale and seasonality checks
+use the shared reference. Six influence fits omit one summary at a time.
+
+Compare recent levels/rates, 95% intervals, forecasts, finite-threshold risks,
+and physically expressed innovation magnitudes. Review sampler diagnostics
+first. No model is automatically selected by an in-sample fit statistic or a
+preferred terminal warming rate.

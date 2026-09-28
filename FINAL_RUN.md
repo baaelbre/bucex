@@ -1,7 +1,12 @@
-# Paper runs in 1.9.3
+# After screening
 
-Follow [the paper commands](BUCEX-1.9.3-commands.md). Both screen and paper use two chains per response, six simultaneous separate fits and twelve cores per experiment job. The long paper reference uses 3,000 warm-up and 8,000 retained iterations per chain; other paper fits use 2,000/4,000.
+The paper tier is prepared but is not the default screen. It uses two chains
+with 4,000 warm-up + 12,000 retained draws for alternatives; the three reference
+specifications use 6,000 + 20,000. The reference forecasts contain 12,000 draws
+over 120 seasons. These budgets do not override convergence failures.
 
-The declared reference is fixed Normal shrinkage with Normal prior SDs `(0.01, 0.0001, 0.01, 0.01)` for level, slope, seasonal innovations and initial slope. No shrinkage scale is learned. All six analyses use the same prior settings.
-
-Each full-record reference report has its own `final_check.json`. The collector preserves missing tasks, failed computations and numerical warnings. Inspect those reports before using `COLLECT_HPC_RESULTS.sh paper experiments --require-complete`. A numerical pass does not establish forecast adequacy or select the best prior. The full forecast horizon is 120 seasons, with 95% reported intervals and 90/95/99% held-out coverage checks.
+Select scientific settings after reviewing the matched comparison, hyperprior
+sensitivity, pooling influence and validation. `RUN_PAPER_EXPERIMENTS.sh`
+uses the same grid as the screen; `RUN_PAPER_BIOBOT.sh` provides the workstation
+route. `--require-complete` on the collector requires completed paper fits
+without numerical flags.
