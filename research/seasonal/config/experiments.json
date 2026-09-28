@@ -452,7 +452,7 @@
         "chains": 2,
         "chain_workers": 2,
         "warmup": 1000,
-        "draws": 2000
+        "draws": 1000
       },
       "diagnostic_thresholds": {
         "min_chains": 2,
@@ -469,7 +469,7 @@
         "chains": 2,
         "chain_workers": 2,
         "warmup": 1000,
-        "draws": 2000
+        "draws": 1000
       }
     },
     "paper": {

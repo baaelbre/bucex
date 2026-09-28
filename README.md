@@ -9,9 +9,9 @@ residuals are conditionally independent; no copula enters the default study.
 
 Start with **[BUCEX-1.9.5-commands.md](BUCEX-1.9.5-commands.md)**. It gives the
 BIOBOT overnight launch, monitoring, resumption, all budgets and the complete
-experiment inventory. The combined queue contains 212 fits (106 per tier), with
+experiment inventory. The default screening queue contains all 106 fits (two chains each), with
 parallel chains and a common CPU/memory budget. It prioritizes reference fits;
-it does not promise that the entire paper grid will finish overnight.
+screen chains use 1,000 warm-up + 1,000 retained draws. There is no automatic wall-time cutoff. Paper fits are available separately and are not part of the default overnight command.
 
 ```python
 import bucex as bx

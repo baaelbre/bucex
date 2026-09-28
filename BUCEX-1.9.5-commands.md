@@ -1,17 +1,19 @@
+> Screening update: use this ZIP in a fresh directory and the fresh results root below. All 106 experiments are retained, with 1,000 warm-up + 1,000 retained draws per chain. No wall-time cutoff. Do not launch the old combined paper+screen queue alongside this run.
+
 # BUCEX 1.9.5 — pooled half-normal experiments on BIOBOT
 
 This is a fresh release and results tree. The default study pools the three innovation-prior SDs across the six summaries. Unpooled fixed priors and separate one-response hierarchies remain available only in the `deferred` batch. They are not in `all`.
 
-## Launch the complete study
+## Launch all screening experiments
 
 Upload/extract the new ZIP on BIOBOT. Use the Python >= 3.10 environment that already runs BUCEX. Run these commands from the directory containing the ZIP:
 
 ```bash
-unzip bucex-1.9.5.zip
-cd -P bucex-1.9.5
+unzip bucex-1.9.5.zip -d screening_run
+cd -P screening_run/bucex-1.9.5
 
 export BUCEX_PYTHON="$(command -v python3)"
-export BUCEX_RESULTS_ROOT="$PWD/results/serra_195"
+export BUCEX_RESULTS_ROOT="$PWD/results/serra_195_screen1k"
 export BUCEX_CPUS=32
 export BUCEX_MEMORY_GB=150
 export BUCEX_MAX_JOBS=32
@@ -20,23 +22,23 @@ export MPLBACKEND=Agg
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 
 "$BUCEX_PYTHON" -c 'import bucex, scipy, pandas, matplotlib; print(bucex.__version__, bucex.__file__); assert bucex.__version__ == "1.9.5"'
-bash RUN_OVERNIGHT_BIOBOT.sh --tier both --batch all --dry-run
+bash RUN_OVERNIGHT_BIOBOT.sh --tier screen --batch all --dry-run
 
 mkdir -p "$BUCEX_RESULTS_ROOT"
-nohup bash RUN_OVERNIGHT_BIOBOT.sh --tier both --batch all \
+nohup bash RUN_OVERNIGHT_BIOBOT.sh --tier screen --batch all \
   > "$BUCEX_RESULTS_ROOT/overnight.log" 2>&1 < /dev/null &
 echo "$!" > "$BUCEX_RESULTS_ROOT/overnight.pid"
 ```
 
 The `nohup` command survives an SSH disconnect. This is a local BIOBOT process queue, not a scheduler submission. It runs a syntax check and three tiny two-chain startup fits first. If those fail, production fits do not start.
 
-There are **106 fits per tier, 212 fits / 424 chains for both tiers**. Each fit runs **two chains in parallel**; independent fits run concurrently. A pooled chain updates all six summaries with three shared innovation scales. Splitting the six summaries into separate processes would remove that pooling.
+The overnight command launches **all 106 screening fits / 212 chains**, with no paper runs. Each chain has **1,000 warm-up and 1,000 retained draws**. Paper fits remain available separately for later. Each fit runs **two chains in parallel**; independent fits run concurrently. A pooled chain updates all six summaries with three shared innovation scales. Splitting the six summaries into separate processes would remove that pooling.
 
-The queue uses one CPU and memory budget across both tiers. With 32 workers it can run at most 16 two-chain fits; memory reservations can lower that count. `BUCEX_MAX_JOBS=32` is an additional ceiling, not a promise of 32 simultaneous fits. BLAS/OpenMP threads are limited to one per worker. Memory reservations account for worker states, merging and report construction; they are planning estimates rather than OS-enforced limits. Available system memory is also checked before a new job starts. The 32-worker / 150-GiB defaults leave headroom on a large BIOBOT host; change them to the resources actually available to you. Do not launch independent queues against the same results tree.
+The queue uses one CPU and memory budget across the selected fits. With 32 workers it can run at most 16 two-chain fits; memory reservations can lower that count. `BUCEX_MAX_JOBS=32` is an additional ceiling, not a promise of 32 simultaneous fits. BLAS/OpenMP threads are limited to one per worker. Memory reservations account for worker states, merging and report construction; they are planning estimates rather than OS-enforced limits. Available system memory is also checked before a new job starts. The 32-worker / 150-GiB defaults leave headroom on a large BIOBOT host; change them to the resources actually available to you. Do not launch independent queues against the same results tree.
 
-The paper reference and pre-2019 reference start first, followed by the central half-t/half-Cauchy comparisons. Screening then gets priority while those longer fits continue. The remaining paper fits and monthly supplement follow. Completed reports are available immediately in each task directory.
+The seasonal reference and pre-2019 reference start first. Monthly screening fits start early because they are slower; the central half-t and half-Cauchy comparisons follow. All remaining sensitivity and validation jobs stay in the queue. Completed reports are available immediately in each task directory.
 
-**Timing:** all jobs are queued, but completion by tomorrow is not guaranteed. The paper budgets have not been shortened to meet a deadline. A brief full-record benchmark in the development environment suggested roughly 34 worker-normalized sampling hours for the paper suite at 32 workers, before reporting and memory limits. It is not a BIOBOT timing result. Measure your machine if you want a useful estimate:
+**Timing:** plan roughly **5–8 hours** for the screening suite at 32 workers, subject to actual BIOBOT speed and load. The short development benchmark implies about 4.4 hours of idealized sampling work before extra monthly cost, reporting and contention. This is not a BIOBOT timing measurement or a completion guarantee. **There is no eight-hour cutoff:** the queue continues until all jobs and collection finish. Paper budgets are untouched and are not launched by the command above. To benchmark the actual host:
 
 ```bash
 "$BUCEX_PYTHON" -m research.seasonal.benchmark \
@@ -51,18 +53,17 @@ Set `BUCEX_RESULTS_ROOT` to the same absolute directory if opening a fresh shell
 
 ```bash
 cd -P /path/to/bucex-1.9.5
-export BUCEX_RESULTS_ROOT="$PWD/results/serra_195"
+export BUCEX_RESULTS_ROOT="$PWD/results/serra_195_screen1k"
 tail -f "$BUCEX_RESULTS_ROOT/overnight.log"
 ```
 
 Other useful commands, from the release directory:
 
 ```bash
-bash RUN_OVERNIGHT_BIOBOT.sh --tier both --batch all --status
+bash RUN_OVERNIGHT_BIOBOT.sh --tier screen --batch all --status
 
-tail -f "$BUCEX_RESULTS_ROOT/paper/logs/posterior_reference.log"
 tail -f "$BUCEX_RESULTS_ROOT/screen/logs/posterior_reference.log"
-tail -f "$BUCEX_RESULTS_ROOT/paper/logs/pre2019_reference_2019-05.log"
+tail -f "$BUCEX_RESULTS_ROOT/screen/logs/pre2019_reference_2019-05.log"
 ```
 
 `completed` means the process finished writing its report. It does **not** mean convergence passed. The final assessment is in `convergence.json`, `final_check.json` for the paper reference, and the collected `status.json`.
@@ -86,7 +87,7 @@ All counts below are **per tier**. All active fits use pooled shrinkage. Leave-o
 
 | Fit | Chains | Warm-up per chain | Retained per chain |
 |---|---:|---:|---:|
-| Every screen fit | 2 | 1,000 | 2,000 |
+| Every screen fit | 2 | 1,000 | 1,000 |
 | Paper seasonal reference and reference pre-2019 | 2 | 6,000 | 20,000 |
 | Other paper seasonal fits and standard validation | 2 | 4,000 | 12,000 |
 | Paper matched-block fits and monthly supplement | 2 | 1,500 | 3,000 |
@@ -95,7 +96,7 @@ The monthly and matched-block jobs have an explicitly shorter paper budget becau
 
 Screen forecasts use 4,000 draws and screen validation uses 2,000. Paper forecasts and validation use 12,000 draws; paper pre-2019 risk uses 20,000. Forecasts cover 120 seasonal transitions or 360 monthly transitions, except pre-2019's one-season prediction. Posterior and predictive intervals are **95%**; validation also reports **90%, 95%, 99%** coverage. Interval widths are estimated from simulation, so they need not rise monotonically at every horizon.
 
-Screen checks flag R-hat above 1.05 or bulk/tail ESS below 200. Paper checks use 1.01 and 400. Initial coefficients, learned scales and scientific targets are checked, rather than relying on attractive trajectories. Screening output is never promoted into the paper tier and is not used to shorten paper warm-up automatically.
+Screen checks flag R-hat above 1.05 or bulk/tail ESS below 200. Paper checks use 1.01 and 400. Initial coefficients, learned scales and scientific targets are checked, rather than relying on attractive trajectories. Short screening chains may fail these checks; their job is to identify problems and sensitivity patterns, not establish manuscript robustness. Screening output is never promoted into the paper tier and is not used to shorten paper warm-up automatically.
 
 ## Exact reference hierarchy
 
@@ -168,7 +169,7 @@ If the reference has not passed its numerical checks, figures go into `diagnosti
 The queue skips completed fits only if source, data and configuration fingerprints match. An ordinary process failure preserves its attempt. After inspecting its log, relaunch the same queue with:
 
 ```bash
-nohup bash RUN_OVERNIGHT_BIOBOT.sh --tier both --batch all --retry-failed \
+nohup bash RUN_OVERNIGHT_BIOBOT.sh --tier screen --batch all --retry-failed \
   >> "$BUCEX_RESULTS_ROOT/overnight.log" 2>&1 < /dev/null &
 echo "$!" > "$BUCEX_RESULTS_ROOT/overnight.pid"
 ```

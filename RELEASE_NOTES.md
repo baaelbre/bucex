@@ -42,3 +42,7 @@ reports 90%, 95% and 99% coverage. Numerical flags remain visible throughout.
 See `BUCEX-1.9.5-commands.md` for all budgets, calibration constants, optional
 batches, monitoring and the runtime limits of a full overnight study. No full
 scientific fit has been run or declared converged during release preparation.
+
+### Overnight screening clarification
+
+The default launcher now selects screening only: all 106 fits remain, with two chains, 1,000 warm-up and 1,000 retained draws per chain, including matched-block and monthly fits. Slower monthly screening fits start early. No wall-time cutoff was added. The long paper budgets and scientific priors are unchanged. Re-extract the updated release and use a fresh results root.

@@ -42,7 +42,9 @@ def make_queue(tiers,batch):
             result.append(Work(tier,task,cpus,memory))
     def priority(w):
         t=w.task
-        if t.frequency=='monthly':return (4,w.tier,t.id)
+        if t.frequency=='monthly':
+            # Start the slower monthly screen jobs early to avoid a long final wave.
+            return (0,2,t.id) if w.tier=='screen' else (4,w.tier,t.id)
         if t.variant=='reference' and t.kind in ('posterior','pre2019'):
             return (0,0 if w.tier=='paper' else 1,0 if t.kind=='posterior' else 1,t.id)
         if t.kind=='posterior' and t.variant in ('half_t4','half_cauchy'):
@@ -73,7 +75,7 @@ def snapshot(root,tiers,batch):
     return dict(counts=counts,tasks=rows)
 
 
-def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,max_jobs=32,
+def run(*,tiers=('screen',),batch='all',root=ROOT,cpus=32,memory_gb=150.,max_jobs=32,
         dry_run=False,retry_failed=False,collect=True):
     if cpus<1 or memory_gb<=0 or max_jobs<1:raise ValueError('Resource budgets must be positive.')
     root=Path(root).resolve();root.mkdir(parents=True,exist_ok=True)
@@ -188,7 +190,7 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--tier',choices=('screen','paper','both'),default='both');p.add_argument('--batch',choices=BATCHES,default='all')
+    p.add_argument('--tier',choices=('screen','paper','both'),default='screen');p.add_argument('--batch',choices=BATCHES,default='all')
     p.add_argument('--root',type=Path,default=Path(os.environ.get('BUCEX_RESULTS_ROOT',ROOT)))
     p.add_argument('--cpus',type=int,default=int(os.environ.get('BUCEX_CPUS','32')))
     p.add_argument('--memory-gb',type=float,default=float(os.environ.get('BUCEX_MEMORY_GB','150')))

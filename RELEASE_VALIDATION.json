@@ -38,5 +38,25 @@
     "Runtime and convergence on BIOBOT must be assessed there; startup probes are automatic.",
     "Full paper/screen queues are provided, not a guarantee of completion overnight.",
     "Python 3.10/3.11 compatibility was grammar checked; execution here used Python 3.12."
-  ]
+  ],
+  "screening_update": {
+    "updated_at": "2026-09-28T22:07:06.191769+00:00",
+    "screen_fits": 106,
+    "chains_per_fit": 2,
+    "warmup_per_chain": 1000,
+    "retained_per_chain": 1000,
+    "paper_budgets_unchanged": true,
+    "wall_time_cutoff": false,
+    "checks": [
+      "All 106 resolved screen configs checked, including monthly and matched blocks",
+      "Paper tier unchanged",
+      "All 14 release-195 affected tests passed",
+      "Monthly screens start at queue positions 3\u20136"
+    ],
+    "screen_reference_fingerprint": {
+      "config_sha256": "2b0ad96eae659512bcd54ec553de5e7385abe81cfc90c717476f05c2fb5ef379",
+      "source_sha256": "1fb7a4b7ee38b92e24b872876d82dec9b6158ffd48d6108449fb781aa48dc4a1",
+      "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+    }
+  }
 }
