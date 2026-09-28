@@ -8,8 +8,8 @@
     "pandas": "2.2.3"
   },
   "reference_fingerprint": {
-    "config_sha256": "ef1a6c1b06af7a3abcea74a1cb8cc06ce9c742cd719e4d0b5e57888f8f5a0a6c",
-    "source_sha256": "0ce9ba0247d073481aae9e416d746990d736f4d7549b42babc3dea586bffe9ac",
+    "config_sha256": "becdd932864b87f33b763e1ffa7290c810064cfe2b97e0a1e42e96f91cb634ae",
+    "source_sha256": "2a2cc6311bb28aeafef35678ae5014a4ff4a8825196879365c53f47d011ea07f",
     "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
   },
   "counts": {
@@ -89,5 +89,25 @@
   "production_fits_run": false,
   "hpc_submission_tested": false,
   "full_twelve_worker_mcmc_tested_locally": false,
-  "note": "Startup fits use intentionally short chains and establish execution only. The local container exposes two CPUs; response fits in the 13-fit probe ran sequentially with two parallel chains each. Production convergence and sensitivity remain to be assessed from the screen results."
+  "note": "Startup fits use intentionally short chains and establish execution only. The local container exposes two CPUs; response fits in the 13-fit probe ran sequentially with two parallel chains each. Production convergence and sensitivity remain to be assessed from the screen results.",
+  "budget_revision": {
+    "date": "2026-09-28T20:51:46.787947+00:00",
+    "screen_warmup_per_chain": 1000,
+    "screen_retained_per_chain": 2000,
+    "checks": [
+      "Only MCMC warmup and retained count changed in the two active JSON configuration files.",
+      "All 271 resolved screen budgets use two chains, 1000 warmup and 2000 retained; all 271 paper budgets remain unchanged.",
+      "Screen model/configuration preflight and all 72 matched marginal-prior checks pass."
+    ],
+    "production_fits_run": false
+  },
+  "compatibility_revision": {
+    "date": "2026-09-28T20:58:37.755453+00:00",
+    "fix": "Replace same-quote reuse in the bundle status f-string; compile all production Python modules with the selected compute interpreter before starting probe fits.",
+    "legacy_grammar_files": 207,
+    "original_failure_reproduced": true,
+    "fixed_legacy_grammar_status": "passed",
+    "python_311_execution_tested_locally": false,
+    "note": "The local runtime is Python 3.12. The legacy lib2to3 tokenizer/grammar catches the reported quote-reuse failure; ast feature_version on 3.12 does not. Actual Python 3.11 execution is verified by the Gallade probe."
+  }
 }

@@ -6,7 +6,7 @@
 - Keeps all six initial-rate priors separate with reference SD 0.01 per seasonal update.
 - Replaces the active screen with 49 experiments / 159 fits, including width,
   shape, seasonality and pooling-influence checks.
-- Uses 2,000 warm-up + 5,000 retained draws per chain for screening, with two chains.
+- Uses 1,000 warm-up + 2,000 retained draws per chain for screening, with two chains.
 - Routes shared fits to two CPUs and bundles of six separate fits to twelve CPUs.
 - Retains the Gallade compute-node probe and dependency gate; submission does
   not execute the compute Python on the login CPU.
@@ -24,3 +24,5 @@ one-response marginal priors. Fixed Normal and scale-mixture priors differ.
 All results go to a fresh `results/serra_194` tree. Existing 1.9.3 fits are not
 relabelled or reused as 1.9.4 results. See `RELEASE_VALIDATION.json` for software
 checks and their scope.
+
+Startup correction: fix the bundle status f-string for Python 3.10/3.11 and compile production modules with the compute-node interpreter before the probe. Scientific settings and the reduced screen budget are unchanged.

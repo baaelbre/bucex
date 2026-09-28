@@ -21,7 +21,7 @@ The independent specification learns one tau_cj per response; the shared specifi
 
 There is **no Phi^-1(0.75) conversion** and no automatic recentering when hyperprior width changes. Initial level/seasonal SDs remain 20 °C; the shape prior is Normal(0, 0.3^2), unbounded; seasonal observation log-scale SD is 0.3. The exact-likelihood MH correction is retained, with ASIS off.
 
-Every screen fit uses **2 chains, 2,000 warm-up + 5,000 retained draws per chain**, a 30-year forecast, and 95% intervals. This longer budget is a screen, not a convergence guarantee. Screen flags use R-hat > 1.05 or bulk/tail ESS < 200; paper checks use 1.01 and 400. Shared-scale traces and scientific-target traces are saved, including chain membership. Full fit archives are retained on the compute host.
+Every screen fit uses **2 chains, 1,000 warm-up + 2,000 retained draws per chain**, a 30-year forecast, and 95% intervals. This reduced budget is a first-pass screen, not a convergence guarantee; flagged fits require longer runs. Screen flags use R-hat > 1.05 or bulk/tail ESS < 200; paper checks use 1.01 and 400. Shared-scale traces and scientific-target traces are saved, including chain membership. Full fit archives are retained on the compute host.
 
 ## HPC — reuse the working Gallade environment
 
@@ -127,6 +127,32 @@ After completion:
 The complete values are in `docs/SENSITIVITY_GRID_194.csv` and `research/seasonal/config/experiments.json`. The compute preflight writes resolved per-task settings to `screen/plan/resolved_settings.csv` and the 72 matched marginal-prior checks to `screen/plan/matched_marginal_priors.csv`.
 
 There are no combined level/slope settings, IG-prior alternatives, historical contrasts, recovery experiments or endpoint-validation jobs in this screen. Within-fit terminal levels and rates remain in the convergence diagnostics because those are scientific outputs whose Monte Carlo precision must be checked.
+
+## Python 3.11 startup correction
+
+The original 1.9.4 archive contained quote reuse in the bundle status f-string that works on Python 3.12 but raises a SyntaxError on 3.11. The current archive fixes that line. The compute probe also compiles the Python modules with the selected compute interpreter before starting fits.
+
+For an already-uploaded checkout, this minimal fix can run with the login-node system Python; it reads and edits text without importing BUCEX:
+
+```bash
+python3 - <<'PYFIX'
+from pathlib import Path
+p = Path("research/seasonal/bundles.py")
+s = p.read_text().replace("{group['scope']}", '{group["scope"]}')
+compile(s, str(p), "exec")
+p.write_text(s)
+print("Patched and syntax-checked bundles.py")
+PYFIX
+
+bash RUN_SCREEN_EXPERIMENTS.sh --dry-run
+bash RUN_SCREEN_EXPERIMENTS.sh
+```
+
+A failed probe followed by cancelled arrays has not started the sensitivity fits, so that failed submission alone does not require a new results directory or `--retry-failed`.
+
+## Reduced screen budget
+
+The screen now uses 1,000 warm-up + 2,000 retained draws per chain, reduced from 2,000 + 5,000. This cuts sampling iterations by 57%; total runtime also includes forecasting and reporting. Paper budgets and numerical diagnostic thresholds are unchanged. If any tasks were already started with the earlier settings, use a fresh results root for this shorter screen, for example `export BUCEX_RESULTS_ROOT="$PWD/results/serra_194_screen_short"`. Existing task fingerprints deliberately prevent mixing the budgets.
 
 ## Smaller batches and later validation
 

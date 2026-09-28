@@ -70,7 +70,7 @@ def test_scopes_widths_and_omissions_are_explicit():
         assert c['priors']['innovation_sd']==dict(level=.01,trend=.0001,season=.01)
         assert c['priors']['initial_slope_sd']==.01
         assert c['contrasts'] is None and c['copula'] is None
-        assert c['mcmc']['draws']==5000 and c['mcmc']['warmup']==2000
+        assert c['mcmc']['draws']==2000 and c['mcmc']['warmup']==1000
     for ch in bx.UCCLE_SERIES:
         c=config('leave_out_'+ch)
         assert len(c['data']['series'])==5 and ch not in c['data']['series']

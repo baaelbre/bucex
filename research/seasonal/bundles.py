@@ -51,7 +51,7 @@ def run(group,*,tier='screen',root=ROOT,retry_failed=False):
         active={};interrupted=False
         def stop(signum,frame):raise KeyboardInterrupt
         previous={s:signal.signal(s,stop) for s in (signal.SIGINT,signal.SIGTERM)}
-        print(f'{group["id"]}: {len(selected)} fits ({group['scope']}) x {group["chain_workers"]} chains = {group["required_workers"]} workers',flush=True)
+        print(f'{group["id"]}: {len(selected)} fits ({group["scope"]}) x {group["chain_workers"]} chains = {group["required_workers"]} workers',flush=True)
         try:
             for task in selected:
                 log=(logs/(task.id+'.log')).open('a');log.write('\nSTART '+meta['started']+'\n');log.flush()
