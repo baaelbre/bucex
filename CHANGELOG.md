@@ -1,3 +1,9 @@
+# 1.9.3 correction — manuscript prior SDs (paper_sd_20260928)
+
+- Match the latest manuscript directly: Normal innovation SDs (0.01, 0.0001, 0.01), initial-slope variance 0.0001 and hence SD 0.01. Remove the earlier median-to-SD conversion.
+- Update reference verification, paper gates, sensitivity anchors and calibrated prior-effect checks. The 23-setting grid and HPC resources are unchanged.
+- Use a fresh `serra_193_paperpriors` results tree. Existing submitted jobs must be stopped before replacing their source/configuration files. Earlier results remain a wider-prior experiment.
+
 # 1.9.3 — fixed Normal shrinkage and parallel HPC experiments
 
 - Remove shrinkage hyperpriors from the active seasonal grid; use median-absolute calibration (0.01, 0.0001, 0.01, 0.01), including the initial slope.

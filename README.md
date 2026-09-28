@@ -2,7 +2,7 @@
 
 Bayesian unobserved-component models for Gaussian temperature summaries and GEV block extremes.
 
-The active seasonal workflow fits **six separate analyses with fixed Normal shrinkage priors**. All six use the requested median absolute coefficients `(0.01, 0.0001, 0.01, 0.01)` for level, slope and seasonal innovations and initial slope. There are no shrinkage hyperpriors or copula parameters in the current grid. Estimated innovation coefficients and state trajectories remain private to each response.
+The active seasonal workflow fits **six separate analyses with fixed Normal shrinkage priors**. All six use the fixed Normal prior SDs `(0.01, 0.0001, 0.01, 0.01)` for level, slope and seasonal innovations and initial slope. There are no shrinkage hyperpriors or copula parameters in the current grid. Estimated innovation coefficients and state trajectories remain private to each response.
 
 [Start here](START_HERE.md) · [HPC commands and sensitivity grid](BUCEX-1.9.3-commands.md) · [Verification](validation/RELEASE_VALIDATION_193.md)
 
@@ -14,16 +14,15 @@ python -m pip install -e ".[plot,test]"
 python -m pytest
 ```
 
-The fixed Normal prior SD is `m0 / Phi^-1(.75)`. A simple univariate API example is:
+The innovation prior SDs are tau_alpha=0.01, tau_beta=0.0001 and tau_gamma=0.01; initial-slope SD is sqrt(P_beta0)=0.01. A simple univariate API example is:
 
 ```python
 import bucex as bx
 
-q = 0.6744897501960817
 prior = bx.fs_priors(
     "gaussian", period=4, innovation="normal",
-    innovation_sd={"level": .01/q, "trend": .0001/q, "season": .01/q},
-    initial_slope=bx.NormalPrior(0., .01/q),
+    innovation_sd={"level": .01, "trend": .0001, "season": .01},
+    initial_slope=bx.NormalPrior(0., .01),
 )
 ```
 

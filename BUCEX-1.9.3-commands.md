@@ -4,18 +4,18 @@
 
 TXm, TNm, TXx, TXn, TNx and TNn are fitted separately. Each fit receives only its own response. All six use the same fixed prior settings. There is no copula, parameter pooling, shared hyperparameter or private shrinkage hyperprior in this experiment grid. Innovation coefficients, initial slopes, states, observation scales and applicable GEV shapes are still inferred.
 
-The supplied calibration values are median absolute coefficients. For a zero-mean Normal coefficient, `median(abs(coefficient)) = Phi^-1(.75) * prior_SD`, with `Phi^-1(.75) = 0.6744897501960817`. The fixed settings are:
+The manuscript specifies Normal prior SDs directly for the three signed innovation coefficients, and a variance for the initial slope:
 
-| Coefficient | Reference m0 | Normal prior SD |
+| Coefficient | Manuscript setting | Normal prior SD |
 |---|---:|---:|
-| Level innovation, alpha | 0.01 | 0.01482602218505602 |
-| Slope innovation, beta | 0.0001 | 0.0001482602218505602 |
-| Seasonal innovation, gamma | 0.01 | 0.01482602218505602 |
-| Initial slope, beta0 | 0.01 | 0.01482602218505602 |
+| Level innovation, alpha | tau_alpha = 0.01 | 0.01 |
+| Slope innovation, beta | tau_beta = 0.0001 | 0.0001 |
+| Seasonal innovation, gamma | tau_gamma = 0.01 | 0.01 |
+| Initial slope, beta0 | P_beta0 = 0.0001 (variance) | sqrt(P_beta0) = 0.01 |
 
-These are per seasonal update. The initial-slope prior SD is 0.593041 degrees C per decade (40 seasonal updates per decade). It describes the rate at the start of the record. Subsequent slope innovations remain separately estimated. Fixing a coefficient's **prior SD** does not fix that coefficient or the process innovation variance.
+There is **no median-to-SD conversion**. These settings stay fixed throughout a fit; the innovation coefficients, initial slope and process variances are inferred. The same reference settings apply to all six separate analyses. The initial-rate prior SD is 0.40 degrees C per decade (40 seasonal updates), and its 30-year linear displacement SD is 1.20 degrees C. At 30 years the level, slope and same-season innovation contributions have prior SDs 0.109545, 0.075420 and 0.077460 degrees C, matching the manuscript after rounding.
 
-There is no lognormal mixture, learned width or marginal-moment compensation. Compared with an older hierarchical model, adopting these fixed priors changes the marginal prior as well as removing hyperparameters. The reference is a declared starting specification, not an empirically established optimum.
+This corrects the first 1.9.3 archive, which incorrectly carried forward a median-absolute convention and divided every SD by Phi^-1(.75), making it 1.4826 times wider. The correction is tagged `paper_sd_20260928`. Keep earlier results separately; they are a wider-prior experiment, not results under the manuscript reference.
 
 The initial level and initial seasonal-coordinate SDs stay at 20 degrees C. The reference GEV shape prior is unbounded Normal(0, 0.3^2); seasonal log-scale contrast SD is 0.3. Full-record fits cover 538 complete seasonal blocks, MAM 1892 through JJA 2026, and forecast 120 seasons (30 years). Reports use 95% intervals; held-out coverage is recorded at 90%, 95% and 99%.
 
@@ -49,7 +49,7 @@ Factors below multiply the **Normal prior SD**, never the variance. An SD factor
 | fixed_location_seasonality | 1 | 1 | inactive | 1 | Seasonal pattern constant across years |
 | previous_initial_season_sd | 1 | 1 | 1 | 1 | Initial seasonal-coordinate SD 2.25 |
 
-The global half/double controls replace learned hyperprior-width controls. Matched-width controls and a return-to-old-anchor variant would be redundant after fixing Normal SDs at the requested reference. There are 23 unique specifications including the reference; this is a targeted grid, not the Cartesian product of every setting.
+The global half/double controls replace learned hyperprior-width controls. Matched-width controls and a return-to-old-anchor variant would be redundant after specifying the fixed Normal family. There are 23 unique specifications including the reference. The existing targeted grid is retained. The additional combined level–slope grid mentioned in the latest manuscript is not part of this grid, and the base IG(2,2) observation-variance prior is not varied. Those manuscript checks remain to be added or the prose narrowed to the experiments actually run.
 
 Every full-record specification runs all six responses. Shape-prior changes have no effect on TXm/TNm, which are Gaussian; those two fits are unchanged controls and must not be counted as additional evidence about shape sensitivity. Stable per-response seeds make that redundancy reproducible. The separate pre-2019 check concerns only TXx and is consequently a one-response exception to the six-fit bundle.
 
@@ -106,7 +106,7 @@ unset VSC_PARTITION
 export BUCEX_VENV="$PWD/bucex_env_gallade_py311_193"
 export BUCEX_PYTHON="$BUCEX_VENV/bin/python"
 export BUCEX_ENV_SETUP="$BUCEX_VENV/environment.sh"
-export BUCEX_RESULTS_ROOT="$PWD/results/serra_193_parallel"
+export BUCEX_RESULTS_ROOT="$PWD/results/serra_193_paperpriors"
 export BUCEX_SCHEDULER=slurm
 export VSC_ARRAY_LIMIT=4
 ```

@@ -28,7 +28,7 @@ def main(argv=None):
     if not found:p.error('Cannot locate BUCEX_PYTHON: '+request)
     path=Path(found).absolute();compute_python=str(path.parent.resolve()/path.name)
     if not a.dry_run and not os.access(compute_python,os.X_OK):p.error('Compute Python is not executable; finish SETUP_HPC_ENV.sh first: '+compute_python)
-    root=Path(os.environ.get('BUCEX_RESULTS_ROOT',str(PROJECT/'results/serra_193_parallel'))).resolve()
+    root=Path(os.environ.get('BUCEX_RESULTS_ROOT',str(PROJECT/'results/serra_193_paperpriors'))).resolve()
     logs=PROJECT/'job_scripts/logs';logs.mkdir(parents=True,exist_ok=True)
     env=dict(os.environ,BUCEX_PROJECT_ROOT=str(PROJECT),BUCEX_PYTHON=compute_python,
              BUCEX_RESULTS_ROOT=str(root),BUCEX_TIER=a.tier,BUCEX_BATCH=a.batch,

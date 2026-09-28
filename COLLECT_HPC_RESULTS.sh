@@ -20,7 +20,7 @@ while [[ $# -gt 0 ]]; do
 done
 case "$BUCEX_TIER" in screen|paper) ;; *) echo 'tier must be screen or paper' >&2; exit 2;; esac
 case "$BUCEX_BATCH" in posterior|reference|pre2019|experiments|validation|validation10|all) ;; *) echo 'unknown batch' >&2; exit 2;; esac
-export BUCEX_RESULTS_ROOT="${BUCEX_RESULTS_ROOT:-$PWD/results/serra_193_parallel}"
+export BUCEX_RESULTS_ROOT="${BUCEX_RESULTS_ROOT:-$PWD/results/serra_193_paperpriors}"
 export BUCEX_PYTHON="${BUCEX_PYTHON:-$PWD/bucex_env_gallade_py311_193/bin/python}"
 default_setup="$PWD/bucex_env_gallade_py311_193/environment.sh"
 if [[ -z "${BUCEX_ENV_SETUP:-}" && -f "$default_setup" ]]; then export BUCEX_ENV_SETUP="$default_setup"; fi

@@ -2,16 +2,16 @@
 
 The active seasonal model uses fixed Normal priors on signed FS innovation coefficients and on the initial slope. There are no shrinkage hyperpriors. All six separate analyses use the same settings.
 
-With q = Phi^-1(.75) = 0.6744897501960817, the requested reference m0 = (0.01, 0.0001, 0.01, 0.01) denotes median absolute coefficients. Set the Normal SD to m0/q for level, slope and seasonal innovations and initial slope. This is an exact half-normal median calibration. The prior SDs are fixed; the four coefficients are still inferred from each response.
+The manuscript specifies the three Normal prior SDs directly: tau_alpha=0.01, tau_beta=0.0001, tau_gamma=0.01. The initial slope has prior variance P_beta0=0.0001 and therefore SD 0.01. No median-to-SD conversion applies. These settings are fixed, while coefficients and process variances remain inferred.
 
 | Component | Fixed Normal SD | Prior SD of 30-year latent displacement |
 |---|---:|---:|
-| Level innovations | 0.01482602218505602 | 0.162411 degrees C |
-| Slope innovations | 0.0001482602218505602 | 0.111818 degrees C |
-| Seasonal innovations | 0.01482602218505602 | 0.114842 degrees C |
-| Initial slope | 0.01482602218505602 | 1.779123 degrees C |
+| Level innovations | 0.01 | 0.109545 degrees C |
+| Slope innovations | 0.0001 | 0.075420 degrees C |
+| Seasonal innovations | 0.01 | 0.077460 degrees C |
+| Initial slope | 0.01 | 1.200000 degrees C |
 
-At H=120 seasonal updates, the respective gains are sqrt(H), sqrt(H(H-1)(2H-1)/6), sqrt(60), and H. These SDs integrate the Normal coefficient prior and, where applicable, the standardized future innovations. They exclude observation noise and other latent components and are not observed-temperature prediction intervals. The initial-rate SD is 40 times its per-update SD, or 0.593041 degrees C per decade.
+At H=120 seasonal updates, the respective gains are sqrt(H), sqrt(H(H-1)(2H-1)/6), sqrt(60), and H. These SDs integrate the Normal coefficient prior and, where applicable, the standardized future innovations. They exclude observation noise and other latent components and are not observed-temperature prediction intervals. The initial-rate SD is 40 times its per-update SD, or 0.40 degrees C per decade.
 
 Sensitivity multiplies the fixed Normal SD directly. Half/double changes the SD by that factor and its variance by one quarter/four; no exp(log_sd^2) adjustment applies. The baseline changes the marginal prior compared with older lognormal mixtures. A prior/posterior resemblance is evidence of limited learning, not a reason to keep broadening a prior.
 

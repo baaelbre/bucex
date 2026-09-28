@@ -36,11 +36,10 @@ def test_archived_reference_and_new_final_config_have_distinct_priors():
     assert reference["priors"]["initial_slope_sd"] == 0.0046387735335118195
     assert reference["priors"]["initial_slope_median"] is None
     assert reference["mcmc"]["warmup"] == 2000 and reference["mcmc"]["draws"] == 4000
-    z=.6744897501960817
-    assert final['priors']['innovation_sd']==pytest.approx({'level':.01/z,'trend':.0001/z,'season':.01/z})
+    assert final['priors']['innovation_sd']==pytest.approx({'level':.01,'trend':.0001,'season':.01})
     assert final['priors'].get('independent_shrinkage') is None
     assert final['priors'].get('shared_shrinkage') is None
-    assert final['priors']['initial_slope_sd']==pytest.approx(.01/z)
+    assert final['priors']['initial_slope_sd']==pytest.approx(.01)
     assert final["priors"]["seasonal_initial_sd"] == 20
     assert final["forecast_horizon"] == 120
     assert final["forecast_draws"] == 12000

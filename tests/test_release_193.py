@@ -17,7 +17,6 @@ from research.seasonal import jobs,bundles
 from research.seasonal.job_plan import plan
 
 PROJECT=Path(__file__).resolve().parents[1]
-Z=.6744897501960817
 
 
 def config(name,variant='reference'):
@@ -34,11 +33,11 @@ def test_fixed_normal_calibration_has_no_scale_mixture():
     p=prior.channels['TXm']
     for field,m in [('s_level',.01),('s_trend',.0001),('s_season',.01),('beta0',.01)]:
         normal=getattr(p,field)
-        assert normal.mean==0 and normal.sd==pytest.approx(m/Z)
-        assert norm.cdf(m,scale=normal.sd)-norm.cdf(-m,scale=normal.sd)==pytest.approx(.5)
+        assert normal.mean==0 and normal.sd==pytest.approx(m)
+        assert norm.cdf(m,scale=normal.sd)-norm.cdf(-m,scale=normal.sd)==pytest.approx(norm.cdf(1)-norm.cdf(-1))
     draws=bx.draw_marginal_prior(prior,60000,seed=193)
     assert draws['shared']=={} and draws['independent']=={}
-    assert np.mean(draws['channels']['TXm']['sd.level']**2)==pytest.approx((.01/Z)**2,rel=.02)
+    assert np.mean(draws['channels']['TXm']['sd.level']**2)==pytest.approx((.01)**2,rel=.02)
     with pytest.raises(ValueError,match='no innovation_median'):
         bx.fs_priors('gaussian',innovation_sd=c['priors']['innovation_sd'],innovation_median={'level':1,'trend':1,'season':1})
     c['priors']['independent_shrinkage']={'log_sd':1}
@@ -84,7 +83,7 @@ def test_fixed_prior_fits_two_parallel_chains_and_reports(tmp_path,name):
     assert restored.priors.shrinkage is None
     table=pd.read_csv(tmp_path/'fixed_prior_settings.csv')
     assert not table.sampled_hyperparameter.any()
-    assert table.set_index('component').loc['initial_slope','prior_sd']==pytest.approx(.01/Z)
+    assert table.set_index('component').loc['initial_slope','prior_sd']==pytest.approx(.01)
     assert len(pd.read_csv(tmp_path/'initial_slope_prior_posterior.csv'))==2
     assert len(pd.read_csv(tmp_path/(name+'_forecast_uncertainty.csv')))==360
     assert not list(tmp_path.glob('*shrinkage*.csv'))
@@ -152,3 +151,18 @@ sys.exit(int(sys.argv[2]))
 def test_too_small_allocation_is_rejected(monkeypatch):
     monkeypatch.setenv('SLURM_CPUS_PER_TASK','2')
     with pytest.raises(RuntimeError,match='needs 12'):bundles.allocation(12)
+
+
+def test_paper_30_year_prior_effects_and_initial_slope_variance():
+    from research.monthly.fixed_priors import calibration
+    c=config('TXm');data=bx.load_uccle_multiseries(**c['data']);_,prior=independent_model(data,c)
+    table=calibration(prior.channels['TXm'],period=4,horizon=120,rate_multiplier=40).set_index('component')
+    assert prior.channels['TXm'].beta0.sd**2==pytest.approx(.0001)
+    assert table.loc['level','displacement_sd']==pytest.approx(.01*np.sqrt(120))
+    assert table.loc['slope','displacement_sd']==pytest.approx(.0001*np.sqrt(120*119*239/6))
+    assert table.loc['seasonal','displacement_sd']==pytest.approx(.01*np.sqrt(60))
+    assert table.loc['initial_slope','displacement_sd']==pytest.approx(1.2)
+    assert table.loc['initial_slope','initial_rate_sd_C_per_decade']==pytest.approx(.4)
+    for variant,target in [('half_initial_slope',.2),('reference',.4),('double_initial_slope',.8)]:
+        c=config('TXm',variant)
+        assert 40*c['priors']['initial_slope_sd']==pytest.approx(target)

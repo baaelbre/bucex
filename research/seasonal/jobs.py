@@ -18,7 +18,7 @@ from research.monthly.validate import validate
 
 PROJECT = Path(__file__).resolve().parents[2]
 CONFIG = PROJECT/'research/seasonal/config'
-ROOT = Path('results/serra_193_parallel')
+ROOT = Path('results/serra_193_paperpriors')
 BATCHES = ('posterior','reference','pre2019','experiments','validation','validation10','all')
 STUDIES = ('manuscript_sensitivity','physical_sensitivity','adequacy')
 
@@ -210,10 +210,10 @@ def verify(tier='paper',*,output=None):
             seasonal_prior_sd=p['innovation_sd']['season'],initial_slope_prior_sd=p['initial_slope_sd'],
             analysis='independent',pool_initial_slope=False,design=t.design if t.kind=='forecast' else t.kind,
             initial_rate_sd_C_per_decade=40*p['initial_slope_sd'],xi_sd=p['xi_sd'],save_fits=c['save_fits']))
-    ref=posterior['reference'];z=.6744897501960817
-    for field,median in ref['calibration']['reference_m0'].items():
+    ref=posterior['reference']
+    for field,sd in ref['calibration']['reference_sd'].items():
         actual=ref['priors']['initial_slope_sd'] if field=='initial_slope' else ref['priors']['innovation_sd'][field]
-        if not np.isclose(actual,median/z,rtol=1e-14):raise ValueError('Incorrect reference Normal calibration: '+field)
+        if not np.isclose(actual,sd,rtol=1e-14):raise ValueError('Incorrect reference Normal calibration: '+field)
     result=dict(version=bx.__version__,tier=tier,status='configuration_checks_passed',
         counts={b:len(tasks(b,tier=tier)) for b in BATCHES},
         scope='Single-response models, data windows, units, horizons and fixed Normal calibration; no MCMC execution.')

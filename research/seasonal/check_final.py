@@ -66,11 +66,11 @@ def assess(run: Path, expected_config: Path) -> dict:
         if stored.get('analysis') != 'independent' or stored.get('copula') is not None:
             issues.append('1.9.3 final analysis must be a separate single-response fit')
         p=stored.get('priors', {})
-        target_sd={'level':.01/.6744897501960817,'trend':.0001/.6744897501960817,'season':.01/.6744897501960817}
+        target_sd={'level':.01,'trend':.0001,'season':.01}
         if any(abs(p.get('innovation_sd',{}).get(k,0)-v)>1e-14 for k,v in target_sd.items()):
-            issues.append('reference innovation priors must use the declared fixed median-absolute calibration')
-        if abs(p.get('initial_slope_sd',0)-.01/.6744897501960817)>1e-14 or p.get('shared_shrinkage') is not None or p.get('independent_shrinkage') is not None:
-            issues.append('initial rates must have fixed Normal SD 0.01 / Phi^-1(0.75), with no shrinkage hyperprior')
+            issues.append('reference innovation priors must use the manuscript Normal SDs (0.01, 0.0001, 0.01)')
+        if abs(p.get('initial_slope_sd',0)-.01)>1e-14 or p.get('shared_shrinkage') is not None or p.get('independent_shrinkage') is not None:
+            issues.append('initial rates must have fixed Normal SD 0.01 (variance 0.0001), with no shrinkage hyperprior')
         mcmc = stored.get("mcmc", {})
         if (mcmc.get("chains"), mcmc.get("warmup"), mcmc.get("draws")) != (2, 3000, 8000):
             issues.append("final MCMC budget must be 2 chains, 3000 warm-up and 8000 retained draws")

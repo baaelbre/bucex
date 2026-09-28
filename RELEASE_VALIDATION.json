@@ -1,8 +1,6 @@
 {
   "version": "1.9.3",
   "tested_at": "2026-09-28T17:24:51.235764+00:00",
-  "unique_tests": 320,
-  "latest_result_passed": 320,
   "test_run": "validation/release_193/tests.xml",
   "runtime": {
     "python": "3.12.14",
@@ -11,8 +9,8 @@
     "pandas": "2.2.3"
   },
   "reference_fingerprint": {
-    "config_sha256": "56ddd864ec4ce7f3cd3ff7c3be264ba669a5278ad37083da97eb21c5446c5854",
-    "source_sha256": "4368f062d57cbfbfd6956c3b1f6728a78a67eb00b68826c35667e2968d19942d",
+    "config_sha256": "279c4d088d35154cd69b721ab7503ead4a71841159848fb8c3a75ad1f40680b9",
+    "source_sha256": "aabc34c1eb27489aceeea646066991271a346ffa8ca43fa235e4b0d5f459021d",
     "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
   },
   "counts": {
@@ -36,9 +34,9 @@
   "chains_per_response": 2,
   "cpus_per_experiment": 12,
   "checks": [
-    "All 320 regression and new-release tests passed in one run",
+    "Original broad regression: 320 passed; manuscript prior correction: 22 targeted tests passed",
     "Six actual short response fits with two parallel chains each and fixed Normal priors",
-    "Median-absolute calibration and SD multiplier checks",
+    "Direct Normal SD calibration and SD multiplier checks",
     "Saved fits, thirty-year forecasts, prior/posterior reports and held-out validation paths",
     "All 508 paper task specifications compile and declared folds are complete",
     "Scheduler stub checks probe dependencies, resource classes and exported environment",
@@ -50,5 +48,21 @@
   "production_fits_run": false,
   "hpc_submission_tested": false,
   "full_twelve_worker_mcmc_tested_locally": false,
-  "note": "Local CPU allocation is smaller than twelve; the full probe correctly refuses it. Six short two-chain scientific fits were tested separately and bundle scheduling with lightweight real processes. The mandatory compute-node probe tests all twelve chain workers on the HPC before releasing production arrays."
+  "note": "Reference corrected to the manuscript direct Normal SDs (0.01, 0.0001, 0.01, 0.01), beta0 variance 0.0001. All 508 paper configurations compile. Short two-chain fits cover all six responses; no corrected production jobs were run here. Use a new results root.",
+  "revision": "paper_sd_20260928",
+  "test_runs": [
+    {
+      "scope": "Original 1.9.3 full regression, prior to manuscript SD correction",
+      "tests": 320,
+      "passed": 320,
+      "file": "validation/release_193/tests.xml"
+    },
+    {
+      "scope": "Affected prior, model, HPC bundle, report and gate tests after manuscript SD correction",
+      "tests": 22,
+      "passed": 22,
+      "file": "validation/release_193/paper_priors_correction/tests.xml"
+    }
+  ],
+  "corrected_at": "2026-09-28T17:48:40.443216+00:00"
 }

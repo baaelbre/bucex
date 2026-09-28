@@ -31,10 +31,9 @@ def test_batches_are_disjoint_and_paper_has_one_reference_per_response():
 
 def test_fixed_calibration_and_global_sd_controls():
     configs={t.variant:jobs.task_config(t,'screen') for t in jobs.tasks()}
-    z=.6744897501960817
     ref=configs['reference']['priors']
-    assert ref['innovation_sd']==pytest.approx(dict(level=.01/z,trend=.0001/z,season=.01/z))
-    assert ref['initial_slope_sd']==pytest.approx(.01/z)
+    assert ref['innovation_sd']==pytest.approx(dict(level=.01,trend=.0001,season=.01))
+    assert ref['initial_slope_sd']==pytest.approx(.01)
     assert ref.get('shared_shrinkage') is None and ref.get('independent_shrinkage') is None
     for name,factor in [('half_all_shrinkage',.5),('double_all_shrinkage',2.)]:
         p=configs[name]['priors']

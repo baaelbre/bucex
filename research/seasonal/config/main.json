@@ -33,7 +33,7 @@
     "innovation": "normal",
     "initial_level_mean": 0.0,
     "baseline_sd": 20.0,
-    "initial_slope_sd": 0.01482602218505602,
+    "initial_slope_sd": 0.01,
     "seasonal_initial_sd": 20.0,
     "observation_variance": [
       2.0,
@@ -46,9 +46,9 @@
       null
     ],
     "innovation_sd": {
-      "level": 0.01482602218505602,
-      "trend": 0.00014826022185056021,
-      "season": 0.01482602218505602
+      "level": 0.01,
+      "trend": 0.0001,
+      "season": 0.01
     }
   },
   "mcmc": {
@@ -159,14 +159,15 @@
   "report_joint_risks": false,
   "cross_summary_contrasts": false,
   "calibration": {
-    "convention": "median_absolute_normal_coefficient",
-    "normal_absolute_median": 0.6744897501960817,
-    "reference_m0": {
+    "convention": "fixed_normal_standard_deviations",
+    "reference_sd": {
       "level": 0.01,
       "trend": 0.0001,
       "season": 0.01,
       "initial_slope": 0.01
     },
-    "note": "Reference Normal SD = m0 / Phi^-1(.75), including initial slope. Sensitivity acts directly on the fixed SDs."
+    "initial_slope_variance": 0.0001,
+    "revision": "paper_sd_20260928",
+    "note": "tau_alpha, tau_beta and tau_gamma are Normal prior SDs directly; P_beta0=0.0001 is a variance, so initial_slope_sd=0.01. No median-to-SD conversion. Sensitivity multiplies prior SDs."
   }
 }

@@ -15,7 +15,7 @@ if ! "$python_exe" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) els
     printf 'Cannot run a supported Python at %s on host %s; check the virtual environment and its module.\n' "$python_exe" "${HOSTNAME:-unknown}" >&2
     exit 2
 fi
-root="${BUCEX_RESULTS_ROOT:-results/serra_193_parallel}"
+root="${BUCEX_RESULTS_ROOT:-results/serra_193_paperpriors}"
 mkdir -p "$root" job_scripts/logs
 root="$(cd -P "$root" && pwd)"
 export BUCEX_PYTHON="$python_exe" BUCEX_RESULTS_ROOT="$root" BUCEX_PROJECT_ROOT="$PWD"

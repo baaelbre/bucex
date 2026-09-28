@@ -1,3 +1,11 @@
+# Manuscript SD correction: paper_sd_20260928
+
+The reference now uses Normal prior SDs directly: (0.01, 0.0001, 0.01) for innovations and 0.01 for the initial slope (variance 0.0001). **22 affected tests passed**, including six short two-chain fits, forecasts/reports, fixed-prior gates, sensitivity multipliers, HPC bundle contracts and submission protocol. A dedicated calibration test verifies all four 30-year effects and the 0.20/0.40/0.80 degrees C/decade initial-rate sensitivity. All 508 corrected paper configurations compile and their folds are complete. Detailed results are in `release_193/paper_priors_correction/`.
+
+The 320-test result below describes the original release before this numerical reference correction. It establishes the broader software regression baseline, not results from the corrected production model. No corrected production or HPC run was performed in this workspace. See `../PAPER_PRIORS_CORRECTION.md` for applying the patch and preserving earlier results.
+
+---
+
 # BUCEX 1.9.3 verification
 
 All **320 tests passed in one regression run**. The JUnit report and log are in `release_193/`; `../RELEASE_VALIDATION.json` records runtime versions, scientific configuration/source/data fingerprints, counts and verification scope.
