@@ -1,0 +1,314 @@
+[
+  {
+    "path": "BUCEX-1.9.1-commands.md",
+    "status": "modified"
+  },
+  {
+    "path": "BUCEX-1.9.2-commands.md",
+    "status": "added"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "status": "modified"
+  },
+  {
+    "path": "FINAL_RUN.md",
+    "status": "modified"
+  },
+  {
+    "path": "README.md",
+    "status": "modified"
+  },
+  {
+    "path": "RELEASE_NOTES.md",
+    "status": "modified"
+  },
+  {
+    "path": "RELEASE_VALIDATION.json",
+    "status": "added"
+  },
+  {
+    "path": "RUN_PAPER_ALL.sh",
+    "status": "added"
+  },
+  {
+    "path": "RUN_PAPER_EXPERIMENTS.sh",
+    "status": "modified"
+  },
+  {
+    "path": "RUN_PAPER_VALIDATION.sh",
+    "status": "modified"
+  },
+  {
+    "path": "RUN_SCREEN_ALL.sh",
+    "status": "added"
+  },
+  {
+    "path": "RUN_SCREEN_EXPERIMENTS.sh",
+    "status": "modified"
+  },
+  {
+    "path": "RUN_SCREEN_VALIDATION.sh",
+    "status": "modified"
+  },
+  {
+    "path": "START_HERE.md",
+    "status": "modified"
+  },
+  {
+    "path": "bash_scripts/run_local.sh",
+    "status": "modified"
+  },
+  {
+    "path": "bash_scripts/runtime.sh",
+    "status": "modified"
+  },
+  {
+    "path": "bash_scripts/submit_vsc.sh",
+    "status": "modified"
+  },
+  {
+    "path": "bash_scripts/submit_vsc_slurm.sh",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/__about__.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/diagnostics/shrinkage.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/inference/fit/marginal.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/inference/fit/shrinkage.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/priors/__init__.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/priors/marginal.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/priors/shrinkage.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/reporting/sensitivity.py",
+    "status": "modified"
+  },
+  {
+    "path": "bucex/reporting/shrinkage.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/experiment.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/models.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/preflight.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/prior_assessment.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/report.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/run.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/sensitivity.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/monthly/validate.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/README.md",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/check_final.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/collect_jobs.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/adequacy.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/compare.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/constant_copula.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/dependence_sensitivity.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/experiments.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/final.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/grid.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/independence.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/independent.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/main.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/manuscript_sensitivity.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/physical_sensitivity.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/pre2019.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/pre2019_sensitivity.json",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/config/reference_191.json",
+    "status": "added"
+  },
+  {
+    "path": "research/seasonal/diagnose_mixing.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/export_results.py",
+    "status": "added"
+  },
+  {
+    "path": "research/seasonal/jobs.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/local.py",
+    "status": "added"
+  },
+  {
+    "path": "research/seasonal/preflight.py",
+    "status": "modified"
+  },
+  {
+    "path": "research/seasonal/prior_effects.py",
+    "status": "modified"
+  },
+  {
+    "path": "tests/fixtures/seasonal_smoke_191.json",
+    "status": "added"
+  },
+  {
+    "path": "tests/test_biobot_runner.py",
+    "status": "added"
+  },
+  {
+    "path": "tests/test_laplace_mh.py",
+    "status": "modified"
+  },
+  {
+    "path": "tests/test_release_190_reporting.py",
+    "status": "modified"
+  },
+  {
+    "path": "tests/test_release_191.py",
+    "status": "modified"
+  },
+  {
+    "path": "tests/test_release_192.py",
+    "status": "added"
+  },
+  {
+    "path": "tests/test_seasonal_jobs.py",
+    "status": "modified"
+  },
+  {
+    "path": "tests/test_seasonal_workflow.py",
+    "status": "modified"
+  },
+  {
+    "path": "validation/RELEASE_VALIDATION_192.md",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/bx192_integration.xml",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/bx192_new_tests.xml",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/bx192_regression.xml",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/bx192_runner.xml",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/paper/dry_run.log",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/paper/preflight.json",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/paper/resolved_settings.csv",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/screen/dry_run.log",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/screen/preflight.json",
+    "status": "added"
+  },
+  {
+    "path": "validation/release_192/screen/resolved_settings.csv",
+    "status": "added"
+  }
+]

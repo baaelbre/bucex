@@ -1,6 +1,6 @@
 {
   "extends": "../../monthly/config/main.json",
-  "_comment": "1.9.1: conditional residual independence; shared innovation scales only; separate fixed Normal initial rates with SD 0.5 C/decade. Seasonal initial coefficient SD 20 C.",
+  "_comment": "1.9.2: six separate analyses. Each response has its own innovation-scale hyperparameters; initial slopes have separate fixed Normal priors. No copula or cross-response pooling.",
   "data": {
     "frequency": "seasonal",
     "daily_source": "data/Uccle_31_08_26.csv",
@@ -32,15 +32,15 @@
       null,
       null
     ],
-    "shared_shrinkage": {
+    "independent_shrinkage": {
       "components": [
         "level",
         "slope",
         "seasonal"
       ],
-      "log_sd": 1.0986122886681098,
-      "pool_initial_slope": false
-    }
+      "log_sd": 1.0986122886681098
+    },
+    "shared_shrinkage": null
   },
   "prior_calibration": {
     "horizon": 120,
@@ -68,7 +68,7 @@
   },
   "forecast_months": null,
   "copula": null,
-  "output": "results/serra_191_seasonal",
+  "output": "results/serra_192_seasonal",
   "validation": {
     "training_ends": [
       "2015-11",
@@ -106,7 +106,7 @@
     "max_rhat": 1.01,
     "min_ess": 400
   },
-  "analysis": "joint",
+  "analysis": "independent",
   "report_joint_risks": false,
   "cross_summary_contrasts": false
 }

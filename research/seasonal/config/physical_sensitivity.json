@@ -1,6 +1,6 @@
 {
   "extends": "main.json",
-  "_comment": "Half/double each innovation anchor or the fixed initial-rate SD separately. Initial-rate SDs are 0.25, 0.5 and 1.0 C/decade; no shared initial-rate hyperparameter.",
+  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
   "variants": [
     {
       "name": "reference"
@@ -48,6 +48,26 @@
     {
       "name": "double_initial_slope",
       "initial_slope_multiplier": 2.0
+    },
+    {
+      "name": "quarter_seasonal",
+      "multipliers": {
+        "season": 0.25
+      }
+    },
+    {
+      "name": "double_slope_half_seasonal",
+      "multipliers": {
+        "trend": 2.0,
+        "season": 0.5
+      }
+    },
+    {
+      "name": "double_slope_quarter_seasonal",
+      "multipliers": {
+        "trend": 2.0,
+        "season": 0.25
+      }
     }
   ],
   "assessment": {
@@ -68,5 +88,5 @@
     "draws": 4000,
     "save_fits": true
   },
-  "output": "results/serra_191_physical_sensitivity"
+  "output": "results/serra_192_physical_sensitivity"
 }

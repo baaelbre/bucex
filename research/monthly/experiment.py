@@ -12,13 +12,14 @@ from research.monthly.report import save_band
 def configured_variant(config, variant):
     config = deepcopy(config)
     p, m = config['priors'], config['model']
-    old_hierarchy = p.get('shared_shrinkage')
+    hierarchy_key = 'independent_shrinkage' if p.get('independent_shrinkage') is not None else 'shared_shrinkage'
+    old_hierarchy = p.get(hierarchy_key)
     for key in ('innovation', 'xi_prior', 'xi_sd', 'xi_bounds', 'tg_spike_shape', 'tg_tail_shape',
-                'observation_variance', 'shared_shrinkage'):
+                'observation_variance', 'shared_shrinkage', 'independent_shrinkage'):
         if key in variant:
             p[key] = variant[key]
     if variant.get('match_marginal_moments',False):
-        new_hierarchy=p.get('shared_shrinkage')
+        new_hierarchy=p.get(hierarchy_key)
         if old_hierarchy is None or new_hierarchy is None:
             raise ValueError('Moment-matched width sensitivity requires both shared hierarchies.')
         old_d=old_hierarchy.get('log_sd',np.log(2.));new_d=new_hierarchy.get('log_sd',np.log(2.))
@@ -26,7 +27,7 @@ def configured_variant(config, variant):
         aliases={'level':'level','slope':'trend','seasonal':'season'}
         for component in new_hierarchy.get('components',['level','slope','seasonal']):
             p['innovation_median'][aliases[component]]*=factor
-        if new_hierarchy.get('pool_initial_slope',True):
+        if hierarchy_key == 'shared_shrinkage' and new_hierarchy.get('pool_initial_slope',True):
             p['initial_slope_sd']*=factor
             if p.get('initial_slope_median') is not None:
                 p['initial_slope_median']*=factor
@@ -54,6 +55,8 @@ def prior_for(item, data, config, variant):
 
 def fit_case(data, name, config, variant, *, engine='laplace_mh'):
     local = configured_variant(config,variant)
+    if local['priors'].get('independent_shrinkage') is not None:
+        raise ValueError('Use independent_model and write_report for a private hierarchy; fit_case is the legacy scalar-prior helper.')
     item = channel(name,data,local)
     model, prior = bx.Model(item.observation,item.components), marginal_prior(item,data,local)
     fit = bx.fit(data[name], model, tail=item.tail, priors=prior,

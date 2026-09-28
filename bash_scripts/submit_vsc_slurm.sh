@@ -20,7 +20,7 @@ for resource in standard long; do
     count=$("$python_exe" -m research.seasonal.jobs --tier "$tier" --batch "$batch" --resource "$resource" --count)
     if (( count == 0 )); then continue; fi
     read -r cpus memory hours < <("$python_exe" -m research.seasonal.jobs --tier "$tier" --resource "$resource" --resource-info)
-    cmd=(sbatch --parsable --chdir="$PWD" "${account[@]}" "${partition[@]}" --job-name="bx191_${tier}_${resource}"
+    cmd=(sbatch --parsable --chdir="$PWD" "${account[@]}" "${partition[@]}" --job-name="bx192_${tier}_${resource}"
          --array="1-${count}%${cap}" --nodes=1 --ntasks=1 --cpus-per-task="$cpus" --mem="${memory}G" --time="${hours}:00:00"
          --output="$PWD/job_scripts/logs/${tier}_${batch}_${resource}_%A_%a.log"
          --export="ALL,BUCEX_PROJECT_ROOT=$PWD,BUCEX_PYTHON=$python_exe,BUCEX_TIER=$tier,BUCEX_BATCH=$batch,BUCEX_RESOURCE=$resource,BUCEX_RESULTS_ROOT=$root"

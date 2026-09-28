@@ -11,7 +11,7 @@ import bucex as bx
 def test_report_physical_effects_intervals_and_saved_fit(tmp_path, median_absolute):
     from research.monthly.models import joint_model, fit_options
     from research.monthly.report import write_report
-    source = Path(__file__).resolve().parents[1]/'research/seasonal/config/smoke.json'
+    source = Path(__file__).resolve().parents[1]/'tests/fixtures/seasonal_smoke_191.json'
     config = bx.load_config(source)
     config['data'].update(series=['TXm', 'TNm'], start='2016-03')
     config['mcmc'].update(chains=2, chain_workers=1, warmup=2, draws=8, progress=False)

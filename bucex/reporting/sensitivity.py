@@ -67,12 +67,13 @@ class SensitivityReport:
                 directory = Path(directory)
                 config = json.loads((directory/'config.json').read_text(encoding='utf-8'))
                 joint = config.get('analysis') in {'joint', 'copula'}
+                named = joint or config.get('priors', {}).get('independent_shrinkage') is not None
                 intervals.add(config['credible_interval'])
                 event = config.get('risks', {}).get(channel)
                 if channel in events and events[channel] != event:
                     raise ValueError("Risk comparisons require identical thresholds for each response.")
                 events[channel] = event
-                for label, filename in (("prior_posterior", f"{channel}_prior_posterior.csv" if joint else "prior_posterior.csv"),
+                for label, filename in (("prior_posterior", f"{channel}_prior_posterior.csv" if named else "prior_posterior.csv"),
                                         ("scientific_targets", "period_and_endpoint_targets.csv"),
                                         ("mcmc", "mcmc.csv")):
                     data = self._read(directory/filename)
@@ -87,8 +88,8 @@ class SensitivityReport:
                                     scalar_names.str.endswith('.'+channel)]
                     add(label, data, variant, channel)
                 for quantity in ('level', 'slope', 'risk', 'seasonal', 'observation_scale'):
-                    stem = 'slope_C_per_decade' if joint and quantity == 'slope' else quantity
-                    path = directory/((channel+'_' if joint else '')+stem+'.csv')
+                    stem = 'slope_C_per_decade' if named and quantity == 'slope' else quantity
+                    path = directory/((channel+'_' if named else '')+stem+'.csv')
                     if not path.exists():
                         continue
                     data = self._read(path)
@@ -104,6 +105,10 @@ class SensitivityReport:
                     path = directory/filename
                     if path.exists():
                         add(label, self._read(path), variant, channel)
+                if named and not joint:
+                    for label in ('independent_shrinkage','independent_shrinkage_effects','initial_slope_prior_posterior'):
+                        path=directory/(label+'.csv')
+                        if path.exists():add(label,self._read(path),variant,channel)
                 assessment = json.loads((directory/'convergence.json').read_text(encoding='utf-8'))
                 checks.append(dict(stage='posterior', variant=variant, channel=channel,
                     origin='full_record', numerical_status=assessment['status'],
@@ -158,6 +163,8 @@ class SensitivityReport:
         result['convergence'] = pd.DataFrame(checks)
         if 'prior_posterior' in result:
             result['prior_updates'] = innovation_prior_diagnostics(result['prior_posterior'])
+        if 'independent_shrinkage' in result:
+            result['independent_shrinkage_updates'] = innovation_prior_diagnostics(result['independent_shrinkage'])
         if 'shared_shrinkage' in result:
             result['shared_shrinkage_updates'] = innovation_prior_diagnostics(result['shared_shrinkage'])
         for label, metric, value in (('joint_log_scores', 'joint_log', 'score'),

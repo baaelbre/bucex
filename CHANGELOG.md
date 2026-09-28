@@ -1,5 +1,18 @@
+# 1.9.2 — separate-response seasonal workflow
+
+- Add single-response `IndependentShrinkage`, preserving the normal–lognormal marginal innovation prior while removing cross-response borrowing.
+- Split every sensitivity and validation fit into one task per applicable response; keep initial rates separately Normal regularized.
+- Add quarter-seasonal and double-slope × half/quarter-seasonal controls; omit redundant mean/shape fits.
+- Make the root launchers local to biobot; add bounded job concurrency, per-task logs, provenance-checked resume, preserved failed attempts and compact export.
+- Extend saved-fit, report and validation paths to private hyperparameters, 30-year forecasts and per-response score comparisons.
+- Freeze the previous joint reference for historical tests and tools. No new empirical conclusions are claimed by this software release.
+
 # BUCEX 1.9.1 (2026-09-28)
 
+- HPC startup correction: resolve the Python executable's parent directory to
+  its physical path before export, preserving the virtual-environment symlink.
+  Report the requested interpreter and host on failure; check Python >= 3.10
+  before loading the package. No scientific settings or Python model code change.
 - Seasonal workflow: identity residual dependence in every active task; separate
   fixed initial-rate priors, baseline SD 0.5 C/decade and sensitivity .25 / 1.0.
 - Retain three shared innovation-scale hyperparameters. Add fixed-anchor width

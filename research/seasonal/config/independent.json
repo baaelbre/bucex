@@ -16,7 +16,9 @@
       null,
       null
     ],
-    "shared_shrinkage": null
+    "shared_shrinkage": null,
+    "independent_shrinkage": null
   },
-  "output": "results/serra_191_seasonal_univariate"
+  "output": "results/serra_192_seasonal_univariate",
+  "_comment": "Historical fixed-Normal marginal-prior comparison, not the 1.9.2 normal-lognormal reference. Main job grid uses main.json."
 }

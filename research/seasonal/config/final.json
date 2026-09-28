@@ -1,11 +1,11 @@
 {
   "extends": "main.json",
-  "_comment": "1.9.1 long identity reference: four chains; three shared innovation scales; separate initial rates; 120-season forecasts.",
+  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
   "mcmc": {
     "warmup": 3000,
     "draws": 8000
   },
   "forecast_draws": 12000,
   "predictive_check_draws": 2000,
-  "output": "results/serra_191_seasonal_final"
+  "output": "results/serra_192_seasonal_final"
 }

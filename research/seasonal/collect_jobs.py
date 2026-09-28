@@ -1,7 +1,6 @@
-"""Collect a named 1.9.1 batch without requiring deferred validation jobs."""
+"""Collect separate-response reports; pair predictive scores on identical cases."""
 from __future__ import annotations
 import argparse
-import json
 from pathlib import Path
 import shutil
 import pandas as pd
@@ -10,22 +9,20 @@ from research.seasonal.jobs import ROOT, BATCHES, tasks, task_config, fingerprin
 
 
 def merge_folds(paths, destination):
-    """Combine disjoint single-origin reports without discarding paired cases."""
     destination=Path(destination);destination.mkdir(parents=True,exist_ok=True)
-    folds=pd.concat([pd.read_csv(Path(p)/'joint/folds.csv') for p in paths],ignore_index=True)
+    folds=pd.concat([pd.read_csv(Path(p)/'folds.csv') for p in paths],ignore_index=True)
     if folds.origin.duplicated().any():raise ValueError(f'{destination}: duplicate validation origin')
-    for name in ('scores','held_out_pit','coverage_by_case','predictions','event_counts',
-                 'threshold_cases','joint_log_scores','compound_heat_scores'):
-        inputs=[Path(p)/'joint'/f'{name}.csv' for p in paths]
+    for name in ('scores','held_out_pit','coverage_by_case','predictions','event_counts','threshold_cases'):
+        inputs=[Path(p)/f'{name}.csv' for p in paths]
         if all(p.exists() for p in inputs):
             pd.concat([pd.read_csv(p) for p in inputs],ignore_index=True).to_csv(destination/f'{name}.csv',index=False)
     folds.to_csv(destination/'folds.csv',index=False)
     for path in paths:
-        for pattern in ('convergence_*.json','shared_shrinkage_*.csv'):
-            for file in (Path(path)/'joint').glob(pattern):shutil.copy2(file,destination/file.name)
+        for pattern in ('convergence_*.json','independent_shrinkage_*.csv'):
+            for file in Path(path).glob(pattern):shutil.copy2(file,destination/file.name)
 
 
-def collect(root=ROOT,tier='screen',*,batch='posterior',figures=False,require_complete=False):
+def collect(root=ROOT,tier='screen',*,batch='experiments',figures=False,require_complete=False):
     root=Path(root);expected=tasks(batch,tier=tier);records={};rows=[];mismatch=[]
     for task in expected:
         manifest=root/tier/task.id/'task.json'
@@ -34,65 +31,62 @@ def collect(root=ROOT,tier='screen',*,batch='posterior',figures=False,require_co
             identity=dict(bucex_version=bx.__version__,**fingerprint(task_config(task,tier)))
             if any(record.get(k)!=v for k,v in identity.items()):
                 mismatch.append(task.id);record=dict(record,status='provenance_mismatch')
-        local_report=manifest.parent/'report'
-        if local_report.is_dir() and record.get('status')=='completed':
+        local_report=manifest.parent/'report'/task.channel
+        if record['status']=='completed':
             record=dict(record,result=str(local_report.resolve()))
+            if not local_report.is_dir():record['status']='missing_report'
         records[task.id]=record
-        rows.append(dict(task_id=task.id,kind=task.kind,variant=task.variant,origin=task.origin,
+        rows.append(dict(task_id=task.id,kind=task.kind,variant=task.variant,channel=task.channel,origin=task.origin,
             status=record['status'],numerical_status=record.get('numerical_status'),result=record.get('result')))
     incomplete=[t.id for t in expected if records[t.id]['status']!='completed']
     flagged=[t.id for t in expected if records[t.id]['status']=='completed' and
-             (records[t.id].get('numerical_status')!='passed_numerical_checks' or
-              records[t.id].get('final_check')=='failed')]
+             (records[t.id].get('numerical_status')!='passed_numerical_checks' or records[t.id].get('final_check')=='failed')]
     out=root/tier/'collected'/batch;out.mkdir(parents=True,exist_ok=True)
     report=dict(version=bx.__version__,tier=tier,batch=batch,expected=len(expected),
-        completed=len(expected)-len(incomplete),missing_or_failed=incomplete,
-        numerical_flags=flagged,provenance_mismatch=mismatch,
+        completed=len(expected)-len(incomplete),missing_or_failed=incomplete,numerical_flags=flagged,provenance_mismatch=mismatch,
         status='passed' if not incomplete and not flagged and tier=='paper' else 'incomplete_or_screening')
     bx.save_config(report,out/'status.json');pd.DataFrame(rows).to_csv(out/'tasks.csv',index=False)
     if require_complete and (incomplete or flagged or tier!='paper'):
         raise RuntimeError(f'{len(incomplete)} incomplete, {len(flagged)} numerically flagged; see {out}/status.json')
     for kind in ('posterior','pre2019'):
         completed=[t for t in expected if t.kind==kind and records[t.id]['status']=='completed']
-        if not any(t.variant=='reference' for t in completed):continue
-        posterior={t.variant:{ch:Path(records[t.id]['result']) for ch in bx.UCCLE_SERIES} for t in completed}
-        split_figures = figures and kind=='posterior' and len(posterior)>10
-        bx.SensitivityReport(posterior_runs=posterior,baseline='reference',block_frequency='seasonal').save(
-            out/kind,figures=figures and not split_figures)
-        if split_figures:
-            for study in dict.fromkeys(t.study for t in completed):
-                variants = ['reference']+[t.variant for t in completed if t.study==study and t.variant!='reference']
-                if len(variants)<2:continue
-                selected = {name:posterior[name] for name in variants}
-                bx.SensitivityReport(posterior_runs=selected,baseline='reference',block_frequency='seasonal').save(
-                    out/kind/'by_study'/study,figures=True)
-    forecasts=[t for t in expected if t.kind=='forecast']
-    matched=[]
-    for design,variant in sorted({(t.design,t.variant) for t in forecasts}):
-        group=[t for t in forecasts if t.variant==variant and t.design==design]
-        validation_out=out if design=='calendar_5y' else out/design
+        for ch in dict.fromkeys(t.channel for t in completed):
+            group=[t for t in completed if t.channel==ch]
+            if not any(t.variant=='reference' for t in group):continue
+            posterior={t.variant:{ch:Path(records[t.id]['result'])} for t in group}
+            bx.SensitivityReport(posterior_runs=posterior,baseline='reference',block_frequency='seasonal').save(
+                out/kind/ch,figures=figures and len(posterior)<=10)
+            if figures and len(posterior)>10:
+                for study in dict.fromkeys(t.study for t in group):
+                    variants=['reference']+[t.variant for t in group if t.study==study and t.variant!='reference']
+                    if len(variants)<2:continue
+                    bx.SensitivityReport(posterior_runs={v:posterior[v] for v in variants},baseline='reference',block_frequency='seasonal').save(
+                        out/kind/ch/'by_study'/study,figures=True)
+    forecasts=[t for t in expected if t.kind=='forecast'];matched=[]
+    for design,variant,ch in sorted({(t.design,t.variant,t.channel) for t in forecasts}):
+        group=[t for t in forecasts if t.variant==variant and t.design==design and t.channel==ch]
         if not all(records[t.id]['status']=='completed' for t in group):continue
-        merge_folds([Path(records[t.id]['result']) for t in group],validation_out/'validation'/variant)
+        base=out/design/ch
+        merge_folds([Path(records[t.id]['result']) for t in group],base/'validation'/variant)
         if variant=='reference':continue
         origins={t.origin for t in group}
-        refs=[t for t in forecasts if t.variant=='reference' and t.origin in origins and t.design==design]
+        refs=[t for t in forecasts if t.variant=='reference' and t.origin in origins and t.design==design and t.channel==ch]
         if len(refs)!=len(origins) or not all(records[t.id]['status']=='completed' for t in refs):continue
-        target=validation_out/'paired_validation'/variant
+        target=base/'paired_validation'/variant
         merge_folds([Path(records[t.id]['result']) for t in refs],target/'reference')
         merge_folds([Path(records[t.id]['result']) for t in group],target/variant)
-        predictive={name:{ch:target/name for ch in bx.UCCLE_SERIES} for name in ('reference',variant)}
-        bx.SensitivityReport(predictive_runs=predictive,baseline='reference',block_frequency='seasonal').save(
+        bx.SensitivityReport(predictive_runs={v:{ch:target/v} for v in ('reference',variant)},baseline='reference',block_frequency='seasonal').save(
             target/'comparison',figures=figures)
-        matched.append(dict(variant=variant,design=design,origins=sorted(origins),numerically_passed=all(
+        matched.append(dict(variant=variant,channel=ch,design=design,origins=sorted(origins),numerically_passed=all(
             records[t.id].get('numerical_status')=='passed_numerical_checks' for t in refs+group)))
-    bx.save_config(dict(comparisons=matched,note='Scores are paired only over identical forecast origins and cases.'),out/'paired_validation.json')
+    bx.save_config(dict(comparisons=matched,note='Each comparison uses one response and all its declared matching origins. Incomplete origin groups are not ranked.'),out/'paired_validation.json')
     return out
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root',type=Path,default=ROOT);p.add_argument('--tier',choices=('screen','paper'),default='screen')
-    p.add_argument('--batch',choices=BATCHES,default='posterior');p.add_argument('--figures',action='store_true')
+    p.add_argument('--batch',choices=BATCHES,default='experiments');p.add_argument('--figures',action='store_true')
     p.add_argument('--require-complete',action='store_true');a=p.parse_args()
     print(collect(a.root,a.tier,batch=a.batch,figures=a.figures,require_complete=a.require_complete))
 

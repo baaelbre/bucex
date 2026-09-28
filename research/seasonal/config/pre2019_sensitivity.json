@@ -1,6 +1,6 @@
 {
   "extends": "pre2019.json",
-  "_comment": "Targeted prospective-risk sensitivity for the JJA 2019 TXx record. Run the posterior sensitivity stage; each report exports the one-step 39.7 C forecast probability.",
+  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
   "variants": [
     {
       "name": "reference"
@@ -28,5 +28,5 @@
     "chain_workers": 4,
     "progress_every": 100
   },
-  "output": "results/serra_191_pre2019_sensitivity"
+  "output": "results/serra_192_pre2019_sensitivity"
 }

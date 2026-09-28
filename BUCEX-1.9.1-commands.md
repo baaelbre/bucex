@@ -1,3 +1,5 @@
+> Historical 1.9.1 guide. For the current separate analyses on biobot, use [BUCEX-1.9.2-commands.md](BUCEX-1.9.2-commands.md).
+
 # BUCEX 1.9.1 — HPC sensitivities and biobot validation
 
 Use the unpacked `bucex-1.9.1` directory on each machine. Keep each release in
@@ -5,37 +7,89 @@ its own directory so running jobs retain their source. The commands below use
 your existing working Python/module environment. No jobs have been submitted
 as part of preparing this release.
 
-## Install once on each machine
+## Install once on biobot
 
 ```bash
+cd -P .
 export BUCEX_PYTHON="$(command -v python3)"
+"$BUCEX_PYTHON" -c 'import sys; print(sys.executable, sys.version); assert sys.version_info >= (3, 10), "BUCEX requires Python >= 3.10"'
 "$BUCEX_PYTHON" -m pip install -e '.[plot]'
 "$BUCEX_PYTHON" -c 'import bucex; print(bucex.__version__)'
 export BUCEX_RESULTS_ROOT="$PWD/results/serra_191_parallel"
 ```
 
-The version must print `1.9.1`. Set `BUCEX_PYTHON` to the absolute path of your
+Python must be at least 3.10 and the package version must print `1.9.1`.
+Set `BUCEX_PYTHON` to the absolute path of your
 working interpreter if it is not `python3`. The explicit results root prevents
 an inherited 1.9.0 environment variable from selecting the old results tree.
 Load your usual HPC modules before these commands; no module names or account
 allocations are guessed by the release.
 
-## Screen — sensitivities on HPC
+## Gallade: prepare the environment on a compute node
+
+Use Gallade for HPC sensitivities. The observed probe 27605429 ended with
+`0:4` (SIGILL) while targeting Gallade. That indicates an illegal instruction;
+the offending binary was not isolated. A mismatch between the environment and
+the target CPU is a likely explanation. Create and check the environment on
+Gallade, and run the launcher's Python preflight there too.
+
+On the login node, leave any active Python virtual environment and obtain a
+short interactive Gallade allocation:
 
 ```bash
+if declare -F deactivate >/dev/null; then deactivate; fi
+module purge &&
+module swap cluster/gallade &&
+qsub -I -l nodes=1:ppn=2,mem=4gb,walltime=00:30:00
+```
+
+Wait for the compute-node prompt. Inside that Gallade allocation, run:
+
+```bash
+hostname -f
+cd -P /kyukon/data/gent/vo/000/gvo00048/vsc42619/GitHub/bucex
+module purge &&
+module swap cluster/gallade &&
+module load Python/3.11.5-GCCcore-13.2.0 &&
+python -m venv bucex_env_gallade_py311 &&
+source bucex_env_gallade_py311/bin/activate &&
+python -m pip install --no-cache-dir -e '.[plot]'
+```
+
+Continue only after installation succeeds. For later submissions, re-enter a
+short Gallade allocation, change to this physical project path, load the same
+Python module and activate `bucex_env_gallade_py311/bin/activate`; creating the
+environment and reinstalling are one-time steps. Do not copy an environment
+from Skiddo or execute Gallade's optimized Python on the login node.
+
+This follows UGent's cluster-specific environment guidance:
+https://docs.hpc.ugent.be/Linux/setting_up_python_virtual_environments/
+
+Run the screen or paper commands below inside the allocation. Once `sbatch`
+returns the array job ID(s), use `exit` to release the interactive allocation;
+the submitted batch jobs run independently with their own requested resources.
+The environment and release files must stay available at the submitted paths.
+
+## Screen — sensitivities on HPC
+
+Run inside the Gallade allocation with the Gallade environment activated.
+
+```bash
+cd -P .
 export BUCEX_PYTHON="$(command -v python3)"
 export BUCEX_RESULTS_ROOT="$PWD/results/serra_191_parallel"
 export BUCEX_SCHEDULER=slurm
-export VSC_ARRAY_LIMIT=8
+export VSC_ARRAY_LIMIT=16
 
-bash RUN_SCREEN_EXPERIMENTS.sh --dry-run
+bash RUN_SCREEN_EXPERIMENTS.sh --dry-run &&
 bash RUN_SCREEN_EXPERIMENTS.sh
 squeue -u "$USER"
 ```
 
 This submits **23 full-record fits**: the reference and 22 alternatives. Each
 uses 2 chains, 700 warm-up and 1,300 retained draws per chain. Each request is
-2 CPUs, 12 GB RAM and 6 hours. Eight fits can run simultaneously. The dry run
+2 CPUs, 12 GB RAM and 6 hours. Up to sixteen fits can run simultaneously,
+subject to scheduler limits. The dry run
 compiles the declarations and prints the exact submission without scheduling.
 
 After completion, collect on HPC or on a machine with the same release and
@@ -80,14 +134,16 @@ checks below are a separate study.
 
 Run after reviewing the screen results. Paper fits start afresh in a separate
 `paper/` directory; they do not append draws to screen fits.
+Re-enter a Gallade allocation and activate the same Gallade environment first.
 
 ```bash
+cd -P .
 export BUCEX_PYTHON="$(command -v python3)"
 export BUCEX_RESULTS_ROOT="$PWD/results/serra_191_parallel"
 export BUCEX_SCHEDULER=slurm
-export VSC_ARRAY_LIMIT=8
+export VSC_ARRAY_LIMIT=16
 
-bash RUN_PAPER_EXPERIMENTS.sh --dry-run
+bash RUN_PAPER_EXPERIMENTS.sh --dry-run &&
 bash RUN_PAPER_EXPERIMENTS.sh
 squeue -u "$USER"
 ```
@@ -98,7 +154,7 @@ squeue -u "$USER"
 | Each of 22 alternatives | 4 | 2,000 / 4,000 | 4 | 20 GB | 12 h |
 
 The reference is a separate one-element array. The cap applies to each array,
-so up to nine fits may run concurrently. Walltimes are limits, not runtime
+so up to seventeen fits may run concurrently. Walltimes are limits, not runtime
 predictions. After completion:
 
 ```bash
@@ -246,6 +302,42 @@ your actual allocation/partition; the native Slurm launcher passes them through.
 The scheduler scripts use non-login shells, retain the submitting environment,
 use physical absolute working paths and print the host, interpreter, release,
 batch and task index before fitting. PBS also exports the active environment.
+
+The 2026-09-28 startup correction also resolves the Python executable's parent
+directory on the submission host. It preserves `bin/python` itself so virtual
+environment detection still works. A login alias such as `/user/data/...` must
+not be exported when compute nodes require `/kyukon/data/...`. The runtime now
+reports the requested interpreter and host on failure, and checks Python >= 3.10.
+
+For the reported `Cannot resolve BUCEX_PYTHON` failure, select the physical
+path of the Gallade environment, inside the Gallade allocation:
+
+```bash
+cd -P .
+export BUCEX_PYTHON="$PWD/bucex_env_gallade_py311/bin/python"
+export BUCEX_RESULTS_ROOT="$PWD/results/serra_191_parallel"
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
+"$BUCEX_PYTHON" -u - <<'PYTHON'
+import sys, importlib
+print('Python started:', sys.executable, sys.version, flush=True)
+for name in ('numpy', 'scipy', 'pandas', 'matplotlib', 'bucex'):
+    print('Importing', name, flush=True)
+    importlib.import_module(name)
+print('IMPORTS_OK', flush=True)
+PYTHON
+```
+
+This checks the interpreter on the actual target architecture. If it fails,
+inspect the printed stage before submitting the array. Keep the same Python
+module loaded when activating this environment in later sessions. Resolve
+only the interpreter's parent directory, not its final symlink: `readlink -f`
+on the complete executable can bypass the virtual environment.
+
+The first array 47058490 failed before Python and task creation. The later
+probe 27605429 ran on Gallade and was killed by SIGILL (`0:4`). These are distinct
+failure modes. Neither supplies production inference or forecast results.
+An earlier `srun --partition=skiddo` diagnostic was invalid for the selected
+controller; use the documented cluster module and interactive allocation.
 
 The previous `0:53` accounting output alone did not identify its cause. These
 startup changes and the explicit logs make the next failure diagnosable; they

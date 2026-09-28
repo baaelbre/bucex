@@ -1,0 +1,62 @@
+{
+  "version": "1.9.2",
+  "unique_tests": 307,
+  "latest_result_passed": 307,
+  "test_runs": [
+    {
+      "file": "bx192_regression.xml",
+      "tests": 286,
+      "failures": 1
+    },
+    {
+      "file": "bx192_new_tests.xml",
+      "tests": 19,
+      "failures": 0
+    },
+    {
+      "file": "bx192_runner.xml",
+      "tests": 1,
+      "failures": 0
+    },
+    {
+      "file": "bx192_integration.xml",
+      "tests": 2,
+      "failures": 0
+    }
+  ],
+  "note": "The broad regression run found only a stale 1.9.1 version assertion. It was updated to 1.9.2 and the affected test passed on rerun. The union of latest test outcomes is reported; this is not a claim of one uninterrupted 307-test run.",
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0",
+    "pandas": "2.2.3"
+  },
+  "checks": [
+    "Exact one-coefficient hyperconditional compared with independent Normal densities",
+    "Private and shared constructions have identical single-response marginal prior draws at matched settings",
+    "Private hierarchy rejects multiple responses; all 524 configurations contain one response and no copula",
+    "Gaussian, GEV maxima, GEV minima, fixed seasonality and constant dispersion fits",
+    "Saved fits, warm starts, 120-season forecasts and 90/95/99 percent validation",
+    "Serial and parallel-chain draws match exactly at fixed seeds",
+    "Actual bounded local subprocess runner records failure and continues its queue",
+    "Actual task execution, resume, per-response collector, figures and compact export",
+    "Screen and paper top-level ALL wrappers dry-run at 12x2 and 6x4 chain workers"
+  ],
+  "production_fits_run": false,
+  "hpc_submission_tested": false,
+  "biobot_execution_tested": false,
+  "counts": {
+    "posterior": 148,
+    "reference": 6,
+    "pre2019": 4,
+    "experiments": 152,
+    "validation": 354,
+    "validation10": 18,
+    "all": 524
+  },
+  "reference_fingerprint": {
+    "config_sha256": "959f2b272b1a928db5a6d61fa31f72450b5b5c6173544cb26c9990f1e685f817",
+    "source_sha256": "5c633adbc79a4bf34904062ce4cd79c65650f32faa5448bc55ece999950279cc",
+    "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+  }
+}

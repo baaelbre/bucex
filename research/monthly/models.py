@@ -47,6 +47,8 @@ def marginal_prior(item, data, config):
 
 def joint_model(data, config):
     """The same private marginal specifications with an optional joint copula."""
+    if config['priors'].get('independent_shrinkage') is not None:
+        raise ValueError('A private hierarchy needs independent_model and a single response.')
     mode = config['analysis']
     if mode not in {'joint', 'copula'}:
         raise ValueError("Joint analysis is 'joint' (R=I) or 'copula'.")
@@ -78,6 +80,26 @@ def joint_model(data, config):
         {c.name: marginal_prior(c, data, config) for c in channels}, shrinkage=hierarchy)
 
 
+def independent_model(data, config):
+    """One response, its own hyperparameters, and no copula of any kind."""
+    if config['analysis'] != 'independent' or len(data.columns) != 1:
+        raise ValueError('Independent analyses require exactly one response per fit.')
+    p = config['priors']
+    if p.get('shared_shrinkage') is not None or config.get('copula') is not None:
+        raise ValueError('Independent analyses cannot have shared shrinkage or a copula.')
+    item = channel(data.columns[0], data, config)
+    settings = p.get('independent_shrinkage')
+    hierarchy = None
+    if settings is not None:
+        aliases = {'level': 'level', 'slope': 'trend', 'seasonal': 'season'}
+        hierarchy = bx.IndependentShrinkage(
+            medians={c: p['innovation_median'][aliases[c]]
+                     for c in settings.get('components', aliases)},
+            log_sd=settings.get('log_sd', np.log(3.)))
+    return (bx.MultiSeriesModel((item,), copula=None),
+            bx.MarginalPriors({item.name: marginal_prior(item, data, config)}, shrinkage=hierarchy))
+
+
 def inference_options(config):
     return {'laplace': bx.Laplace(**config.get('inference', {}).get('laplace', {}))}
 
@@ -89,6 +111,6 @@ def fit_options(config, *, family='mixed', tail=None):
         mcmc=bx.MCMC(**config['mcmc']), **inference_options(config))
     if tail is not None:
         options['tail'] = tail
-    if config['analysis'] == 'independent' and family == 'gev':
+    if config['analysis'] == 'independent' and family == 'gev' and config['priors'].get('independent_shrinkage') is None:
         options['init'] = {'xi': 0.}
     return options

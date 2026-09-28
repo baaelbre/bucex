@@ -28,13 +28,16 @@ def study_plan(config):
         raise ValueError('No complete forecast block fits in this data window.')
     mcmc = bx.MCMC(**config['mcmc'])
     cases = [configured_variant(config, v) for v in variants]
-    from .models import joint_model, channel, marginal_prior
+    from .models import joint_model, channel, marginal_prior, independent_model
     for case in cases:
         if case['analysis'] in {'joint', 'copula'}:
             joint_model(data, case)
         elif case['analysis'] == 'independent':
             for name in data:
-                marginal_prior(channel(name, data, case), data, case)
+                if case['priors'].get('independent_shrinkage') is not None:
+                    independent_model(data[[name]],case)
+                else:
+                    marginal_prior(channel(name, data, case), data, case)
         else:
             raise ValueError('Analysis must be independent, joint or copula.')
     n_fits = sum(1 if case['analysis'] in {'joint', 'copula'} else len(data.columns) for case in cases)

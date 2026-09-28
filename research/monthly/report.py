@@ -42,7 +42,7 @@ def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", lev
 def convergence_parameters(table, n_chains):
     """Screen scientific parameters; fixed shrinkage hyperparameters remain in mcmc.csv."""
     names = [name for name in table.index if str(name).startswith(
-        ('sd.', 'initial.', 'sigma', 'xi', 'copula.', 'scale.', 'scale_slope', 'scale_rw_sd', 'evolution.', 'shrinkage.shared.'))]
+        ('sd.', 'initial.', 'sigma', 'xi', 'copula.', 'scale.', 'scale_slope', 'scale_rw_sd', 'evolution.', 'shrinkage.shared.', 'shrinkage.independent.'))]
     return table.loc[names].assign(chains=n_chains)
 
 
@@ -217,7 +217,7 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
 
     if shape_rows:
         pd.DataFrame(shape_rows).to_csv(directory/'shape_support.csv',index=False)
-    if fit.is_multiseries_model:
+    if fit.is_multiseries_model and len(fit.channel_names) > 1:
         bx.residual_dependence_check(fit,draws=config.get('predictive_check_draws',200),seed=config['seed'],level=level).assign(envelope_level=level).to_csv(
             directory/'residual_dependence.csv',index=False)
         if fit.n_time>=36:

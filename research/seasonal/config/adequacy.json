@@ -19,13 +19,12 @@
     {
       "name": "fixed_location_seasonality",
       "seasonal": "static",
-      "shared_shrinkage": {
+      "independent_shrinkage": {
         "components": [
           "level",
           "slope"
         ],
-        "log_sd": 1.0986122886681098,
-        "pool_initial_slope": false
+        "log_sd": 1.0986122886681098
       }
     },
     {
@@ -40,7 +39,7 @@
     "warmup": 2000,
     "draws": 4000
   },
-  "output": "results/serra_191_adequacy",
+  "output": "results/serra_192_adequacy",
   "validation": {
     "training_ends": [
       "2015-11",
@@ -49,5 +48,6 @@
     "horizon": 20,
     "draws": 4000,
     "save_fits": true
-  }
+  },
+  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response."
 }

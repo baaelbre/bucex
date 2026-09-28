@@ -9,19 +9,13 @@ from research.monthly.report import write_report
 from research.seasonal import jobs
 
 
-def test_every_task_has_identity_dependence_and_separate_initial_rates():
-    data=bx.load_uccle_multiseries(**bx.load_config(jobs.CONFIG/'main.json')['data'])
-    for task in jobs.tasks('all'):
-        config=jobs.task_config(task,'screen')
-        model,priors=joint_model(data,config)
-        np.testing.assert_array_equal(model.copula.correlation_matrix({},tuple(data)),np.eye(6))
-        assert not model.copula.seasonal
-        assert 'initial_slope' not in priors.shrinkage.anchors
-        expected={'half_initial_slope':.25,'double_initial_slope':1.}.get(task.variant,.5)
-        assert all(p.beta0.sd*40==expected for p in priors.channels.values())
-        assert config['report_joint_risks'] is False
-        assert config['cross_summary_contrasts'] is False
-        assert config['priors']['initial_slope_median'] is None
+def test_frozen_191_has_identity_dependence_and_separate_initial_rates():
+    config=bx.load_config(jobs.CONFIG/'reference_191.json')
+    data=bx.load_uccle_multiseries(**config['data'])
+    model,priors=joint_model(data,config)
+    np.testing.assert_array_equal(model.copula.correlation_matrix({},tuple(data)),np.eye(6))
+    assert 'initial_slope' not in priors.shrinkage.anchors
+    assert all(p.beta0.sd*40==.5 for p in priors.channels.values())
 
 
 def test_width_controls_do_not_move_fixed_initial_rate_prior():
@@ -34,7 +28,7 @@ def test_width_controls_do_not_move_fixed_initial_rate_prior():
 
 def test_original_fraction_splits_are_complete_ten_year_forecasts():
     from research.monthly.validate import validation_splits
-    for fraction,task in zip((.6,.8,.9),jobs.tasks('validation10')):
+    for fraction,task in zip((.6,.8,.9),[t for t in jobs.tasks('validation10') if t.channel=='TXm']):
         config=jobs.task_config(task,'screen')
         data=bx.load_uccle_multiseries(**config['data'])
         train,test=validation_splits(data,config['validation'])[0]
@@ -54,7 +48,7 @@ def test_fixed_initial_rate_prior_effect_is_gaussian(tmp_path):
 
 
 def test_unpooled_initial_rates_survive_fit_archive_and_reporting(tmp_path):
-    config=bx.load_config(jobs.CONFIG/'smoke.json')
+    config=bx.load_config(Path(__file__).parent/'fixtures/seasonal_smoke_191.json')
     config['data'].update(series=['TXm','TNm'],start='2016-03')
     config['mcmc'].update(chains=2,chain_workers=1,warmup=3,draws=10,progress=False)
     config.update(figures=False,forecast_draws=24,predictive_check_draws=12,prior_draws=40,

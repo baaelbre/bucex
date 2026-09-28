@@ -3,6 +3,26 @@
 These are software checks, not production estimates, validated forecasts or
 actual HPC submissions.
 
+## HPC startup correction, 2026-09-28
+
+Array 47058490 failed with exit status 2 and `Cannot resolve BUCEX_PYTHON`.
+The submitted Python path used `/user/data/...`, while the working directory
+used `/kyukon/data/...`. The launcher had normalized the working/results paths
+but not the Python executable's parent directory. The corrected runtime
+normalizes that directory before export and preserves the final virtual-env
+symlink. It also checks Python >= 3.10 and reports the interpreter and host on
+failure. Scientific configuration and model/sampler Python code are unchanged.
+
+Two focused tests passed. They exercise a real virtual environment through a directory alias
+containing spaces, verify that Python still detects the virtual environment,
+and check that a missing interpreter reports the requested path and host.
+Native Slurm screen and paper dry runs also passed with a simulated directory
+alias: both export a physical interpreter path and use throttle 16. Bash syntax
+validation passed. Logs are in `release_191/hpc_runtime_tests.txt` and
+`release_191/hpc_path_{screen,paper}_dryrun.txt`.
+The HPC command guide includes a compute-node import check before resubmission.
+Remote compute-node execution remains unverified here.
+
 ## Completed checks
 
 - Compile all 82 tasks under both tiers: 23 posterior fits, four prospective

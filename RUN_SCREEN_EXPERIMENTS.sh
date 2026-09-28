@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
-exec bash bash_scripts/submit.sh screen "$@"
+cd -P "$(dirname "$0")"
+exec bash bash_scripts/run_local.sh screen experiments "$@"

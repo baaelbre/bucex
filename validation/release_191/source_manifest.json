@@ -195,7 +195,7 @@
   "research/seasonal/prepare.py": "2b432802698468d0e018d5d1cbff525e7bc33e4363adb8e996ff3655bb49f841",
   "research/seasonal/prior_effects.py": "12585080f35bcdca426b4dadd7e0f3a32dcd0bc4806fd36b9422395c398c2083",
   "bash_scripts/run_local.sh": "5de59f632de00a25b3a00e1b102752f74dbc88b035c467223e8c0e4af152aaf3",
-  "bash_scripts/runtime.sh": "12ec9f5e8b34d083c1339bda761e193fe9fb61af96add3acc5d5f7fdee1ea661",
+  "bash_scripts/runtime.sh": "189e1bc6d75ea0328c6fdf88ab6177cee67a12a7b48b231898305d601196551c",
   "bash_scripts/submit.sh": "969ac9197c7956741f10c8bfe14ae34da7c1da75288b369c12a8d20ef03d32ef",
   "bash_scripts/submit_vsc.sh": "6c978bb64934f7a4c837a1e4805d60b1fac87ffc321edcf396d935110767e541",
   "bash_scripts/submit_vsc_slurm.sh": "f68c7f4c76544c9f1720d3c8c7a31cb94404ffb8165fda2c9d3f2b171fd68d6a",
@@ -243,5 +243,6 @@
   "tests/test_structural_numerics_and_prediction.py": "ff32927a412570ecf2584aea563dd52665451070ddcb39ce3ffb5e84221051bc",
   "tests/test_tail_validation.py": "732ae7a24cad2c19c23b3ced9da118e56532a3dfa0a7974a657ac0393f6e2d2c",
   "tests/test_uccle_means.py": "50eeb3130773420442ea234776fd9adfe5c597ea897ad2e29a1fd2f0c262dbd4",
-  "tests/test_uccle_monthly.py": "a7abc08707e081946777deb4ca6f9dff75ac104db54df7f7aee31f238b01f8e4"
+  "tests/test_uccle_monthly.py": "a7abc08707e081946777deb4ca6f9dff75ac104db54df7f7aee31f238b01f8e4",
+  "tests/test_launcher_runtime.py": "beb3eaf236d3373ba1d2088b7d91c0c594224a0c3fa18e1ca05426c3de3cac49"
 }

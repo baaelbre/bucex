@@ -8,7 +8,7 @@ from time import perf_counter
 
 import numpy as np
 import bucex as bx
-from research.monthly.models import channel, fit_options, joint_model, marginal_prior
+from research.monthly.models import channel, fit_options, joint_model, marginal_prior, independent_model
 from research.monthly.report import scientific_targets
 
 
@@ -17,7 +17,7 @@ def convergence_report(diagnostics, chains, targets=None):
     eligible = diagnostics.loc[~diagnostics['constant'].astype(bool)]
     eligible = eligible.loc[eligible.index.str.startswith((
         'xi', 'sigma', 'initial.', 'initial.channel.', 'sd.', 'sd.channel.',
-        'scale.seasonal', 'shrinkage.shared.', 'copula.'))]
+        'scale.seasonal', 'shrinkage.shared.', 'shrinkage.independent.', 'copula.'))]
     problems = eligible.loc[(~np.isfinite(eligible['rhat'])) | (eligible['rhat'] >= 1.01) |
                             (~np.isfinite(eligible['ess_bulk'])) | (eligible['ess_bulk'] < 400) |
                             (~np.isfinite(eligible['ess_tail'])) | (eligible['ess_tail'] < 400)]
@@ -40,13 +40,13 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument('--config', default='research/seasonal/config/main.json')
     p.add_argument('--origin', default='2015-11')
-    p.add_argument('--mode', choices=('copula', 'joint', 'independent'), default='copula')
+    p.add_argument('--mode', choices=('copula', 'joint', 'independent'), default='independent')
     p.add_argument('--name', default='TXn', help='Channel for independent mode')
     p.add_argument('--warmup', type=int, default=1500)
     p.add_argument('--draws', type=int, default=1500)
     p.add_argument('--chains', type=int, default=4)
     p.add_argument('--asis', action='store_true')
-    p.add_argument('--output', default='results/serra_186_seasonal_mixing/2015_copula')
+    p.add_argument('--output', default='results/serra_192_seasonal_mixing/2015_independent')
     args = p.parse_args()
     config = bx.load_config(args.config)
     data = bx.load_uccle_multiseries(**config['data'])
@@ -72,10 +72,14 @@ def main():
     if args.mode == 'independent':
         local = local[[args.name]]
         item = channel(args.name, local, config)
-        model = bx.Model(item.observation, item.components)
-        prior = marginal_prior(item, local, config)
-        options = fit_options(config, family=item.family, tail=item.tail)
-        local = local.iloc[:, 0]
+        if config['priors'].get('independent_shrinkage') is not None:
+            model, prior = independent_model(local, config)
+            options = fit_options(config, family=item.family)
+        else:
+            model = bx.Model(item.observation, item.components)
+            prior = marginal_prior(item, local, config)
+            options = fit_options(config, family=item.family, tail=item.tail)
+            local = local.iloc[:, 0]
     else:
         model, prior = joint_model(local, config)
         options = fit_options(config, family=model.family)

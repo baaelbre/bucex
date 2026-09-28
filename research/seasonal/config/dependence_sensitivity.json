@@ -1,5 +1,5 @@
 {
-  "extends": "main.json",
+  "extends": "reference_191.json",
   "_comment": "Compatibility name in 1.9.1: dependence estimation is disabled. This resolves to the identity reference. Use the 1.9.0 release for the old copula comparisons.",
   "variants": [
     {

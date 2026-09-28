@@ -19,16 +19,18 @@ def assess(run: Path, expected_config: Path) -> dict:
     run = run.resolve()
     expected = bx.load_config(expected_config)
     issues: list[str] = []
+    series = expected["data"]["series"]
+    if len(series) != 1: issues.append("final check requires one response per fit")
     required = [
         "config.json", "data_window.json", "run.json", "convergence.json",
         "mcmc.csv", "scientific_targets.csv", "period_contrasts.csv",
-        "shared_shrinkage.csv", "initial_slope_prior_posterior.csv",
+        "independent_shrinkage.csv", "initial_slope_prior_posterior.csv",
     ]
     if expected.get('analysis') == 'copula':
         required.append('copula_correlations.csv')
     if expected.get('report_joint_risks', True):
         required.append('compound_heat_conditional_risk.csv')
-    for name in SERIES:
+    for name in series:
         required.extend([
             f"{name}_level.csv", f"{name}_slope_C_per_decade.csv",
             f"{name}_scale_by_season.csv", f"{name}_smoothed_pit.csv",
@@ -61,10 +63,10 @@ def assess(run: Path, expected_config: Path) -> dict:
     if metadata.get("bucex_version") != bx.__version__:
         issues.append(f"report version is {metadata.get('bucex_version')!r}, expected {bx.__version__!r}")
     if stored is not None:
-        if stored.get('analysis') != 'joint':
-            issues.append('1.9.1 final analysis must use identity dependence')
+        if stored.get('analysis') != 'independent' or stored.get('copula') is not None:
+            issues.append('1.9.2 final analysis must be a separate single-response fit')
         p=stored.get('priors', {})
-        if p.get('initial_slope_sd') != .0125 or p.get('shared_shrinkage', {}).get('pool_initial_slope', True):
+        if p.get('initial_slope_sd') != .0125 or p.get('shared_shrinkage') is not None or p.get('independent_shrinkage') is None:
             issues.append('initial rates must have separate Normal priors with SD 0.5 C/decade')
         mcmc = stored.get("mcmc", {})
         if (mcmc.get("chains"), mcmc.get("warmup"), mcmc.get("draws")) != (4, 3000, 8000):
@@ -72,7 +74,7 @@ def assess(run: Path, expected_config: Path) -> dict:
         if (stored.get('forecast_horizon'), stored.get('forecast_draws'),
                 stored.get('credible_interval')) != (120, 12000, .95):
             issues.append('final forecast must cover 120 seasons using 12000 draws and 95% intervals')
-    for name in SERIES:
+    for name in series:
         file = run/f'{name}_forecast_uncertainty.csv'
         if file.exists():
             frame = pd.read_csv(file)
@@ -99,7 +101,7 @@ def assess(run: Path, expected_config: Path) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", type=Path, required=True,
-                        help="The timestamped joint report printed by research.seasonal.fit.")
+                        help="The single-response report printed by research.seasonal.fit.")
     parser.add_argument("--config", type=Path,
                         default=Path("research/seasonal/config/final.json"))
     args = parser.parse_args()

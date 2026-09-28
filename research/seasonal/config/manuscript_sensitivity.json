@@ -1,35 +1,33 @@
 {
   "extends": "main.json",
-  "_comment": "All fits use R=I and separate initial rates. Matched-width controls alter only innovation anchors; fixed-anchor controls isolate width. Shape sensitivities retain the same reference priors.",
+  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
   "variants": [
     {
       "name": "reference"
     },
     {
       "name": "narrow_log2_matched",
-      "shared_shrinkage": {
+      "match_marginal_moments": true,
+      "independent_shrinkage": {
         "components": [
           "level",
           "slope",
           "seasonal"
         ],
-        "pool_initial_slope": false,
         "log_sd": 0.6931471805599453
-      },
-      "match_marginal_moments": true
+      }
     },
     {
       "name": "wide_log4_matched",
-      "shared_shrinkage": {
+      "match_marginal_moments": true,
+      "independent_shrinkage": {
         "components": [
           "level",
           "slope",
           "seasonal"
         ],
-        "pool_initial_slope": false,
         "log_sd": 1.3862943611198906
-      },
-      "match_marginal_moments": true
+      }
     },
     {
       "name": "original_innovation_anchors",
@@ -41,25 +39,23 @@
     },
     {
       "name": "narrow_log2_fixed_anchors",
-      "shared_shrinkage": {
+      "independent_shrinkage": {
         "components": [
           "level",
           "slope",
           "seasonal"
         ],
-        "pool_initial_slope": false,
         "log_sd": 0.6931471805599453
       }
     },
     {
       "name": "wide_log4_fixed_anchors",
-      "shared_shrinkage": {
+      "independent_shrinkage": {
         "components": [
           "level",
           "slope",
           "seasonal"
         ],
-        "pool_initial_slope": false,
         "log_sd": 1.3862943611198906
       }
     },
@@ -98,5 +94,5 @@
     "chain_workers": 4,
     "progress_every": 100
   },
-  "output": "results/serra_191_manuscript_sensitivity"
+  "output": "results/serra_192_manuscript_sensitivity"
 }

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import numpy as np
 import bucex as bx
-from .models import channel, joint_model, fit_options
+from .models import channel, joint_model, independent_model, fit_options
 
 
 def inspect(config):
@@ -20,9 +20,15 @@ def inspect(config):
     if joint:
         model, prior = joint_model(data, config)
         bx.plan(model, data, parameterization='fs', asis=config['inference']['asis'])
+    elif config['priors'].get('independent_shrinkage') is not None:
+        for name in data:
+            model, prior = independent_model(data[[name]], config)
+            bx.plan(model, data[[name]], parameterization='fs', asis=config['inference']['asis'])
+    else:
+        prior = None
     calibration = (prior.shrinkage.calibration(period=config['model']['period'],
-        **config.get('prior_calibration', {})) if joint and prior.shrinkage is not None else [])
-    if joint and prior.shrinkage is not None and 'initial_slope' not in prior.shrinkage.anchors:
+        **config.get('prior_calibration', {})) if prior is not None and prior.shrinkage is not None else [])
+    if prior is not None and prior.shrinkage is not None and 'initial_slope' not in prior.shrinkage.anchors:
         units=config.get('prior_calibration', {})
         sd=config['priors']['initial_slope_sd']
         calibration.append(dict(component='initial_slope',anchor=sd,anchor_kind='fixed_normal_SD',

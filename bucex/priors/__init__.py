@@ -7,7 +7,7 @@ from .calibration import (
     structural_scale_implications,
 )
 from .marginal import MarginalPriors
-from .shrinkage import SharedShrinkage
+from .shrinkage import SharedShrinkage, IndependentShrinkage
 from .process import (
     ExponentialSD,
     FixedSD,
@@ -59,7 +59,7 @@ from .structural import (
 __all__ = [
     "innovation_response_gains",
     "fs_priors", "triple_gamma_median",
-    "MarginalPriors", "SharedShrinkage",
+    "MarginalPriors", "SharedShrinkage", "IndependentShrinkage",
     "Priors",
     "calibrate_structural_scales",
     "half_student_t_scale_for_median",

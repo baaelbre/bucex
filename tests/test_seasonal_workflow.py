@@ -45,7 +45,7 @@ def test_missing_daily_data_are_never_silently_replaced():
 
 
 def test_actual_uccle_window_and_ordering():
-    config=bx.load_config(ROOT/'research/seasonal/config/main.json')
+    config=bx.load_config(ROOT/'research/seasonal/config/reference_191.json')
     config['data']['daily_source']=ROOT/'data/Uccle_31_08_26.csv'
     values=bx.load_uccle_multiseries(**config['data'])
     assert len(values)==538 and values.attrs['last_included_day']=='2026-08-31'
@@ -134,7 +134,7 @@ def test_gaussian_seasonal_density_and_score_are_for_weighted_mean():
 
 
 def test_seasonal_reference_priors_have_declared_physical_scale():
-    c=bx.load_config(ROOT/'research/seasonal/config/main.json')
+    c=bx.load_config(ROOT/'research/seasonal/config/reference_191.json')
     data=pd.DataFrame({n:np.zeros(5) for n in c['data']['series']})
     model,p=joint_model(data,c)
     np.testing.assert_array_equal(model.copula.correlation_matrix({},tuple(data)),np.eye(6))
@@ -176,7 +176,7 @@ def test_rank_ties_and_run_definition_across_season_boundary():
 
 def test_seasonal_adequacy_reports_keep_quarterly_units(tmp_path,monkeypatch):
     from research.monthly.prior_assessment import run
-    config=bx.load_config(ROOT/'research/seasonal/config/smoke.json')
+    config=bx.load_config(ROOT/'tests/fixtures/seasonal_smoke_191.json')
     dates=pd.date_range('2021-03-01',periods=22,freq='3MS')
     rng=np.random.default_rng(18)
     data=pd.DataFrame({name:10+3*np.sin(np.arange(22)*np.pi/2)+rng.normal(size=22)

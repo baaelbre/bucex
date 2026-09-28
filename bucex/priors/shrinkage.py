@@ -176,3 +176,19 @@ class SharedShrinkage:
 
 
 __all__ = ["SharedShrinkage"]
+
+
+@dataclass(frozen=True)
+class IndependentShrinkage(SharedShrinkage):
+    """Normal--lognormal innovation priors for exactly one response.
+
+    The numerical anchors may be reused in other analyses, but each fit draws
+    and updates its own hyperparameters. No information crosses responses.
+    Initial slopes retain their separately declared Normal priors.
+    """
+    initial_slope_sd: float | None = None
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.initial_slope_sd is not None or self.initial_slope_median is not None:
+            raise ValueError("IndependentShrinkage leaves the initial slope prior separate.")

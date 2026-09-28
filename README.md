@@ -1,4 +1,4 @@
-# BUCEX 1.9.1
+# BUCEX 1.9.2
 
 Bayesian unobserved component models for Gaussian temperature summaries and GEV block extremes. This release supports private structural trajectories for each series, continuous innovation priors, optional shared shrinkage of **prior scales**, and an optional Gaussian residual copula. The research workflows are [monthly](research/monthly/README.md) and [seasonal](research/seasonal/README.md).
 
@@ -7,9 +7,11 @@ python -m pip install -e ".[plot,test]"
 python -c "import bucex; print(bucex.__version__)"
 ```
 
-The seasonal workflow uses fixed identity residual dependence, three shared innovation scales, and separate initial-rate priors (SD 0.5 C/decade). See [the 1.9.1 command guide](BUCEX-1.9.1-commands.md): 23 posterior sensitivity fits on HPC, 52 validation fits on biobot, and optional ten-year checks. Full-record forecasts span 30 years. The monthly workflow retains its separate historical configuration.
+The seasonal workflow now fits **six separate analyses**, with private innovation hyperparameters and initial slopes. No copula or parameter pooling is used. See [the 1.9.2 command guide](BUCEX-1.9.2-commands.md) for screen/paper jobs running in parallel on biobot. The full set has 524 single-response tasks, including posterior sensitivities and both validation designs. Full-record forecasts span 30 years.
 
-The release adds 10- and 30-year innovation-effect summaries and practical-magnitude probabilities, corrects the initial-slope hyperparameter's displayed physical units, and applies 95% envelopes consistently in the research reports. These are software/configuration changes; the new production fits still need to be run and assessed.
+The reference preserves the 1.9.1 marginal normal–lognormal innovation priors while removing cross-response borrowing. New checks include quarter-strength seasonal anchors and doubled-slope combinations with half/quarter seasonal anchors. Output keeps 95% intervals, central 90/95/99% validation coverage, and individual numerical diagnostics. Production fits still need to be run and assessed.
+
+`bx.IndependentShrinkage(...)` attaches a private scale hyperprior to a single named response and rejects multiple responses in the same fit. The separate jobs reuse the established sampler and report APIs. The general library retains its joint-model support for historical analyses; the example below illustrates that optional library API, not the 1.9.2 paper specification.
 
 ## Model and fit
 
@@ -44,7 +46,7 @@ Models use finite, aligned observations for the private multiseries sampler. Gau
 ```bash
 python -m pytest -q
 python -m research.monthly.preflight --config research/monthly/config/main.json
-python -m research.seasonal.compare --plan
+python -m research.seasonal.jobs --tier screen --verify
 ```
 
 The smoke configurations exercise code paths on short windows; their few draws are not scientific evidence. Long empirical runs, convergence checks and held-out predictions remain prerequisites for manuscript claims.

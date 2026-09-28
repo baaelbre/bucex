@@ -1,6 +1,6 @@
 {
   "extends": "final.json",
-  "_comment": "Prospective record-event analysis: fit only through MAM 2019 and forecast JJA 2019. Both the old 36.6 C record and the observed 39.7 C value are explicitly evaluated.",
+  "_comment": "Separate single-response analyses; all hyperparameters and initial rates are private to each response.",
   "data": {
     "end": "2019-05"
   },
@@ -18,5 +18,5 @@
       39.7
     ]
   },
-  "output": "results/serra_191_pre2019_record"
+  "output": "results/serra_192_pre2019_record"
 }

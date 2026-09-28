@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 import bucex as bx
 from .experiment import configured_variant, fit_case, save_case
-from .models import joint_model, fit_options
+from .models import joint_model, independent_model, fit_options
 from .report import new_run, write_report, scientific_targets, convergence_parameters
 
 
@@ -42,6 +42,12 @@ def run(config, *, variants=None, directory=None):
                     write_report(fit, target, config=local, risks=local['risks'],
                         horizon=local['forecast_horizon'], level=local['credible_interval'],
                         save_fit=local.get('save_fits', True))
+                elif local['priors'].get('independent_shrinkage') is not None:
+                    model, prior = independent_model(data[[name]],local)
+                    fit = bx.fit(data[[name]],model,priors=prior,**fit_options(local,family=model.family))
+                    write_report(fit,target,config=local,risks=local['risks'],
+                        horizon=local['forecast_horizon'],level=local['credible_interval'],
+                        save_fit=local.get('save_fits',True))
                 else:
                     # local is expanded already; do not apply multipliers twice.
                     fit, prior = fit_case(data, name, local, {})

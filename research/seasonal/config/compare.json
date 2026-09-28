@@ -1,5 +1,5 @@
 {
-  "extends": "main.json",
+  "extends": "reference_191.json",
   "mcmc": {
     "warmup": 500,
     "draws": 500

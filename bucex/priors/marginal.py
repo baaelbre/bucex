@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from .structural import FSGaussianPriors, FSGEVPriors
-from .shrinkage import SharedShrinkage
+from .shrinkage import SharedShrinkage, IndependentShrinkage
 
 
 @dataclass(frozen=True)
@@ -12,7 +12,8 @@ class MarginalPriors:
 
     ``shrinkage=SharedShrinkage(...)`` optionally learns common normal-prior
     scales while retaining private trajectories and individual innovation SDs.
-    Without it, the channel priors are independent. A GaussianCopula couples
+    ``IndependentShrinkage`` is reserved for a single-response analysis.
+    Without either hierarchy, the channel priors are independent. A GaussianCopula couples
     observations through the joint likelihood.
     """
 
@@ -30,6 +31,8 @@ class MarginalPriors:
         if self.shrinkage is not None:
             if not isinstance(self.shrinkage, SharedShrinkage):
                 raise TypeError("shrinkage must be SharedShrinkage(...) or None.")
+            if isinstance(self.shrinkage, IndependentShrinkage) and len(self.channels) != 1:
+                raise ValueError("IndependentShrinkage requires one response per fit; run separate fits.")
             for prior in self.channels.values():
                 self.shrinkage.validate_prior(prior)
         object.__setattr__(self, "channels", dict(self.channels))

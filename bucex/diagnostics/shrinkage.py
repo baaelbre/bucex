@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from scipy.special import ndtri
 
-from ..priors import MarginalPriors
+from ..priors import MarginalPriors, IndependentShrinkage
 from ..priors.shrinkage import NORMAL_ABSOLUTE_MEDIAN
 from .experiments import draw_structural_prior
 from .posterior import rhat, ess_bulk, ess_tail
@@ -34,7 +34,9 @@ def draw_marginal_prior(priors, size=2000, *, seed=None):
             else:
                 samples[f"sd.{component}"] = np.abs(rng.normal(size=size)) * median / NORMAL_ABSOLUTE_MEDIAN
         channels[name] = samples
-    return {"channels": channels, "shared": shared}
+    independent = isinstance(priors.shrinkage, IndependentShrinkage)
+    return {"channels": channels, "shared": {} if independent else shared,
+            "independent": shared if independent else {}}
 
 
 def compare_shared_shrinkage(fit, *, level=.95):
@@ -47,13 +49,14 @@ def compare_shared_shrinkage(fit, *, level=.95):
     quantiles = np.array([(1-level)/2, .5, (1+level)/2])
     rows = []
     for component, anchor in spec.anchors.items():
-        values = fit.parameter(f"shrinkage.shared.{component}", combine_chains=False)
+        scope = "independent" if isinstance(spec, IndependentShrinkage) else "shared"
+        values = fit.parameter(f"shrinkage.{scope}.{component}", combine_chains=False)
         for distribution in ("prior", "posterior"):
             interval = (anchor*np.exp(spec.log_sd*ndtri(quantiles)) if distribution == "prior"
                         else np.quantile(values, quantiles))
             rows.append(dict(component=component, distribution=distribution,
                 scale=("normal_SD" if component == "initial_slope" and spec.initial_slope_median is None
-                       else "population_median"),
+                       else ("coefficient_absolute_median" if scope == "independent" else "population_median")),
                 anchor=anchor, log_sd=spec.log_sd,
                 lower=interval[0], median=interval[1], upper=interval[2], credible_interval=level,
                 rhat=rhat(values) if distribution == "posterior" else np.nan,

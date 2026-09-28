@@ -1,21 +1,11 @@
-# Seasonal Uccle analysis — 1.9.1
+# Seasonal Uccle analysis — 1.9.2
 
-The seasonal record has 538 complete blocks, MAM 1892–JJA 2026. The current
-workflow uses conditional residual independence and separate Normal initial
-rates. Level, rate and seasonal innovations retain shared scale hyperpriors.
+The current job grid fits TXm, TNm, TXx, TXn, TNx and TNn separately. All six use the same reference prior settings, with independent innovation hyperparameters, initial slopes and state trajectories. There is no copula or borrowing across responses.
 
-Use the root [command guide](../../BUCEX-1.9.1-commands.md): posterior sensitivity
-on HPC, expanding-window validation on biobot, with distinct screen/paper tiers.
-The 23 full-record tasks forecast 120 seasons. Default validation uses 52 fits
-and five-year windows; optional `validation10` reproduces 60/80/90% training
-fractions with ten-year windows and is collected separately.
+The [command guide](../../BUCEX-1.9.2-commands.md) gives bounded parallel screen/paper commands for biobot. The full grid has 148 posterior tasks, four prospective pre-2019 TXx tasks, 354 five-year validation tasks and 18 original-design ten-year tasks. Each task fits one response. Full-record fits use 538 complete seasons, MAM 1892–JJA 2026, and forecast 120 seasons.
 
-`config/main.json` declares the reference; `experiments.json` specifies studies,
-validation origins, budgets and resource requests. `jobs --verify` compiles all
-82 tasks (including four prospective pre-2019 fits) without sampling and checks
-identity dependence and absence of a shared initial-rate hyperparameter.
+`config/main.json` declares the reference. `config/experiments.json` declares the studies, origins and budgets. `jobs --verify` checks the actual single-response models, prior units and complete folds. `local` schedules jobs; `collect_jobs` pairs validation by response and identical cases; `export_results` writes a compact review ZIP.
 
-`config/reference_189.json` and `reference_20260923.json` are frozen historical
-references. The old `constant_copula*.json` and `dependence_sensitivity.json`
-names are compatibility aliases for the identity reference in this release.
-Use 1.9.0 for reproducing its old dependence study.
+Private scale outputs are called `independent_shrinkage*.csv`. The single-channel model container preserves the established Gaussian/GEV sampler, minima transformations and seasonal scale handling; it never receives the other five responses.
+
+Frozen `reference_191.json`, `reference_189.json` and `reference_20260923.json` retain historical specifications. Legacy grid/compare tools and old command guides are not the current 1.9.2 workflow. Use the root launchers for the new analysis.

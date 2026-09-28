@@ -4,7 +4,7 @@ from copy import deepcopy
 from pathlib import Path
 import bucex as bx
 from research.monthly.report import new_run, write_report
-from research.monthly.models import channel, marginal_prior, joint_model, fit_options
+from research.monthly.models import channel, marginal_prior, joint_model, independent_model, fit_options
 
 
 def selected_config(config, *, series=None, copula=False):
@@ -36,9 +36,14 @@ def run(config, *, series=None, directory=None):
     if config["analysis"] == "independent":
         for name in data:
             item = channel(name, data, config)
-            model = bx.Model(item.observation, item.components)
-            fit = bx.fit(data[name], model=model, priors=marginal_prior(item, data, config),
-                         **fit_options(config, family=item.family, tail=item.tail))
+            if config['priors'].get('independent_shrinkage') is not None:
+                model, prior = independent_model(data[[name]], config)
+                fit = bx.fit(data[[name]], model=model, priors=prior,
+                             **fit_options(config, family=item.family))
+            else:
+                model = bx.Model(item.observation, item.components)
+                fit = bx.fit(data[name], model=model, priors=marginal_prior(item, data, config),
+                             **fit_options(config, family=item.family, tail=item.tail))
             write_report(fit, directory / name, **report)
             del fit  # Six marginal jobs need not retain six posterior state arrays.
     else:

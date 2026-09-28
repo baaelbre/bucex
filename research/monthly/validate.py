@@ -6,7 +6,7 @@ import pandas as pd
 import bucex as bx
 from research.monthly.run import arguments
 from research.monthly.report import convergence_parameters, new_run, scientific_targets
-from research.monthly.models import channel, marginal_prior, joint_model, fit_options
+from research.monthly.models import channel, marginal_prior, joint_model, independent_model, fit_options
 from research.monthly.tail_validation import write_tail_tables
 
 
@@ -51,8 +51,12 @@ def validate(config, *, directory=None):
     if config["analysis"] == "independent":
         for name in data:
             item = channel(name, initial, config)
-            analyses.append((name, data[[name]], bx.Model(item.observation, item.components),
-                             marginal_prior(item, initial, config), item.tail))
+            if config['priors'].get('independent_shrinkage') is not None:
+                model, prior = independent_model(initial[[name]], config)
+                analyses.append((name, data[[name]], model, prior, None))
+            else:
+                analyses.append((name, data[[name]], bx.Model(item.observation, item.components),
+                                 marginal_prior(item, initial, config), item.tail))
     else:
         model, prior = joint_model(initial, config)
         analyses.append(("joint", data, model, prior, None))
@@ -64,7 +68,7 @@ def validate(config, *, directory=None):
         for fold, (train, test) in enumerate(splits):
             print(f"{label}: fold {fold + 1}/{len(splits)}, training {train.stop} blocks", flush=True)
             training = values.iloc[:train.stop]
-            if label != "joint":
+            if not isinstance(model, bx.MultiSeriesModel):
                 training = training.iloc[:, 0]
             fit = bx.fit(training, model, priors=prior,
                          **fit_options(config, family=model.family, tail=tail))
@@ -74,7 +78,7 @@ def validate(config, *, directory=None):
             diagnostics.to_csv(target / f"mcmc_{train.stop}.csv")
             if getattr(fit.priors, "shrinkage", None) is not None:
                 bx.compare_shared_shrinkage(fit, level=config["credible_interval"]).to_csv(
-                    target/f"shared_shrinkage_{train.stop}.csv", index=False)
+                    target/f"{'independent' if isinstance(fit.priors.shrinkage, bx.IndependentShrinkage) else 'shared'}_shrinkage_{train.stop}.csv", index=False)
             targets = fit.contrast_diagnostics(scientific_targets(fit,{'model':config['model'],
                 'cross_summary_contrasts':config.get('cross_summary_contrasts',True)}),
                                                credible_interval=config['credible_interval'])
@@ -95,7 +99,7 @@ def validate(config, *, directory=None):
                 direction = '<' if bx.UCCLE_INFO[name]['tail'] == 'min' else '>'
                 threshold = config['risks'][name]
                 events = observed < threshold if direction == '<' else observed > threshold
-                kwargs = {"channel": name} if label == "joint" else {}
+                kwargs = {"channel": name} if forecast.is_multiseries_forecast else {}
                 probability = forecast.probability_draws(
                     threshold, direction=direction, **kwargs).mean(axis=0)
                 brier = (probability - events) ** 2
@@ -122,7 +126,7 @@ def validate(config, *, directory=None):
                     horizon=score['time_index'].to_numpy(dtype=int)+1,
                     time=forecast.dates[score["time_index"].to_numpy(dtype=int)]))
                 observations = forecast.observations
-                if label == 'joint':
+                if forecast.is_multiseries_forecast:
                     observations = observations[:, :, forecast.channel_names.index(name)]
                 interval = config.get('credible_interval', .95)
                 low, median, high = np.quantile(observations, [(1-interval)/2, .5, (1+interval)/2], axis=0)

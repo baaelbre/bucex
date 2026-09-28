@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ...priors.shrinkage import COEFFICIENT_FIELDS, NORMAL_ABSOLUTE_MEDIAN
+from ...priors.shrinkage import COEFFICIENT_FIELDS, NORMAL_ABSOLUTE_MEDIAN, IndependentShrinkage
 from .fs_utils import _active_scale_names, _slice_sample_real
 
 
@@ -32,17 +32,21 @@ class SharedShrinkageState:
 
     @classmethod
     def initialize(cls, specification, states, rng, initial=None):
+        independent = isinstance(specification, IndependentShrinkage)
+        if independent and len(states) != 1:
+            raise ValueError("IndependentShrinkage requires exactly one channel.")
+        prefix = "independent" if independent else "shared"
         members = {}
         for component in specification.anchors:
             legacy = COEFFICIENT_FIELDS[component].removeprefix("s_")
             members[component] = [state for state in states if
                 (state.layout.has_beta if component == "initial_slope"
                  else legacy in _active_scale_names(state.layout))]
-            if len(members[component]) < 2:
+            if len(members[component]) < (1 if independent else 2):
                 raise ValueError(f"SharedShrinkage {component} needs at least two channels with that active coefficient; disable pooling for absent components.")
         multipliers = {}
         for component, anchor in specification.anchors.items():
-            value = (initial or {}).get(f"shrinkage.shared.{component}")
+            value = (initial or {}).get(f"shrinkage.{prefix}.{component}")
             if value is None:
                 multipliers[component] = float(rng.normal(0., specification.log_sd))
             elif not np.isfinite(value) or value <= 0:
@@ -50,6 +54,10 @@ class SharedShrinkageState:
             else:
                 multipliers[component] = float(np.log(value/anchor))
         return cls(specification, multipliers, members)
+
+    @property
+    def scope(self):
+        return "independent" if isinstance(self.specification, IndependentShrinkage) else "shared"
 
     @property
     def medians(self):
@@ -67,8 +75,8 @@ class SharedShrinkageState:
                                   else NORMAL_ABSOLUTE_MEDIAN))
             self.log_multipliers[component], evaluations = _slice_sample_real(
                 self.log_multipliers[component], target, rng, width=.5)
-            metrics[f"shared_shrinkage_slice_evaluations.{component}"] = evaluations
+            metrics[f"{self.scope}_shrinkage_slice_evaluations.{component}"] = evaluations
         return metrics
 
     def parameter_values(self):
-        return {f"shrinkage.shared.{c}": m for c, m in self.medians.items()}
+        return {f"shrinkage.{self.scope}.{c}": m for c, m in self.medians.items()}
