@@ -1,0 +1,16 @@
+{
+  "version": "1.9.1",
+  "tier": "paper",
+  "status": "configuration_checks_passed",
+  "counts": {
+    "posterior": 23,
+    "reference": 1,
+    "pre2019": 4,
+    "validation": 52,
+    "validation10": 3,
+    "all": 82
+  },
+  "scope": "Model declarations, data windows, units, horizons and matched priors; no MCMC or scheduler execution."
+}
+sbatch --parsable --chdir=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1 --job-name=bx191_paper_standard --array=1-22%8 --nodes=1 --ntasks=1 --cpus-per-task=4 --mem=20G --time=12:00:00 --output=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1/job_scripts/logs/paper_posterior_standard_%A_%a.log --export=ALL\,BUCEX_PROJECT_ROOT=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1\,BUCEX_PYTHON=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\,BUCEX_TIER=paper\,BUCEX_BATCH=posterior\,BUCEX_RESOURCE=standard\,BUCEX_RESULTS_ROOT=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1/results/serra_191_parallel job_scripts/seasonal_array.slurm 
+sbatch --parsable --chdir=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1 --job-name=bx191_paper_long --array=1-1%8 --nodes=1 --ntasks=1 --cpus-per-task=4 --mem=32G --time=24:00:00 --output=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1/job_scripts/logs/paper_posterior_long_%A_%a.log --export=ALL\,BUCEX_PROJECT_ROOT=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1\,BUCEX_PYTHON=/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python3\,BUCEX_TIER=paper\,BUCEX_BATCH=posterior\,BUCEX_RESOURCE=long\,BUCEX_RESULTS_ROOT=/workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1/results/serra_191_parallel job_scripts/seasonal_array.slurm 

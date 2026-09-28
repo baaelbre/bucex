@@ -1,0 +1,35 @@
+{
+  "extends": "main.json",
+  "variants": [
+    {
+      "name": "reference"
+    },
+    {
+      "name": "half_physical_effects",
+      "multipliers": {
+        "level": 0.5,
+        "trend": 0.5,
+        "season": 0.5
+      },
+      "initial_slope_multiplier": 0.5
+    },
+    {
+      "name": "double_physical_effects",
+      "multipliers": {
+        "level": 2.0,
+        "trend": 2.0,
+        "season": 2.0
+      },
+      "initial_slope_multiplier": 2.0
+    }
+  ],
+  "assessment": {
+    "baseline": "reference"
+  },
+  "mcmc": {
+    "warmup": 500,
+    "draws": 500
+  },
+  "save_fits": false,
+  "output": "results/serra_184_anchor_sensitivity"
+}

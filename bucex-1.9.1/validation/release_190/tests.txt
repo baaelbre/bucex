@@ -1,0 +1,12 @@
+........................................................................ [ 24%]
+........................................................................ [ 49%]
+........................................................................ [ 74%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+=============================== warnings summary ===============================
+tests/test_results_and_data.py::test_bundled_uccle_data_and_short_minimum_workflow
+  <release>/bucex/datasets/uccle.py:330: UserWarning: Retained 2 reported daily TN > TX pairs; see monthly.attrs or quality_report.json.
+    rebuilt = derive_uccle_monthly(daily_source,
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+289 passed, 1 warning in 86.53s (0:01:26)

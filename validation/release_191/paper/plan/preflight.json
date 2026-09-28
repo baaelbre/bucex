@@ -1,0 +1,14 @@
+{
+  "counts": {
+    "all": 82,
+    "posterior": 23,
+    "pre2019": 4,
+    "reference": 1,
+    "validation": 52,
+    "validation10": 3
+  },
+  "scope": "Model declarations, data windows, units, horizons and matched priors; no MCMC or scheduler execution.",
+  "status": "configuration_checks_passed",
+  "tier": "paper",
+  "version": "1.9.1"
+}

@@ -1,0 +1,32 @@
+........................................................................ [ 24%]
+..........................................................F............. [ 48%]
+..................................................F..................... [ 73%]
+........................................................................ [ 97%]
+......                                                                   [100%]
+=================================== FAILURES ===================================
+_________________ test_version_plan_and_configuration_contract _________________
+tests/test_laplace_mh.py:39: in test_version_plan_and_configuration_contract
+    assert bx.__version__ == "1.9.0"
+E   AssertionError: assert '1.9.1' == '1.9.0'
+E     
+E     - 1.9.0
+E     ?     ^
+E     + 1.9.1
+E     ?     ^
+______ test_archived_reference_and_new_final_config_have_distinct_priors _______
+tests/test_release_187.py:27: in test_archived_reference_and_new_final_config_have_distinct_priors
+    assert reference["analysis"] == "copula"
+E   AssertionError: assert 'joint' == 'copula'
+E     
+E     - copula
+E     + joint
+=============================== warnings summary ===============================
+tests/test_results_and_data.py::test_bundled_uccle_data_and_short_minimum_workflow
+  /workspace/scratch/30dfa8f04d16/release191/bucex-1.9.1/bucex/datasets/uccle.py:330: UserWarning: Retained 2 reported daily TN > TX pairs; see monthly.attrs or quality_report.json.
+    rebuilt = derive_uccle_monthly(daily_source,
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_laplace_mh.py::test_version_plan_and_configuration_contract
+FAILED tests/test_release_187.py::test_archived_reference_and_new_final_config_have_distinct_priors
+2 failed, 292 passed, 1 warning in 106.29s (0:01:46)
