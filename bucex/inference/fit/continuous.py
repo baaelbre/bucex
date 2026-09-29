@@ -176,6 +176,11 @@ def coefficient_prior(prior, names, tbar, mixing, sigma2):
             else:
                 p=getattr(prior,name);mean[i]=p.mean;v=p.sd**2
             root[i,i]=np.sqrt(v)
+    season_ids = [i for i,n in enumerate(names) if n.startswith('gamma0_season_')]
+    if season_ids:
+        coordinates = [int(names[i].rsplit('_',1)[1])-1 for i in season_ids]
+        cov = prior.gamma0_season.covariance_array()[np.ix_(coordinates,coordinates)]
+        root[np.ix_(season_ids,season_ids)] = np.linalg.cholesky(cov)
     if np.any(np.diag(root)<=0) or not np.all(np.isfinite(root)):
         raise FloatingPointError('Nonpositive or nonfinite FS prior scale; no prior floor is applied.')
     return mean,root

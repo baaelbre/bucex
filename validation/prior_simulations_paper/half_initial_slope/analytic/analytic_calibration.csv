@@ -1,0 +1,5 @@
+component,anchor,anchor_kind,horizon_updates,period,response_unit,hyperprior,df,log_sd,hyperprior_lower,hyperprior_upper,coefficient_sd_at_anchor,response_gain,displacement_sd_at_anchor,displacement_sd_marginal,finite_second_moment,slope_time_unit,initial_rate_sd_at_anchor,initial_rate_sd_marginal
+level,0.01,normal_SD,120.0,4.0,degC,half_normal,,,0.0003133798202142648,0.022414027276049468,0.01,10.954451150103322,0.10954451150103323,0.10954451150103323,True,40.0,,
+slope,0.0001,normal_SD,120.0,4.0,degC,half_normal,,,3.133798202142648e-06,0.0002241402727604947,0.0001,754.2015645701088,0.07542015645701088,0.07542015645701088,True,40.0,,
+seasonal,0.01,normal_SD,120.0,4.0,degC,half_normal,,,0.0003133798202142648,0.022414027276049468,0.01,7.745966692414834,0.07745966692414834,0.07745966692414834,True,40.0,,
+initial_slope,0.005,fixed_normal_SD,,,,,,,,,,,,0.6,,,,0.2

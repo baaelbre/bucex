@@ -25,7 +25,7 @@ def finish(root,tier,batch='all'):
         figures=out/('manuscript_figures' if passed and tier=='paper' else 'diagnostic_figures_NOT_FINAL')
         build(reference,figures,allow_unconverged=not passed,pre2019=pre)
     stamp=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ')
-    archive,count=export(root,tier,root/'exports'/f'bucex195_{tier}_{batch}_{stamp}.zip',figures=True)
+    archive,count=export(root,tier,root/'exports'/f'bucex196_{tier}_{batch}_{stamp}.zip',figures=True)
     print(f'{out}\n{archive}: {count} review files; posterior archives remain in their fit directories.',flush=True)
     return out
 

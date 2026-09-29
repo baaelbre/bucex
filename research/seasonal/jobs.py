@@ -1,4 +1,4 @@
-"""BUCEX 1.9.5 pooled half-normal reference and parallel paper experiments."""
+"""BUCEX 1.9.6 pooled half-normal reference and parallel paper experiments."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -19,7 +19,7 @@ from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
 from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan
 
-ROOT = Path('results/serra_195')
+ROOT = Path('results/serra_196')
 
 @dataclass(frozen=True)
 class Task:
@@ -85,12 +85,13 @@ def task_config(task,tier):
     if task.kind=='forecast':
         c['validation'].update(training_ends=[task.origin],horizon=task.horizon)
     c['forecast_horizon']=360 if task.frequency=='monthly' else 120
+    if task.frequency=='monthly': c['forecast_draws']=10000 if tier=='screen' else 20000
     if resource_class(task,tier).endswith('_long'):
         final=bx.load_config(CONFIG/'final.json')
         c['mcmc'].update(final['mcmc']);c['forecast_draws']=final['forecast_draws']
     if task.kind=='pre2019':
         c['data']['end']='2019-05';c['forecast_horizon']=1
-        c['forecast_draws']=4000 if tier=='screen' else 20000
+        c['forecast_draws']=50000
         c['risk_periods']=None
     if task.kind=='block':
         c['mcmc'].update(budget['block_mcmc'])
@@ -100,10 +101,11 @@ def task_config(task,tier):
     seed=int.from_bytes(hashlib.sha256(seed_key).digest()[:4],'little')
     c['mcmc']['seed']=seed;c['seed']=(seed+1)%(2**32)
     c['credible_interval']=.95;c['variant']=deepcopy(entry)
+    c['annual_risk_draws']=5000 if tier=='screen' else 20000
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
         batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        frequency=task.frequency,reference='1.9.5: pooled half-normal innovation scales; separately calibrated initial rates')
+        frequency=task.frequency,reference='1.9.6: pooled half-normal innovation scales; separately calibrated initial rates')
     if c.get('copula') is not None or c.get('contrasts') is not None:
         raise ValueError('This comparison has independent residuals and no historical contrasts.')
     hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')
@@ -198,7 +200,8 @@ def verify(tier='screen',*,output=None):
                 raise ValueError('Expected the complete record and 30-year forecasts.')
         elif t.kind in ('forecast','block'):
             splits=validation_splits(data,c['validation'])
-            if len(splits)!=1 or len(splits[0][1])!=t.horizon*(3 if t.frequency=='monthly' else 1):
+            expected=min(t.horizon*(3 if t.frequency=='monthly' else 1), len(data)-splits[0][0].stop) if splits else 0
+            if len(splits)!=1 or len(splits[0][1])!=expected:
                 raise ValueError('Validation requires a complete declared fold.')
         elif t.kind=='pre2019':
             if str(data.attrs.get('last_included_day'))!='2019-05-31' or c['forecast_horizon']!=1:

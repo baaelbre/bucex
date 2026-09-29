@@ -31,7 +31,7 @@ def budget(task,tier):
     n=1614 if task.frequency=='monthly' else 538
     dimension=c['model']['period']+1
     raw=8*len(task.series)*dimension*n*c['mcmc']['draws']*c['mcmc']['chains']/1024**3
-    return c['mcmc']['chain_workers'],round(max(3.,2.+3.5*raw),1)
+    return c['mcmc']['chain_workers'],round(max(6.,3.+3.5*raw),1)
 
 
 def make_queue(tiers,batch):
@@ -42,12 +42,10 @@ def make_queue(tiers,batch):
             result.append(Work(tier,task,cpus,memory))
     def priority(w):
         t=w.task
-        if t.frequency=='monthly':
-            # Start the slower monthly screen jobs early to avoid a long final wave.
-            return (0,2,t.id) if w.tier=='screen' else (4,w.tier,t.id)
+        if t.frequency=='monthly':return (1,0 if w.tier=='screen' else 1,t.id)
         if t.variant=='reference' and t.kind in ('posterior','pre2019'):
             return (0,0 if w.tier=='paper' else 1,0 if t.kind=='posterior' else 1,t.id)
-        if t.kind=='posterior' and t.variant in ('half_t4','half_cauchy'):
+        if t.kind=='posterior' and t.variant in ('half_slope','double_slope','slope_1e3'):
             return (1,0 if w.tier=='screen' else 1,t.id)
         if w.tier=='screen':return (2,0 if t.kind=='forecast' else 1,t.id)
         return (3,0 if t.kind=='forecast' and t.variant=='reference' else 1 if t.kind=='pre2019' else 2,t.id)
@@ -75,8 +73,8 @@ def snapshot(root,tiers,batch):
     return dict(counts=counts,tasks=rows)
 
 
-def run(*,tiers=('screen',),batch='all',root=ROOT,cpus=32,memory_gb=150.,max_jobs=32,
-        dry_run=False,retry_failed=False,collect=True):
+def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,max_jobs=32,
+        dry_run=False,retry_failed=False,collect=True,prior_simulations=True):
     if cpus<1 or memory_gb<=0 or max_jobs<1:raise ValueError('Resource budgets must be positive.')
     root=Path(root).resolve();root.mkdir(parents=True,exist_ok=True)
     with (root/'.biobot.lock').open('a+') as lock:
@@ -117,8 +115,14 @@ def run(*,tiers=('screen',),batch='all',root=ROOT,cpus=32,memory_gb=150.,max_job
         print('Two chains run in parallel inside each fit. A pooled chain jointly updates all six responses. '
               'Screening and paper draws remain separate. No completion time or convergence is assumed.',flush=True)
         if dry_run:
+            if prior_simulations:
+                print('Before fitting: joint prior simulations, core suite; 2000 screen / 10000 paper replications.')
             for w in queue:print(w.tier,w.task.id,f'{w.cpus} workers / {w.memory_gb:g} GiB')
             return 0
+        if prior_simulations:
+            from research.seasonal.prior_simulations import run_suite
+            for tier in tiers:
+                run_suite(root, tier=tier)
         environment=os.environ.copy();environment['MPLBACKEND']='Agg'
         environment.update({k:'1' for k in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')})
         environment['PYTHONPATH']=str(PROJECT)+os.pathsep+environment.get('PYTHONPATH','')
@@ -192,15 +196,16 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--tier',choices=('screen','paper','both'),default='screen');p.add_argument('--batch',choices=BATCHES,default='all')
     p.add_argument('--root',type=Path,default=Path(os.environ.get('BUCEX_RESULTS_ROOT',ROOT)))
-    p.add_argument('--cpus',type=int,default=int(os.environ.get('BUCEX_CPUS','32')))
+    p.add_argument('--cpus',type=int,default=int(os.environ.get('BUCEX_CPUS','48')))
     p.add_argument('--memory-gb',type=float,default=float(os.environ.get('BUCEX_MEMORY_GB','150')))
     p.add_argument('--max-jobs',type=int,default=int(os.environ.get('BUCEX_MAX_JOBS','32')))
     p.add_argument('--dry-run',action='store_true');p.add_argument('--retry-failed',action='store_true')
     p.add_argument('--status',action='store_true');p.add_argument('--no-collect',action='store_true')
+    p.add_argument('--skip-priors',action='store_true',help='Skip automatic prior checks before fitting; standalone command remains available.')
     a=p.parse_args();tiers=('screen','paper') if a.tier=='both' else (a.tier,)
     if a.status:
         result=snapshot(a.root,tiers,a.batch);print(json.dumps(result['counts'],indent=2));return 0
     return run(tiers=tiers,batch=a.batch,root=a.root,cpus=a.cpus,memory_gb=a.memory_gb,max_jobs=a.max_jobs,
-        dry_run=a.dry_run,retry_failed=a.retry_failed,collect=not a.no_collect)
+        dry_run=a.dry_run,retry_failed=a.retry_failed,collect=not a.no_collect,prior_simulations=not a.skip_priors)
 
 if __name__=='__main__':sys.exit(main())

@@ -7,7 +7,7 @@
   "forecast_horizon": 1,
   "forecast_draws": 20000,
   "contrasts": null,
-  "output": "results/serra_195/pre2019",
+  "output": "results/serra_1951/pre2019",
   "risk_periods": null,
   "experiment": {
     "batch_kind": "pre2019"

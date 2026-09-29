@@ -145,7 +145,14 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             save_band(fit,values,directory/label,dates=dates,ylabel=ylabel,level=level,image_format=image_format,dpi=dpi,
                       color=config.get('figure_colors',{}).get(label.split('_')[0]))
 
+    if fit.model.period and hasattr(fit,'channel_names'):
+        for name in fit.channel_names:
+            seasonal=fit.component_draws('seasonal',channel=name)
+            initial=np.arange(seasonal.shape[-1]) % fit.model.period
+            change=seasonal-seasonal[...,initial]
+            band(change,name+'_seasonal_change',ylabel='same-season change / °C')
     forecast = fit.forecast(horizon,draws=config.get('forecast_draws'),seed=config['seed'])
+    forecast.quantile_method = 'cdf'
     forecast.summary(level=level).to_csv(directory/'forecast.csv',index=False)
     if seasonal_blocks and horizon >= 120:
         # Keep quantile-based 30-year predictive widths separate from GEV

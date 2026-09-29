@@ -1,48 +1,32 @@
-# BUCEX 1.9.5
+# 1.9.6
 
-## Pooled half-normal reference
+The half-normal reference now has slope scale 0.0002. A 3×4 level/slope grid includes
+slope 0.001; broader seasonal checks reach 0.10 and include a fixed cycle. Observation
+scale and shape checks remain. Heavy-tail hyperpriors and leave-one-out experiments
+are absent from the active matrix. Six matched private HN fits remain for the pooling
+comparison; broader private checks are deferred.
 
-Adds half-normal, half-t and half-Cauchy hyperpriors for the normal SDs of signed
-non-centred innovation coefficients. The reference pools three scales across
-six distinct latent paths. Initial slopes retain their fixed normal prior SD
-of 0.01 per seasonal transition. Level and seasonal-coordinate initial SDs are
-20. The exact log-scale hyperconditional includes the Jacobian and all normal
-coefficient normalization terms. Legacy lognormal constructors and archives
-retain their meaning.
+Initial levels have SD 10; initial seasonal contrast coordinates have SD 10. The FS
+sampler retains lag coordinates but now supports their equivalent full covariance.
+This change affects coefficient updates, prior draws and archive round trips. A bridge
+fit preserves the old SD-20 independent lag initialization at the new slope setting.
 
-## Experiments and execution
+All four central-level slope settings have 11 expanding-window origins, 1970–2020,
+and up to 140 held-out seasons, truncated only at the end of available observations.
+Reports retain horizon bands and unique verifying-date counts. No future observations
+are used in training or learning the shared scales.
 
-The default suite contains 106 fits per tier, including 41 full-record seasonal
-settings, six pre-2019 fits, 52 standard/split validation fits, six matched
-monthly/seasonal validation fits and a full-record monthly supplement. All use
-pooled shrinkage. Fixed/unpooled and private-hierarchy reference fits are kept
-in an explicit `deferred` batch, excluded from the default.
+Forecast simulation for independent-residual multiseries models is vectorized in
+batches. Predictive quantiles can invert the mixture CDF to integrate observation
+noise, while process and posterior uncertainty are still simulated. Seasonal full-fit
+forecasts use 50,000 paths over 120 steps. Annual return-level calculations use a
+recorded subset of whole joint paths. The public empirical-quantile default remains
+available; this study explicitly selects CDF inversion.
 
-A single BIOBOT queue runs paper and screen together with bounded CPU and
-estimated memory reservations. Chains and independent fits run in parallel.
-The queue prioritizes reference fits, records process failures, preserves failed
-attempts and skips completed matching configurations. It never treats screen
-draws as paper draws. A startup probe exercises all three hyperprior families
-before production fits begin. Collection and compact exports run automatically.
+A BIOBOT screen queue defaults to 48 chain workers with memory-aware scheduling;
+HPC uses native Slurm arrays and an automatic dependent report collection job.
+100 fits map to 95 HPC array elements. Both launch paths include startup checks,
+prior simulation, provenance checks and completion/diagnostic manifests.
 
-## Interpretation and reporting
-
-Calibration uses the half-normal's marginal RMS coefficient scale. Half-t4
-matches second moments; half-Cauchy matches a shared-scale upper quantile and
-is marked as having no finite second moment. Monthly innovations are translated
-to match the seasonal model's 30-year prior effects.
-
-Risk reporting adds exact pre-2019 threshold probabilities, all six observed
-summer predictions, period-average risks, local return periods, multiple return
-levels and conditional annual extrema. Annual aggregation uses complete
-meteorological years and pairs all seasonal distributions within a draw.
-Forecasts span 30 years with 95% intervals; predictive validation additionally
-reports 90%, 95% and 99% coverage. Numerical flags remain visible throughout.
-
-See `BUCEX-1.9.5-commands.md` for all budgets, calibration constants, optional
-batches, monitoring and the runtime limits of a full overnight study. No full
-scientific fit has been run or declared converged during release preparation.
-
-### Overnight screening clarification
-
-The default launcher now selects screening only: all 106 fits remain, with two chains, 1,000 warm-up and 1,000 retained draws per chain, including matched-block and monthly fits. Slower monthly screening fits start early. No wall-time cutoff was added. The long paper budgets and scientific priors are unchanged. Re-extract the updated release and use a fresh results root.
+This is a computational release, not a claim that the new scientific runs converge
+or confirm prior robustness. The manuscript's results must be updated from those runs.

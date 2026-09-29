@@ -1,0 +1,34 @@
+{
+  "audit_range": [
+    -50,
+    60
+  ],
+  "audit_range_is_a_constraint": false,
+  "draws": 10000,
+  "interpretation": "Unconditional prior simulation, not a posterior forecast or an adequacy certificate.",
+  "intervals": [
+    0.95,
+    0.99
+  ],
+  "observations_read": false,
+  "seed": 1951,
+  "tier": "paper",
+  "variants": [
+    "reference",
+    "half_innovations",
+    "double_innovations",
+    "half_t4",
+    "half_t4_half",
+    "half_t4_double",
+    "half_cauchy",
+    "half_cauchy_half",
+    "half_cauchy_double",
+    "half_initial_slope",
+    "double_initial_slope",
+    "quarter_seasonal",
+    "previous_initial_season_sd",
+    "xi_narrow",
+    "xi_wide"
+  ],
+  "version": "1.9.5.1"
+}

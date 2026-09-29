@@ -140,6 +140,9 @@ class DiagonalNormalPrior:
     def sd_array(self) -> np.ndarray:
         return np.asarray(self.sd, dtype=float)
 
+    def covariance_array(self):
+        return np.diag(self.sd_array() ** 2)
+
     def __post_init__(self) -> None:
         mean = np.asarray(self.mean, dtype=float)
         sd = np.asarray(self.sd, dtype=float)
@@ -149,6 +152,30 @@ class DiagonalNormalPrior:
             raise ValueError("DiagonalNormalPrior.mean and .sd must have the same shape.")
         if np.any(sd <= 0.0):
             raise ValueError("All entries of DiagonalNormalPrior.sd must be > 0.")
+
+
+@dataclass(frozen=True)
+class MultivariateNormalPrior:
+    """Gaussian vector prior with an explicit positive-definite covariance."""
+    mean: Sequence[float]
+    covariance: Sequence[Sequence[float]]
+
+    def mean_array(self):
+        return np.asarray(self.mean, dtype=float)
+
+    def covariance_array(self):
+        return np.asarray(self.covariance, dtype=float)
+
+    def sd_array(self):
+        return np.sqrt(np.diag(self.covariance_array()))
+
+    def __post_init__(self):
+        m, v = self.mean_array(), self.covariance_array()
+        if m.ndim != 1 or v.shape != (m.size, m.size) or not np.isfinite(m).all() or not np.isfinite(v).all():
+            raise ValueError("Invalid multivariate normal dimensions or nonfinite values.")
+        if not np.allclose(v, v.T):
+            raise ValueError("Prior covariance must be symmetric.")
+        np.linalg.cholesky(v)
 
 
 @dataclass(frozen=True)

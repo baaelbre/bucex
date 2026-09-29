@@ -1643,10 +1643,9 @@ def _theta_prior_mean_precision(
         gm, gs = gp.mean_array(), gp.sd_array()
         if gm.size != layout.season_dim:
             raise ValueError("gamma0_season prior dimension mismatch.")
-        for j in range(layout.season_dim):
-            i = index[f"gamma0_season_{j+1}"]
-            mean[i] = float(gm[j])
-            precision[i, i] = 1.0 / max(float(gs[j]) ** 2, 1e-12)
+        ids = [index[f"gamma0_season_{j+1}"] for j in range(layout.season_dim)]
+        mean[ids] = gm
+        precision[np.ix_(ids,ids)] = spd_solve(gp.covariance_array(),np.eye(layout.season_dim))
 
     scale_map = {"s_level": "level", "s_trend": "trend", "s_season": "season"}
     for theta_name, block_name in scale_map.items():

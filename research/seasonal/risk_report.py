@@ -28,6 +28,15 @@ def save(fit,forecast,predictive,config,directory,level=.95):
     seasonal=config['data'].get('frequency')=='seasonal'
     names=fit.channel_names if fit.is_multiseries_model else (None,)
     rows=[];historical=[];future=[]
+    # Nested annual CDF inversions need fewer paired paths than the marginal
+    # predictive fan chart. Subsample whole joint paths, never channels/times.
+    from dataclasses import replace
+    limit=config.get('annual_risk_draws',5000)
+    annual_forecast=forecast
+    if forecast.n_draws>limit:
+        idx=np.random.default_rng(config.get('seed',196)).choice(forecast.n_draws,limit,replace=False)
+        annual_forecast=replace(forecast,observations=forecast.observations[idx],eta=forecast.eta[idx],
+            states=forecast.states[idx],parameters={k:v[idx] for k,v in forecast.parameters.items()},_quantile_cache={})
     for name in names:
         label=name or fit.series_name or 'series'
         channel=fit.model.channel(name) if name else fit.model
@@ -54,7 +63,7 @@ def save(fit,forecast,predictive,config,directory,level=.95):
                 future.append(pd.DataFrame(dict(time=forecast.dates,channel=label,return_period=r,
                     credible_interval=level,**bands(values,level))))
         if seasonal and config.get('annual_risk',False):
-            for tag,prediction in (('historical',predictive),('forecast',forecast)):
+            for tag,prediction in (('historical',predictive),('forecast',annual_forecast)):
                 aggregate=prediction.aggregate(frequency='year',channel=name)
                 if not aggregate.n_periods:continue
                 aggregate.summary(level=level).assign(interval_level=level).to_csv(
@@ -92,4 +101,5 @@ def save(fit,forecast,predictive,config,directory,level=.95):
         return_level='Posterior intervals for conditional quantiles; distinct from quantiles of the posterior predictive mixture.',
         annual_window='Complete meteorological years, previous December through November. Partial years omitted.',
         annual_assumption='Observations independent across time conditional on the full latent path and parameters. CDF products formed within each draw before averaging.',
-        historical_annual_draws=predictive.n_draws,forecast_draws=forecast.n_draws),directory/'risk_definitions.json')
+        historical_annual_draws=predictive.n_draws,forecast_draws=forecast.n_draws,
+        forecast_annual_draws=annual_forecast.n_draws),directory/'risk_definitions.json')

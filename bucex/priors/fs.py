@@ -7,7 +7,7 @@ from scipy.optimize import brentq
 from scipy.special import betaln, erf, ndtri
 
 from .structural import (BayesianLassoPrior, DiagonalNormalPrior, FSGaussianPriors,
-    FSGEVPriors, InverseGammaPrior, NormalPrior, TripleGammaPrior)
+    FSGEVPriors, InverseGammaPrior, NormalPrior, TripleGammaPrior, MultivariateNormalPrior)
 
 
 @lru_cache(maxsize=32)
@@ -31,7 +31,7 @@ def triple_gamma_median(spike_shape=.5, tail_shape=.5):
 
 
 def fs_priors(family, *, period=12, innovation="normal", innovation_median=None, innovation_sd=None,
-              initial_level=None, initial_slope=None, seasonal_initial_sd=2.25,
+              initial_level=None, initial_slope=None, seasonal_initial_sd=2.25, seasonal_initial_basis="lags",
               observation_variance=None, xi_prior=None, xi_max_abs=None,
               spike_shape=.5, tail_shape=.5):
     """Construct proper, median-matched normal/lasso/triple-gamma FS priors.
@@ -71,10 +71,19 @@ def fs_priors(family, *, period=12, innovation="normal", innovation_median=None,
     if period is not None and (int(period) != period or period < 2):
         raise ValueError("period must be an integer >=2 or None.")
     k = 0 if period is None else int(period)-1
+    if seasonal_initial_basis not in {"lags", "orthonormal"}:
+        raise ValueError("seasonal_initial_basis must be lags or orthonormal.")
+    # Any p-1 entries of an exchangeable zero-sum seasonal cycle have this
+    # covariance. Mapping them to lag order is a permutation, so phase does
+    # not change the prior. This is exactly gamma=C_p a, a~N(0,sd^2 I).
+    seasonal_prior = (MultivariateNormalPrior(np.zeros(k), seasonal_initial_sd**2 *
+                         (np.eye(k)-np.ones((k,k))/(k+1)))
+                      if seasonal_initial_basis == "orthonormal" and k else
+                      DiagonalNormalPrior(np.zeros(k), np.full(k,seasonal_initial_sd)))
     fields = dict(alpha0=initial_level or NormalPrior(0.,20.),
                   beta0=initial_slope or NormalPrior(0.,.0025),
                   sigma2=observation_variance or InverseGammaPrior(2.,2.),
-                  gamma0_season=DiagonalNormalPrior(np.zeros(k), np.full(k,seasonal_initial_sd)))
+                  gamma0_season=seasonal_prior)
     if innovation == "normal":
         fields.update({"s_"+key:NormalPrior(0.,median/ndtri(.75)) for key,median in medians.items()})
     elif innovation == "lasso":

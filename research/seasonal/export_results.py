@@ -12,7 +12,8 @@ def export(root,tier,output,*,figures=False):
     allowed={'.csv','.json','.log','.txt','.gz'}
     if figures:allowed.update({'.png','.pdf','.svg'})
     files=sorted(p for p in source.rglob('*') if p.is_file() and p.suffix in allowed and
-                 'attempts' not in p.relative_to(source).parts and not p.name.startswith('.'))
+                 'attempts' not in p.relative_to(source).parts and not p.name.startswith('.') and
+                 p.name != 'target_draws.csv.gz')
     if not files:raise ValueError('No compact reports found.')
     output.parent.mkdir(parents=True,exist_ok=True)
     with zipfile.ZipFile(output,'x',compression=zipfile.ZIP_DEFLATED,compresslevel=6) as archive:

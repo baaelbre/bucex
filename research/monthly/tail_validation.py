@@ -22,7 +22,10 @@ def _stratify(cases, steps_per_year):
                                  6: "JJA", 7: "JJA", 8: "JJA",
                                  9: "SON", 10: "SON", 11: "SON"})
     year = "year_" + (((cases["horizon"].astype(int) - 1) // steps_per_year) + 1).astype(str)
-    return pd.concat([cases.assign(stratum="overall", group="all"),
+    lead=cases['horizon']/steps_per_year
+    band=pd.cut(lead,[0,5,10,20,35,float('inf')],labels=['1-5 years','6-10 years','11-20 years','21-35 years','over 35 years'])
+    return pd.concat([cases.assign(stratum="horizon_band",group=band.astype(str)),
+                      cases.assign(stratum="overall", group="all"),
                       cases.assign(stratum="season", group=season.to_numpy()),
                       cases.assign(stratum="forecast_year", group=year.to_numpy())],
                      ignore_index=True)

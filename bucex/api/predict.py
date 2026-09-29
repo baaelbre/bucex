@@ -117,6 +117,8 @@ class Forecast:
     component_designs: dict[str, Array] = field(default_factory=dict)
     copula: Any = None
     channels: tuple[Any, ...] = ()
+    quantile_method: str = "empirical"
+    _quantile_cache: dict = field(default_factory=dict, repr=False)
 
     @property
     def is_multiseries_forecast(self) -> bool:
@@ -243,15 +245,17 @@ class Forecast:
         for selected in channels:
             index = self._channel_index(selected) if self.is_multiseries_forecast else 0
             target_draws = self._target_draws(target_key, channel=selected)
+            q = (self.predictive_quantiles([alpha/2,.5,1-alpha/2],channel=selected)
+                 if self.quantile_method == 'cdf' and target_key in {'observation','observations','predictive'} else None)
             for h in selected_horizons:
                 values = target_draws[:, h]
                 eta = self.eta[:, h, index] if self.is_multiseries_forecast else self.eta[:, h]
                 row = {
                     "time": self.dates[h],
                     "mean": float(np.mean(values)),
-                    "lower": float(np.quantile(values, alpha / 2.0)),
-                    "median": float(np.median(values)),
-                    "upper": float(np.quantile(values, 1.0 - alpha / 2.0)),
+                    "lower": float(q[0,h] if q is not None else np.quantile(values, alpha / 2.0)),
+                    "median": float(q[1,h] if q is not None else np.median(values)),
+                    "upper": float(q[2,h] if q is not None else np.quantile(values, 1.0 - alpha / 2.0)),
                 }
                 if target_key in {"observation", "observations", "predictive"}:
                     row.update(
@@ -272,6 +276,59 @@ class Forecast:
             return pd.DataFrame(rows)
         except ImportError:
             return rows
+
+    def predictive_quantiles(self, probabilities, *, channel=None):
+        """Invert the average conditional CDF, integrating observation noise.
+
+        Future states and parameters are still integrated by Monte Carlo.
+        Cache is valid while this forecast's arrays remain unchanged.
+        """
+        from scipy.special import ndtr
+        from scipy.optimize import brentq
+        probs=np.atleast_1d(np.asarray(probabilities,dtype=float))
+        if np.any(~np.isfinite(probs)) or np.any((probs<=0)|(probs>=1)):
+            raise ValueError("Probabilities must lie strictly between zero and one.")
+        joint=self.is_multiseries_forecast
+        i=self._channel_index(channel)
+        suffix='.'+channel if joint else ''
+        eta=self.eta[:,:,i] if joint else self.eta
+        sigma=np.broadcast_to(self.parameters.get('sigma_path'+suffix,
+              self.parameters['sigma'+suffix][:,None]),eta.shape)
+        xi=self.parameters.get('xi'+suffix)
+        sign=float(np.asarray(self.transform_sign)[i]) if joint else float(self.transform_sign)
+        obs=self.observations[:,:,i] if joint else self.observations
+        family=self.observation_model[channel].name if joint else self.observation_model.name
+        result=[]
+        for probability in probs:
+            key=(channel,float(probability))
+            if key not in self._quantile_cache:
+                quantiles=[]
+                for h in range(self.horizon):
+                    mu,scale=eta[:,h],sigma[:,h]
+                    def cdf(y):
+                        z=sign*(y-mu)/scale
+                        if family=='gaussian':
+                            return float(ndtr((y-mu)/scale).mean())
+                        if family!='gev':
+                            raise ValueError("CDF quantiles support Gaussian and GEV observations.")
+                        shape=np.asarray(xi)
+                        support=1+shape*z
+                        with np.errstate(over='ignore',invalid='ignore',divide='ignore'):
+                            log_power=np.where(shape==0,-z,-np.log1p(shape*z)/shape)
+                            c=np.exp(-np.exp(log_power))
+                        c=np.where(support>0,c,np.where(shape>0,0.,1.))
+                        return float((1-c if sign<0 else c).mean())
+                    guess=float(np.quantile(obs[:,h],probability))
+                    width=max(float(np.median(scale)),float(np.std(mu)),.1)
+                    lower,upper=guess-width,guess+width
+                    for _ in range(80):
+                        if cdf(lower)<=probability<=cdf(upper):break
+                        width*=2;lower,upper=guess-width,guess+width
+                    else:raise FloatingPointError("Cannot bracket predictive quantile.")
+                    quantiles.append(brentq(lambda y:cdf(y)-probability,lower,upper,xtol=1e-6))
+                self._quantile_cache[key]=np.asarray(quantiles)
+            result.append(self._quantile_cache[key])
+        return np.stack(result)
 
     def tail_probability(self, threshold: float, *, channel: str | None = None) -> Array:
         index = self._channel_index(channel)
@@ -1029,21 +1086,45 @@ def posterior_predict(
         state_paths = np.zeros((n_draws, horizon, fit.compiled.state_dim))
         eta_model = np.zeros((n_draws, horizon, n_channels))
         observations_model = np.zeros_like(eta_model)
-        for draw, posterior_index in enumerate(indices):
-            state = flat_states[posterior_index, -1].copy()
-            params = {name: float(values[draw]) for name, values in parameter_values.items() if values.ndim == 1}
-            process_sd = fit.compiled.process_vector(params)
-            design = fit.compiled.design(horizon, exog=exog_future, params=params)
-            for h in range(horizon):
-                innovation = fit.compiled.loading @ (
-                    process_sd * rng.normal(size=fit.compiled.noise_dim)
-                )
-                state = fit.compiled.transition @ state + innovation
-                state_paths[draw, h] = state
-                eta_model[draw, h] = design[h] @ state
-                observations_model[draw, h] = fit.compiled.sample_observation(
-                    eta_model[draw, h], _time_parameters(params, parameter_values, draw, h), rng
-                )
+        if fit.model.copula is None and not any(c.n_exog for c in fit.model.channels):
+            # Bounded temporaries; identical state equations and distributions.
+            # Stream batches across all forecast horizons, vectorizing paths.
+            design = fit.compiled.design(horizon)
+            for start in range(0,n_draws,2048):
+                stop = min(start+2048,n_draws)
+                state = flat_states[indices[start:stop],-1].copy()
+                process_sd = np.column_stack([parameter_values[f"sd.{n}"][start:stop]
+                                               for n in fit.compiled.noise_names])
+                for h in range(horizon):
+                    noise = process_sd*rng.normal(size=process_sd.shape)
+                    state = state @ fit.compiled.transition.T + noise @ fit.compiled.loading.T
+                    state_paths[start:stop,h] = state
+                    eta_model[start:stop,h] = state @ design[h].T
+                for j,channel in enumerate(fit.model.channels):
+                    name = channel.name
+                    sigma = parameter_values.get('sigma_path.'+name)
+                    sigma = (parameter_values['sigma.'+name][start:stop,None] if sigma is None
+                             else sigma[start:stop])
+                    xi = parameter_values.get('xi.'+name)
+                    observations_model[start:stop,:,j] = channel.observation.sample(
+                        eta_model[start:stop,:,j],sigma=sigma,
+                        xi=None if xi is None else xi[start:stop,None],rng=rng)
+        else:
+            for draw, posterior_index in enumerate(indices):
+                state = flat_states[posterior_index, -1].copy()
+                params = {name: float(values[draw]) for name, values in parameter_values.items() if values.ndim == 1}
+                process_sd = fit.compiled.process_vector(params)
+                design = fit.compiled.design(horizon, exog=exog_future, params=params)
+                for h in range(horizon):
+                    innovation = fit.compiled.loading @ (
+                        process_sd * rng.normal(size=fit.compiled.noise_dim)
+                    )
+                    state = fit.compiled.transition @ state + innovation
+                    state_paths[draw, h] = state
+                    eta_model[draw, h] = design[h] @ state
+                    observations_model[draw, h] = fit.compiled.sample_observation(
+                        eta_model[draw, h], _time_parameters(params, parameter_values, draw, h), rng
+                    )
         signs = np.asarray(fit.transform_sign, dtype=float)
         resolved_dates = (
             np.arange(fit.n_time, fit.n_time + horizon)

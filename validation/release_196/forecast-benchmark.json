@@ -1,0 +1,17 @@
+{
+  "version": "1.9.6",
+  "draws": 50000,
+  "horizon": 120,
+  "channels": [
+    "TXm",
+    "TNm",
+    "TXx",
+    "TXn",
+    "TNx",
+    "TNn"
+  ],
+  "simulation_seconds": 4.3117429800004174,
+  "cdf_quantile_seconds": 28.18172916900221,
+  "max_rss_GiB": 2.7997817993164062,
+  "note": "Timing of forecast post-processing from a short smoke fit; not a fit-time or convergence benchmark."
+}

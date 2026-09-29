@@ -36,7 +36,8 @@ def configured_variant(config, variant):
     hierarchy_key = 'independent_shrinkage' if p.get('independent_shrinkage') is not None else 'shared_shrinkage'
     old_hierarchy = p.get(hierarchy_key)
     for key in ('innovation', 'xi_prior', 'xi_sd', 'xi_bounds', 'tg_spike_shape', 'tg_tail_shape',
-                'observation_variance', 'shared_shrinkage', 'independent_shrinkage'):
+                'observation_variance', 'shared_shrinkage', 'independent_shrinkage',
+                'baseline_sd', 'seasonal_initial_sd', 'seasonal_initial_basis'):
         if key in variant:
             p[key] = variant[key]
     if variant.get('match_marginal_moments',False):

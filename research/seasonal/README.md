@@ -1,6 +1,6 @@
-# Seasonal paper workflow — 1.9.5
+# Seasonal paper workflow — 1.9.5.1
 
-See [the complete launch guide](../../BUCEX-1.9.5-commands.md). The active
+See [the complete launch guide](../../BUCEX-1.9.5.1-commands.md). The active
 configuration is `config/main.json`: three pooled half-normal innovation scales,
 separate fixed normal initial rates, no copula. Use `jobs --verify` to check all
 configurations and `overnight --dry-run` to inspect the resource-bounded queue.

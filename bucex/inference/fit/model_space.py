@@ -412,6 +412,9 @@ def _structural_prior_mean_precision(
             i = index[name]
             mean[i] = float(gamma_mean[j])
             precision[i, i] = 1.0 / float(gamma_sd[j]) ** 2
+        ids = [index[n] for n in gamma_names]
+        coords = [int(n.rsplit("_",1)[1])-1 for n in gamma_names]
+        precision[np.ix_(ids,ids)] = _solve_spd(gamma_prior.covariance_array()[np.ix_(coords,coords)],np.eye(len(ids)))
 
     slab_sd = dict(priors.ssvs.innovation_slab_sd)
     for coefficient, block in (

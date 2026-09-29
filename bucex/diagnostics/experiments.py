@@ -38,8 +38,9 @@ def draw_structural_prior(prior, size=2000, *, seed=None, xi_bounds=None):
               "initial.level": rng.normal(prior.alpha0.mean, prior.alpha0.sd, size),
               "initial.slope": rng.normal(prior.beta0.mean, prior.beta0.sd, size)}
     if prior.gamma0_season is not None:
-        output["initial.seasonal"] = rng.normal(prior.gamma0_season.mean_array(),
-            prior.gamma0_season.sd_array(), size=(size, len(prior.gamma0_season.mean)))
+        gp = prior.gamma0_season
+        output["initial.seasonal"] = (rng.multivariate_normal(gp.mean_array(),gp.covariance_array(),size=size)
+            if len(gp.mean) else np.empty((size,0)))
     if hasattr(prior, "xi"):
         lower,upper = -prior.xi_max_abs,prior.xi_max_abs
         if xi_bounds is not None:
@@ -233,8 +234,11 @@ def forecast_uncertainty(forecast, *, channel=None, levels=(0.90, 0.95, 0.99)):
     rows = []
     for target, values in (("level", latent_level), ("location", eta), ("observation", observations)):
         for level in levels:
-            low, median, high = np.quantile(values, [(1-level)/2, .5, (1+level)/2], axis=0)
-            upper_quantile = np.quantile(values, level, axis=0)
+            if target=='observation' and forecast.quantile_method=='cdf':
+                low,median,high,upper_quantile=forecast.predictive_quantiles([(1-level)/2,.5,(1+level)/2,level],channel=channel)
+            else:
+                low, median, high = np.quantile(values, [(1-level)/2, .5, (1+level)/2], axis=0)
+                upper_quantile = np.quantile(values, level, axis=0)
             for h in range(forecast.horizon):
                 rows.append(dict(channel=channel or "series", horizon=h+1, time=forecast.dates[h],
                     target=target, nominal=level, lower=low[h], median=median[h], upper=high[h],

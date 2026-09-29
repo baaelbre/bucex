@@ -90,6 +90,23 @@ def _band_panels(inputs, run, table, ylabel, *, zero=False):
     return figure
 
 
+def _seasonal_change_panels(inputs, run):
+    import matplotlib.pyplot as plt
+    figure,axes=plt.subplots(2,3,figsize=(10.6,6.0),layout='constrained')
+    for name,axis in zip(SERIES,axes.flat):
+        frame=inputs.csv(run/f"{name}_seasonal_change.csv")
+        dates=pd.to_datetime(frame.time)
+        for month,season,color in zip((12,3,6,9),SEASONS,SEASON_COLORS):
+            take=dates.dt.month.eq(month)
+            axis.plot(dates[take],frame.loc[take,'median'],color=color,label=season,lw=1.2)
+            axis.fill_between(dates[take],frame.loc[take,'lower'],frame.loc[take,'upper'],color=color,alpha=.10)
+        axis.axhline(0,color=INK,lw=.6,ls='--')
+        axis.set_title(name,loc='left',weight='bold')
+        axis.set(xlabel='Year',ylabel='Change from initial season / °C')
+    axes[0,0].legend(ncol=4,fontsize=7)
+    return figure
+
+
 def _scale_panels(inputs, run):
     import matplotlib.pyplot as plt
 
@@ -551,6 +568,8 @@ def build(run, output, *, formats=("png", "pdf"), dpi=220,
               "seasonal_levels", formats, dpi, figures)
         _save(_band_panels(inputs, run, "slope_C_per_decade", "slope / °C per decade", zero=True), output,
               "seasonal_slopes", formats, dpi, figures)
+        if all((run/f"{name}_seasonal_change.csv").exists() for name in SERIES):
+            _save(_seasonal_change_panels(inputs,run),output,'seasonal_cycle_changes',formats,dpi,figures)
         _save(_scale_panels(inputs, run), output, "seasonal_scales", formats, dpi, figures)
         _save(_pit_panels(inputs, run), output, "seasonal_pit_qq", formats, dpi, figures)
         if config.get('contrasts'):

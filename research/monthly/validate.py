@@ -18,18 +18,32 @@ def calibration(forecast, observed, *, channel=None):
     base = dict(time=forecast.dates, horizon=np.arange(1, forecast.horizon + 1), observed=observed)
     rows = []
     for level in (0.90, 0.95, 0.99):
-        lower, upper = np.quantile(samples, [(1 - level) / 2, (1 + level) / 2], axis=0)
+        lower, upper = (forecast.predictive_quantiles([(1-level)/2,(1+level)/2],channel=channel)
+                        if forecast.quantile_method=='cdf' else np.quantile(samples,[(1-level)/2,(1+level)/2],axis=0))
         rows.append(pd.DataFrame({**base, "kind": "central_interval", "nominal": level,
             "lower": lower, "upper": upper, "width": upper - lower,
             "covered": (observed >= lower) & (observed <= upper)}))
     for probability in (0.005, 0.01, 0.025, 0.05, 0.10, 0.90, 0.95, 0.975, 0.99, 0.995):
-        quantile = np.quantile(samples, probability, axis=0)
+        quantile = (forecast.predictive_quantiles([probability],channel=channel)[0]
+                    if forecast.quantile_method=='cdf' else np.quantile(samples, probability, axis=0))
         rows.append(pd.DataFrame({**base, "kind": "cdf_quantile", "nominal": probability,
             "quantile": quantile, "covered": observed <= quantile}))
     return pd.concat(rows, ignore_index=True)
 
 
 def validation_splits(data, settings):
+    if settings.get("training_ends") is not None and settings.get("allow_partial_horizon",False):
+        splits=[]
+        for origin in settings["training_ends"]:
+            end=pd.Period(origin,freq="M").end_time
+            months=3 if data.attrs.get('frequency')=='seasonal' else 1
+            complete=data.index+pd.DateOffset(months=months)-pd.Timedelta(days=1)
+            n=int(np.sum(complete <= end))
+            stop=min(len(data),n+int(settings['horizon']))
+            if n<2 or stop<=n:
+                raise ValueError(f"No training/verification cases at {origin}.")
+            splits.append((range(0,n),range(n,stop)))
+        return tuple(splits)
     if settings.get("training_ends") is not None:
         return tuple(bx.calendar_origin_splits(data.index, settings["training_ends"], horizon=settings["horizon"],
             block_frequency=data.attrs.get('frequency','monthly')))
@@ -74,6 +88,7 @@ def validate(config, *, directory=None):
                          **fit_options(config, family=model.family, tail=tail))
             forecast = fit.forecast(len(test), dates=values.index[list(test)],
                 draws=settings.get("draws", config.get("forecast_draws")), seed=config["seed"] + fold)
+            forecast.quantile_method = 'cdf'
             diagnostics = fit.diagnostics()["parameters"].assign(chains=fit.n_chains)
             diagnostics.to_csv(target / f"mcmc_{train.stop}.csv")
             if getattr(fit.priors, "shrinkage", None) is not None:
@@ -90,6 +105,7 @@ def validate(config, *, directory=None):
             folds.append(dict(origin=train.stop, training_start=str(training.index[0]),
                 training_end=str(training.index[-1]), forecast_start=str(values.index[test.start]),
                 forecast_end=str(values.index[test.stop-1]), horizon=len(test),
+                requested_horizon=settings['horizon'],partial_horizon=len(test)<settings['horizon'],
                 numerical_status=assessment['status']))
             pd.DataFrame(folds).to_csv(target/'folds.csv', index=False)
             if settings.get("save_fits", False):
@@ -129,7 +145,7 @@ def validate(config, *, directory=None):
                 if forecast.is_multiseries_forecast:
                     observations = observations[:, :, forecast.channel_names.index(name)]
                 interval = config.get('credible_interval', .95)
-                low, median, high = np.quantile(observations, [(1-interval)/2, .5, (1+interval)/2], axis=0)
+                low, median, high = forecast.predictive_quantiles([(1-interval)/2,.5,(1+interval)/2],**kwargs)
                 predictions.append(pd.DataFrame(dict(origin=train.stop, channel=name,
                     time=forecast.dates, horizon=np.arange(1,len(test)+1), observed=observed,
                     lower=low, median=median, upper=high, credible_interval=interval)))

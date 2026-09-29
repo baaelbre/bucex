@@ -1,62 +1,55 @@
 {
-  "version": "1.9.5",
-  "tested_at": "2026-09-28T21:49:41.432873+00:00",
-  "runtime": {
-    "python": "3.12.14",
-    "numpy": "2.3.5",
-    "scipy": "1.17.0",
-    "pandas": "2.2.3"
+  "version": "1.9.6",
+  "date": "2026-09-29T14:28:55.796805+00:00",
+  "reference": {
+    "hyperprior": "half_normal",
+    "innovation_scales": {
+      "level": 0.01,
+      "slope": 0.0002,
+      "seasonal": 0.01
+    },
+    "initial_level_sd": 10,
+    "initial_seasonal_contrast_sd": 10,
+    "initial_slope_variance": 0.0001
   },
-  "reference_fingerprint": {
-    "config_sha256": "22f0eb2b8a6fddf6223fd41ca81f4eb143ecaa2e6ef14ef36e806cbd266d23bd",
-    "source_sha256": "8453830c8d587f2b274a102e7d2cbaea2638e8794b766ec6e7b05972927a2356",
-    "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+  "screening": {
+    "fits": 100,
+    "hpc_array_elements": 95,
+    "chains": 2,
+    "warmup": 1000,
+    "retained": 1000
   },
-  "regressions": {
-    "total_tests": 340,
-    "full_suite_passed": 339,
-    "remaining_test": "seasonal-only collection selector updated for the new monthly supplement; passed affected-test rerun",
-    "status": "all_340_passed_across_full_and_affected_runs"
+  "checks": {
+    "selected_regressions": 91,
+    "prior_simulation_tests": 7,
+    "failed": 0,
+    "all_screen_and_paper_configs": "compiled; folds and matched priors verified",
+    "startup": "three models, two parallel chains each passed",
+    "end_to_end": "full-record short fits, held-out forecast, pre2019, private fit, collection, figures, export passed",
+    "prior_simulations": "all 14 core settings, 100 replications each passed",
+    "shell_syntax": "passed"
   },
-  "checks": [
-    "Half-family conditional densities including Jacobian against independent SciPy densities",
-    "Half-normal slice samples against numerical quadrature",
-    "Prior simulation, pooled marginal moments and half-t/half-Cauchy calibration",
-    "Both upper/lower annual return levels solve the conditional aggregate CDF",
-    "All three half-family fits, fit serialization and 95% risk reports",
-    "Three real two-worker startup fits completed and reloaded",
-    "Pre-2019 evaluation of all six held-out observations with May cutoff",
-    "Validation coverages and monthly/seasonal forecasts scored on identical targets",
-    "CPU-bounded mixed-tier process execution and failure accounting",
-    "All 106 active plus 12 deferred task configurations per tier verified",
-    "Both-tier dry run: 212 active fits, no deferred tasks",
-    "Full 538-season reporting and 30-year figure construction using tiny smoke chains",
-    "Python 3.10 grammar checked for 164 modules; shell syntax checked"
-  ],
-  "limitations": [
-    "No scientific posterior fit was run to convergence.",
-    "Runtime and convergence on BIOBOT must be assessed there; startup probes are automatic.",
-    "Full paper/screen queues are provided, not a guarantee of completion overnight.",
-    "Python 3.10/3.11 compatibility was grammar checked; execution here used Python 3.12."
-  ],
-  "screening_update": {
-    "updated_at": "2026-09-28T22:07:06.191769+00:00",
-    "screen_fits": 106,
-    "chains_per_fit": 2,
-    "warmup_per_chain": 1000,
-    "retained_per_chain": 1000,
-    "paper_budgets_unchanged": true,
-    "wall_time_cutoff": false,
-    "checks": [
-      "All 106 resolved screen configs checked, including monthly and matched blocks",
-      "Paper tier unchanged",
-      "All 14 release-195 affected tests passed",
-      "Monthly screens start at queue positions 3\u20136"
+  "forecast_benchmark": {
+    "version": "1.9.6",
+    "draws": 50000,
+    "horizon": 120,
+    "channels": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
     ],
-    "screen_reference_fingerprint": {
-      "config_sha256": "2b0ad96eae659512bcd54ec553de5e7385abe81cfc90c717476f05c2fb5ef379",
-      "source_sha256": "1fb7a4b7ee38b92e24b872876d82dec9b6158ffd48d6108449fb781aa48dc4a1",
-      "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
-    }
-  }
+    "simulation_seconds": 4.3117429800004174,
+    "cdf_quantile_seconds": 28.18172916900221,
+    "max_rss_GiB": 2.7997817993164062,
+    "note": "Timing of forecast post-processing from a short smoke fit; not a fit-time or convergence benchmark."
+  },
+  "limitations": [
+    "No remote BIOBOT or VSC jobs submitted.",
+    "Short smoke chains and screening budgets do not establish scientific convergence.",
+    "Runtime estimate uses the supplied earlier fit timing, not a full remote benchmark.",
+    "Validation covers selected current numerical and workflow regressions, not every historical study-specific test."
+  ]
 }

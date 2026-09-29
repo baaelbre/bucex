@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.5 pooled half-normal reference; three learned innovation SDs, fixed initial-rate prior. No copula.",
+  "_comment": "1.9.6: pooled half-normal; doubled slope reference; exchangeable initial seasonal cycle.",
   "analysis": "joint",
   "data": {
     "series": [
@@ -32,9 +32,9 @@
   "priors": {
     "innovation": "normal",
     "initial_level_mean": 0.0,
-    "baseline_sd": 20.0,
+    "baseline_sd": 10.0,
     "initial_slope_sd": 0.01,
-    "seasonal_initial_sd": 20.0,
+    "seasonal_initial_sd": 10.0,
     "observation_variance": [
       2.0,
       2.0
@@ -47,7 +47,7 @@
     ],
     "innovation_sd": {
       "level": 0.01,
-      "trend": 0.0001,
+      "trend": 0.0002,
       "season": 0.01
     },
     "shared_shrinkage": {
@@ -59,13 +59,14 @@
       ],
       "hyperprior": "half_normal",
       "pool_initial_slope": false
-    }
+    },
+    "seasonal_initial_basis": "orthonormal"
   },
   "mcmc": {
-    "draws": 2000,
+    "draws": 1000,
     "warmup": 1000,
     "chains": 2,
-    "seed": 19501,
+    "seed": 19601,
     "progress": true,
     "progress_every": 100,
     "chain_workers": 2
@@ -78,10 +79,10 @@
       "mh_steps": 1
     }
   },
-  "seed": 19502,
-  "output": "results/serra_195/reference",
+  "seed": 19602,
+  "output": "results/serra_196/reference",
   "forecast_horizon": 120,
-  "forecast_draws": 4000,
+  "forecast_draws": 50000,
   "credible_interval": 0.95,
   "risks": {
     "TXm": 25,
@@ -94,14 +95,24 @@
   "copula": null,
   "validation": {
     "initial": 1188,
-    "horizon": 20,
+    "horizon": 140,
     "step": 12,
     "save_fits": true,
     "training_ends": [
+      "1970-11",
+      "1975-11",
+      "1980-11",
+      "1985-11",
+      "1990-11",
+      "1995-11",
+      "2000-11",
+      "2005-11",
+      "2010-11",
       "2015-11",
       "2020-11"
     ],
-    "draws": 4000
+    "draws": 10000,
+    "allow_partial_horizon": true
   },
   "figures": true,
   "predictive_check_draws": 2000,
@@ -156,7 +167,7 @@
     "convention": "half_normal_hyperprior_scale",
     "reference_sd": {
       "level": 0.01,
-      "trend": 0.0001,
+      "trend": 0.0002,
       "season": 0.01,
       "initial_slope": 0.01
     },

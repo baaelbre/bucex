@@ -180,9 +180,9 @@ class SensitivityReport:
         if 'scores' in result:
             scores = result['scores'].copy()
             result['predictive_comparison'] = compare_predictive_scores(scores, baseline=self.baseline, seed=173)
-            first_year=4 if self.block_frequency=='seasonal' else 12
-            scores['horizon_band'] = np.where(scores.horizon <= first_year,
-                f'horizons_1_{first_year}',f'horizons_{first_year+1}_plus')
+            steps=4 if self.block_frequency=='seasonal' else 12
+            scores['horizon_band']=pd.cut(scores.horizon/steps,[0,5,10,20,35,float('inf')],
+                labels=['1-5 years','6-10 years','11-20 years','21-35 years','over 35 years']).astype(str)
             scores = pd.concat([scores, scores.assign(horizon_band='all')], ignore_index=True)
             grouping = ['variant','channel','origin','score','setting','horizon_band']
             result['scores_by_origin'] = scores.groupby(grouping, dropna=False, sort=False).value.agg(

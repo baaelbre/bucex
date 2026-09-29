@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="2.026" timestamp="2026-09-28T15:23:44.536450-07:00" hostname="0e851cf904e4"><testcase classname="tests.test_prior_simulations_1951" name="test_prior_runner_reproducibility_and_outputs" time="0.937" /></testsuite></testsuites>

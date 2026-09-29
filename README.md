@@ -1,49 +1,28 @@
-# BUCEX 1.9.5
+# BUCEX 1.9.6
 
-Bayesian unobserved-component models for environmental averages and extremes.
+Bayesian structural time-series models for temperature averages and extremes.
+This release implements the final pooled half-normal screening design.
 
-The paper reference uses **pooled half-normal hierarchical shrinkage** for three
-signed innovation coefficients. Each response retains its own latent trajectory.
-Initial slopes have separately calibrated fixed normal priors. Observation
-residuals are conditionally independent; no copula enters the default study.
+Start with **[BUCEX-1.9.6-commands.md](BUCEX-1.9.6-commands.md)** for complete BIOBOT
+and VSC instructions, settings, job counts and output locations.
 
-Start with **[BUCEX-1.9.5-commands.md](BUCEX-1.9.5-commands.md)**. It gives the
-BIOBOT overnight launch, monitoring, resumption, all budgets and the complete
-experiment inventory. The default screening queue contains all 106 fits (two chains each), with
-parallel chains and a common CPU/memory budget. It prioritizes reference fits;
-screen chains use 1,000 warm-up + 1,000 retained draws. There is no automatic wall-time cutoff. Paper fits are available separately and are not part of the default overnight command.
+- Reference innovation scales: `(0.01, 0.0002, 0.01)` for level, slope and season.
+- Separate initial slopes: `Normal(0, 0.01²)`; initial level SD 10 °C.
+- Initial seasonal orthonormal contrast SD 10 °C, with exchangeable seasonal effects.
+- 100 screen fits, two parallel chains each, 1,000 warm-up + 1,000 retained iterations.
+- HN sensitivity grid, private reference checks, 35-year hindcasts, risk and 30-year forecasts.
+- No copula, heavy-tailed hyperprior or leave-one-response-out jobs in the active plan.
+- Four chains and longer budgets for the separate paper tier.
 
-```python
-import bucex as bx
-shared = bx.SharedShrinkage.half_normal(
-    {"level": 0.01, "slope": 0.0001, "seasonal": 0.01}
-)
+```bash
+python -m pip install -e '.[plot,test]'
+python -m research.seasonal.jobs --verify --tier screen
+python -m research.seasonal.jobs --list --tier screen --batch all
 ```
 
-For `s[c,j] | tau[c] ~ Normal(0,tau[c]^2)`, the hyperprior is
-`tau[c] ~ HalfNormal(A[c])`. The three anchors above are half-normal scales,
-not absolute-coefficient medians. The reference initial-rate SD is 0.01 per
-seasonal update; initial level and seasonal-coordinate SDs are 20.
+Configuration checks compile all models and verify folds and matched marginal priors.
+They do not establish posterior convergence. Screen outputs preserve numerical flags.
 
-Half-t4 and half-Cauchy sensitivity families are supported. Unpooled fixed and
-private one-response hierarchies are retained in the optional `deferred` batch.
-Legacy lognormal constructors and saved archives preserve their meanings.
-
-- `research/seasonal/config/main.json`: pooled reference.
-- `research/seasonal/config/experiments.json`: sensitivity settings and budgets.
-- `docs/SENSITIVITY_GRID_195.csv`: 41 seasonal full-record settings.
-- `docs/EXPERIMENT_PLAN_195_*.csv`: complete plans for both tiers.
-- `research/seasonal/overnight.py`: resumable local queue.
-- `research/seasonal/jobs.py`: execution and provenance checks.
-- `research/seasonal/finish.py`: collection, review figures and compact exports.
-- `validation/RELEASE_VALIDATION_195.md`: implementation checks and their limits.
-
-Python >= 3.10 is required. In an existing environment, the launchers put this
-release first on `PYTHONPATH`. For a new environment, install with
-`python -m pip install -e '.[plot]'`. Run `python -m pytest` for regression tests.
-
-Scientific quantities are reported with 95% intervals. Forecasts span 30 years;
-validation also includes 90%, 95% and 99% coverage. Annual extreme aggregation
-uses complete meteorological years and integrates uncertainty within paired
-posterior paths. All numerical and prior-sensitivity checks must be assessed
-before using a fit for manuscript claims.
+The source includes the bundled daily record, the `bucex` API, research runners,
+Slurm/PBS launchers, prior simulations, tests and reusable figure/report builders.
+See `RELEASE_NOTES.md` for changes and `RELEASE_VALIDATION.json` for release checks.

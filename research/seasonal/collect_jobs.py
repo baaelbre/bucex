@@ -23,6 +23,9 @@ def merge_folds(paths,destination,channel=None):
                 frames.append(f)
             pd.concat(frames,ignore_index=True).to_csv(destination/(name+'.csv'),index=False)
     folds.to_csv(destination/'folds.csv',index=False)
+    from research.monthly.tail_validation import write_tail_tables
+    if (destination/'coverage_by_case.csv').exists() and (destination/'threshold_cases.csv').exists():
+        write_tail_tables(destination,steps_per_year=4)
     for path in paths:
         for pattern in ('convergence_*.json','independent_shrinkage_*.csv','shared_shrinkage_*.csv'):
             for file in Path(path).glob(pattern):shutil.copy2(file,destination/file.name)
@@ -65,11 +68,11 @@ def collect(root=ROOT,tier='screen',*,batch='experiments',figures=False,require_
             bx.SensitivityReport(posterior_runs=available,baseline=baseline,block_frequency='seasonal').save(destination,figures=plot)
         base=out/'posterior'/ch
         save(list(posterior),'reference',base,False)
-        save(BASELINES,'independent_reference',base/'pooling',figures)
+        save(('reference','independent_reference'),'independent_reference',base/'pooling',figures)
         for scope,baseline in [('shared','reference'),('independent','independent_reference'),('fixed','fixed_reference')]:
             names=[t.variant for t in group if t.scope==scope and t.study=='structural']
             save(names,baseline,base/'by_scope'/scope,figures)
-        for family in ('hyperprior','adequacy','influence'):
+        for family in ('adequacy','pooling'):
             names=['reference']+[t.variant for t in group if t.study==family]
             save(names,'reference',base/family,figures and len(names)<=10)
     forecasts=[t for t in expected if t.kind=='forecast'];matched=[]

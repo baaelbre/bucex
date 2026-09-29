@@ -11,7 +11,8 @@ from research.monthly.models import joint_model, independent_model
 def run(config, output, *, draws=50000, seed=188):
     if config['data'].get('frequency') != 'seasonal':
         raise ValueError('This calibration is for seasonal transitions.')
-    data = bx.load_uccle_multiseries(**config['data'])
+    # Prior declarations need channel names, never the observed temperatures.
+    data = pd.DataFrame(columns=config['data']['series'])
     independent = config["analysis"] == "independent"
     _, priors = (independent_model(data[[data.columns[0]]], config) if independent else joint_model(data, config))
     spec = priors.shrinkage
@@ -72,7 +73,7 @@ def run(config, output, *, draws=50000, seed=188):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', default='research/seasonal/config/final.json')
-    parser.add_argument('--output', default='results/serra_195_prior_effects')
+    parser.add_argument('--output', default='results/serra_196_prior_effects')
     parser.add_argument('--draws', type=int, default=50000)
     parser.add_argument('--seed', type=int, default=188)
     args = parser.parse_args()

@@ -17,8 +17,17 @@ from research.monthly.report import write_report
 
 
 def config(name='reference'):
-    task=next(t for t in jobs.tasks('posterior') if t.variant==name)
-    return jobs.task_config(task,'screen')
+    task=next(t for t in jobs.tasks('posterior') if t.variant=='reference')
+    c=jobs.task_config(task,'screen')
+    if name=='reference':return c
+    from research.monthly.experiment import configured_variant
+    if name=='half_t4':
+        v=dict(scope='shared',hyperprior='half_t',df=4,sd_multipliers={k:2**-.5 for k in ('level','trend','season')})
+    elif name=='half_cauchy':
+        v=dict(scope='shared',hyperprior='half_cauchy',df=1,sd_multipliers={k:norm.ppf(.975)/t.ppf(.975,1) for k in ('level','trend','season')})
+    else:raise ValueError(name)
+    return configured_variant(c,v)
+
 
 
 @pytest.mark.parametrize('family,nu',[('half_normal',4),('half_t',4),('half_cauchy',1)])
@@ -69,9 +78,9 @@ def test_hyperprior_calibration_and_pooling():
 def test_complete_queue_excludes_deferred_and_matches_monthly_effects():
     for tier in ('screen','paper'):
         ts=jobs.tasks('all',tier=tier)
-        assert len(ts)==106 and len({t.id for t in ts})==106
-        assert all(t.scope=='shared' for t in ts)
-        assert len(jobs.tasks('deferred',tier=tier))==12
+        assert len(ts)==100 and len({t.id for t in ts})==100
+        assert sum(t.scope=='independent' for t in ts)==6
+        assert len(jobs.tasks('deferred',tier=tier))==30
         assert not set(t.id for t in ts).intersection(t.id for t in jobs.tasks('deferred'))
     c=config();monthly=jobs.task_config(next(t for t in jobs.tasks('all') if t.frequency=='monthly'),'paper')
     for z in (c,monthly):
@@ -81,7 +90,7 @@ def test_complete_queue_excludes_deferred_and_matches_monthly_effects():
         else:np.testing.assert_allclose(table.displacement_sd_marginal,expected)
     assert monthly['priors']['initial_slope_sd']*120==pytest.approx(.4)
     queue=overnight.make_queue(('screen','paper'),'all')
-    assert len(queue)==212 and queue[0].task.id=='posterior_reference' and queue[0].tier=='paper'
+    assert len(queue)==200 and queue[0].task.id=='posterior_reference' and queue[0].tier=='paper'
 
 
 @pytest.mark.parametrize('tail',['upper','lower'])
@@ -135,7 +144,7 @@ sys.exit(int(sys.argv[2]))
         return real_popen([sys.executable,'-c',script,str(tmp_path/(tier+'_'+task+'.json')),
             '1' if task==chosen[1].task.id and tier==chosen[1].tier else '0'],**kwargs)
     monkeypatch.setattr(overnight.subprocess,'Popen',launch)
-    assert overnight.run(root=tmp_path/'results',cpus=4,memory_gb=10,max_jobs=8,collect=False)==1
+    assert overnight.run(root=tmp_path/'results',cpus=4,memory_gb=10,max_jobs=8,collect=False,prior_simulations=False)==1
     intervals=[json.loads((tmp_path/(w.tier+'_'+w.task.id+'.json')).read_text()) for w in chosen]
     points=sorted([(r['start'],1) for r in intervals]+[(r['end'],-1) for r in intervals])
     assert np.cumsum([p[1] for p in points]).max()==2

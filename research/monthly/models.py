@@ -76,6 +76,7 @@ def marginal_prior(item, data, config):
         initial_level=bx.NormalPrior(item.transform_sign*center, p.get('baseline_sd', 20.)),
         initial_slope=bx.NormalPrior(0., p['initial_slope_sd']),
         seasonal_initial_sd=p['seasonal_initial_sd'],
+        seasonal_initial_basis=p.get('seasonal_initial_basis','lags'),
         observation_variance=bx.InverseGammaPrior(*p['observation_variance']),
         xi_prior=xi, xi_max_abs=max(abs(v) for v in bounds),
         spike_shape=p.get('tg_spike_shape', .5), tail_shape=p.get('tg_tail_shape', .5))
