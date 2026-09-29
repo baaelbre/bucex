@@ -1,32 +1,44 @@
-# 1.9.6
+# BUCEX 1.9.6.1
 
-The half-normal reference now has slope scale 0.0002. A 3×4 level/slope grid includes
-slope 0.001; broader seasonal checks reach 0.10 and include a fixed cycle. Observation
-scale and shape checks remain. Heavy-tail hyperpriors and leave-one-out experiments
-are absent from the active matrix. Six matched private HN fits remain for the pooling
-comparison; broader private checks are deferred.
+This patch adds a focused joint level/slope calibration study. It preserves the
+1.9.6 half-normal hierarchy, MH correction, initial-state priors, observation model,
+conditional residual independence and both dynamic trend components. It does not
+claim to resolve statistical identification through a change of coordinates.
 
-Initial levels have SD 10; initial seasonal contrast coordinates have SD 10. The FS
-sampler retains lag coordinates but now supports their equivalent full covariance.
-This change affects coefficient updates, prior draws and archive round trips. A bridge
-fit preserves the old SD-20 independent lag initialization at the new slope setting.
+The grid crosses five level scales (0.005–0.10) with five slope scales
+(0.0001–0.002), while the seasonal scale stays at 0.01. The current reference
+(0.01, 0.0002) is included. All 25 cells receive full-record fits and matched
+hindcasts at 1990, 2000, 2010, 2015 and 2020. The requested horizon is 30 years,
+truncated when observations end. Full-record forecasts also cover 30 years.
 
-All four central-level slope settings have 11 expanding-window origins, 1970–2020,
-and up to 140 held-out seasons, truncated only at the end of available observations.
-Reports retain horizon bands and unique verifying-date counts. No future observations
-are used in training or learning the shared scales.
+The focused HPC launcher runs 75 fits; the BIOBOT launcher runs the other 75.
+Each screen fit uses two parallel chains with 1,000 warmup and 1,000 retained
+draws each. The earlier 100-fit `all` suite remains available separately.
 
-Forecast simulation for independent-residual multiseries models is vectorized in
-batches. Predictive quantiles can invert the mixture CDF to integrate observation
-noise, while process and posterior uncertainty are still simulated. Seasonal full-fit
-forecasts use 50,000 paths over 120 steps. Annual return-level calculations use a
-recorded subset of whole joint paths. The public empirical-quantile default remains
-available; this study explicitly selects CDF inversion.
+New outputs retain paired parameter draws, pointwise 95% level/rate intervals,
+posterior allocation of new level/slope forecast variance, current-state forecast
+uncertainty including covariance, and local posterior-mean hyperprior sensitivity.
+Numerical checks include historical level/rate checkpoints, every final-30-year
+state, hyperprior scores and forecast allocation targets. A job that finishes can
+still be numerically flagged.
 
-A BIOBOT screen queue defaults to 48 chain workers with memory-aware scheduling;
-HPC uses native Slurm arrays and an automatic dependent report collection job.
-100 fits map to 95 HPC array elements. Both launch paths include startup checks,
-prior simulation, provenance checks and completion/diagnostic manifests.
+The automatic self-contained HTML compares all pairs and checks each adjacent
+2×2 rectangle, including diagonal pairs and all six responses. Missing quantities
+or numerical flags prevent a pass. It distinguishes whole-history from recent
+stability and shows shared-scale learning, paired CRPS, interval coverage/width
+and directional misses. A passing region is a descriptive candidate, not a prior
+optimum or proof of robustness. It also reads disjoint compact exports from both
+hosts without requiring posterior state archives.
 
-This is a computational release, not a claim that the new scientific runs converge
-or confirm prior robustness. The manuscript's results must be updated from those runs.
+HPC setup resolves physical directory paths before submission, preserves the
+venv interpreter symlink, rejects an unresolved `/user/data` alias, and unloads
+a conflicting Python module before loading the configured compute environment.
+The existing working Gallade environment can be reused. The longer paper reference
+requests 48 GiB to accommodate its retained states and diagnostic copies. The focused startup
+probe exercises both grid corners and the reference; 25-cell prior simulations
+run before the model array. Login planning uses Python 3.9-compatible standard
+library code; numerical fitting requires Python ≥3.10.
+
+Verification is recorded in `RELEASE_VALIDATION.json`. Local smoke fits are
+software checks only and are not included as scientific results. No VSC or BIOBOT
+jobs were submitted while preparing this package.

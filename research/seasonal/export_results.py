@@ -9,7 +9,7 @@ def export(root,tier,output,*,figures=False):
     source=Path(root).resolve()/tier;output=Path(output).resolve()
     if not source.is_dir():raise ValueError(f'Missing results tier: {source}')
     if output.exists():raise FileExistsError(f'{output} exists; choose a new name to preserve that archive')
-    allowed={'.csv','.json','.log','.txt','.gz'}
+    allowed={'.csv','.json','.log','.txt','.gz','.html'}
     if figures:allowed.update({'.png','.pdf','.svg'})
     files=sorted(p for p in source.rglob('*') if p.is_file() and p.suffix in allowed and
                  'attempts' not in p.relative_to(source).parts and not p.name.startswith('.') and

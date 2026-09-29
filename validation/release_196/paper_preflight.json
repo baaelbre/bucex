@@ -21,5 +21,5 @@
   "scope": "All specifications, folds, CPU plans and exact independent/shared marginal-prior matching; no MCMC.",
   "status": "configuration_checks_passed",
   "tier": "paper",
-  "version": "1.9.6"
+  "version": "1.9.6.1"
 }

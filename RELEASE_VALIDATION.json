@@ -1,55 +1,45 @@
 {
-  "version": "1.9.6",
-  "date": "2026-09-29T14:28:55.796805+00:00",
+  "version": "1.9.6.1",
+  "date": "2026-09-29T15:36:20.131264+00:00",
+  "basis": "Latest 1.9.6 source package; statistical model and reference priors retained.",
   "reference": {
     "hyperprior": "half_normal",
-    "innovation_scales": {
-      "level": 0.01,
-      "slope": 0.0002,
-      "seasonal": 0.01
-    },
+    "A_level": 0.01,
+    "A_slope": 0.0002,
+    "A_season": 0.01,
+    "initial_rate_sd": 0.01,
     "initial_level_sd": 10,
-    "initial_seasonal_contrast_sd": 10,
-    "initial_slope_variance": 0.0001
+    "initial_seasonal_contrast_sd": 10
   },
-  "screening": {
-    "fits": 100,
-    "hpc_array_elements": 95,
-    "chains": 2,
-    "warmup": 1000,
-    "retained": 1000
+  "focused_study": {
+    "cells": 25,
+    "full_record_fits": 25,
+    "held_out_fits": 125,
+    "hpc_fits": 75,
+    "biobot_fits": 75,
+    "screen_chains": 2,
+    "warmup_per_chain": 1000,
+    "retained_per_chain": 1000
   },
   "checks": {
-    "selected_regressions": 91,
-    "prior_simulation_tests": 7,
+    "selected_regressions": 29,
     "failed": 0,
-    "all_screen_and_paper_configs": "compiled; folds and matched priors verified",
-    "startup": "three models, two parallel chains each passed",
-    "end_to_end": "full-record short fits, held-out forecast, pre2019, private fit, collection, figures, export passed",
-    "prior_simulations": "all 14 core settings, 100 replications each passed",
-    "shell_syntax": "passed"
-  },
-  "forecast_benchmark": {
-    "version": "1.9.6",
-    "draws": 50000,
-    "horizon": 120,
-    "channels": [
-      "TXm",
-      "TNm",
-      "TXx",
-      "TXn",
-      "TNx",
-      "TNn"
-    ],
-    "simulation_seconds": 4.3117429800004174,
-    "cdf_quantile_seconds": 28.18172916900221,
-    "max_rss_GiB": 2.7997817993164062,
-    "note": "Timing of forecast post-processing from a short smoke fit; not a fit-time or convergence benchmark."
+    "python_311_syntax_files": 171,
+    "shell_syntax_files": 28,
+    "configurations": "All screen and paper models, folds and matched marginal priors verified.",
+    "startup": "Reference, narrowest and widest grid corners: two chains with 3 warmup and 8 retained draws; all passed operational checks.",
+    "validation": "2020-origin refit on 515 training blocks, 23 held-out seasons; two chains with 3 warmup and 8 retained draws; new diagnostics exported.",
+    "prior_simulations": "All 25 grid cells; 16 replications each and prior figures rendered (test budget only).",
+    "diagnostics": "Full-record stored tiny-fit archive processed for analytic variance allocation, local sensitivity, paired traces and numerical flags.",
+    "collection": "Two disjoint fixture roots merged into self-contained HTML; plots, tables and compact export checked; unconverged fixtures correctly flagged.",
+    "mathematical": "Local sensitivity identity checked by finite-difference weighting; variance partition checked analytically.",
+    "decision_logic": "Missing metrics, numerical flags and diagonal drift prevent stability passes; paired validation aligns origins/dates/horizons."
   },
   "limitations": [
-    "No remote BIOBOT or VSC jobs submitted.",
-    "Short smoke chains and screening budgets do not establish scientific convergence.",
-    "Runtime estimate uses the supplied earlier fit timing, not a full remote benchmark.",
-    "Validation covers selected current numerical and workflow regressions, not every historical study-specific test."
+    "No remote Gallade or BIOBOT jobs submitted.",
+    "Local numerical runtime was Python 3.12; Python 3.11 syntax was checked across source files.",
+    "Smoke chains do not establish convergence or scientific prior robustness.",
+    "Actual posterior grid results are not bundled.",
+    "Forecast origins used to select calibration are not an untouched final test set."
   ]
 }

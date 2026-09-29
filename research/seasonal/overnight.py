@@ -116,13 +116,16 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
               'Screening and paper draws remain separate. No completion time or convergence is assumed.',flush=True)
         if dry_run:
             if prior_simulations:
-                print('Before fitting: joint prior simulations, core suite; 2000 screen / 10000 paper replications.')
+                print('Before fitting: joint prior simulations, '+
+                    ('25-cell sweetspot suite; 1000 screen / 5000 paper replications.' if batch.startswith('sweetspot')
+                     else 'core suite; 2000 screen / 10000 paper replications.'))
             for w in queue:print(w.tier,w.task.id,f'{w.cpus} workers / {w.memory_gb:g} GiB')
             return 0
         if prior_simulations:
             from research.seasonal.prior_simulations import run_suite
             for tier in tiers:
-                run_suite(root, tier=tier)
+                run_suite(root, tier=tier, suite='sweetspot' if batch.startswith('sweetspot') else 'core',
+                    draws=(1000 if tier=='screen' else 5000) if batch.startswith('sweetspot') else None)
         environment=os.environ.copy();environment['MPLBACKEND']='Agg'
         environment.update({k:'1' for k in ('OMP_NUM_THREADS','OPENBLAS_NUM_THREADS','MKL_NUM_THREADS','NUMEXPR_NUM_THREADS')})
         environment['PYTHONPATH']=str(PROJECT)+os.pathsep+environment.get('PYTHONPATH','')

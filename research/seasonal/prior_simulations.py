@@ -19,7 +19,7 @@ from scipy.stats import genextreme
 import bucex as bx
 from research.monthly.models import joint_model
 from research.monthly.experiment import configured_variant
-from research.seasonal.job_plan import CONFIG
+from research.seasonal.job_plan import CONFIG, variant_entries
 from research.seasonal.jobs import ROOT
 
 CORE = ('reference', 'half_level', 'double_level', 'half_slope', 'double_slope',
@@ -128,7 +128,7 @@ def summarize(values):
 
 
 def variant_config(name):
-    entries = bx.load_config(CONFIG/'experiments.json')['variants']
+    entries = variant_entries()
     entry = next(v for v in entries if v['name'] == name)
     return configured_variant(bx.load_config(CONFIG/'main.json'), entry)
 
@@ -223,8 +223,9 @@ def run_suite(root=ROOT, *, tier='screen', suite='core', draws=None, seed=1951, 
     draws = (2000 if tier == 'screen' else 10000) if draws is None else draws
     if not isinstance(draws, int) or draws < 1:
         raise ValueError('draws must be a positive integer.')
-    entries = bx.load_config(CONFIG/'experiments.json')['variants']
-    names = list(CORE) if suite == 'core' else ([v['name'] for v in entries if v['scope'] == 'shared']
+    entries = variant_entries()
+    from research.seasonal.sweetspot_plan import cells
+    names = [c['name'] for c in cells()] if suite == 'sweetspot' else list(CORE) if suite == 'core' else ([v['name'] for v in entries if v['scope'] == 'shared']
         if suite == 'all' else suite.split(','))
     if len(names) != len(set(names)) or any(n not in {v['name'] for v in entries} for n in names):
         raise ValueError('Unknown or repeated prior variant.')
@@ -254,7 +255,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=ROOT)
     parser.add_argument('--tier', choices=('screen', 'paper'), default='screen')
-    parser.add_argument('--suite', default='core', help='core, all, or comma-separated variant names')
+    parser.add_argument('--suite', default='core', help='core, sweetspot, all, or comma-separated variant names')
     parser.add_argument('--draws', type=int)
     parser.add_argument('--seed', type=int, default=1951)
     parser.add_argument('--no-figures', action='store_true')

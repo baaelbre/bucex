@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.6: pooled half-normal; doubled slope reference; exchangeable initial seasonal cycle.",
+  "_comment": "1.9.6.1: pooled half-normal; doubled slope reference; exchangeable initial seasonal cycle.",
   "analysis": "joint",
   "data": {
     "series": [
@@ -80,7 +80,7 @@
     }
   },
   "seed": 19602,
-  "output": "results/serra_196/reference",
+  "output": "results/serra_1961/reference",
   "forecast_horizon": 120,
   "forecast_draws": 50000,
   "credible_interval": 0.95,
@@ -172,7 +172,7 @@
       "initial_slope": 0.01
     },
     "initial_slope_variance": 0.0001,
-    "note": "Half-normal hyperprior scales A equal marginal RMS signed coefficients. Initial slope prior SD fixed separately. Alternative families explicitly calibrated."
+    "note": "Half-normal hyperprior scales A equal marginal RMS signed coefficients. Initial slope prior SD fixed separately."
   },
   "shrinkage_scope": "shared",
   "risk_return_periods": [

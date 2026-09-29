@@ -1,21 +1,27 @@
 """Standard-library-only plan for pooled fits and optional later comparisons."""
 import json
 from pathlib import Path
+from research.seasonal.sweetspot_plan import BATCHES as SWEETSPOT_BATCHES, cells, specification
 PROJECT=Path(__file__).resolve().parents[2]
 CONFIG=PROJECT/'research/seasonal/config'
-BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred')
+BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred') + SWEETSPOT_BATCHES
 RESOURCES=('shared','separate','shared_long','separate_long','monthly')
 BASELINES=('reference',)
 
 def read(name):
     return json.loads((CONFIG/(name+'.json')).read_text())
 
+def variant_entries():
+    spec = read('experiments')
+    return spec['variants'] + spec.get('deferred_variants', []) + [c for c in cells() if c['name'] != 'reference']
+
 def plan(tier='screen',batch='experiments',resource='all'):
     if tier not in ('screen','paper') or batch not in BATCHES or resource not in ('all',*RESOURCES):
         raise ValueError('Unknown tier, batch or resource class.')
     spec=read('experiments')
-    entries={v['name']:v for v in spec['variants']+spec.get('deferred_variants',[])}
-    if len(entries)!=len(spec['variants'])+len(spec.get('deferred_variants',[])):raise ValueError('Duplicate variant names.')
+    variants=variant_entries()
+    entries={v['name']:v for v in variants}
+    if len(entries)!=len(variants):raise ValueError('Duplicate variant names.')
     def group(kind,name,origin='',fraction=None,frequency='seasonal'):
         v=entries[name];series=[ch for ch in spec['series'] if ch not in v.get('exclude_series',[])]
         coupled=v['scope']=='shared'
@@ -44,11 +50,28 @@ def plan(tier='screen',batch='experiments',resource='all'):
     monthly=[group('posterior','reference',frequency='monthly')]
     deferred=[group('posterior',v['name']) for v in spec.get('deferred_variants',[])]
     refs=[g for g in posterior if g['variant']=='reference']
+    calibration=specification()
+    sweet_posterior=[group('posterior',c['name']) for c in cells()]
+    def sweet_forecasts(origins):
+        result=[]
+        for cell in cells():
+            for origin in origins:
+                g=group('forecast',cell['name'],origin)
+                # A distinct ID prevents collision with the legacy 35-year folds.
+                g['id']='sweetspot_'+g['id'];g['task_ids']=[g['id']]
+                g['design']='sweetspot_30y';g['horizon']=calibration['validation_horizon']
+                result.append(g)
+        return result
+    sweet_recent=sweet_forecasts(calibration['recent_origins'])
+    sweet_long=sweet_forecasts(calibration['long_origins'])
     selected=dict(reference=refs,comparison=[g for g in posterior if g['variant'] in ('reference','slope_1e3','fixed_location_seasonality')],
         posterior=posterior,experiments=posterior,sensitivity=[g for g in posterior if g['variant']!='reference'],
         influence=[g for g in posterior if g['family']=='influence'],pre2019=pre,validation=forecasts,validation10=original,block_validation=blocks,
         core=refs+[g for g in pre if g['variant']=='reference']+[g for g in forecasts if g['variant']=='reference'],
-        monthly=monthly,all=refs+pre+forecasts+[g for g in posterior if g['variant']!='reference']+original+blocks+monthly,deferred=deferred)[batch]
+        monthly=monthly,all=refs+pre+forecasts+[g for g in posterior if g['variant']!='reference']+original+blocks+monthly,deferred=deferred,
+        sweetspot=sweet_posterior+sweet_recent+sweet_long,
+        sweetspot_hpc=sweet_posterior+sweet_long,sweetspot_posterior=sweet_posterior,
+        sweetspot_validation=sweet_recent,sweetspot_long=sweet_long)[batch]
     if len({g['id'] for g in selected})!=len(selected):raise ValueError('Duplicate experiment IDs.')
     if any(g['required_workers']>g['cpus'] for g in selected):raise ValueError('CPU allocation below chain worker count.')
     return [g for g in selected if resource=='all' or g['resource']==resource]

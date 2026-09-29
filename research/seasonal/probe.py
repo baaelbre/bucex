@@ -10,12 +10,12 @@ import sys
 import numpy as np
 import bucex as bx
 from research.monthly.run import run
-from research.seasonal.jobs import verify,tasks,task_config,result_directory
+from research.seasonal.jobs import verify,tasks,all_tasks,task_config,result_directory
 from research.seasonal.bundles import allocation
 
 
 def worker(task_id,output):
-    task=next(t for t in tasks('comparison',tier='screen') if t.id==task_id)
+    task=next(t for t in all_tasks('screen') if t.id==task_id)
     c=task_config(task,'screen');c['data']['start']='2021-03'
     c['mcmc'].update(chains=2,chain_workers=2,warmup=3,draws=8,progress=False)
     c.update(figures=False,forecast_horizon=8,forecast_draws=24,predictive_check_draws=12,prior_draws=80)
@@ -53,8 +53,14 @@ def main():
         print(task.id,'passed' if result.returncode==0 else 'FAILED','log:',target/(task.id+'.log'),flush=True)
         return dict(task_id=task.id,scope=task.scope,exit_code=result.returncode)
     results=[]
+    focused=os.environ.get('BUCEX_BATCH','').startswith('sweetspot')
+    selected=tasks('comparison',tier='screen')
+    if focused:
+        from research.seasonal.sweetspot_plan import cells
+        grid=cells(); names={'reference',grid[0]['name'],grid[-1]['name']}
+        selected=[t for t in tasks('sweetspot_posterior',tier='screen') if t.variant in names]
     for scope in ('shared','independent','fixed'):
-        group=[t for t in tasks('comparison',tier='screen') if t.scope==scope]
+        group=[t for t in selected if t.scope==scope]
         with ThreadPoolExecutor(max_workers=a.max_parallel) as pool:results.extend(pool.map(launch,group))
     passed=all(r['exit_code']==0 for r in results)
     bx.save_config(dict(status='passed' if passed else 'failed',version=bx.__version__,python=sys.executable,

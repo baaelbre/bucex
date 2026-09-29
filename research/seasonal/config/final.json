@@ -8,7 +8,7 @@
   },
   "forecast_draws": 50000,
   "predictive_check_draws": 2000,
-  "output": "results/serra_196/final",
+  "output": "results/serra_1961/final",
   "diagnostic_thresholds": {
     "min_chains": 4,
     "max_rhat": 1.01,

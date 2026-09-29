@@ -10,13 +10,22 @@ from research.seasonal.manuscript_figures import build
 from research.seasonal.export_results import export
 
 
-def finish(root,tier,batch='all'):
-    root=Path(root);out=collect(root,tier,batch=batch,figures=True)
-    for task in tasks('comparison',tier=tier):
+def finish(root,tier,batch='all',require_complete=False):
+    root=Path(root)
+    focused=batch.startswith('sweetspot')
+    if focused:
+        from research.seasonal.sweetspot_report import build as build_sweetspot
+        out=build_sweetspot(root,tier=tier,batch=batch)
+        status=bx.load_config(out/'status.json')
+        if require_complete and (tier!='paper' or status['numerically_passed']!=status['expected'] or status['completed']!=status['expected']):
+            raise RuntimeError('Complete numerically checked paper results are required; inspect '+str(out/'status.json'))
+    else:
+        out=collect(root,tier,batch=batch,figures=True,require_complete=require_complete)
+    for task in ([] if batch.startswith('sweetspot') else tasks('comparison',tier=tier)):
         prior_effects(task_config(task,tier),out/'prior_calibration'/task.variant,draws=50000,seed=195)
     reference=root/tier/'posterior_reference/report'
     marker=root/tier/'posterior_reference/task.json'
-    if marker.exists() and bx.load_config(marker).get('status')=='completed':
+    if not focused and marker.exists() and bx.load_config(marker).get('status')=='completed':
         pre=[]
         for task in tasks('pre2019',tier=tier):
             path=root/tier/task.id
@@ -25,7 +34,7 @@ def finish(root,tier,batch='all'):
         figures=out/('manuscript_figures' if passed and tier=='paper' else 'diagnostic_figures_NOT_FINAL')
         build(reference,figures,allow_unconverged=not passed,pre2019=pre)
     stamp=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ')
-    archive,count=export(root,tier,root/'exports'/f'bucex196_{tier}_{batch}_{stamp}.zip',figures=True)
+    archive,count=export(root,tier,root/'exports'/f'bucex1961_{tier}_{batch}_{stamp}.zip',figures=True)
     print(f'{out}\n{archive}: {count} review files; posterior archives remain in their fit directories.',flush=True)
     return out
 
@@ -33,4 +42,5 @@ def finish(root,tier,batch='all'):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--root',type=Path,default=ROOT)
     p.add_argument('--tier',choices=('screen','paper'),required=True);p.add_argument('--batch',choices=BATCHES,default='all')
-    a=p.parse_args();finish(a.root,a.tier,a.batch)
+    p.add_argument('--require-complete',action='store_true')
+    a=p.parse_args();finish(a.root,a.tier,a.batch,a.require_complete)

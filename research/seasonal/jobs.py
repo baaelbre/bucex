@@ -1,4 +1,4 @@
-"""BUCEX 1.9.6 pooled half-normal reference and parallel paper experiments."""
+"""BUCEX 1.9.6.1 pooled half-normal reference and parallel paper experiments."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -17,9 +17,9 @@ import bucex as bx
 from research.monthly.experiment import configured_variant
 from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
-from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan
+from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan, variant_entries
 
-ROOT = Path('results/serra_196')
+ROOT = Path('results/serra_1961')
 
 @dataclass(frozen=True)
 class Task:
@@ -74,7 +74,7 @@ def result_directory(directory,task):
 
 
 def task_config(task,tier):
-    spec=settings();entry=next(v for v in spec['variants']+spec.get('deferred_variants',[]) if v['name']==task.variant)
+    spec=settings();entry=next(v for v in variant_entries() if v['name']==task.variant)
     c=configured_variant(bx.load_config(CONFIG/('monthly_reference.json' if task.frequency=='monthly' else 'main.json')),entry)
     budget=spec['tiers'][tier]
     c['mcmc'].update(budget['mcmc']);c['diagnostic_thresholds']=deepcopy(budget['diagnostic_thresholds'])
@@ -101,11 +101,17 @@ def task_config(task,tier):
     seed=int.from_bytes(hashlib.sha256(seed_key).digest()[:4],'little')
     c['mcmc']['seed']=seed;c['seed']=(seed+1)%(2**32)
     c['credible_interval']=.95;c['variant']=deepcopy(entry)
+    from research.seasonal.sweetspot_plan import cells, specification
+    cell=next((v for v in cells() if v['name']==task.variant),None)
+    if cell is not None and task.frequency=='seasonal':
+        c['sweetspot_diagnostics']=True
+        c['sweetspot_cell']={key:cell[key] for key in ('A_level','A_slope','A_season')}
+        c['sweetspot_specification']=specification()
     c['annual_risk_draws']=5000 if tier=='screen' else 20000
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
         batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        frequency=task.frequency,reference='1.9.6: pooled half-normal innovation scales; separately calibrated initial rates')
+        frequency=task.frequency,reference='1.9.6.1: pooled half-normal innovation scales; separately calibrated initial rates')
     if c.get('copula') is not None or c.get('contrasts') is not None:
         raise ValueError('This comparison has independent residuals and no historical contrasts.')
     hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')
@@ -115,7 +121,10 @@ def task_config(task,tier):
     return c
 def fingerprint(config):
     """Never reuse completed work after changes to scientific settings, source or data."""
-    digest=hashlib.sha256(json.dumps(config,sort_keys=True).encode()).hexdigest()
+    # Output location is operational, so evidence remains portable across hosts.
+    scientific = dict(config)
+    scientific.pop('output', None)
+    digest=hashlib.sha256(json.dumps(scientific,sort_keys=True).encode()).hexdigest()
     source=hashlib.sha256()
     for folder in ('bucex','research'):
         for path in sorted((PROJECT/folder).rglob('*.py')):
@@ -181,7 +190,7 @@ def verify(tier='screen',*,output=None):
     from research.monthly.models import independent_model,joint_model,fit_options
     from research.monthly.validate import validation_splits
     rows=[];compiled=set();priors={};datasets={}
-    for t in tasks('all',tier=tier)+tasks('deferred',tier=tier):
+    for t in all_tasks(tier):
         c=task_config(t,tier)
         data_config=dict(c['data']);data_config.pop('series',None)
         key=json.dumps(data_config,sort_keys=True)
@@ -253,6 +262,11 @@ def verify(tier='screen',*,output=None):
     return result
 
 
+def all_tasks(tier):
+    return list({t.id:t for batch in ('all','deferred','sweetspot')
+                 for t in tasks(batch,tier=tier)}.values())
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--batch',choices=BATCHES,default='experiments');p.add_argument('--tier',choices=('screen','paper'),default='screen')
@@ -271,7 +285,7 @@ def main():
             c=task_config(t,a.tier)
             print(f"{i:3d} {t.id:65s} {t.scope:12s} {c['mcmc']['chains']} chains, {c['mcmc']['warmup']} warmup + {c['mcmc']['draws']} retained")
         return
-    selected=(next((t for t in tasks('all',tier=a.tier)+tasks('deferred',tier=a.tier) if t.id==a.task),None) if a.task else
+    selected=(next((t for t in all_tasks(a.tier) if t.id==a.task),None) if a.task else
               available[a.index-1] if a.index and 1<=a.index<=len(available) else None)
     if selected is None:p.error('Unknown index or task ID')
     execute(selected,tier=a.tier,root=a.root,retry_failed=a.retry_failed)

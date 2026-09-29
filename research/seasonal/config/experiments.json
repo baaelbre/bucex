@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.6 active HN-only experiment matrix. No heavy-tail hyperpriors or leave-one-out tasks.",
+  "_comment": "1.9.6.1 active HN-only experiment matrix. No heavy-tail hyperpriors or leave-one-out tasks.",
   "series": [
     "TXm",
     "TNm",
@@ -343,7 +343,7 @@
     },
     "paper_shared_long": {
       "cpus": 4,
-      "memory_gb": 32,
+      "memory_gb": 48,
       "hours": 48
     },
     "paper_separate_long": {

@@ -260,6 +260,9 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
             band(probabilities,'compound_heat_conditional_risk',ylabel='conditional compound probability',dates=forecast.dates)
             pd.DataFrame(dict(time=forecast.dates,posterior_predictive_probability=probabilities.mean(axis=0))).to_csv(
                 directory/'compound_heat_forecast.csv',index=False)
+    if config.get('sweetspot_diagnostics'):
+        from research.seasonal.sweetspot_diagnostics import write
+        write(fit, forecast, config, directory)
     return directory
 
 

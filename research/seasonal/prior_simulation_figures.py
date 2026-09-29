@@ -15,6 +15,13 @@ def build(directory):
     directory = Path(directory)
     output = directory/'figures'
     table = pd.read_csv(directory/'comparison.csv')
+    focused=table.variant.str.startswith('ss_').any()
+    families=FAMILIES
+    if focused:
+        from research.seasonal.sweetspot_plan import cells
+        reference_level=[c for c in cells() if c['A_level']==.01]
+        colors=plt.cm.viridis(np.linspace(.08,.9,len(reference_level)))
+        families=[(c['name'],f"Aβ={c['A_slope']:g}",color) for c,color in zip(reference_level,colors)]
     with publication_style(overrides={'font.size': 10, 'axes.labelsize': 10,
             'xtick.labelsize': 9, 'ytick.labelsize': 9, 'legend.fontsize': 9}):
         fig, axes = plt.subplots(2, 3, figsize=(10.2, 6.1), constrained_layout=True)
@@ -23,7 +30,7 @@ def build(directory):
                   'Combined same-season change (°C)', 'Warming rate (°C / decade)']
         for ax, component, label in zip(axes.flat,
                 ('level', 'slope', 'seasonal', 'initial_slope', 'total', 'rate'), labels):
-            for variant, name, color in FAMILIES:
+            for variant, name, color in families:
                 data = table[(table.variant == variant) & (table.channel == 'TXm')]
                 if data.empty:
                     continue
@@ -42,9 +49,11 @@ def build(directory):
                  ('half_slope','Slope 0.0001'),('reference','Slope 0.0002'),
                  ('double_slope','Slope 0.0004'),('slope_1e3','Slope 0.001'),
                  ('seasonal_5e2','Season 0.05'),('seasonal_1e1','Season 0.10')]
+        if focused:
+            cases=[(c['name'],f"Aα={c['A_level']:g}, Aβ={c['A_slope']:g}") for c in cells()]
         cases = [(v, lab) for v, lab in cases if v in set(table.variant)]
         if cases:
-            fig, axes = plt.subplots(1, 3, figsize=(10.2, 5.2), sharey=True, constrained_layout=True)
+            fig, axes = plt.subplots(1, 3, figsize=(11.5, max(5.2,.39*len(cases))), sharey=True, constrained_layout=True)
             for ax, component, label in zip(axes, ('level', 'slope', 'seasonal'), labels[:3]):
                 for i, (variant, lab) in enumerate(cases):
                     row = table[(table.variant == variant) & (table.channel == 'TXm') &

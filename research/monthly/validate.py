@@ -100,6 +100,11 @@ def validate(config, *, directory=None):
             targets.to_csv(target / f"targets_{train.stop}.csv")
             assessment = bx.convergence_assessment({'parameters': convergence_parameters(diagnostics, fit.n_chains, fit), 'scientific_targets': targets},
                 **config.get('diagnostic_thresholds', {}))
+            if config.get('sweetspot_diagnostics'):
+                from research.seasonal.sweetspot_diagnostics import write
+                extra=write(fit,forecast,config,target/'sweetspot'/str(train.stop))
+                assessment['checked']+=extra['checked'];assessment['issues']+=extra['issues']
+                if extra['status']!='passed_numerical_checks':assessment['status']=extra['status']
             bx.save_config(assessment, target / f"convergence_{train.stop}.json")
             bx.save_config(fit.sampler_diagnostics.get('execution', {}), target / f"execution_{train.stop}.json")
             folds.append(dict(origin=train.stop, training_start=str(training.index[0]),

@@ -1,4 +1,4 @@
-# 1.9.6
+# 1.9.6.1
 
 The half-normal reference now has slope scale 0.0002. A 3×4 level/slope grid includes
 slope 0.001; broader seasonal checks reach 0.10 and include a fixed cycle. Observation
