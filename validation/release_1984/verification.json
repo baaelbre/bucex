@@ -1,0 +1,11 @@
+{
+  "version": "1.9.8.4",
+  "date": "2026-09-30",
+  "tests": "15 passed: release_1984, release_1983, tail_validation, calendar_risk; focused 1984 unit and real-fit/report checks repeated after final report refinements.",
+  "configuration_checks": "All 70 optional pooled/fixed tasks compile; ten default reference tasks; two/four chains per screen/paper fit.",
+  "calendar_checks": "120 seasons at 1956,1966,1976,1986; 119 at 1996; 103,79,63,43,23 at 2000,2006,2010,2015,2020.",
+  "numerical_smoke": "Real two-chain sampling and 119-season propagation with deliberately tiny chains. Marked needs_review; not scientific results.",
+  "launch_checks": "Gallade dry-run with stale /environment.sh overridden; BIOBOT dry-run shows ten two-worker jobs. No remote submission performed.",
+  "figures": "Inspected generated forecast and coverage panels.",
+  "data_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+}

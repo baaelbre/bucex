@@ -34,7 +34,7 @@ def worker(task_id,output):
         if 'initial_slope' in fit.priors.shrinkage.anchors:raise RuntimeError('Initial rates are being pooled.')
         if (fit.priors.shrinkage.hyperprior=='half_normal'
                 and fit.metadata.get('shrinkage_scale_update')!='gig'):
-            raise RuntimeError('Half-normal shrinkage did not use the 1.9.8.3 GIG update.')
+            raise RuntimeError('Half-normal shrinkage did not use the 1.9.8.4 GIG update.')
     if not np.isfinite(fit.state_draws).all():raise RuntimeError('Nonfinite probe states.')
     if not all(np.isfinite(v).all() for v in fit.parameter_draws.values()):raise RuntimeError('Nonfinite parameters.')
     return 0
@@ -49,7 +49,7 @@ def main():
     target=a.root/datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S_%fZ');target.mkdir(parents=True)
     print('Probe:',target,'Python:',sys.executable,platform.python_version(),'BUCEX',bx.__version__,flush=True)
     batch=os.environ.get('BUCEX_BATCH','')
-    bx.save_config(verify(os.environ.get('BUCEX_TIER','screen'),batch=batch if batch.startswith('final_') else None),target/'configuration_checks.json')
+    bx.save_config(verify(os.environ.get('BUCEX_TIER','screen'),batch=batch or None),target/'configuration_checks.json')
     def launch(task):
         with (target/(task.id+'.log')).open('w') as log:
             result=subprocess.run([sys.executable,'-u','-m','research.seasonal.probe','--task',task.id,
@@ -59,6 +59,11 @@ def main():
     results=[]
     focused=os.environ.get('BUCEX_BATCH','').startswith('sweetspot')
     selected=tasks('comparison',tier='screen')
+    if batch.startswith('horizon_'):
+        selected = tasks('reference',tier='screen')
+        if batch != 'horizon_reference':
+            selected += [t for t in tasks('posterior',tier='screen')
+                         if t.variant == 'fixed_reference' and t.channel in ('TXm','TXx','TXn')]
     if focused:
         from research.seasonal.sweetspot_plan import cells
         grid=cells(); names={'reference',grid[0]['name'],grid[-1]['name']}

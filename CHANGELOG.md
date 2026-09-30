@@ -1,3 +1,12 @@
+# 1.9.8.4
+
+- Focused validation at ten November origins from 1956 through 2020, using one fit per origin and up to 120 observed forecast seasons.
+- Lead-band, cumulative, seasonal and matched-calendar scoring, with explicit partial-window denominators.
+- Predictive means, 90/95/99% coverage, CRPS, PITs, threshold counts and uncertainty plots in a standalone HTML/CSV/PDF review package.
+- Ten independently scheduled pooled reference fits by default; optional separate fixed-Normal fits retain the same calibration.
+- Separate results roots and launchers for Gallade and BIOBOT; resolve the HPC environment paths in the launcher to prevent an empty-variable /environment.sh error.
+- Retain the 1.9.8.3 model, inference algorithms and older experiment batches.
+
 # 1.9.8.3
 
 - Prioritized four-chain reference (2,000 warm-up + 4,000 retained per chain).

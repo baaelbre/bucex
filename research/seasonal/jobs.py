@@ -19,7 +19,7 @@ from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
 from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan, variant_entries
 
-ROOT = Path('results/serra_1983')
+ROOT = Path('results/serra_1984_validation')
 
 @dataclass(frozen=True)
 class Task:
@@ -124,6 +124,9 @@ def task_config(task,tier):
     if hierarchy and (hierarchy['scale_parameterization']!='normal_sd' or hierarchy.get('pool_initial_slope',False)):
         raise ValueError('Expected direct coefficient SDs and separate initial rates.')
     c['output']=str(ROOT/tier/task.id/'report')
+    if task.design == 'validation_30y':
+        from research.seasonal.horizon_plan import configure
+        return configure(c,task,tier)
     return final_budget(c,task,tier) if task.sampling_role else c
 
 
@@ -294,7 +297,7 @@ def verify(tier='screen',*,output=None,batch=None):
                !=json.dumps(asdict(pooled.channels[ch]),sort_keys=True,default=lambda a:a.tolist())):
             raise ValueError('Independent/shared one-response priors are not matched.')
         matched.append(dict(setting=setting,channel=ch,matched=True))
-    groups=plan(tier,'experiments')
+    groups=plan(tier,batch or 'experiments')
     result=dict(version=bx.__version__,tier=tier,status='configuration_checks_passed',
         counts={b:len(tasks(b,tier=tier)) for b in BATCHES},
         experiments=len(groups),experiment_fits=sum(g['parallel_fits'] for g in groups),
@@ -307,12 +310,12 @@ def verify(tier='screen',*,output=None,batch=None):
         pd.DataFrame(rows).to_csv(output/'resolved_settings.csv',index=False)
         pd.DataFrame(matched).to_csv(output/'matched_marginal_priors.csv',index=False)
         pd.DataFrame(fixed_matched).to_csv(output/'fixed_normal_prior_checks.csv',index=False)
-        pd.DataFrame(plan(tier,'all')).to_csv(output/'experiment_plan.csv',index=False)
+        pd.DataFrame(plan(tier,batch or 'all')).to_csv(output/'experiment_plan.csv',index=False)
     return result
 
 
 def all_tasks(tier):
-    return list({t.id:t for batch in ('all','deferred','sweetspot','monthly_all','final_paper')
+    return list({t.id:t for batch in ('all','deferred','sweetspot','monthly_all','final_paper','horizon_all')
                  for t in tasks(batch,tier=tier)}.values())
 
 
@@ -326,7 +329,7 @@ def main():
     p.add_argument('--retry-failed',action='store_true');p.add_argument('--root',type=Path,default=ROOT)
     a=p.parse_args()
     if a.verify:
-        print(json.dumps(verify(a.tier,output=a.root/a.tier/'plan'),indent=2));return
+        print(json.dumps(verify(a.tier,output=a.root/a.tier/'plan',batch=a.batch),indent=2));return
     available=tasks(a.batch,tier=a.tier,resource=a.resource)
     if a.count:print(len(available));return
     if a.list:

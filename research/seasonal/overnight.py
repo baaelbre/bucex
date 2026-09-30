@@ -46,6 +46,10 @@ def make_queue(tiers,batch):
             result.append(Work(tier,task,cpus,memory))
     def priority(w):
         t=w.task
+        if t.design == 'validation_30y':
+            from research.seasonal.horizon_plan import specification
+            return (0 if t.variant == 'reference' else 1,
+                    0 if t.origin in specification()['priority_origins'] else 1,t.id)
         if t.sampling_role:
             return (0 if t.sampling_role=='reference' or t.id=='final_posterior_reference'
                     else 1 if t.frequency=='monthly' else 2 if t.kind=='pre2019'
@@ -95,7 +99,7 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
         allowed=len(os.sched_getaffinity(0)) if hasattr(os,'sched_getaffinity') else os.cpu_count()
         if cpus>allowed and not dry_run:
             raise ValueError(f'Requested {cpus} workers but only {allowed} CPUs are available.')
-        for tier in tiers:verify(tier,output=root/tier/'plan',batch=batch if batch.startswith('final_') else None)
+        for tier in tiers:verify(tier,output=root/tier/'plan',batch=batch)
         queue=[];skipped=[]
         for work in selected:
             path=root/work.tier/work.task.id/'task.json'
@@ -133,7 +137,7 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
                      else 'core suite; 2000 screen / 10000 paper replications.'))
             for w in queue:print(w.tier,w.task.id,f'{w.cpus} workers / {w.memory_gb:g} GiB')
             return 0
-        if batch.startswith('final_'):
+        if batch.startswith(('final_', 'horizon_')):
             # Prior simulations are included in the final collection and must
             # not block the prioritized reference from starting.
             prior_simulations=False

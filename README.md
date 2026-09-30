@@ -1,3 +1,7 @@
+# BUCEX 1.9.8.4 — focused long-horizon validation
+
+See [VALIDATION_1984.md](VALIDATION_1984.md) for the ten origins, horizon-specific reports, and Gallade/BIOBOT commands. This release retains the 1.9.8.3 model and adds an isolated validation suite.
+
 # BUCEX 1.9.8.3 final manuscript release
 
 Start with [START_HERE_1983.md](START_HERE_1983.md). Run `RUN_FINAL_BIOBOT.sh` or `RUN_FINAL_HPC.sh` for the prioritized reference and the complete mixed-budget suite.

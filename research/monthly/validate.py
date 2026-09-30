@@ -115,6 +115,9 @@ def validate(config, *, directory=None):
             pd.DataFrame(folds).to_csv(target/'folds.csv', index=False)
             if settings.get("save_fits", False):
                 fit.save(target / f"fit_{train.stop}.bucex")
+            if config.get('horizon_validation'):
+                from research.seasonal.horizon_diagnostics import write_forecast
+                write_forecast(forecast, values.iloc[list(test)], config, target)
             for name in values:
                 observed = values[name].iloc[list(test)].to_numpy()
                 direction = '<' if bx.UCCLE_INFO[name]['tail'] == 'min' else '>'

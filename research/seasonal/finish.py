@@ -11,6 +11,9 @@ from research.seasonal.export_results import export
 
 
 def finish(root,tier,batch='all',require_complete=False):
+    if batch.startswith('horizon_'):
+        from research.seasonal.horizon_report import finish as horizon_finish
+        return horizon_finish(root,tier,batch,require_complete)
     if batch.startswith('final_'):
         from research.seasonal.final_report import finish as final_finish
         return final_finish(root,tier,batch,require_complete)
