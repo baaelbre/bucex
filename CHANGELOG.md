@@ -1,3 +1,7 @@
+# 1.9.8.2
+
+Monthly fixed-Normal reference, standard sensitivity suite, matched physical calibration, small parallel jobs and combined overview. See RELEASE_NOTES.md.
+
 # 1.9.8.1
 
 - Add active separate fixed-Normal fits without hyperpriors across the full calibration grid.

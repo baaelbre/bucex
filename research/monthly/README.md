@@ -1,3 +1,7 @@
+# Monthly analysis — 1.9.8.2
+
+The new study is declared in `config/screen_study.json`; `study_plan.py` converts its seasonal calibration to monthly units. Use the root RUN_MONTHLY scripts and the command guide. The older monthly CLI remains available.
+
 # Monthly research
 
 The model declarations in `models.py` use private level, slope and seasonal trajectories for all six summaries. `run.py` performs independent or joint fits; `report.py` writes scientific contrasts, diagnostics and forecasts. The reference configuration is [`config/main.json`](config/main.json).

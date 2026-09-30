@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run from the BUCEX 1.9.6.1 checkout. Existing jobs and results are left intact.
 set -euo pipefail
-echo "This hotfix is only for the original 1.9.6.1 source. BUCEX 1.9.8.1 already includes shared/private dispatch; use RUN_SWEETSPOT_HPC.sh." >&2
+echo "This hotfix is only for the original 1.9.6.1 source. BUCEX 1.9.8.2 already includes shared/private dispatch; use RUN_SWEETSPOT_HPC.sh." >&2
 exit 2
 [[ -f research/seasonal/config/sweetspot.json ]] || { echo 'Run this from your BUCEX 1.9.6.1 project directory.' >&2; exit 2; }
 : "${BUCEX_PYTHON:?Keep the working Gallade BUCEX_PYTHON setting.}"

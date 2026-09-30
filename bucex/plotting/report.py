@@ -17,7 +17,7 @@ from ..diagnostics.calendar import pit_by_month
 def save_prediction_report(fit, directory, *, channel=None, forecast=None, predictive=None,
                            threshold=None, level=.95, draws=400, seed=None,
                            months=tuple(range(1, 13)), image_format="png", dpi=150,
-                           figures=True, prefix=None, style="manuscript", trace_exports=True, primary=None):
+                           figures=True, prefix=None, style="manuscript", trace_exports=True, primary=None, aggregate_draws=None):
     """Save slope, scale, trace, PIT/Q-Q, calendar forecast and risk summaries.
 
     PNG is the default. Tables accompany figures. Annual/seasonal forecasts
@@ -29,13 +29,13 @@ def save_prediction_report(fit, directory, *, channel=None, forecast=None, predi
         return _save_prediction_report(fit, directory, channel=channel, forecast=forecast,
             predictive=predictive, threshold=threshold, level=level, draws=draws,
             seed=seed, months=months, image_format=image_format, dpi=dpi,
-            figures=figures, prefix=prefix, trace_exports=trace_exports)
+            figures=figures, prefix=prefix, trace_exports=trace_exports, aggregate_draws=aggregate_draws)
 
 
 def _save_prediction_report(fit, directory, *, channel=None, forecast=None, predictive=None,
                             threshold=None, level=.95, draws=400, seed=None,
                             months=tuple(range(1, 13)), image_format="png", dpi=180,
-                            figures=True, prefix=None, trace_exports=True):
+                            figures=True, prefix=None, trace_exports=True, aggregate_draws=None):
     import matplotlib.pyplot as plt
     if image_format not in {"png", "pdf", "svg"}:
         raise ValueError("image_format must be png, pdf, or svg.")
@@ -137,10 +137,20 @@ def _save_prediction_report(fit, directory, *, channel=None, forecast=None, pred
             save(plot_forecast_months(predictive, channel=channel, months=months, level=level,
                                      threshold=threshold)[0], "smoothed_risk_by_month")
 
+    aggregate_forecast = forecast
+    if aggregate_draws is not None:
+        if int(aggregate_draws) != aggregate_draws or aggregate_draws < 1:
+            raise ValueError("aggregate_draws must be a positive integer.")
+        if forecast.n_draws > aggregate_draws:
+            from dataclasses import replace
+            selected = np.random.default_rng(seed).choice(forecast.n_draws, int(aggregate_draws), replace=False)
+            aggregate_forecast = replace(forecast, observations=forecast.observations[selected],
+                eta=forecast.eta[selected], states=forecast.states[selected],
+                parameters={key:value[selected] for key,value in forecast.parameters.items()}, _quantile_cache={})
     for frequency in ("year", "season"):
-        aggregate = forecast.aggregate(frequency=frequency, channel=channel)
+        aggregate = aggregate_forecast.aggregate(frequency=frequency, channel=channel)
         table(aggregate.summary(level), f"forecast_{frequency}")
-        all_periods = forecast.aggregate(frequency=frequency, channel=channel, include_partial=True).periods
+        all_periods = aggregate_forecast.aggregate(frequency=frequency, channel=channel, include_partial=True).periods
         table(all_periods[~all_periods.complete], f"omitted_partial_{frequency}")
         if not aggregate.n_periods:
             continue
@@ -170,6 +180,7 @@ def _save_prediction_report(fit, directory, *, channel=None, forecast=None, pred
     notes = dict(channel=channel or fit.series_name, fitted_start=str(fit.time[0]),
         fitted_end=str(fit.time[-1]), forecast_start=str(forecast.dates[0]), forecast_end=str(forecast.dates[-1]),
         posterior_chains=fit.n_chains, posterior_draws_per_chain=fit.draws_per_chain,
+        marginal_forecast_draws=forecast.n_draws, aggregate_forecast_draws=aggregate_forecast.n_draws,
         interval_level=level, threshold=threshold,
         figures=written, slope_unit="degrees C per decade (120 monthly slope units)",
         aggregation="Gaussian monthly means: day-weighted; upper/lower GEV blocks: max/min. Complete periods only; DJF labelled by ending year.",

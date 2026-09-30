@@ -1,4 +1,10 @@
-# BUCEX 1.9.8.1
+# BUCEX 1.9.8.2
+
+Monthly fixed-Normal reference and sensitivity screen with twelve calendar-month observation scales.
+
+See [the 1.9.8.2 commands](BUCEX-1.9.8.2-commands.md): 128 independent fits, with reference/structural and observation batches for a nonoverlapping two-host split.
+
+## Previous seasonal workflow
 
 Bayesian structural time-series models for temperature averages and extremes.
 This release compares pooled half-normal shrinkage, separate half-normal hierarchies,

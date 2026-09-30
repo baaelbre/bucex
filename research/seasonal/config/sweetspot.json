@@ -1,5 +1,5 @@
 {
-  "_comment": "BUCEX 1.9.8.1: 3x4 level/slope grid plus two central seasonal checks; pooled HN, separate HN and fixed Normal priors. No automatic selection.",
+  "_comment": "BUCEX 1.9.8.2: 3x4 level/slope grid plus two central seasonal checks; pooled HN, separate HN and fixed Normal priors. No automatic selection.",
   "level_scales": [
     0.05,
     0.1,

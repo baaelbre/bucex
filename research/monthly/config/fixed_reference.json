@@ -1,0 +1,43 @@
+{
+  "extends": "../../seasonal/config/monthly_reference.json",
+  "_comment": "1.9.8.2: six separate fixed Normal fits; monthly observation dispersion. Evolution calibration comes from screen_study.json.",
+  "analysis": "independent",
+  "shrinkage_scope": "fixed",
+  "priors": {
+    "shared_shrinkage": null,
+    "independent_shrinkage": null
+  },
+  "data": {
+    "exclude_months": [
+      "1892-01",
+      "1892-02"
+    ]
+  },
+  "figures": false,
+  "trace_exports": true,
+  "forecast_months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+  ],
+  "forecast_horizon": 360,
+  "credible_interval": 0.95,
+  "forecast_uncertainty_levels": [
+    0.95,
+    0.99
+  ],
+  "monthly_aggregation": true,
+  "annual_risk": true,
+  "output": "results/serra_1982_monthly",
+  "copula": null,
+  "contrasts": null
+}

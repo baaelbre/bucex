@@ -100,7 +100,7 @@ def main():
     if a.list:
         for i,g in enumerate(groups,1):print(i,g['id'],g['parallel_fits'],g['chains'],g['cpus'])
         return 0
-    selected=(next((g for g in plan(a.tier,'all')+plan(a.tier,'deferred')+plan(a.tier,'sweetspot') if g['id']==a.bundle),None) if a.bundle else
+    selected=(next((g for g in plan(a.tier,'all')+plan(a.tier,'deferred')+plan(a.tier,'sweetspot')+plan(a.tier,'monthly_all') if g['id']==a.bundle),None) if a.bundle else
               groups[a.index-1] if a.index and 1<=a.index<=len(groups) else None)
     if selected is None:p.error('Supply a valid --index or --bundle')
     return run(selected,tier=a.tier,root=a.root,retry_failed=a.retry_failed)

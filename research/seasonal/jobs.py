@@ -1,4 +1,4 @@
-"""BUCEX 1.9.8.1 pooled half-normal reference and parallel paper experiments."""
+"""BUCEX parallel seasonal studies and separate fixed-prior monthly fits."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -19,7 +19,7 @@ from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
 from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan, variant_entries
 
-ROOT = Path('results/serra_1981')
+ROOT = Path('results/serra_1982')
 
 @dataclass(frozen=True)
 class Task:
@@ -74,6 +74,9 @@ def result_directory(directory,task):
 
 
 def task_config(task,tier):
+    if task.variant.startswith('monthly_fixed_'):
+        from research.monthly.study_plan import task_config as monthly_config
+        return monthly_config(task,tier)
     spec=settings();entry=next(v for v in variant_entries() if v['name']==task.variant)
     c=configured_variant(bx.load_config(CONFIG/('monthly_reference.json' if task.frequency=='monthly' else 'main.json')),entry)
     budget=spec['tiers'][tier]
@@ -97,7 +100,7 @@ def task_config(task,tier):
         c['mcmc'].update(budget['block_mcmc'])
         c['validation'].update(training_ends=[task.origin],horizon=task.horizon*(3 if task.frequency=='monthly' else 1))
     c['data']['series']=list(task.series)
-    seed_key=f'1981/{task.variant}/{task.channel}/{task.kind}/{task.origin}/{task.frequency}/{tier}'.encode()
+    seed_key=f'1982/{task.variant}/{task.channel}/{task.kind}/{task.origin}/{task.frequency}/{tier}'.encode()
     seed=int.from_bytes(hashlib.sha256(seed_key).digest()[:4],'little')
     c['mcmc']['seed']=seed;c['seed']=(seed+1)%(2**32)
     c['credible_interval']=.95;c['variant']=deepcopy(entry)
@@ -111,7 +114,7 @@ def task_config(task,tier):
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
         batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        frequency=task.frequency,reference='1.9.8.1: pooled half-normal innovation scales; separately calibrated initial rates')
+        frequency=task.frequency,reference='1.9.8.2: pooled half-normal innovation scales; separately calibrated initial rates')
     if c.get('copula') is not None or c.get('contrasts') is not None:
         raise ValueError('This comparison has independent residuals and no historical contrasts.')
     hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')
@@ -274,7 +277,7 @@ def verify(tier='screen',*,output=None):
 
 
 def all_tasks(tier):
-    return list({t.id:t for batch in ('all','deferred','sweetspot')
+    return list({t.id:t for batch in ('all','deferred','sweetspot','monthly_all')
                  for t in tasks(batch,tier=tier)}.values())
 
 

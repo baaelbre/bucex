@@ -1,47 +1,44 @@
 {
-  "version": "1.9.8.1",
-  "date": "2026-09-30T00:41:05.344984+00:00",
+  "version": "1.9.8.2",
+  "date": "2026-09-30T01:25:17.325060+00:00",
   "status": "targeted_release_checks_passed",
-  "basis": "BUCEX 1.9.8; fixed-prior sampler support reused and integrated into the active study",
+  "basis": "1.9.8.1; existing fixed-normal sampler and monthly observation-scale API reused",
   "reference": {
-    "A_level": 0.1,
-    "A_slope": 0.002,
-    "A_season": 0.1,
-    "initial_rate_sd": 0.01,
-    "initial_level_sd": 10,
-    "initial_seasonal_contrast_sd": 10
+    "frequency": "monthly",
+    "responses": 6,
+    "model": "separate fixed-normal innovation priors, no hyperpriors",
+    "innovation_sd": {
+      "level": 0.057735026918962574,
+      "trend": 0.00038329233110168825,
+      "season": 0.1
+    },
+    "initial_slope_sd": 0.0033333333333333335,
+    "period": 12,
+    "calibration": "30-year structural effect SDs matched to seasonal reference (0.1,0.002,0.1; initial slope SD0.01)"
   },
   "design": {
-    "grid": "3x4 plus two central seasonal checks",
-    "level_scales": [
-      0.05,
-      0.1,
-      0.5
-    ],
-    "slope_scales": [
-      0.001,
-      0.002,
-      0.005,
-      0.01
-    ],
-    "seasonal_scales": [
-      0.05,
-      0.1,
-      0.2
-    ],
-    "pooled_calibrations": 14,
-    "separate_hn_calibrations": 14,
-    "fixed_normal_calibrations": 14,
-    "full_record_fits": 182,
-    "hpc_fits": 390,
-    "biobot_fits": 312,
-    "total_fits": 702,
-    "hpc_array_elements": 100,
-    "fixed_prior_hyperparameters": false,
-    "fixed_prior_process_variances_learned": true,
-    "screen_chains": 2,
-    "screen_warmup": 1000,
-    "screen_draws": 2000
+    "settings": 22,
+    "counts": {
+      "monthly_reference": 6,
+      "monthly_structural": 90,
+      "monthly_observation": 38,
+      "monthly_sensitivity": 122,
+      "monthly_all": 128
+    },
+    "screen_mcmc": {
+      "draws": 1000,
+      "warmup": 1000,
+      "chains": 2,
+      "seed": 1950608321,
+      "progress": true,
+      "progress_every": 100,
+      "chain_workers": 2
+    },
+    "forecast_months": 360,
+    "forecast_draws": 50000,
+    "aggregate_draws": 1000,
+    "credible_interval": 0.95,
+    "held_out_refits": false
   },
   "runtime": {
     "python": "3.12.14",
@@ -51,161 +48,46 @@
   },
   "checks": {
     "selected_regressions": {
-      "tests": 63,
-      "failures": 0,
-      "errors": 0,
-      "skipped": 0,
+      "passed": 20,
       "files": [
+        "tests/test_release_1982.py",
         "tests/test_release_1981.py",
-        "tests/test_release_198.py",
-        "tests/test_sweetspot_1961.py",
-        "tests/test_release_1961_base.py",
-        "tests/test_prior_simulations_1951.py",
-        "tests/test_gig_shrinkage_197.py"
-      ]
+        "tests/test_release_198.py"
+      ],
+      "log": "validation/release_1982/targeted_tests.log"
     },
     "startup": {
-      "host": "43928616fcb7",
-      "max_parallel": 2,
-      "note": "Startup smoke only; short chains do not establish convergence.",
-      "python": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
-      "results": [
-        {
-          "exit_code": 0,
-          "scope": "shared",
-          "task_id": "posterior_ss_a5e2_b1e3"
-        },
-        {
-          "exit_code": 0,
-          "scope": "shared",
-          "task_id": "posterior_reference"
-        },
-        {
-          "exit_code": 0,
-          "scope": "shared",
-          "task_id": "posterior_ss_gamma_2e1"
-        },
-        {
-          "exit_code": 0,
-          "scope": "independent",
-          "task_id": "posterior_independent_reference_TXm"
-        },
-        {
-          "exit_code": 0,
-          "scope": "independent",
-          "task_id": "posterior_independent_reference_TXx"
-        },
-        {
-          "exit_code": 0,
-          "scope": "fixed",
-          "task_id": "posterior_fixed_reference_TXm"
-        },
-        {
-          "exit_code": 0,
-          "scope": "fixed",
-          "task_id": "posterior_fixed_reference_TXx"
-        }
-      ],
-      "status": "passed",
-      "version": "1.9.8.1"
+      "passed": 5,
+      "evidence": "validation/release_1982/startup_checks.json"
     },
-    "workflows": {
-      "figures": 23,
-      "fixed_30year_forecast_draws": 256,
-      "forecast_rows": 4,
-      "prior_variants": 28,
-      "prior_draws_per_variant": 40,
-      "status": "passed"
+    "workflow_smoke": {
+      "completed_fits": 10,
+      "includes": "six reference responses; TXx half-slope, half-season, half-initial-slope and constant dispersion; 360-month propagation, aggregation, 95% uncertainty tables and standalone reference/sensitivity HTML",
+      "budget": "42 training months, 2 chains, 2 warmup +8 retained, 64 future paths",
+      "interpretation": "Software execution only; every fit appropriately needed numerical review; not scientific results"
     },
     "syntax": {
-      "python310_files": 171,
-      "shell_files": 29,
+      "python310_files": 175,
+      "shell_files": 32,
       "status": "passed"
     },
-    "screen": {
-      "counts": {
-        "all": 100,
-        "block_validation": 6,
-        "comparison": 3,
-        "core": 13,
-        "deferred": 30,
-        "experiments": 31,
-        "influence": 0,
-        "monthly": 1,
-        "posterior": 31,
-        "pre2019": 6,
-        "reference": 1,
-        "sensitivity": 30,
-        "sweetspot": 702,
-        "sweetspot_fixed": 504,
-        "sweetspot_hpc": 390,
-        "sweetspot_long": 208,
-        "sweetspot_posterior": 182,
-        "sweetspot_validation": 312,
-        "validation": 56,
-        "validation10": 0
-      },
-      "experiment_fits": 31,
-      "experiments": 26,
-      "fixed_normal_second_moment_pairs": 84,
-      "matched_marginal_prior_pairs": 114,
-      "scope": "All specifications, folds and CPU plans; exact separate/shared HN marginal matching and fixed-Normal second-moment matching; no MCMC.",
-      "status": "configuration_checks_passed",
-      "tier": "screen",
-      "version": "1.9.8.1"
+    "launchers": {
+      "slurm": "dry run 90 one-response array elements,2 CPUs,16GiB,12h,cap32,compute startup and collection dependencies",
+      "pbs": "dry run38 observation elements",
+      "biobot": "dry run38 observation fits; local CPU/memory accounting verified; production command48 CPUs/24fit cap"
     },
-    "paper": {
-      "counts": {
-        "all": 100,
-        "block_validation": 6,
-        "comparison": 3,
-        "core": 13,
-        "deferred": 30,
-        "experiments": 31,
-        "influence": 0,
-        "monthly": 1,
-        "posterior": 31,
-        "pre2019": 6,
-        "reference": 1,
-        "sensitivity": 30,
-        "sweetspot": 702,
-        "sweetspot_fixed": 504,
-        "sweetspot_hpc": 390,
-        "sweetspot_long": 208,
-        "sweetspot_posterior": 182,
-        "sweetspot_validation": 312,
-        "validation": 56,
-        "validation10": 0
-      },
-      "experiment_fits": 31,
-      "experiments": 26,
-      "fixed_normal_second_moment_pairs": 84,
-      "matched_marginal_prior_pairs": 114,
-      "scope": "All specifications, folds and CPU plans; exact separate/shared HN marginal matching and fixed-Normal second-moment matching; no MCMC.",
-      "status": "configuration_checks_passed",
-      "tier": "paper",
-      "version": "1.9.8.1"
-    },
-    "biobot": "Actual launcher dry-run selected 312 fits; local four-worker reservation, production commands use 48 workers.",
-    "hpc": "Actual Slurm launcher dry-run: 42 pooled elements at 2 CPUs; 58 separate elements at 12 CPUs; probe and collection dependencies verified.",
-    "wheel": {
-      "built": true,
-      "filename": "bucex-1.9.8.1-py3-none-any.whl",
-      "sha256": "833274c73e7c1ae86778b9e76119e23c08192936af6076ab9191a3a3f34b9ae1"
-    }
+    "compact_merge": "Tests use actual compact export files, rebuild routing, reject conflicting duplicates and keep posterior archives on host"
   },
   "provenance": {
-    "config_sha256": "d2a3a81f988646281a2a7cf737aff92a24173385613294f4db27c89070d9ee41",
-    "source_sha256": "2f57db82c8a0454053271bf4c7c9d200a5014b423d1973d96b210d3b4170e5fe",
+    "config_sha256": "b961323735d28f4873927041788c45b4863e3cc7776f229606b3cb5e591cb672",
+    "source_sha256": "b5cb303c27839271810c5c84fe29ea9ac3c90d9128deaa978dbf0e590575eae6",
     "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
   },
   "limitations": [
-    "No production HPC or BIOBOT jobs submitted; no measured production runtime.",
-    "Tiny startup/forecast fits and 40-draw prior checks verify execution, not convergence or prior calibration adequacy.",
-    "Screening priors use 1000 replications per calibration in production, forecasts use 50000 draws.",
-    "Verification is the explicitly selected release gate, not a claim about every historical fixture.",
-    "Fixed Normal and HN mixture priors match second moments, not entire marginal distributions.",
-    "Separate HN validation covers the reference; fixed Normal and pooled validation cover all settings.",
-    "Seasonal scale checks vary only at the central level/slope setting."
+    "No production jobs submitted on HPC or BIOBOT; runtime not measured for the full monthly study.",
+    "Startup and tiny workflow fits demonstrate execution, not convergence or goodness of fit.",
+    "Screen R-hat<1.05 and ESS>=200 are triage thresholds, not the paper convergence gate.",
+    "Monthly versus seasonal comparison is deferred; matched 30-year effects do not make the full processes equivalent.",
+    "50,000 predictive draws use repeated posterior draws; they do not increase MCMC effective sample size."
   ]
 }

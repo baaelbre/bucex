@@ -2,9 +2,10 @@
 import json
 from pathlib import Path
 from research.seasonal.sweetspot_plan import BATCHES as SWEETSPOT_BATCHES, study_variants, validation_cells, specification
+from research.monthly.study_plan import BATCHES as MONTHLY_BATCHES, variants as monthly_variants, plan as monthly_plan
 PROJECT=Path(__file__).resolve().parents[2]
 CONFIG=PROJECT/'research/seasonal/config'
-BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred') + SWEETSPOT_BATCHES
+BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred') + SWEETSPOT_BATCHES + MONTHLY_BATCHES
 RESOURCES=('shared','separate','shared_long','separate_long','monthly')
 BASELINES=('reference',)
 
@@ -17,11 +18,13 @@ def variant_entries():
     if len({v['name'] for v in legacy}) != len(legacy): raise ValueError('Duplicate legacy variants.')
     entries={v['name']:v for v in legacy}
     entries.update({v['name']:v for v in study_variants()})
+    entries.update({v['name']:v for v in monthly_variants()})
     return list(entries.values())
 
 def plan(tier='screen',batch='experiments',resource='all'):
     if tier not in ('screen','paper') or batch not in BATCHES or resource not in ('all',*RESOURCES):
         raise ValueError('Unknown tier, batch or resource class.')
+    if batch in MONTHLY_BATCHES:return monthly_plan(tier,batch,resource)
     spec=read('experiments')
     variants=variant_entries()
     entries={v['name']:v for v in variants}

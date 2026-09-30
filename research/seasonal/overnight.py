@@ -31,7 +31,8 @@ def budget(task,tier):
     n=1614 if task.frequency=='monthly' else 538
     dimension=c['model']['period']+1
     raw=8*len(task.series)*dimension*n*c['mcmc']['draws']*c['mcmc']['chains']/1024**3
-    return c['mcmc']['chain_workers'],round(max(6.,3.+3.5*raw),1)
+    forecast_raw=8*c.get('forecast_draws',50000)*c.get('forecast_horizon',120)*dimension*len(task.series)/1024**3
+    return c['mcmc']['chain_workers'],round(max(6.,3.+3.5*raw+2*forecast_raw),1)
 
 
 def make_queue(tiers,batch):
@@ -42,7 +43,7 @@ def make_queue(tiers,batch):
             result.append(Work(tier,task,cpus,memory))
     def priority(w):
         t=w.task
-        if t.frequency=='monthly':return (1,0 if w.tier=='screen' else 1,t.id)
+        if t.frequency=='monthly':return (0 if t.variant=='monthly_fixed_reference' else 1,0 if w.tier=='screen' else 1,t.id)
         if t.variant=='reference' and t.kind in ('posterior','pre2019'):
             return (0,0 if w.tier=='paper' else 1,0 if t.kind=='posterior' else 1,t.id)
         if t.kind=='posterior' and t.variant in ('half_slope','double_slope','slope_1e3'):
@@ -112,18 +113,22 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
             queue.append(work)
         print(f'{len(selected)} selected fits; {len(skipped)} already completed; {len(queue)} queued. '
               f'Limits: {cpus} chain workers, {memory_gb:g} GiB reserved, {max_jobs} jobs.',flush=True)
-        print('Two chains run in parallel inside each fit. A pooled chain jointly updates all six responses. '
+        print(('Each monthly fit has its own response and fixed Normal priors; chains run in parallel. ' if batch.startswith('monthly_')
+               else 'Chains run in parallel inside each fit. A pooled chain jointly updates all six responses. ') +
               'Screening and paper draws remain separate. No completion time or convergence is assumed.',flush=True)
         if dry_run:
             if prior_simulations:
-                print('Before fitting: joint prior simulations, '+
-                    ('14 calibrations for pooled HN and fixed Normal priors; 1000 screen / 5000 paper replications.' if batch.startswith('sweetspot')
+                print('Before fitting: '+
+                    ('monthly fixed-Normal calibration and prior simulations.' if batch.startswith('monthly_') else '14 calibrations for pooled HN and fixed Normal priors; 1000 screen / 5000 paper replications.' if batch.startswith('sweetspot')
                      else 'core suite; 2000 screen / 10000 paper replications.'))
             for w in queue:print(w.tier,w.task.id,f'{w.cpus} workers / {w.memory_gb:g} GiB')
             return 0
         if prior_simulations:
+            if batch.startswith('monthly_'):
+                from research.monthly.study_prior import run as monthly_priors
+                for tier in tiers:monthly_priors(root,tier=tier)
             from research.seasonal.prior_simulations import run_suite
-            for tier in tiers:
+            for tier in (() if batch.startswith('monthly_') else tiers):
                 run_suite(root, tier=tier, suite='sweetspot' if batch.startswith('sweetspot') else 'core',
                     draws=(1000 if tier=='screen' else 5000) if batch.startswith('sweetspot') else None)
         environment=os.environ.copy();environment['MPLBACKEND']='Agg'

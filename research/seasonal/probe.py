@@ -18,7 +18,7 @@ def worker(task_id,output):
     task=next(t for t in all_tasks('screen') if t.id==task_id)
     c=task_config(task,'screen');c['data']['start']='2021-03'
     c['mcmc'].update(chains=2,chain_workers=2,warmup=3,draws=8,progress=False)
-    c.update(figures=False,forecast_horizon=8,forecast_draws=24,predictive_check_draws=12,prior_draws=80)
+    c.update(figures=False,forecast_horizon=8,forecast_draws=24,predictive_check_draws=12,prior_draws=80,annual_risk_draws=12)
     output.mkdir(parents=True,exist_ok=True)
     run(c,directory=output/'report')
     fit=bx.load_fit(result_directory(output,task)/'fit.bucex')
@@ -34,7 +34,7 @@ def worker(task_id,output):
         if 'initial_slope' in fit.priors.shrinkage.anchors:raise RuntimeError('Initial rates are being pooled.')
         if (fit.priors.shrinkage.hyperprior=='half_normal'
                 and fit.metadata.get('shrinkage_scale_update')!='gig'):
-            raise RuntimeError('Half-normal shrinkage did not use the 1.9.8.1 GIG update.')
+            raise RuntimeError('Half-normal shrinkage did not use the 1.9.8.2 GIG update.')
     if not np.isfinite(fit.state_draws).all():raise RuntimeError('Nonfinite probe states.')
     if not all(np.isfinite(v).all() for v in fit.parameter_draws.values()):raise RuntimeError('Nonfinite parameters.')
     return 0
@@ -63,6 +63,10 @@ def main():
         grid=cells(); names={'reference',grid[0]['name'],grid[-1]['name']}
         selected=[t for t in tasks('sweetspot_posterior',tier='screen') if t.variant in names or
                   (t.variant in ('independent_reference','fixed_reference') and t.channel in ('TXm','TXx'))]
+    if os.environ.get('BUCEX_BATCH','').startswith('monthly_'):
+        selected=[t for t in tasks('monthly_all',tier='screen')
+                  if (t.variant=='monthly_fixed_reference' and t.channel in ('TXm','TXx','TXn'))
+                  or (t.variant in ('monthly_fixed_constant_dispersion','monthly_fixed_fixed_location_seasonality') and t.channel=='TXx')]
     for scope in ('shared','independent','fixed'):
         group=[t for t in selected if t.scope==scope]
         with ThreadPoolExecutor(max_workers=a.max_parallel) as pool:results.extend(pool.map(launch,group))
