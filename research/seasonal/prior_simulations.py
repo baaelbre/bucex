@@ -52,8 +52,9 @@ def simulate_paths(config, *, draws, seed, dates):
     at the first observation, exactly as in the fitted FS representation.
     Only this study's Gaussian/GEV, local-linear, dummy-seasonal model is accepted.
     """
-    if config['analysis'] != 'joint' or config.get('copula') is not None:
-        raise ValueError('Prior path checks require the declared pooled model without a copula.')
+    fixed=config.get('shrinkage_scope')=='fixed'
+    if (config['analysis'] != 'joint' and not fixed) or config.get('copula') is not None:
+        raise ValueError('Prior path checks require pooled HN or fixed Normal priors without a copula.')
     if config['data']['frequency'] != 'seasonal' or config['model']['period'] != 4:
         raise ValueError('This study simulator requires meteorological seasons with period four.')
     if any(config['model'].get(k, 'dynamic') not in ('dynamic', 'static') for k in ('level', 'trend', 'seasonal')):
@@ -61,7 +62,11 @@ def simulate_paths(config, *, draws, seed, dates):
     if not isinstance(draws, int) or draws < 1 or len(dates) < 4:
         raise ValueError('Use positive integer draws and at least four dated seasons.')
     names = list(config['data']['series'])
-    model, priors = joint_model(pd.DataFrame(columns=names), config)
+    # Simulating the product of separate fixed priors in one array does not
+    # pool them. Fitted fixed-prior jobs still contain exactly one response.
+    simulation_config=deepcopy(config)
+    if fixed:simulation_config['analysis']='joint'
+    model, priors = joint_model(pd.DataFrame(columns=names), simulation_config)
     rng = np.random.default_rng(seed)
     sampled = bx.draw_marginal_prior(priors, draws, seed=int(rng.integers(2**32)))
     n, k = len(dates), len(names)
@@ -224,8 +229,8 @@ def run_suite(root=ROOT, *, tier='screen', suite='core', draws=None, seed=1951, 
     if not isinstance(draws, int) or draws < 1:
         raise ValueError('draws must be a positive integer.')
     entries = variant_entries()
-    from research.seasonal.sweetspot_plan import cells
-    names = [c['name'] for c in cells()] if suite == 'sweetspot' else list(CORE) if suite == 'core' else ([v['name'] for v in entries if v['scope'] == 'shared']
+    from research.seasonal.sweetspot_plan import cells, fixed_cells
+    names = [c['name'] for c in cells()+fixed_cells()] if suite == 'sweetspot' else list(CORE) if suite == 'core' else ([v['name'] for v in entries if v['scope'] == 'shared']
         if suite == 'all' else suite.split(','))
     if len(names) != len(set(names)) or any(n not in {v['name'] for v in entries} for n in names):
         raise ValueError('Unknown or repeated prior variant.')

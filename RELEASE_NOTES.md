@@ -1,21 +1,29 @@
-# BUCEX 1.9.8
+# BUCEX 1.9.8.1
 
-This release prepares the broader half-normal calibration study. It changes the scientific settings and requires a fresh results root.
+This release adds the separate fixed-Normal analysis: signed innovation coefficients
+retain calibrated Normal priors, with no hyperparameters to estimate. Pooled and
+separate half-normal hierarchies remain available as distinct comparisons.
 
-## Scientific design
+The level grid is 0.05, 0.1, 0.5; the slope grid is 0.001, 0.002, 0.005, 0.01.
+The 12 combinations use seasonal scale 0.1. Two central seasonal checks use 0.05
+and 0.2. All 14 settings have all three full-record constructions. Pooled and
+fixed-prior validation uses five matched origins; separate HN validation covers
+the reference. Equal scales match prior variances, not full marginal distributions.
 
-The reference is (A_alpha, A_beta, A_gamma) = (0.1, 0.002, 0.1). The 3×3 level/slope grid uses (0.05, 0.1, 0.2) × (0.001, 0.002, 0.004), with A_gamma=0.1. Central seasonal checks use 0.05 and 0.2. All eleven calibrations have matched private full-record fits, and the private reference has five matched validation origins. Private fits remain regularized by half-normal hierarchies with response-specific scales.
+The screen uses two parallel chains, 1,000 warmup and 2,000 retained iterations
+per chain. Gallade runs 390 individual fits in 100 array elements; BIOBOT runs
+312 individual fits. Commands, resources and result locations are in
+BUCEX-1.9.8.1-commands.md. Use a fresh output root and preserve the source when resuming.
 
-Initial rates, initial seasonal contrasts, observation priors, residual independence and the exact half-normal GIG sampler remain as declared in the command guide. Variant-specific reproducible seeds give different random streams across calibrations. These are new fits; overlap in alpha/beta values with an older grid does not justify reusing its posterior.
+Reports include fixed-prior versus hierarchical trajectory/forecast comparisons,
+matched-calibration paired CRPS, 3×4 heatmaps for every construction, and existing
+risk, allocation and convergence diagnostics. Fixed-prior local sensitivity uses
+the squared coefficient score; no hyperparameter trace is fabricated. Prior
+simulations now cover pooled HN and fixed Normal priors across the full grid.
 
-## Execution and reports
-
-Screen chains retain 2,000 draws after 1,000 warmup each. Gallade runs 111 fits (46 groups); BIOBOT runs 51 recent-origin fits. Focused private arrays now use the six-response bundle runner, whose task registry includes focused tasks. The default private array cap is four bundles, separate from sixteen pooled elements. All runs preserve manifest/provenance checks and saved archives.
-
-Reports retain all six private responses and never pass an incomplete bundle. Grid heatmaps are 3×3 within each response and exclude central seasonal checks. Seasonal and matched pooling comparisons have separate figures and tables. Prior figures resolve the current reference instead of assuming A_alpha=0.01. Manual and automatic collection logs use the results root.
-
-## Verification and limits
-
-See RELEASE_VALIDATION.json for the precise checks and local runtime. Configuration checks, short actual fits, predictive/report exports and selected regression tests validate execution. They do not establish posterior convergence or a stable calibration region. Production HPC/BIOBOT jobs were not submitted here and their running time is unmeasured.
-
-The source retains historical tests from releases with different fixed-prior and copula experiment plans. An exploratory run of the entire historical suite encountered obsolete version/plan expectations; it is not reported as an all-suite pass. The release gate selects current sampler, prior simulation, forecast, workflow and 1.9.8 design regressions explicitly. Historical result fixtures and archived settings are not new 1.9.8 results.
+RELEASE_VALIDATION.json records the targeted regression, startup, forecast,
+prior-simulation, report, syntax, wheel-build and launcher checks. Short local
+fits verify execution, not convergence or scientific conclusions. Production
+HPC/BIOBOT jobs have not been submitted and their runtime has not been measured.
+Historical fixtures are retained; the verification claim concerns the explicitly
+listed release tests rather than every historical test expectation.

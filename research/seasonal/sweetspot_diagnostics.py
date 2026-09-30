@@ -6,7 +6,10 @@ import bucex as bx
 
 
 def local_derivative(values, tau, anchor):
-    """d E[f|y]/d log(A) = Cov(f, tau**2/A**2 | y), for a HN(A) prior.
+    """d E[f|y]/d log(A) = Cov(f, x**2/A**2 | y).
+
+    x is a HN hyperparameter, or a signed N(0,A^2) coefficient (its
+    absolute value gives the same score). Constants in the score cancel.
 
     values starts with (chain, draw), followed by optional target dimensions.
     This is a sample covariance diagnostic, not a test or a finite-change refit.
@@ -37,15 +40,16 @@ def _band(values):
 def write(fit, forecast, config, directory):
     """Retain joint traces, slope sensitivity and forecast allocation on physical scales."""
     directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
-    if not fit.is_multiseries_model or fit.priors.shrinkage.hyperprior!='half_normal':
-        raise ValueError('This study requires shared or private half-normal innovation scales.')
+    hierarchy=fit.priors.shrinkage
+    if not fit.is_multiseries_model or (hierarchy is not None and hierarchy.hyperprior!='half_normal'):
+        raise ValueError('This study requires half-normal hierarchies or fixed Normal priors.')
     dates=pd.DatetimeIndex(fit.time)
     multiplier=10*config['model']['steps_per_year']
     if multiplier!=40:raise ValueError('This study is in seasonal units.')
     anchor=config['priors']['innovation_sd']
-    scope='independent' if isinstance(fit.priors.shrinkage,bx.IndependentShrinkage) else 'shared'
+    scope='fixed' if hierarchy is None else 'independent' if isinstance(hierarchy,bx.IndependentShrinkage) else 'shared'
     tau={c:fit.parameter('shrinkage.'+scope+'.'+c,combine_chains=False)
-         for c in ('level','slope','seasonal')}
+         for c in ('level','slope','seasonal')} if hierarchy is not None else {}
     anchor={c:anchor[k] for c,k in [('level','level'),('slope','trend'),('seasonal','season')]}
     traces={'tau_'+c:x for c,x in tau.items()}
     targets={};paths=[];sensitivity=[];allocations=[];forecast_rows=[];correlations=[]
@@ -58,15 +62,18 @@ def write(fit, forecast, config, directory):
         rate=multiplier*fit.component_draws('slope',channel=name,combine_chains=False)
         q={c:fit.parameter(f'sd.channel.{name}.{c}',combine_chains=False)**2
            for c in ('level','slope','seasonal')}
+        sensitivity_scales=tau if hierarchy is not None else {c:np.sqrt(x) for c,x in q.items()}
+        if hierarchy is None:
+            for c,x in sensitivity_scales.items():targets[f'{name}.prior_score_{c}']=(x/anchor[c])**2
         for label,values in [('level',level),('rate',rate)]:
             lo,med,hi=np.quantile(values.reshape(-1,len(dates)),[.025,.5,.975],axis=0)
             paths.append(pd.DataFrame(dict(channel=name,target=label,time=dates,
                 lower=lo,median=med,upper=hi,mean=values.mean(axis=(0,1)))))
             for i in check_indices:targets[f'{name}.{label}.{dates[i]:%Y-%m}']=values[...,i]
-            for c,x in tau.items():
+            for c,x in sensitivity_scales.items():
                 derivative=local_derivative(values,x,anchor[c])
                 sd=values.reshape(-1,len(dates)).std(axis=0,ddof=1)
-                data=dict(channel=name,target=label,time=dates,anchor_component=c,
+                data=dict(channel=name,target=label,time=dates,anchor_component=c,scope=scope,
                     derivative_per_log_anchor=derivative,
                     derivative_per_posterior_SD=np.divide(derivative,sd,out=np.full_like(sd,np.nan),where=sd>0))
                 for chain in range(fit.n_chains):
@@ -86,7 +93,7 @@ def write(fit, forecast, config, directory):
             for label,values in [('level_innovation_SD',np.sqrt(va)),('slope_innovation_SD',np.sqrt(vb)),
                                   ('slope_variance_fraction',fraction)]:
                 allocations.append(dict(channel=name,horizon_years=years,target=label,**_band(values)))
-            for c,x in tau.items():
+            for c,x in sensitivity_scales.items():
                 allocations.append(dict(channel=name,horizon_years=years,
                     target='conditional_level_mean_sensitivity_'+c,
                     mean=float(local_derivative(expected,x,anchor[c])),lower=np.nan,median=np.nan,upper=np.nan))
@@ -94,9 +101,11 @@ def write(fit, forecast, config, directory):
             allocations.append(dict(channel=name,horizon_years=years,target='forecast_variance_decomposition',
                 state_uncertainty=state_var,new_level_variance=float(va.mean()),
                 new_slope_variance=float(vb.mean()),total_level_variance=state_var+float(va.mean()+vb.mean())))
-        for left,right,x,y in [('log_tau_level','log_tau_slope',np.log(tau['level']),np.log(tau['slope'])),
-            ('log_q_level','log_q_slope',np.log(q['level']),np.log(q['slope'])),
-            ('end_level','end_rate',level[...,-1],rate[...,-1])]:
+        correlation_pairs=[('log_q_level','log_q_slope',np.log(q['level']),np.log(q['slope'])),
+            ('end_level','end_rate',level[...,-1],rate[...,-1])]
+        if hierarchy is not None:
+            correlation_pairs.insert(0,('log_tau_level','log_tau_slope',np.log(tau['level']),np.log(tau['slope'])))
+        for left,right,x,y in correlation_pairs:
             correlations.append(dict(channel=name,left=left,right=right,
                 correlation=float(np.corrcoef(x.ravel(),y.ravel())[0,1])))
         # Future level draws preserve the posterior level/slope covariance.
@@ -124,9 +133,9 @@ def write(fit, forecast, config, directory):
     diagnostics.to_csv(directory/'sweetspot_target_diagnostics.csv')
     assessment=bx.convergence_assessment({'sweetspot_targets':diagnostics},**config['diagnostic_thresholds'])
     bx.save_config(assessment,directory/'sweetspot_convergence.json')
-    bx.save_config(dict(version=bx.__version__,cell=config.get('sweetspot_cell'),
+    bx.save_config(dict(version=bx.__version__,cell=config.get('sweetspot_cell'),scope=scope,
         initial_rate_sd=config['priors']['initial_slope_sd'],
-        interpretation='Pointwise 95% intervals. Local derivatives concern posterior means per natural-log hyperprior scale. Joint traces retain chain/draw pairing. Monte Carlo estimates require convergence; local sensitivity does not replace finite-change refits.',
+        interpretation='Pointwise 95% intervals. Local derivatives concern posterior means per natural-log calibration scale: Cov(f,tau_c^2/A_c^2) for HN hierarchies, Cov(f,s_c,j^2/a_c^2) for fixed Normal priors. Paired traces retain chain/draw pairing. Monte Carlo estimates require convergence; local sensitivity does not replace finite-change refits.',
         allocation='Within each draw: h*q_level + h*(h-1)*(2*h-1)/6*q_slope. Fractions concern NEW trend innovations only, excluding current-state uncertainty, seasonality and observations. Forecast total-level variance includes current-state covariance.',
         diagnostic_times=dates[check_indices].strftime('%Y-%m-%d').tolist()),directory/'sweetspot_definitions.json')
     main=directory/'convergence.json'

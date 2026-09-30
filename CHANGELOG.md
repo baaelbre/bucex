@@ -1,3 +1,14 @@
+# 1.9.8.1
+
+- Add active separate fixed-Normal fits without hyperpriors across the full calibration grid.
+- Requested level grid 0.05/0.1/0.5 and slope grid 0.001/0.002/0.005/0.01; retain seasonal reference 0.1 and central 0.05/0.2 checks.
+- Keep matched pooled and separate HN full-record fits; add fixed-prior validation across all 14 calibrations at five origins.
+- Report fixed-Normal and hierarchical results separately; distinguish equal second moments from equal marginal priors.
+- Extend prior simulation, allocation/local sensitivity, startup probes and collection to fixed priors.
+- Add matched-calibration paired CRPS and fixed-versus-hierarchical trajectory comparisons.
+- Split 702 individual fits into 390 on Gallade and 312 on BIOBOT; keep the two-chain screening budget.
+- New versioned result roots, archive names and command guide; no reuse of older scientific results.
+
 # 1.9.8
 
 - Broader 3×3 half-normal level/slope grid, seasonal reference 0.1 and central 0.05/0.2 checks.

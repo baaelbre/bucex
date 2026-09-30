@@ -30,9 +30,12 @@ def test_reference_and_complete_hn_only_grid():
     for t in tasks('sweetspot_posterior'):
         cfg=task_config(t,'screen');prior=cfg['priors']
         h=prior.get('shared_shrinkage') or prior.get('independent_shrinkage')
-        assert h['hyperprior']=='half_normal' and not h['pool_initial_slope']
+        if t.scope=='fixed':
+            assert h is None
+        else:
+            assert h['hyperprior']=='half_normal' and not h['pool_initial_slope']
         if t.scope=='shared' and cfg['variant']['calibration_kind']=='grid':grid.add((prior['innovation_sd']['level'],prior['innovation_sd']['trend']))
-    assert {(a,b) for a in (.05,.1,.2) for b in (.001,.002,.004)}<=grid
+    assert {(a,b) for a in (.05,.1,.5) for b in (.001,.002,.005,.01)}<=grid
     assert len(tasks('all'))==100
 
 

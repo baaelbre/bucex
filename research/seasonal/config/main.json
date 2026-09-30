@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.8: pooled half-normal; doubled slope reference; exchangeable initial seasonal cycle.",
+  "_comment": "1.9.8.1: pooled half-normal; doubled slope reference; exchangeable initial seasonal cycle.",
   "analysis": "joint",
   "data": {
     "series": [
@@ -80,7 +80,7 @@
     }
   },
   "seed": 19802,
-  "output": "results/serra_198/reference",
+  "output": "results/serra_1981/reference",
   "forecast_horizon": 120,
   "forecast_draws": 50000,
   "credible_interval": 0.95,

@@ -1,0 +1,8 @@
+{
+  "figures": 23,
+  "fixed_30year_forecast_draws": 256,
+  "forecast_rows": 4,
+  "prior_variants": 28,
+  "prior_draws_per_variant": 40,
+  "status": "passed"
+}

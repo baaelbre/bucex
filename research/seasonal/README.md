@@ -1,9 +1,25 @@
-# Seasonal workflow — 1.9.8
+# Seasonal workflow — 1.9.8.1
 
-See [the command guide](../../BUCEX-1.9.8-commands.md).
+See [the command guide](../../BUCEX-1.9.8.1-commands.md).
 
-`config/sweetspot.json` declares the 3×3 level–slope grid and the central seasonal checks. `sweetspot_plan.py` creates 11 shared calibrations and 11 matched private variants. `job_plan.py` maps these to disjoint host batches. `jobs.py --verify` checks models, folds and priors; `probe.py` runs short sampler/report checks on the compute host.
+`config/sweetspot.json` defines a 3×4 level–slope grid plus two central seasonal checks.
+`sweetspot_plan.py` creates 14 pooled HN, 14 separate HN and 14 fixed-Normal variants.
+Fixed-Normal variants use `scope="fixed"`, remove both hierarchy declarations, and
+retain calibrated zero-centred Normal priors on the signed innovation coefficients.
 
-The focused `sweetspot` batch contains 162 fits. `sweetspot_hpc` contains 111, and `sweetspot_validation` contains 51. Private full-record fits cover the whole grid; private validation covers the reference at five origins.
+`job_plan.py` maps the study to disjoint host batches: `sweetspot_hpc` has 390 fits
+in 100 scheduler elements; `sweetspot_validation` has 312 individual BIOBOT fits.
+The complete `sweetspot` batch has 702 fits. Pooled and fixed-prior validation covers
+all settings at five matched origins; separate HN validation covers the reference.
 
-Reports are built by `sweetspot_report.py`; partial or numerically flagged fits cannot pass a stability gate. Archive compatibility APIs and the older general-purpose batches are retained.
+`jobs.py --verify` compiles models and checks priors, folds and resources.
+`probe.py` tests tiny Gaussian/GEV runs for all three constructions on the compute host.
+`prior_simulations.py --suite sweetspot` simulates all 14 pooled HN and 14 fixed-Normal
+settings; the separate HN one-response marginal prior matches the pooled HN prior.
+
+`sweetspot_report.py` collects all six separate responses, keeps incomplete bundles
+flagged, produces 3×4 grids for each construction, and compares identical calibrations.
+`matched_prior_crps.csv` pairs separate and pooled predictions on the same response,
+origin, date and horizon. Fixed-Normal local sensitivity uses the squared coefficient
+score, not a nonexistent hyperparameter. The original general-purpose batches remain
+available but do not substitute for the focused grid.

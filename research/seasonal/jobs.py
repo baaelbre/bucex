@@ -1,4 +1,4 @@
-"""BUCEX 1.9.8 pooled half-normal reference and parallel paper experiments."""
+"""BUCEX 1.9.8.1 pooled half-normal reference and parallel paper experiments."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -19,7 +19,7 @@ from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
 from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan, variant_entries
 
-ROOT = Path('results/serra_198')
+ROOT = Path('results/serra_1981')
 
 @dataclass(frozen=True)
 class Task:
@@ -97,7 +97,7 @@ def task_config(task,tier):
         c['mcmc'].update(budget['block_mcmc'])
         c['validation'].update(training_ends=[task.origin],horizon=task.horizon*(3 if task.frequency=='monthly' else 1))
     c['data']['series']=list(task.series)
-    seed_key=f'198/{task.variant}/{task.channel}/{task.kind}/{task.origin}/{task.frequency}/{tier}'.encode()
+    seed_key=f'1981/{task.variant}/{task.channel}/{task.kind}/{task.origin}/{task.frequency}/{tier}'.encode()
     seed=int.from_bytes(hashlib.sha256(seed_key).digest()[:4],'little')
     c['mcmc']['seed']=seed;c['seed']=(seed+1)%(2**32)
     c['credible_interval']=.95;c['variant']=deepcopy(entry)
@@ -111,7 +111,7 @@ def task_config(task,tier):
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
         batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        frequency=task.frequency,reference='1.9.8: pooled half-normal innovation scales; separately calibrated initial rates')
+        frequency=task.frequency,reference='1.9.8.1: pooled half-normal innovation scales; separately calibrated initial rates')
     if c.get('copula') is not None or c.get('contrasts') is not None:
         raise ValueError('This comparison has independent residuals and no historical contrasts.')
     hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')
@@ -236,8 +236,17 @@ def verify(tier='screen',*,output=None):
             initial_rate_sd_C_per_decade=10*c['model']['steps_per_year']*p['initial_slope_sd'],pool_initial_slope=False,
             innovation_sd_convention='fixed_normal_sd' if h is None else 'conditional_normal_sd_anchor',
             marginal_sd_inflation=1. if h is None else h.rms_multiplier))
-    matched=[]
+    matched=[];fixed_matched=[]
     for (scope,setting,ch),prior in priors.items():
+        if scope=='fixed':
+            pooled=priors[('shared',setting,'joint')]
+            for component,field in (('level','s_level'),('slope','s_trend'),('seasonal','s_season')):
+                coefficient=getattr(prior.channels[ch],field)
+                if coefficient.mean!=0 or not np.isclose(coefficient.sd,pooled.shrinkage.anchors[component]):
+                    raise ValueError('Fixed Normal prior SD does not match the declared HN anchor.')
+            fixed_matched.append(dict(setting=setting,channel=ch,matched_second_moments=True,
+                matched_marginal_distribution=False))
+            continue
         if scope!='independent':continue
         pooled=priors[('shared',setting,'joint')]
         if (prior.shrinkage.anchors!=pooled.shrinkage.anchors or prior.shrinkage.hyperprior!=pooled.shrinkage.hyperprior
@@ -252,12 +261,14 @@ def verify(tier='screen',*,output=None):
         counts={b:len(tasks(b,tier=tier)) for b in BATCHES},
         experiments=len(groups),experiment_fits=sum(g['parallel_fits'] for g in groups),
         matched_marginal_prior_pairs=len(matched),
-        scope='All specifications, folds, CPU plans and exact independent/shared marginal-prior matching; no MCMC.')
+        fixed_normal_second_moment_pairs=len(fixed_matched),
+        scope='All specifications, folds and CPU plans; exact separate/shared HN marginal matching and fixed-Normal second-moment matching; no MCMC.')
     if output is not None:
         output=Path(output);output.mkdir(parents=True,exist_ok=True)
         bx.save_config(result,output/'preflight.json')
         pd.DataFrame(rows).to_csv(output/'resolved_settings.csv',index=False)
         pd.DataFrame(matched).to_csv(output/'matched_marginal_priors.csv',index=False)
+        pd.DataFrame(fixed_matched).to_csv(output/'fixed_normal_prior_checks.csv',index=False)
         pd.DataFrame(plan(tier,'all')).to_csv(output/'experiment_plan.csv',index=False)
     return result
 

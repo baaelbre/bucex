@@ -18,11 +18,12 @@ def build(directory):
     focused=table.variant.str.startswith('ss_').any()
     families=FAMILIES
     if focused:
-        from research.seasonal.sweetspot_plan import cells
+        from research.seasonal.sweetspot_plan import cells, fixed_cells
         grid=cells();reference=next(c for c in grid if c['name']=='reference')
         reference_level=[c for c in grid if c['A_level']==reference['A_level'] and c['calibration_kind']=='grid']
         colors=plt.cm.viridis(np.linspace(.08,.9,len(reference_level)))
-        families=[(c['name'],f"Aβ={c['A_slope']:g}",color) for c,color in zip(reference_level,colors)]
+        families=[(c['name'],f"HN Aβ={c['A_slope']:g}",color) for c,color in zip(reference_level,colors)]
+        families.append(('fixed_reference','Fixed Normal aβ=0.002','#a44839'))
     with publication_style(overrides={'font.size': 10, 'axes.labelsize': 10,
             'xtick.labelsize': 9, 'ytick.labelsize': 9, 'legend.fontsize': 9}):
         fig, axes = plt.subplots(2, 3, figsize=(10.2, 6.1), constrained_layout=True)
@@ -51,7 +52,7 @@ def build(directory):
                  ('double_slope','Slope 0.004'),('slope_1e3','Slope 0.001'),
                  ('seasonal_5e2','Season 0.05'),('seasonal_1e1','Season 0.10')]
         if focused:
-            cases=[(c['name'],f"Aα={c['A_level']:g}, Aβ={c['A_slope']:g}, Aγ={c['A_season']:g}") for c in cells()]
+            cases=[(c['name'],f"{'Fixed' if c['scope']=='fixed' else 'HN'}: α={c['A_level']:g}, β={c['A_slope']:g}, γ={c['A_season']:g}") for c in cells()+fixed_cells()]
         cases = [(v, lab) for v, lab in cases if v in set(table.variant)]
         if cases:
             fig, axes = plt.subplots(1, 3, figsize=(11.5, max(5.2,.39*len(cases))), sharey=True, constrained_layout=True)

@@ -17,10 +17,10 @@ from research.monthly.validate import validation_splits
 
 def test_disjoint_host_work_and_fixed_other_priors():
     h=tasks('sweetspot_hpc',tier='screen');b=tasks('sweetspot_validation',tier='screen')
-    assert len(h)==111 and len(b)==51
+    assert len(h)==390 and len(b)==312
     assert not {t.id for t in h}&{t.id for t in b}
     assert {t.id for t in h+b}=={t.id for t in tasks('sweetspot',tier='screen')}
-    assert len(cells())==11
+    assert len(cells())==14
     priors=[]
     for task in tasks('sweetspot_posterior',tier='screen'):
         c=task_config(task,'screen');p=copy.deepcopy(c['priors'])
@@ -30,8 +30,11 @@ def test_disjoint_host_work_and_fixed_other_priors():
         assert c['model']['level']==c['model']['trend']=='dynamic'
         assert c['mcmc']['chains']==c['mcmc']['chain_workers']==2
         assert c['copula'] is None and c['sweetspot_diagnostics']
-        assert hierarchy['hyperprior']=='half_normal'
-        assert not hierarchy['pool_initial_slope']
+        if task.scope=='fixed':
+            assert hierarchy is None
+        else:
+            assert hierarchy['hyperprior']=='half_normal'
+            assert not hierarchy['pool_initial_slope']
         priors.append(p)
     assert all(p==priors[0] for p in priors)
 
@@ -176,11 +179,11 @@ def test_hpc_launcher_and_biobot_plan(tmp_path,monkeypatch):
     monkeypatch.setenv('VSC_ARRAY_LIMIT','16')
     r=subprocess.run(['bash','RUN_SWEETSPOT_HPC.sh','--dry-run'],capture_output=True,text=True)
     assert r.returncode==0,r.stderr
-    assert '--clusters=gallade' in r.stdout and '--array=1-33%16' in r.stdout
+    assert '--clusters=gallade' in r.stdout and '--array=1-42%16' in r.stdout
     assert '--cpus-per-task=2' in r.stdout and '--dependency=afterany:ARRAY_JOB_IDS' in r.stdout
     from research.seasonal.overnight import make_queue,budget
     q=make_queue(('screen',),'sweetspot_validation')
-    assert len(q)==51 and all(x.cpus==2 and x.memory_gb<=6 for x in q)
+    assert len(q)==312 and all(x.cpus==2 and x.memory_gb<=6 for x in q)
 
 
 def test_validation_pairs_match_dates_and_origins(tmp_path):

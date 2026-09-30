@@ -1,6 +1,6 @@
-# Start here — BUCEX 1.9.8
+# Start here — BUCEX 1.9.8.1
 
-Read [the screen command guide](BUCEX-1.9.8-commands.md).
+Read [the screen command guide](BUCEX-1.9.8.1-commands.md).
 
 - Gallade: `bash RUN_SWEETSPOT_HPC.sh --dry-run`, then the same command without `--dry-run`.
 - BIOBOT: `bash RUN_SWEETSPOT_BIOBOT.sh --dry-run`, then the same command without `--dry-run` inside a persistent terminal session.

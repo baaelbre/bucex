@@ -1,11 +1,15 @@
-"""Standard-library-only definition of the joint half-normal calibration grid."""
+"""Calibration grid for pooled HN, separate HN and fixed Normal priors."""
 import json
 import math
 from pathlib import Path
 
 CONFIG = Path(__file__).resolve().parent / 'config'
 BATCHES = ('sweetspot', 'sweetspot_hpc', 'sweetspot_posterior',
-           'sweetspot_validation', 'sweetspot_long')
+           'sweetspot_validation', 'sweetspot_long', 'sweetspot_fixed')
+SCOPES = ('shared', 'independent', 'fixed')
+SCOPE_LABELS = {'shared': 'Pooled half-normal',
+                'independent': 'Separate half-normal',
+                'fixed': 'Separate fixed-normal'}
 
 
 def specification():
@@ -48,12 +52,32 @@ def private_cells():
     return [dict(c, name='independent_'+c['name'], scope='independent') for c in cells()]
 
 
+def fixed_cells():
+    """The grid values are fixed coefficient prior SDs, not hyperprior scales."""
+    return [dict(c, name='fixed_'+c['name'], scope='fixed') for c in cells()]
+
+
 def study_variants():
-    return cells() + private_cells()
+    return cells() + private_cells() + fixed_cells()
+
+
+def validation_cells():
+    spec = specification()
+    def selected(entries, key):
+        wanted = spec[key]
+        if wanted == 'all_cells':
+            return entries
+        if not isinstance(wanted, list) or not set(wanted) <= {c['setting'] for c in entries}:
+            raise ValueError(key + ' must be all_cells or a list of known settings.')
+        return [c for c in entries if c['setting'] in wanted]
+    return cells() + selected(private_cells(), 'private_validation') + selected(fixed_cells(), 'fixed_validation')
 
 
 def calibration_rows():
-    """Marginal prior RMS effects, integrating both hierarchy levels."""
+    """Common marginal RMS effects: E[s^2]=A^2 in all three constructions.
+
+    This second-moment match is not equality of the fixed and mixture priors.
+    """
     result = []
     for cell in cells():
         row = dict(variant=cell['name'], A_level=cell['A_level'],

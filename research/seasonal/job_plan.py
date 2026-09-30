@@ -1,7 +1,7 @@
 """Standard-library-only plan for pooled fits and optional later comparisons."""
 import json
 from pathlib import Path
-from research.seasonal.sweetspot_plan import BATCHES as SWEETSPOT_BATCHES, cells, private_cells, study_variants, specification
+from research.seasonal.sweetspot_plan import BATCHES as SWEETSPOT_BATCHES, study_variants, validation_cells, specification
 PROJECT=Path(__file__).resolve().parents[2]
 CONFIG=PROJECT/'research/seasonal/config'
 BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred') + SWEETSPOT_BATCHES
@@ -58,7 +58,7 @@ def plan(tier='screen',batch='experiments',resource='all'):
     sweet_posterior=[group('posterior',c['name']) for c in study_variants()]
     def sweet_forecasts(origins):
         result=[]
-        selected_cells=cells()+[c for c in private_cells() if c['setting'] in calibration['private_validation']]
+        selected_cells=validation_cells()
         for cell in selected_cells:
             for origin in origins:
                 g=group('forecast',cell['name'],origin)
@@ -76,7 +76,8 @@ def plan(tier='screen',batch='experiments',resource='all'):
         monthly=monthly,all=refs+pre+forecasts+[g for g in posterior if g['variant']!='reference']+original+blocks+monthly,deferred=deferred,
         sweetspot=sweet_posterior+sweet_recent+sweet_long,
         sweetspot_hpc=sweet_posterior+sweet_long,sweetspot_posterior=sweet_posterior,
-        sweetspot_validation=sweet_recent,sweetspot_long=sweet_long)[batch]
+        sweetspot_validation=sweet_recent,sweetspot_long=sweet_long,
+        sweetspot_fixed=[g for g in sweet_posterior+sweet_recent+sweet_long if g['scope']=='fixed'])[batch]
     if len({g['id'] for g in selected})!=len(selected):raise ValueError('Duplicate experiment IDs.')
     if any(g['required_workers']>g['cpus'] for g in selected):raise ValueError('CPU allocation below chain worker count.')
     return [g for g in selected if resource=='all' or g['resource']==resource]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# BIOBOT: 51 recent-origin fits. Use --batch sweetspot to run all 162 here.
+# BIOBOT: 312 recent-origin fits. Use --batch sweetspot to run all 702 here.
 set -euo pipefail
 cd -P "$(dirname "$0")"
 export BUCEX_BATCH=sweetspot_validation

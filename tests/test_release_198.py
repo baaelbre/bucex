@@ -1,4 +1,4 @@
-"""Release regressions for 1.9.8 pooling, seasonal checks and scheduler dispatch."""
+"""Release regressions for 1.9.8.1 pooling, seasonal checks and scheduler dispatch."""
 import copy
 from pathlib import Path
 import os
@@ -16,9 +16,9 @@ def test_calibration_dimensions_and_matched_private_priors():
     pooled=cells();private=private_cells()
     core=[c for c in pooled if c['calibration_kind']=='grid']
     assert {(c['A_level'],c['A_slope'],c['A_season']) for c in core}=={
-        (a,b,.1) for a in (.05,.1,.2) for b in (.001,.002,.004)}
+        (a,b,.1) for a in (.05,.1,.5) for b in (.001,.002,.005,.01)}
     assert {(c['A_level'],c['A_slope'],c['A_season']) for c in pooled if c not in core}=={(.1,.002,.05),(.1,.002,.2)}
-    assert len(private)==len(pooled)==11
+    assert len(private)==len(pooled)==14
     ts=tasks('sweetspot_posterior',tier='screen')
     for t in ts:
         c=task_config(t,'screen')
@@ -70,7 +70,7 @@ def test_hpc_resources_and_private_array_cap(tmp_path):
     env=dict(os.environ,BUCEX_PYTHON=sys.executable,BUCEX_RESULTS_ROOT=str(tmp_path),VSC_ARRAY_LIMIT='16',VSC_SEPARATE_ARRAY_LIMIT='4')
     r=subprocess.run(['bash','RUN_SWEETSPOT_HPC.sh','--dry-run'],env=env,capture_output=True,text=True)
     assert r.returncode==0,r.stderr
-    assert '--array=1-33%16' in r.stdout and '--array=1-13%4' in r.stdout
+    assert '--array=1-42%16' in r.stdout and '--array=1-58%4' in r.stdout
     assert '--cpus-per-task=12 --mem=48G' in r.stdout
-    assert len(plan('screen','sweetspot_hpc'))==46
-    assert len(plan('screen','sweetspot_validation'))==36
+    assert len(plan('screen','sweetspot_hpc'))==100
+    assert len(plan('screen','sweetspot_validation'))==87

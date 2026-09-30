@@ -26,5 +26,5 @@
     "unit": "degC"
   },
   "forecast_horizon": 360,
-  "output": "results/serra_198/monthly"
+  "output": "results/serra_1981/monthly"
 }

@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import bucex as bx
 from research.seasonal.jobs import ROOT, tasks, task_config, fingerprint, result_directory
-from research.seasonal.sweetspot_plan import BATCHES, cells, study_variants, specification, calibration_rows
+from research.seasonal.sweetspot_plan import BATCHES, SCOPES, SCOPE_LABELS, cells, study_variants, specification, calibration_rows
 
 CHANNELS = ('TXm','TNm','TXx','TXn','TNx','TNn')
 
@@ -223,6 +223,21 @@ def validation_tables(entries):
                 crps=('value','mean'),reference_crps=('value_reference','mean'),difference=('difference','mean'),
                 matched_cases=('value','size'),distinct_dates=('time','nunique')).reset_index()
             summaries['paired_crps']['ratio']=summaries['paired_crps'].crps/summaries['paired_crps'].reference_crps
+        # Isolate the construction comparison at each identical calibration,
+        # rather than confounding it with a different pooled reference scale.
+        mapping={v['name']:v for v in study_variants()}
+        alternatives=s[s.variant.isin([v for v,c in mapping.items() if c['scope']!='shared'])].copy()
+        alternatives['setting']=alternatives.variant.map(lambda v:mapping[v]['setting'])
+        pooled=s[s.variant.isin([v for v,c in mapping.items() if c['scope']=='shared'])].rename(columns={'variant':'setting'})
+        matched=alternatives.merge(pooled[merge+['setting','value','numerically_passed']],
+            on=merge+['setting'],how='inner',validate='many_to_one',suffixes=('','_pooled'))
+        if not matched.empty:
+            matched['difference']=matched.value-matched.value_pooled
+            matched['both_numerically_passed']=matched.numerically_passed & matched.numerically_passed_pooled
+            paired_keys=['variant','setting','training_end','channel','horizon_band','both_numerically_passed']
+            summaries['matched_prior_crps']=matched.groupby(paired_keys,observed=True).agg(
+                crps=('value','mean'),pooled_crps=('value_pooled','mean'),difference=('difference','mean'),
+                matched_cases=('value','size'),distinct_dates=('time','nunique')).reset_index()
     if coverage:
         c=pd.concat(coverage,ignore_index=True);c=c[(c.kind=='central_interval')&c.nominal.isin([.9,.95,.99])].copy()
         if not c.empty:
@@ -242,7 +257,7 @@ def figures(posterior,out,scope="shared"):
     spec=specification();grid=[c for c in study_variants() if c['scope']==scope and c['calibration_kind']=='grid'];result=[]
     def save(fig,name,caption):
         name=scope+'_'+name
-        fig.savefig(out/name,bbox_inches='tight',dpi=180);plt.close(fig);result.append((out/name,scope.capitalize()+': '+caption))
+        fig.savefig(out/name,bbox_inches='tight',dpi=180);plt.close(fig);result.append((out/name,SCOPE_LABELS[scope]+': '+caption))
     with bx.publication_style(style='manuscript',dpi=180):
         for target,unit in [('level','°C'),('rate','°C/decade')]:
             for a in spec['level_scales']:
@@ -303,8 +318,8 @@ def comparison_figures(posterior,out):
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     variants={c['name']:c for c in study_variants()};plots=[]
-    panels=[('pooling_reference',['reference','independent_reference'])]
-    for scope in ('shared','independent'):
+    panels=[('prior_reference',['reference','independent_reference','fixed_reference'])]
+    for scope in SCOPES:
         panels.append(('seasonal_'+scope,[c['name'] for c in study_variants() if c['scope']==scope and
             (c['calibration_kind']=='seasonal' or c['setting']=='reference')]))
     with bx.publication_style(style='manuscript',dpi=180):
@@ -319,7 +334,7 @@ def comparison_figures(posterior,out):
                         if f.empty:continue
                         f=f[(f.channel==ch)&(f.target==target)].sort_values('time')
                         if f.empty:continue
-                        legend=variants[name]['scope'] if label.startswith('pooling') else f"Aγ={variants[name]['A_season']:g}"
+                        legend=SCOPE_LABELS[variants[name]['scope']] if label.startswith('prior') else f"Aγ={variants[name]['A_season']:g}"
                         color=plt.cm.viridis(.15+.7*i/max(1,len(names)-1));x=pd.to_datetime(f.time)
                         ax.plot(x,f['median'],color=color,lw=1.3,ls='-' if e['passed'] else '--',label=legend)
                         ax.fill_between(x,f.lower,f.upper,color=color,alpha=.09,linewidth=0)
@@ -329,7 +344,7 @@ def comparison_figures(posterior,out):
                 if handles:fig.legend(handles,labels,loc='lower center',ncol=3,frameon=False)
                 fig.tight_layout(rect=(0,.04,1,1));path=out/(label+'_'+target+'.png')
                 fig.savefig(path,dpi=180,bbox_inches='tight');plt.close(fig)
-                caption=('Matched pooled/private reference' if label.startswith('pooling') else 'Seasonal calibration at Aα=0.1, Aβ=0.002: '+label.split('_')[1])
+                caption=('Pooled HN, separate HN and fixed Normal priors at the reference' if label.startswith('prior') else 'Seasonal calibration at Aα=0.1, Aβ=0.002: '+SCOPE_LABELS[label.split('_')[1]])
                 plots.append((path,caption+'. Medians and pointwise 95% intervals; dashed curves carry numerical flags.'))
     return plots
 
@@ -345,20 +360,23 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
     for left,right in combinations(sorted(posterior),2):
         a,b=variant_map[left],variant_map[right]
         if a['scope']!=b['scope'] and a['setting']!=b['setting']:continue
-        kind='pooling' if a['scope']!=b['scope'] else 'seasonal' if a['calibration_kind']=='seasonal' or b['calibration_kind']=='seasonal' else 'grid'
-        for row in compare_pair(posterior[left],posterior[right]):allpairs.append(dict(left=left,right=right,comparison=kind,**row))
+        kind=('fixed_vs_hierarchical' if 'fixed' in (a['scope'],b['scope']) else 'pooling') if a['scope']!=b['scope'] else 'seasonal' if a['calibration_kind']=='seasonal' or b['calibration_kind']=='seasonal' else 'grid'
+        for row in compare_pair(posterior[left],posterior[right]):allpairs.append(dict(left=left,right=right,
+            left_scope=a['scope'],right_scope=b['scope'],setting=a['setting'] if a['setting']==b['setting'] else '',comparison=kind,**row))
     pairs=pd.DataFrame(allpairs);pairs.to_csv(out/'all_pairwise_stability.csv',index=False)
-    regions=pd.concat([rectangles(pairs,scope) for scope in ('shared','independent')],ignore_index=True);regions.to_csv(out/'stability_regions.csv',index=False)
+    regions=pd.concat([rectangles(pairs,scope) for scope in SCOPES],ignore_index=True);regions.to_csv(out/'stability_regions.csv',index=False)
     pooling=pairs[pairs.comparison=='pooling'] if not pairs.empty else pd.DataFrame()
     seasonal=pairs[pairs.comparison=='seasonal'] if not pairs.empty else pd.DataFrame()
+    fixed=pairs[pairs.comparison=='fixed_vs_hierarchical'] if not pairs.empty else pd.DataFrame()
     pooling.to_csv(out/'matched_pooling_comparisons.csv',index=False)
+    fixed.to_csv(out/'matched_fixed_prior_comparisons.csv',index=False)
     seasonal.to_csv(out/'seasonal_comparisons.csv',index=False)
     summaries=validation_tables(validation)
     for name,frame in summaries.items():frame.to_csv(out/(name+'.csv'),index=False)
     learning,correlations=scale_learning(posterior)
     learning.to_csv(out/'scale_learning.csv',index=False)
     correlations.to_csv(out/'allocation_correlations.csv',index=False)
-    plots=figures(posterior,out,'shared')+figures(posterior,out,'independent')+comparison_figures(posterior,out)
+    plots=[plot for scope in SCOPES for plot in figures(posterior,out,scope)]+comparison_figures(posterior,out)
     status=dict(version=bx.__version__,tier=tier,batch=batch,expected=len(records),completed=int(records.status.eq('completed').sum()),
         numerically_passed=int((records.status.eq('completed')&records.numerically_passed).sum()),
         posterior_cells=len(posterior),validation_fits=len(validation),
@@ -370,8 +388,8 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
     def table(f):return '<p>No results available yet.</p>' if f.empty else f.to_html(index=False,border=0,float_format=lambda x:f'{x:.4g}')
     text=[f'<h1>BUCEX {escape(bx.__version__)} · joint level–slope calibration</h1>',
         f'<p>{status["completed"]}/{len(records)} fits completed; {status["numerically_passed"]} passed the declared numerical checks. '
-        f'{len(posterior)}/22 full-record calibration/scope combinations have at least one response available. Tier: <strong>{escape(tier)}</strong>.</p>',
-        '<p>This study keeps both level and slope innovations. It asks whether a region of half-normal scale settings yields stable trajectories, uncertainty and forecasts. '
+        f'{len(posterior)}/{len(study_variants())} full-record calibration/scope combinations have at least one response available. Tier: <strong>{escape(tier)}</strong>.</p>',
+        '<p>This study keeps both level and slope innovations. It compares pooled half-normal hierarchies, separate half-normal hierarchies and separate fixed Normal priors across the calibration grid. '
         'It does not select the smallest CRPS or prove that estimates are independent of priors. Hyperpriors remain proper and calibrated; widening them is an experiment, not an assumed remedy.</p>',
         '<h2>What would count as a stable region?</h2>',
         '<p>A candidate comprises four adjacent grid cells. Every one of their six pairwise comparisons must meet all tolerances for all six responses, '
@@ -384,7 +402,8 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
         'Check Monte Carlo error, inspect posterior scale/allocation correlations and local sensitivities, and distinguish a stable total trend from an uncertain level/slope decomposition. '
         'Longer chains can resolve Monte Carlo uncertainty; they cannot supply identification missing from the data.</p>',
         '<h2>Prior calibration</h2>',
-        '<p>Entries below integrate both hierarchy levels: s|τ ~ Normal(0,τ²), τ ~ HalfNormal(A). Thus E[s²]=A². '
+        '<p>For the hierarchies, s|τ ~ Normal(0,τ²), τ ~ HalfNormal(A). For fixed priors, s ~ Normal(0,a²) with a=A. Both have E[s²]=A², so the table applies to all three constructions. '
+        'Fixed Normal priors have no hyperparameters to estimate; innovation coefficients and process variances are still learned. Matching variances does not match the full marginal priors: the HN mixture is more concentrated near zero and heavier-tailed. '
         'These are marginal prior RMS effects of future innovations, not central 95% bounds or the full prior-predictive spread. '
         'At h seasonal steps, new level variance is h qα and new slope variance is h(h−1)(2h−1)qβ/6. '
         'The allocation fraction excludes current-state uncertainty, seasonality and observation noise. Exported total-level variances include the posterior covariance of terminal level and slope.</p>',
@@ -393,23 +412,25 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
         encoded=base64.b64encode(path.read_bytes()).decode()
         text.append(f'<figure><img src="data:image/png;base64,{encoded}" alt="{escape(caption)}"><figcaption>{escape(caption)}</figcaption></figure>')
     if not plots:text.append('<p>Trajectory figures will appear as full-record fits complete.</p>')
-    text.extend(['<h2>Matched pooling comparisons</h2>', '<p>The full record uses all 11 calibrations in both scopes. Private fits retain half-normal shrinkage with separate scales for each response; they are not unregularized fits. One-response priors match exactly. Private validation covers the reference at all five origins. A partial private bundle cannot pass a stability check.</p>',table(pooling),
-        '<h2>Seasonal scale checks</h2>', '<p>The 3×3 level–slope grid fixes Aγ=0.1. Checks at Aγ=0.05 and 0.2 use Aα=0.1 and Aβ=0.002. This is 11 settings, not a 3×3×3 factorial. Grid heatmaps exclude the two seasonal checks; their comparisons are shown separately.</p>',table(seasonal),
+    text.extend(['<h2>Matched pooling comparisons</h2>', '<p>The full record uses all 14 calibrations in three scopes. Separate HN fits retain their own hyperpriors. Their one-response marginal priors match the pooled HN model exactly. Separate HN validation covers the reference at all five origins. A partial separate bundle cannot pass a stability check.</p>',table(pooling),
+        '<h2>Fixed-prior versus hierarchical fits</h2>', '<p>These comparisons use the same calibration and compare each hierarchical construction with the six fixed-prior fits. They assess removing hyperpriors, not merely removing pooling. Fixed-prior and pooled validation cover all 14 calibrations at all five origins. Prior variances match, but marginal prior shapes differ.</p>',table(fixed),
+        '<h2>Seasonal scale checks</h2>', '<p>The 3×4 level–slope grid fixes Aγ=0.1. Checks at Aγ=0.05 and 0.2 use Aα=0.1 and Aβ=0.002. This gives 14 settings per construction. Grid heatmaps exclude the two seasonal checks; their comparisons are shown separately. In fixed fits these values are Normal prior SDs a, not hyperprior scales A.</p>',table(seasonal),
         '<h2>Shared and private scales and allocation correlations</h2>',
         '<p>The scale table contrasts analytic half-normal prior intervals with posterior intervals. '
         'A width ratio below one means the posterior 95% interval is narrower; this alone does not establish robustness or identify the level/slope decomposition. '
         'Compare posterior movement across cells and the trajectory/forecast checks. Correlations use paired draws; a small linear correlation does not rule out nonlinear dependence.</p>',
-        table(learning),table(correlations),'<p>Each fit also exports paired parameter draws and local sensitivity of posterior means: '
+        table(learning),table(correlations),'<p>The hyperparameter table contains only hierarchical fits; fixed fits have no learned τ. Each fit exports paired coefficient and trajectory draws, including fixed fits. Local sensitivity of posterior means is '
         'd E[f|y]/d log(Ac) = Cov(f, τc²/Ac² | y). These covariances describe small local changes; '
+        'for a fixed Normal prior it is d E[f|y]/d log(ac) = Cov(f, sc,j²/ac² | y). '
         'they do not replace the refits. Compare chain-specific estimates before interpreting them.</p>',
         '<h2>Matched hindcasts</h2>',
-        '<p>Every grid cell is refitted at the same origins. Hyperparameters are learned using training data only. '
+        '<p>Pooled and fixed-prior grid cells are refitted at the same origins; separate HN refits cover the reference only. All inference uses training data only. '
         'The requested horizon is 30 years, truncated where observations end; there is no observed 30-year assessment from 2020. '
         'CRPS comparisons use the same response, origin, date and horizon. Positive differences and ratios above one favour the reference; '
-        'negative differences and ratios below one favour the alternative. Coverage and interval width are assessed together, with above/below misses shown. '
+        'negative differences and ratios below one favour the alternative. The matched-prior CRPS table instead compares each separate fit with the pooled fit at exactly the same calibration. Coverage and interval width are assessed together, with above/below misses shown. '
         'Horizon bands are disjoint within each origin, but windows from different origins overlap. Counts are forecast cases, not independent replications; '
         'no significance claims are made. These folds are used for calibration, so they are not an untouched final test set.</p>'])
-    for name in ('paired_crps','crps','coverage'):
+    for name in ('matched_prior_crps','paired_crps','crps','coverage'):
         text.extend([f'<h3>{escape(name.replace("_"," "))}</h3>',table(summaries.get(name,pd.DataFrame()))])
     text.extend(['<h2>Completion and numerical checks</h2>',table(records),
         '<p>Screen: two chains, 1,000 warmup and 2,000 retained draws per chain. These are screening budgets, not a promise of adequate effective sample sizes. '
@@ -417,7 +438,7 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
         'The full-record initial seasonal contrast SD stays at the 1.9.6 value of 10; initial-rate SD stays 0.01 per season. '
         'The seasonal shrinkage hyperprior scale is 0.1 in the grid, with 0.05 and 0.2 checks at its centre. Initial rates remain separate. Residual independence is unchanged.</p>'])
     html='<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+\
-        '<title>BUCEX 1.9.8 calibration review</title><style>body{font:16px/1.6 system-ui,sans-serif;color:#253441;max-width:1180px;margin:40px auto;padding:0 24px}h1,h2{color:#24658a}table{display:block;overflow:auto;border-collapse:collapse;font-size:12px;margin:20px 0;max-height:620px}td,th{padding:6px 9px;border-bottom:1px solid #dce3e7;text-align:left;white-space:nowrap}th{background:#edf3f6;position:sticky;top:0}img{width:100%;height:auto}figure{margin:30px 0}figcaption{font-size:14px;color:#53616a}p{max-width:1000px}</style><body>'+''.join(text)+'</body></html>'
+        '<title>BUCEX 1.9.8.1 calibration review</title><style>body{font:16px/1.6 system-ui,sans-serif;color:#253441;max-width:1180px;margin:40px auto;padding:0 24px}h1,h2{color:#24658a}table{display:block;overflow:auto;border-collapse:collapse;font-size:12px;margin:20px 0;max-height:620px}td,th{padding:6px 9px;border-bottom:1px solid #dce3e7;text-align:left;white-space:nowrap}th{background:#edf3f6;position:sticky;top:0}img{width:100%;height:auto}figure{margin:30px 0}figcaption{font-size:14px;color:#53616a}p{max-width:1000px}</style><body>'+''.join(text)+'</body></html>'
     (out/'sweetspot_review.html').write_text(html)
     print(json.dumps(status,indent=2),flush=True)
     return out
