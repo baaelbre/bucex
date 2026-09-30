@@ -32,8 +32,8 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
                     continue
                 for distribution, offset, alpha in [('prior',-.13,.4),('posterior',.13,1.)]:
                     row = selected[selected.distribution==distribution].iloc[0]
-                    ax.errorbar(row['median'],i+offset,
-                        xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],
+                    ax.errorbar(row['mean'],i+offset,
+                        xerr=[[row['mean']-row['lower']],[row['upper']-row['mean']]],
                         fmt='s' if distribution=='prior' else 'o',color=colors[variant],alpha=alpha,
                         label=distribution if i==0 else None)
             scale_types = set(data.loc[data.component.eq(component), 'scale'])
@@ -61,8 +61,8 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
                         if row.empty:
                             continue
                         row = row.iloc[0]
-                        ax.errorbar(row['median'], i+offset,
-                            xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],
+                        ax.errorbar(row['mean'], i+offset,
+                            xerr=[[row['mean']-row['lower']],[row['upper']-row['mean']]],
                             fmt=marker, color=colors[variant], alpha=alpha,
                             label=distribution if i == 0 else None)
                 ax.set(yticks=range(len(variants)),yticklabels=variants,xlabel=f'{component} innovation SD')
@@ -77,7 +77,7 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
             for variant, data in group.groupby('variant',sort=False):
                 data = data.sort_values('time')
                 dates = pd.to_datetime(data.time)
-                ax.plot(dates,data['median'],color=colors[variant],label=variant)
+                ax.plot(dates,data['mean'],color=colors[variant],label=variant)
                 ax.fill_between(dates,data.lower,data.upper,color=colors[variant],alpha=.10)
             ax.set(xlabel='time',ylabel=labels[quantity])
             ax.legend(loc='best',ncol=min(3,len(variants)))
@@ -97,7 +97,7 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
                     if rows.empty:
                         continue
                     row = rows.iloc[0]
-                    ax.errorbar(row['median'],i,xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],fmt='o',color=colors[variant])
+                    ax.errorbar(row['mean'],i,xerr=[[row['mean']-row['lower']],[row['upper']-row['mean']]],fmt='o',color=colors[variant])
                 ax.axvline(0,color='.5',lw=.8)
                 label = ('period slope difference / °C per decade' if quantity.endswith('.slope.change') else
                          'period level difference / °C' if quantity.endswith('.level.change') else quantity.replace('_',' '))
@@ -144,7 +144,7 @@ def save_sensitivity_plots(tables, directory, *, dpi=180):
                 window = group[group.origin==origin]
                 for variant, data in window.groupby('variant',sort=False):
                     dates = pd.to_datetime(data.time)
-                    ax.plot(dates,data['median'],color=colors[variant],label=variant)
+                    ax.plot(dates,data['mean'],color=colors[variant],label=variant)
                     ax.fill_between(dates,data.lower,data.upper,color=colors[variant],alpha=.08)
                 observed = window.drop_duplicates('time')
                 ax.scatter(pd.to_datetime(observed.time),observed.observed,c='.25',s=9,label='observed')

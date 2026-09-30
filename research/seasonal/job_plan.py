@@ -3,9 +3,10 @@ import json
 from pathlib import Path
 from research.seasonal.sweetspot_plan import BATCHES as SWEETSPOT_BATCHES, study_variants, validation_cells, specification
 from research.monthly.study_plan import BATCHES as MONTHLY_BATCHES, variants as monthly_variants, plan as monthly_plan
+from research.seasonal.final_plan import BATCHES as FINAL_BATCHES, variants as final_variants, plan as final_plan
 PROJECT=Path(__file__).resolve().parents[2]
 CONFIG=PROJECT/'research/seasonal/config'
-BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred') + SWEETSPOT_BATCHES + MONTHLY_BATCHES
+BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred') + SWEETSPOT_BATCHES + MONTHLY_BATCHES + FINAL_BATCHES
 RESOURCES=('shared','separate','shared_long','separate_long','monthly')
 BASELINES=('reference',)
 
@@ -19,6 +20,7 @@ def variant_entries():
     entries={v['name']:v for v in legacy}
     entries.update({v['name']:v for v in study_variants()})
     entries.update({v['name']:v for v in monthly_variants()})
+    entries.update({v['name']:v for v in final_variants()})
     return list(entries.values())
 
 def plan(tier='screen',batch='experiments',resource='all'):
@@ -28,6 +30,7 @@ def plan(tier='screen',batch='experiments',resource='all'):
     spec=read('experiments')
     variants=variant_entries()
     entries={v['name']:v for v in variants}
+    if batch in FINAL_BATCHES:return final_plan(tier,batch,resource,entries)
     if len(entries)!=len(variants):raise ValueError('Duplicate variant names.')
     def group(kind,name,origin='',fraction=None,frequency='seasonal'):
         v=entries[name];series=[ch for ch in spec['series'] if ch not in v.get('exclude_series',[])]

@@ -234,7 +234,7 @@ def build(root, *, tier='screen', batch='monthly_all'):
             if not f.empty:frames.append(f.assign(setting=setting,response=ch))
         if frames:pd.concat(frames,ignore_index=True).to_csv(out/('combined_'+name),index=False)
     body=['<!doctype html><html><head><meta charset="utf-8"><title>BUCEX monthly screen</title><style>body{font:16px system-ui;max-width:1250px;margin:30px auto;padding:0 18px;color:#233345}img{width:100%;height:auto}table{border-collapse:collapse;font-size:12px}td,th{padding:5px;border:1px solid #ddd}.notice{background:#fff0cb;padding:15px}figure{margin:30px 0}figcaption{margin:10px 0}details{overflow:auto}</style></head><body>',
-        '<h1>Monthly reference and sensitivity — BUCEX 1.9.8.2</h1>',
+        '<h1>Monthly reference and sensitivity — BUCEX 1.9.8.3</h1>',
         '<p class="notice">'+escape(f"{info['completed']}/{info['expected']} fits completed; {info['numerically_passed']} passed the declared numerical screen. "+info['interpretation'])+'</p>',
         '<p>Six separate Gaussian/GEV structural models with fixed normal innovation priors. Twelve repeating observation scales, except in the constant-dispersion sensitivity. No hyperpriors or residual copula. All displayed intervals are 95%; the forecast tables also contain the 99% interval and one-sided 95%/99% quantiles.</p>',
         '<p>Reference monthly SDs: level 0.057735; slope 0.000383292; seasonal 0.1; initial rate 0.00333333 °C/month. The corresponding seasonal SDs are 0.1, 0.002, 0.1 and 0.01 °C/season. The 30-year effects match; the full discretized processes need not.</p>',

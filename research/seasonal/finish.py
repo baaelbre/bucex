@@ -11,6 +11,9 @@ from research.seasonal.export_results import export
 
 
 def finish(root,tier,batch='all',require_complete=False):
+    if batch.startswith('final_'):
+        from research.seasonal.final_report import finish as final_finish
+        return final_finish(root,tier,batch,require_complete)
     root=Path(root)
     focused=batch.startswith(('sweetspot','monthly_'))
     if batch.startswith('monthly_'):

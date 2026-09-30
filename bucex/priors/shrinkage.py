@@ -189,6 +189,15 @@ class SharedShrinkage:
             return a*ndtri((1+probability)/2)
         return a*t.ppf((1+probability)/2, 1. if self.hyperprior == "half_cauchy" else self.df)
 
+    def scale_mean(self, component):
+        """Hyperprior mean, including an infinite mean for half-Cauchy scales."""
+        from scipy.stats import t
+        a=self.anchors[component]
+        if self.hyperprior=='lognormal':return float(a*np.exp(self.log_sd**2/2))
+        if self.hyperprior=='half_normal':return float(a*np.sqrt(2/np.pi))
+        nu=1. if self.hyperprior=='half_cauchy' else self.df
+        return float(a*2*nu*t.pdf(0,nu)/(nu-1)) if nu>1 else np.inf
+
     def scale_cdf(self, component, value):
         from scipy.special import ndtr
         from scipy.stats import t

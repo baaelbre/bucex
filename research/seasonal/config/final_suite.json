@@ -1,0 +1,114 @@
+{
+  "description": "1.9.8.3 final manuscript suite: publication reference plus complete, explicitly labelled screening checks. No automatic prior selection.",
+  "series": [
+    "TXm",
+    "TNm",
+    "TXx",
+    "TXn",
+    "TNx",
+    "TNn"
+  ],
+  "budgets": {
+    "reference": {
+      "chains": 4,
+      "chain_workers": 4,
+      "warmup": 2000,
+      "draws": 4000
+    },
+    "screen": {
+      "chains": 2,
+      "chain_workers": 2,
+      "warmup": 1000,
+      "draws": 1000
+    }
+  },
+  "monthly_mcmc": {
+    "chains": 2,
+    "chain_workers": 2,
+    "warmup": 500,
+    "draws": 500
+  },
+  "posterior_variants": [
+    "reference",
+    "half_level_half_slope",
+    "half_level",
+    "half_level_double_slope",
+    "half_slope",
+    "double_slope",
+    "double_level_half_slope",
+    "double_level",
+    "double_level_double_slope",
+    "seasonal_5e2",
+    "double_seasonal",
+    "fixed_location_seasonality",
+    "half_initial_slope",
+    "double_initial_slope",
+    "initial_state_narrow",
+    "initial_state_wide",
+    "xi_narrow",
+    "xi_wide",
+    "constant_dispersion",
+    "narrow_seasonal_log_scale",
+    "wide_seasonal_log_scale",
+    "observation_scale_half",
+    "observation_scale_double",
+    "independent_reference",
+    "fixed_reference"
+  ],
+  "reference_origins": [
+    "1970-11",
+    "1975-11",
+    "1980-11",
+    "1985-11",
+    "1990-11",
+    "1995-11",
+    "2000-11",
+    "2005-11",
+    "2010-11",
+    "2015-11",
+    "2020-11"
+  ],
+  "sensitivity_origins": [
+    "2010-11",
+    "2015-11",
+    "2020-11"
+  ],
+  "validation_variants": [
+    "half_slope",
+    "double_slope",
+    "xi_narrow",
+    "xi_wide",
+    "independent_reference",
+    "fixed_reference"
+  ],
+  "pre2019_variants": [
+    "reference",
+    "half_slope",
+    "double_slope",
+    "xi_narrow",
+    "xi_wide",
+    "independent_reference",
+    "fixed_reference"
+  ],
+  "block_origins": [
+    "2010-11",
+    "2015-11",
+    "2020-11"
+  ],
+  "forecast_horizon": 120,
+  "forecast_draws": 50000,
+  "validation_draws": 10000,
+  "reference_ppc_draws": 2000,
+  "screen_ppc_draws": 500,
+  "interval": 0.95,
+  "validation_levels": [
+    0.9,
+    0.95,
+    0.99
+  ],
+  "not_automatically_repeated": [
+    "The exploratory 3x4 broad calibration grid and its fixed/private counterparts (sweetspot batches remain available)",
+    "The complete monthly sensitivity grid (monthly_all remains available)",
+    "Leave-one-response-out and half-t, half-Cauchy or lognormal hierarchies"
+  ]
+}

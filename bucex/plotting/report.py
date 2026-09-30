@@ -66,7 +66,7 @@ def _save_prediction_report(fit, directory, *, channel=None, forecast=None, pred
         if figures:
             figure, ax = plt.subplots(figsize=(9, 3.5))
             ax.fill_between(dates, low, high, alpha=.2)
-            ax.plot(dates, mean if probability else median)
+            ax.plot(dates, mean)
             if probability:
                 ax.set_ylim(-.01, 1.01)
             ax.set(xlabel="time", ylabel=ylabel)

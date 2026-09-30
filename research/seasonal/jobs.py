@@ -19,7 +19,7 @@ from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
 from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan, variant_entries
 
-ROOT = Path('results/serra_1982')
+ROOT = Path('results/serra_1983')
 
 @dataclass(frozen=True)
 class Task:
@@ -36,6 +36,7 @@ class Task:
     horizon: int = 20
     design: str = 'calendar_5y'
     frequency: str = 'seasonal'
+    sampling_role: str = ''
 
 
 def settings():
@@ -43,6 +44,7 @@ def settings():
 
 
 def resource_class(task, tier):
+    if task.sampling_role:return task.resource
     if task.frequency=='monthly': return 'monthly'
     resource='shared' if task.scope=='shared' else 'separate'
     return resource+('_long' if tier=='paper' and task.kind in ('posterior','pre2019') and task.variant in BASELINES else '')
@@ -64,7 +66,7 @@ def tasks(batch='posterior', *, tier='paper', resource='all'):
         channels=['joint'] if g['scope']=='shared' else g['series']
         for id,ch in zip(g['task_ids'],channels):
             result.append(Task(id,g['kind'],g['family'],g['variant'],ch,g['id'],g['scope'],
-                tuple(g['series'] if ch=='joint' else [ch]),g['resource'],origin,g['horizon'],g['design'],g['frequency']))
+                tuple(g['series'] if ch=='joint' else [ch]),g['resource'],origin,g['horizon'],g['design'],g['frequency'],g.get('sampling_role','')))
     return result
 
 
@@ -76,7 +78,8 @@ def result_directory(directory,task):
 def task_config(task,tier):
     if task.variant.startswith('monthly_fixed_'):
         from research.monthly.study_plan import task_config as monthly_config
-        return monthly_config(task,tier)
+        c=monthly_config(task,'screen' if task.sampling_role else tier)
+        return final_budget(c,task,tier) if task.sampling_role else c
     spec=settings();entry=next(v for v in variant_entries() if v['name']==task.variant)
     c=configured_variant(bx.load_config(CONFIG/('monthly_reference.json' if task.frequency=='monthly' else 'main.json')),entry)
     budget=spec['tiers'][tier]
@@ -114,12 +117,41 @@ def task_config(task,tier):
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
         batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        frequency=task.frequency,reference='1.9.8.2: pooled half-normal innovation scales; separately calibrated initial rates')
+        frequency=task.frequency,reference='1.9.8.3: pooled half-normal innovation scales; separately calibrated initial rates')
     if c.get('copula') is not None or c.get('contrasts') is not None:
         raise ValueError('This comparison has independent residuals and no historical contrasts.')
     hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')
     if hierarchy and (hierarchy['scale_parameterization']!='normal_sd' or hierarchy.get('pool_initial_slope',False)):
         raise ValueError('Expected direct coefficient SDs and separate initial rates.')
+    c['output']=str(ROOT/tier/task.id/'report')
+    return final_budget(c,task,tier) if task.sampling_role else c
+
+
+def final_budget(c,task,tier):
+    """Apply the declared mixed budget after legacy configuration resolution."""
+    from research.seasonal.final_plan import specification
+    spec=specification();reference=task.sampling_role=='reference'
+    c['mcmc'].update(spec['budgets'][task.sampling_role])
+    if task.frequency=='monthly':
+        c['mcmc'].update(spec['monthly_mcmc'])
+        if not task.variant.startswith('monthly_fixed_'):
+            # Match the seasonal 30-year contribution SDs for paired blocks.
+            from research.monthly.study_plan import convert
+            seasonal=bx.load_config(CONFIG/'main.json')['priors']
+            c['priors']['innovation_sd'],c['priors']['initial_slope_sd']=convert(
+                seasonal['innovation_sd'],seasonal['initial_slope_sd'])
+            for field in ('baseline_sd','seasonal_initial_sd','seasonal_initial_basis'):
+                c['priors'][field]=seasonal[field]
+    c.update(forecast_draws=spec['forecast_draws'],credible_interval=.95,
+        predictive_check_draws=spec['reference_ppc_draws' if reference else 'screen_ppc_draws'],
+        annual_risk_draws=10000 if reference else 5000,
+        figures=reference,trace_exports=reference,point_summary='mean',
+        forecast_uncertainty_levels=[.95,.99],sampling_role=task.sampling_role,
+        diagnostic_thresholds=dict(min_chains=4 if reference else 2,
+            max_rhat=1.01 if reference else 1.05,min_ess=400 if reference else 200))
+    c['validation'].update(draws=spec['validation_draws'],save_fits=True)
+    c['experiment'].update(tier=tier,sampling_role=task.sampling_role,
+        reference='1.9.8.3 final suite: pooled HN (0.1, 0.002, 0.1); reference-only publication budget')
     c['output']=str(ROOT/tier/task.id/'report')
     return c
 def fingerprint(config):
@@ -182,18 +214,21 @@ def execute(task,*,tier='paper',root=ROOT,retry_failed=False):
         meta.update(status='failed',error=str(error),traceback=traceback.format_exc());raise
     finally:
         meta['finished']=datetime.now(timezone.utc).isoformat();bx.save_config(meta,manifest)
+    if task.sampling_role=='reference':
+        from research.seasonal.final_report import reference_figures
+        reference_figures(root,tier)
     print(f'{task.id}: {meta["status"]}; {numerical}; {result}',flush=True)
     return result
 
 
 
-def verify(tier='screen',*,output=None):
+def verify(tier='screen',*,output=None,batch=None):
     """Compile every model, verify folds/resources, and prove prior matching."""
     import pandas as pd
     from research.monthly.models import independent_model,joint_model,fit_options
     from research.monthly.validate import validation_splits
     rows=[];compiled=set();priors={};datasets={}
-    for t in all_tasks(tier):
+    for t in (tasks(batch,tier=tier) if batch else all_tasks(tier)):
         c=task_config(t,tier)
         data_config=dict(c['data']);data_config.pop('series',None)
         key=json.dumps(data_config,sort_keys=True)
@@ -228,7 +263,7 @@ def verify(tier='screen',*,output=None):
             if not np.isclose(p.beta0.sd,c['priors']['initial_slope_sd']):
                 raise ValueError('Initial-rate SD differs from its declaration.')
         p=c['priors'];h=prior.shrinkage
-        if t.kind=='posterior' and t.frequency=='seasonal':priors[(t.scope,c['variant']['setting'],t.channel)]=prior
+        if t.kind=='posterior' and t.frequency=='seasonal':priors[(t.scope,c['variant'].get('setting',t.variant),t.channel)]=prior
         rows.append(dict(task_id=t.id,group_id=t.group_id,kind=t.kind,variant=t.variant,
             scope=t.scope,channel=t.channel,series=','.join(t.series),origin=t.origin,resource=t.resource,
             chains=c['mcmc']['chains'],warmup=c['mcmc']['warmup'],draws=c['mcmc']['draws'],
@@ -277,7 +312,7 @@ def verify(tier='screen',*,output=None):
 
 
 def all_tasks(tier):
-    return list({t.id:t for batch in ('all','deferred','sweetspot','monthly_all')
+    return list({t.id:t for batch in ('all','deferred','sweetspot','monthly_all','final_paper')
                  for t in tasks(batch,tier=tier)}.values())
 
 

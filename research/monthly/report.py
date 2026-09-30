@@ -32,7 +32,7 @@ def _save_band(fit, values, path, *, dates=None, ylabel="temperature / °C", lev
     pd.DataFrame({"time": dates, **band}).to_csv(path.with_suffix(".csv"), index=False)
     figure, axis = plt.subplots(figsize=(8, 3))
     axis.fill_between(dates, band["lower"], band["upper"], alpha=0.2, color=color)
-    axis.plot(dates, band["median"], color=color)
+    axis.plot(dates, band["mean"], color=color)
     axis.set(xlabel="time", ylabel=ylabel)
     figure.tight_layout()
     figure.savefig(path.with_suffix("."+image_format), dpi=dpi)
@@ -100,7 +100,8 @@ def write_report(fit, directory, *, config, risks=None, horizon=12, level=.95, s
         fitted_start=str(fit.time[0]),fitted_end=str(fit.time[-1]),n_blocks=fit.n_time,
         n_months=None if seasonal_blocks else fit.n_time,block_frequency='seasonal' if seasonal_blocks else 'monthly',
         warnings=diagnostic['warnings'],interval='pointwise posterior credible interval',
-        credible_interval=level,figure_style=config.get('figure_style','manuscript'),
+        credible_interval=level,point_summary='mean',sampling_role=config.get('sampling_role'),
+        diagnostic_thresholds=config.get('diagnostic_thresholds'),figure_style=config.get('figure_style','manuscript'),
         status='Research output; assess convergence, sensitivity and held-out forecasts before reporting.'),directory/'run.json')
     pd.DataFrame(diagnostic['pit']).to_csv(directory/'in_sample_pit.csv',index=False)
     if getattr(fit.priors, 'shrinkage', None) is not None:

@@ -1,4 +1,4 @@
-# Monthly analysis — 1.9.8.2
+# Monthly analysis — 1.9.8.3
 
 The new study is declared in `config/screen_study.json`; `study_plan.py` converts its seasonal calibration to monthly units. Use the root RUN_MONTHLY scripts and the command guide. The older monthly CLI remains available.
 

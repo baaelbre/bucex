@@ -139,6 +139,7 @@ def compare_innovation_priors(fit, prior=None, *, channel=None, size=2000, seed=
             for scale, transformed in (("SD", values), ("variance", np.asarray(values)**2)):
                 lower, median, upper = np.quantile(transformed, [(1-level)/2, .5, (1+level)/2])
                 rows.append(dict(component=component, distribution=distribution, scale=scale,
+                    mean=float(np.mean(transformed)),
                     lower=lower, median=median, upper=upper, probability_zero=np.mean(transformed == 0),
                     credible_interval=level, draws=np.size(transformed)))
     return pd.DataFrame(rows)
@@ -241,7 +242,8 @@ def forecast_uncertainty(forecast, *, channel=None, levels=(0.90, 0.95, 0.99)):
                 upper_quantile = np.quantile(values, level, axis=0)
             for h in range(forecast.horizon):
                 rows.append(dict(channel=channel or "series", horizon=h+1, time=forecast.dates[h],
-                    target=target, nominal=level, lower=low[h], median=median[h], upper=high[h],
+                    target=target, nominal=level, mean=float(np.mean(values[:, h])),
+                    mean_kind='finite_draw_average', lower=low[h], median=median[h], upper=high[h],
                     interval_width=high[h]-low[h], upper_quantile=upper_quantile[h],
                     latent_location_variance=np.var(eta[:, h]),
                     estimated_conditional_mean_variance=between[h], estimated_expected_observation_variance=within[h],

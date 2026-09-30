@@ -400,7 +400,7 @@ class FitResult(ComponentResultMethods):
     ) -> dict[str, Array]:
         alpha = 1.0 - float(credible_interval)
         low, median, high = np.quantile(values, [alpha / 2.0, 0.5, 1.0 - alpha / 2.0], axis=axis)
-        return {"lower": low, "median": median, "upper": high}
+        return {"mean": np.mean(np.asarray(values), axis=axis), "lower": low, "median": median, "upper": high}
 
     def static_summary(self, credible_interval: float = 0.90):
         rows: dict[str, dict[str, float]] = {}

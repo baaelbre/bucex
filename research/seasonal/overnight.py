@@ -31,7 +31,10 @@ def budget(task,tier):
     n=1614 if task.frequency=='monthly' else 538
     dimension=c['model']['period']+1
     raw=8*len(task.series)*dimension*n*c['mcmc']['draws']*c['mcmc']['chains']/1024**3
-    forecast_raw=8*c.get('forecast_draws',50000)*c.get('forecast_horizon',120)*dimension*len(task.series)/1024**3
+    forecasting=task.kind in ('forecast','block')
+    forecast_n=c['validation']['draws'] if forecasting else c.get('forecast_draws',50000)
+    forecast_h=c['validation']['horizon'] if forecasting else c.get('forecast_horizon',120)
+    forecast_raw=8*forecast_n*forecast_h*dimension*len(task.series)/1024**3
     return c['mcmc']['chain_workers'],round(max(6.,3.+3.5*raw+2*forecast_raw),1)
 
 
@@ -43,6 +46,10 @@ def make_queue(tiers,batch):
             result.append(Work(tier,task,cpus,memory))
     def priority(w):
         t=w.task
+        if t.sampling_role:
+            return (0 if t.sampling_role=='reference' or t.id=='final_posterior_reference'
+                    else 1 if t.frequency=='monthly' else 2 if t.kind=='pre2019'
+                    else 3 if t.kind=='posterior' else 4,t.id)
         if t.frequency=='monthly':return (0 if t.variant=='monthly_fixed_reference' else 1,0 if w.tier=='screen' else 1,t.id)
         if t.variant=='reference' and t.kind in ('posterior','pre2019'):
             return (0,0 if w.tier=='paper' else 1,0 if t.kind=='posterior' else 1,t.id)
@@ -86,8 +93,9 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
         if any(w.cpus>cpus or w.memory_gb>memory_gb for w in selected):
             raise ValueError('At least one task exceeds the CPU or memory budget. Increase it or use a smaller batch.')
         allowed=len(os.sched_getaffinity(0)) if hasattr(os,'sched_getaffinity') else os.cpu_count()
-        if cpus>allowed:raise ValueError(f'Requested {cpus} workers but only {allowed} CPUs are available.')
-        for tier in tiers:verify(tier,output=root/tier/'plan')
+        if cpus>allowed and not dry_run:
+            raise ValueError(f'Requested {cpus} workers but only {allowed} CPUs are available.')
+        for tier in tiers:verify(tier,output=root/tier/'plan',batch=batch if batch.startswith('final_') else None)
         queue=[];skipped=[]
         for work in selected:
             path=root/work.tier/work.task.id/'task.json'
@@ -117,12 +125,18 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
                else 'Chains run in parallel inside each fit. A pooled chain jointly updates all six responses. ') +
               'Screening and paper draws remain separate. No completion time or convergence is assumed.',flush=True)
         if dry_run:
-            if prior_simulations:
+            if batch.startswith('final_'):
+                print('Publication reference first; other fits use screening budgets. Prior simulation and collection follow the fits.')
+            elif prior_simulations:
                 print('Before fitting: '+
                     ('monthly fixed-Normal calibration and prior simulations.' if batch.startswith('monthly_') else '14 calibrations for pooled HN and fixed Normal priors; 1000 screen / 5000 paper replications.' if batch.startswith('sweetspot')
                      else 'core suite; 2000 screen / 10000 paper replications.'))
             for w in queue:print(w.tier,w.task.id,f'{w.cpus} workers / {w.memory_gb:g} GiB')
             return 0
+        if batch.startswith('final_'):
+            # Prior simulations are included in the final collection and must
+            # not block the prioritized reference from starting.
+            prior_simulations=False
         if prior_simulations:
             if batch.startswith('monthly_'):
                 from research.monthly.study_prior import run as monthly_priors
@@ -155,7 +169,7 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
                     if candidate is None:break
                     w=queue.pop(candidate);logs=root/w.tier/'logs';logs.mkdir(parents=True,exist_ok=True)
                     log=(logs/(w.task.id+'.log')).open('a');log.write('\nSTART '+datetime.now(timezone.utc).isoformat()+'\n');log.flush()
-                    args=[sys.executable,'-u','-m','research.seasonal.jobs','--tier',w.tier,'--task',w.task.id,'--root',str(root)]
+                    args=[sys.executable,'-u','-m','research.seasonal.jobs','--tier',w.tier,'--batch',batch,'--task',w.task.id,'--root',str(root)]
                     if retry_failed:args.append('--retry-failed')
                     proc=subprocess.Popen(args,cwd=PROJECT,env=environment,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
                     active[proc.pid]=(proc,w,log);used_cpus+=w.cpus;used_mem+=w.memory_gb

@@ -92,7 +92,7 @@ def task_config(task,tier):
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope='fixed',
         batch_kind='posterior',channel=task.channel,series=[task.channel],frequency='monthly',
         design='monthly_fixed_screen',reference='Seasonal 1.9.8.1 fixed-Normal central calibration, matched over 30 years')
-    c['output']=str(PROJECT/'results/serra_1982_monthly'/tier/task.id/'report')
+    c['output']=str(PROJECT/'results/serra_1983_monthly'/tier/task.id/'report')
     return c
 
 

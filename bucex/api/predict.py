@@ -742,12 +742,12 @@ class Forecast:
         if hasattr(summary, "columns"):
             x = summary["time"]
             lower = summary["lower"].to_numpy()
-            median = summary["median"].to_numpy()
+            central = summary["mean"].to_numpy()
             upper = summary["upper"].to_numpy()
         else:
             x = np.asarray([row["time"] for row in summary])
             lower = np.asarray([row["lower"] for row in summary])
-            median = np.asarray([row["median"] for row in summary])
+            central = np.asarray([row["mean"] for row in summary])
             upper = np.asarray([row["upper"] for row in summary])
 
         def selected_values(values, *, label: str):
@@ -837,8 +837,8 @@ class Forecast:
             "level": r"$\hat{\alpha}_t$",
             "latent_level": r"$\hat{\alpha}_t$",
             "seasonally_adjusted": r"$\hat{\alpha}_t$",
-        }.get(target_key, "posterior predictive median")
-        ax.plot(x, median, color=color, label=line_label)
+        }.get(target_key, "posterior predictive sample mean")
+        ax.plot(x, central, color=color, label=line_label)
         if show_eta:
             if latent_target:
                 raise ValueError("show_eta is only valid for target='observations'.")
@@ -849,7 +849,7 @@ class Forecast:
             )
             ax.plot(
                 x,
-                np.median(eta_values[:, selected_horizons], axis=0),
+                np.mean(eta_values[:, selected_horizons], axis=0),
                 color=color,
                 linestyle="--",
                 linewidth=1.0,

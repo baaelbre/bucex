@@ -68,9 +68,9 @@ def collect(root=ROOT,tier='screen',*,batch='experiments',figures=False,require_
             bx.SensitivityReport(posterior_runs=available,baseline=baseline,block_frequency='seasonal').save(destination,figures=plot)
         base=out/'posterior'/ch
         save(list(posterior),'reference',base,False)
-        save(('reference','independent_reference'),'independent_reference',base/'pooling',figures)
+        save(('reference','independent_reference','fixed_reference'),'reference',base/'pooling',figures)
         for scope,baseline in [('shared','reference'),('independent','independent_reference'),('fixed','fixed_reference')]:
-            names=[t.variant for t in group if t.scope==scope and t.study=='structural']
+            names=[t.variant for t in group if t.scope==scope and t.study in ('structural','calibration')]
             save(names,baseline,base/'by_scope'/scope,figures)
         for family in ('adequacy','pooling'):
             names=['reference']+[t.variant for t in group if t.study==family]

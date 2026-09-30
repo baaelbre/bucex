@@ -67,32 +67,32 @@ def assess(run: Path, expected_config: Path) -> dict:
         issues.append(f"report version is {metadata.get('bucex_version')!r}, expected {bx.__version__!r}")
     if stored is not None:
         if stored.get('analysis') not in ('independent','joint') or stored.get('copula') is not None:
-            issues.append('1.9.8.2 reference uses a product observation likelihood')
+            issues.append('1.9.8.3 reference uses a product observation likelihood')
         p=stored.get('priors', {})
-        target_sd={'level':.01,'trend':.0001,'season':.01}
+        target_sd={'level':.1,'trend':.002,'season':.1}
         if any(abs(p.get('innovation_sd',{}).get(k,0)-v)>1e-14 for k,v in target_sd.items()):
-            issues.append('reference innovation priors must use the manuscript Normal SDs (0.01, 0.0001, 0.01)')
+            issues.append('reference innovation priors must use the manuscript Normal SDs (0.1, 0.002, 0.1)')
         h=p.get('shared_shrinkage') or p.get('independent_shrinkage')
         if not p.get('shared_shrinkage') or h.get('hyperprior')!='half_normal':
-            issues.append('1.9.8.2 reference requires pooled half-normal innovation scales')
-        if p.get('seasonal_initial_sd')!=20 or p.get('baseline_sd')!=20:
-            issues.append('initial level and seasonal coordinate SDs must equal 20')
+            issues.append('1.9.8.3 reference requires pooled half-normal innovation scales')
+        if p.get('seasonal_initial_sd')!=10 or p.get('baseline_sd')!=10:
+            issues.append('initial level and seasonal coordinate SDs must equal 10')
         if abs(p.get('initial_slope_sd',0)-.01)>1e-14 or (h and h.get('pool_initial_slope',False)):
             issues.append('initial rates must have fixed Normal SD 0.01 and remain separate')
         if h and h.get('scale_parameterization')!='normal_sd':issues.append('expected direct Normal SD anchors')
         mcmc = stored.get("mcmc", {})
-        if (mcmc.get("chains"), mcmc.get("warmup"), mcmc.get("draws")) != (2, 6000, 20000):
-            issues.append("final MCMC budget must be 2 chains, 6000 warm-up and 20000 retained draws")
+        if (mcmc.get("chains"), mcmc.get("warmup"), mcmc.get("draws")) != (4, 2000, 4000):
+            issues.append("final MCMC budget must be 4 chains, 2000 warm-up and 4000 retained draws per chain")
         if (stored.get('forecast_horizon'), stored.get('forecast_draws'),
-                stored.get('credible_interval')) != (120, 12000, .95):
-            issues.append('final forecast must cover 120 seasons using 12000 draws and 95% intervals')
+                stored.get('credible_interval')) != (120, 50000, .95):
+            issues.append('final forecast must cover 120 seasons using 50000 draws and 95% intervals')
     for name in series:
         file = run/f'{name}_forecast_uncertainty.csv'
         if file.exists():
             frame = pd.read_csv(file)
             if (not set(('horizon','nominal','target','lower','upper')) <= set(frame) or
-                    len(frame) != 360 or frame.horizon.max() != 120 or
-                    not frame.nominal.eq(.95).all()):
+                    len(frame) != 720 or frame.horizon.max() != 120 or
+                    set(frame.nominal) != {.95,.99}):
                 issues.append(f'{name}: invalid 30-year forecast uncertainty or interval level')
 
     return {

@@ -1,4 +1,12 @@
-# 1.9.8.2
+# 1.9.8.3
+
+- Prioritized four-chain reference (2,000 warm-up + 4,000 retained per chain).
+- Explicit 123-fit manuscript suite; remaining seasonal checks use two chains (1,000 + 1,000), monthly checks two chains (500 + 500).
+- Local resource-aware queue and Slurm reference-start dependencies, automatic collection and compact review archive.
+- Matched monthly calibration, current publication gate, means with 95% intervals, additional 99% forecast bounds.
+- Per-task sampling roles and preserved numerical flags; no automatic prior winner or convergence claim.
+
+# 1.9.8.3
 
 Monthly fixed-Normal reference, standard sensitivity suite, matched physical calibration, small parallel jobs and combined overview. See RELEASE_NOTES.md.
 

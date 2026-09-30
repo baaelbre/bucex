@@ -153,7 +153,7 @@ def validate(config, *, directory=None):
                 low, median, high = forecast.predictive_quantiles([(1-interval)/2,.5,(1+interval)/2],**kwargs)
                 predictions.append(pd.DataFrame(dict(origin=train.stop, channel=name,
                     time=forecast.dates, horizon=np.arange(1,len(test)+1), observed=observed,
-                    lower=low, median=median, upper=high, credible_interval=interval)))
+                    mean=observations.mean(axis=0), lower=low, median=median, upper=high, credible_interval=interval)))
                 pits.append(pd.DataFrame({"origin": train.stop, "channel": name,
                     "time": forecast.dates, "horizon": np.arange(1, len(test) + 1),
                     "pit": forecast.pit(observed, **kwargs)}))

@@ -1,5 +1,5 @@
 {
-  "version": "1.9.8.2",
+  "version": "1.9.8.3",
   "date": "2026-09-30T01:25:17.325060+00:00",
   "status": "targeted_release_checks_passed",
   "basis": "1.9.8.1; existing fixed-normal sampler and monthly observation-scale API reused",

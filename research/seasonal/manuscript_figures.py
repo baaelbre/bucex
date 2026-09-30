@@ -79,7 +79,7 @@ def _band_panels(inputs, run, table, ylabel, *, zero=False):
         x = frame.time.to_numpy()
         color = _series_color(name)
         axis.fill_between(x, frame.lower.to_numpy(), frame.upper.to_numpy(), color=color, alpha=.18, lw=0)
-        axis.plot(x, frame["median"].to_numpy(), color=color, lw=1.55)
+        axis.plot(x, frame["mean"].to_numpy(), color=color, lw=1.55)
         if zero:
             axis.axhline(0, color=INK, lw=.75, ls="--")
         axis.set_title(name, loc="left", weight="bold")
@@ -98,7 +98,7 @@ def _seasonal_change_panels(inputs, run):
         dates=pd.to_datetime(frame.time)
         for month,season,color in zip((12,3,6,9),SEASONS,SEASON_COLORS):
             take=dates.dt.month.eq(month)
-            axis.plot(dates[take],frame.loc[take,'median'],color=color,label=season,lw=1.2)
+            axis.plot(dates[take],frame.loc[take,'mean'],color=color,label=season,lw=1.2)
             axis.fill_between(dates[take],frame.loc[take,'lower'],frame.loc[take,'upper'],color=color,alpha=.10)
         axis.axhline(0,color=INK,lw=.6,ls='--')
         axis.set_title(name,loc='left',weight='bold')
@@ -116,11 +116,11 @@ def _scale_panels(inputs, run):
         frame = inputs.csv(run / f"{name}_scale_by_season.csv").set_index("season").loc[list(SEASONS)]
         x = np.arange(4) + offset
         color = _series_color(name)
-        axis.errorbar(x, frame["median"], label=name,
-                      yerr=[frame["median"] - frame.lower, frame.upper - frame["median"]],
+        axis.errorbar(x, frame["mean"], label=name,
+                      yerr=[frame["mean"] - frame.lower, frame.upper - frame["mean"]],
                       fmt="o", color=color, capsize=2.5, ms=4,
                       markerfacecolor=color if name.endswith('m') else 'white')
-        axis.plot(x, frame["median"], color=color, lw=1.1,
+        axis.plot(x, frame["mean"], color=color, lw=1.1,
                   ls='-' if name.endswith('m') else '--')
     axis.set(xticks=np.arange(4), xticklabels=SEASONS,
              xlabel="season", ylabel="observation scale / °C")
@@ -169,8 +169,8 @@ def _shared_shrinkage(inputs, run):
         rows = frame[frame.component.eq(component)].set_index("distribution")
         for y, distribution, marker, alpha in ((0, "prior", "s", .55), (1, "posterior", "o", 1.)):
             row = rows.loc[distribution]
-            axis.errorbar(row["median"], y,
-                          xerr=[[row["median"] - row.lower], [row.upper - row["median"]]],
+            axis.errorbar(row["mean"], y,
+                          xerr=[[row["mean"] - row.lower], [row.upper - row["mean"]]],
                           fmt=marker, color="#78618c", alpha=alpha, capsize=3)
         axis.set_yticks([0, 1], ["hyperprior", "posterior"])
         axis.set_title(component.replace("_", " "), loc="left", weight="bold")
@@ -223,7 +223,7 @@ def _contrast_figures(inputs, run):
     ybase = np.arange(len(SERIES))[::-1]
     for offset, (code, season), color in zip(np.linspace(-.24, .24, 4), seasons, SEASON_COLORS):
         rows = frame.loc[[f"{name}.location.{code}.change" for name in SERIES]]
-        median = rows["median"].to_numpy()
+        median = rows["mean"].to_numpy()
         left.errorbar(median, ybase + offset,
                       xerr=[median - rows.lower.to_numpy(), rows.upper.to_numpy() - median],
                       fmt="o", ms=4, lw=1.1, capsize=2, color=color, label=season)
@@ -243,9 +243,9 @@ def _contrast_figures(inputs, run):
         y = np.arange(len(pairs))[::-1]
         for yi, (quantity, _) in zip(y, pairs):
             row = frame.loc[quantity]
-            right.errorbar(row["median"], yi,
-                           xerr=[[row["median"] - row.lower], [row.upper - row["median"]]],
-                           fmt="o", color=TX if row["median"] >= 0 else TN, capsize=2)
+            right.errorbar(row["mean"], yi,
+                           xerr=[[row["mean"] - row.lower], [row.upper - row["mean"]]],
+                           fmt="o", color=TX if row["mean"] >= 0 else TN, capsize=2)
         right.axvline(0, color=INK, lw=.8, ls="--")
         right.set(yticks=y, yticklabels=[label for _, label in pairs],
                   xlabel="difference in late–early level change / °C")
@@ -255,11 +255,11 @@ def _contrast_figures(inputs, run):
     y = np.arange(len(SERIES))[::-1]
     for yi, name in zip(y, SERIES):
         recent, change = frame.loc[f"{name}.slope.comparison"], frame.loc[f"{name}.slope.change"]
-        axis.errorbar(recent["median"], yi + .12,
-                      xerr=[[recent["median"] - recent.lower], [recent.upper - recent["median"]]],
+        axis.errorbar(recent["mean"], yi + .12,
+                      xerr=[[recent["mean"] - recent.lower], [recent.upper - recent["mean"]]],
                       fmt="o", color=TX, capsize=2, label="recent-period rate" if yi == y[0] else None)
-        axis.errorbar(change["median"], yi - .12,
-                      xerr=[[change["median"] - change.lower], [change.upper - change["median"]]],
+        axis.errorbar(change["mean"], yi - .12,
+                      xerr=[[change["mean"] - change.lower], [change.upper - change["mean"]]],
                       fmt="s", color=TN, capsize=2, label="recent minus early" if yi == y[0] else None)
     axis.axvline(0, color=INK, lw=.8, ls="--")
     axis.set(yticks=y, yticklabels=SERIES, xlabel="rate / °C per decade")
@@ -282,7 +282,7 @@ def _risk_panels(inputs, run, forecast=False):
             x = frame.time.dt.year.to_numpy()
         axis.fill_between(x, frame.lower.clip(lower=0).to_numpy(), frame.upper.clip(lower=0).to_numpy(),
                           color=color, alpha=.18, lw=0)
-        axis.plot(x, frame["median"].clip(lower=0).to_numpy(), color=color)
+        axis.plot(x, frame["mean"].clip(lower=0).to_numpy(), color=color)
         axis.set_title(f"{name}, {season}", loc="left", weight="bold")
         axis.set_ylabel(ylabel)
     for axis in axes[-1]:
@@ -297,7 +297,7 @@ def _compound(inputs, run):
     figure, axis = plt.subplots(figsize=(8.8, 3.4), layout="constrained")
     axis.fill_between(frame.time.to_numpy(), frame.lower.clip(lower=0).to_numpy(),
                       frame.upper.clip(lower=0).to_numpy(), color="#ba861f", alpha=.2)
-    axis.plot(frame.time.to_numpy(), frame["median"].clip(lower=0).to_numpy(), color="#ba861f")
+    axis.plot(frame.time.to_numpy(), frame["mean"].clip(lower=0).to_numpy(), color="#ba861f")
     axis.set(xlabel="forecast season", ylabel="conditional compound probability")
     return figure
 
@@ -311,6 +311,8 @@ def _forecast_uncertainty_panels(inputs, run):
     for column, (name, color) in enumerate((('TXm', TX), ('TXx', TX))):
         frame = inputs.csv(run / f'{name}_forecast_uncertainty.csv', parse_dates=['time'])
         frame = frame[frame.time.dt.month.eq(6)]
+        tail = frame[frame.nominal.eq(.99)]
+        frame = frame[frame.nominal.eq(.95)]
         location = frame[frame.target.eq('location')].sort_values('time')
         observation = frame[frame.target.eq('observation')].sort_values('time')
         if len(location) != 30 or len(observation) != 30 or not all(frame.nominal.eq(.95)):
@@ -321,9 +323,15 @@ def _forecast_uncertainty_panels(inputs, run):
                                    (location, 'Latent location', '#677682')):
             top.fill_between(years, table.lower.to_numpy(), table.upper.to_numpy(),
                              color=tone, alpha=.17, lw=0)
-            top.plot(years, table['median'].to_numpy(), color=tone, lw=1.6, label=label)
+            top.plot(years, table['mean'].to_numpy(), color=tone, lw=1.6, label=label+' mean')
             bottom.plot(years, table.interval_width.to_numpy(), color=tone, lw=1.8,
                         marker='o', ms=2.5, label=label)
+        for nominal,source,linestyle in [(.95,frame,'--'),(.99,tail,':')]:
+            for target,tone in [('observation',color),('location','#677682')]:
+                bound=source[source.target.eq(target)].sort_values('time')
+                if len(bound)==30:
+                    top.plot(years,bound.upper_quantile,color=tone,ls=linestyle,lw=1.0,
+                             label=f'{target} {nominal:.0%} upper quantile')
         top.set_title(f'{name}: summer forecasts', loc='left', weight='bold')
         top.set_ylabel('temperature / °C')
         bottom.set(xlabel='JJA year', ylabel='95% interval width / °C')
@@ -374,7 +382,7 @@ def _sensitivity(inputs, roots):
         for offset, variant in zip(offsets, variants):
             table = _target_table(inputs, reports[variant])
             rows = table.loc[[name + suffix for name in SERIES]]
-            median = rows["median"].to_numpy()
+            median = rows["mean"].to_numpy()
             axis.errorbar(x + offset, median,
                           yerr=[median - rows.lower.to_numpy(), rows.upper.to_numpy() - median],
                           fmt="o", ms=3.5, capsize=1.5, color=palette[variant], label=variant)
@@ -389,7 +397,7 @@ def _sensitivity(inputs, roots):
             month = 6 if name.endswith("x") else 12
             path = inputs.csv(reports[variant] / f"{name}_risk.csv", parse_dates=["time"])
             row = path[path.time.dt.month.eq(month)].iloc[-1]
-            medians.append(row["median"]); lower.append(row.lower); upper.append(row.upper)
+            medians.append(row["mean"]); lower.append(row.lower); upper.append(row.upper)
         medians, lower, upper = map(np.asarray, (medians, lower, upper))
         axes[1, 0].errorbar(x + offset, medians, yerr=[medians - lower, upper - medians],
                             fmt="o", ms=3.5, capsize=1.5, color=palette[variant])
@@ -400,7 +408,7 @@ def _sensitivity(inputs, roots):
     for offset, variant in zip(offsets, variants):
         frame = inputs.csv(reports[variant] / "shared_shrinkage.csv")
         rows = frame[frame.distribution.eq("posterior")].set_index("component").loc[list(components)]
-        axes[1, 1].scatter(x + offset, rows["median"], color=palette[variant], s=20, label=variant)
+        axes[1, 1].scatter(x + offset, rows["mean"], color=palette[variant], s=20, label=variant)
     axes[1, 1].set_yscale("log")
     axes[1, 1].set(xticks=x, xticklabels=["level", "slope", "seasonal", "initial\nslope"],
                    ylabel="posterior shared scale (log axis)")
@@ -503,8 +511,8 @@ def _pre2019(inputs, roots):
         curve=inputs.csv(direct/'pre2019_TXx_risk_curve.csv')
         figure,axes=plt.subplots(1,2,figsize=(10.2,4.1),layout='constrained')
         x=np.arange(len(SERIES))
-        axes[0].errorbar(x,forecast['median'],yerr=[forecast['median']-forecast.lower,forecast.upper-forecast['median']],
-            fmt='o',color=TX,capsize=4,label='predictive median and 95% PI')
+        axes[0].errorbar(x,forecast['mean'],yerr=[forecast['mean']-forecast.lower,forecast.upper-forecast['mean']],
+            fmt='o',color=TX,capsize=4,label='predictive sample mean and 95% PI')
         axes[0].scatter(x,forecast.observed,marker='D',color=TN,s=24,label='observed')
         axes[0].set(xticks=x,xticklabels=SERIES,ylabel='temperature / °C')
         axes[0].legend(fontsize=8)
@@ -522,7 +530,7 @@ def _pre2019(inputs, roots):
     figure, axes = plt.subplots(1, 2, figsize=(9.8, 3.9), layout="constrained")
     forecast = inputs.csv(reports[reference] / "forecast.csv", parse_dates=["time"])
     row = forecast[(forecast.channel == "TXx") & (forecast.time.dt.month == 6)].iloc[0]
-    axes[0].errorbar(0, row["median"], yerr=[[row["median"] - row.lower], [row.upper - row["median"]]],
+    axes[0].errorbar(0, row["mean"], yerr=[[row["mean"] - row.lower], [row.upper - row["mean"]]],
                      fmt="o", color=TX, capsize=4, label="pre-event prediction")
     axes[0].scatter(0, 39.7, marker="*", s=90, color="#ba861f", label="observed 39.7°C")
     axes[0].set(xticks=[0], xticklabels=["JJA 2019 TXx"], ylabel="seasonal maximum / °C")
@@ -530,8 +538,8 @@ def _pre2019(inputs, roots):
     variants = list(reports)
     for y, variant in enumerate(variants):
         row = inputs.csv(reports[variant] / "TXx_forecast_risk_39p7.csv").iloc[0]
-        axes[1].errorbar(row["median"], y,
-                         xerr=[[row["median"] - row.lower], [row.upper - row["median"]]],
+        axes[1].errorbar(row["mean"], y,
+                         xerr=[[row["mean"] - row.lower], [row.upper - row["mean"]]],
                          fmt="o", color=bx.PUBLICATION_COLORS[y % len(bx.PUBLICATION_COLORS)], capsize=3)
     axes[1].set(yticks=np.arange(len(variants)), yticklabels=variants,
                 xlabel=r"prospective $P(\mathrm{TXx}>39.7^\circ\mathrm{C})$")
@@ -598,6 +606,7 @@ def build(run, output, *, formats=("png", "pdf"), dpi=220,
         "convergence_status": convergence.get("status"),
         "development_override": bool(allow_unconverged),
         "formats": list(formats), "dpi": dpi, "figures": figures,
+        "point_summary": "Posterior means; predictive observation means are finite Monte Carlo sample averages. Bands are equal-tailed, not mean +/- SD.",
         "sources": [{"path": path, "sha256": digest} for path, digest in sorted(inputs.sources.items())],
         "interpretation": [
             "All intervals are read from the saved report tables; this command performs no posterior fitting.",

@@ -1,6 +1,6 @@
 {
   "extends": "../../seasonal/config/monthly_reference.json",
-  "_comment": "1.9.8.2: six separate fixed Normal fits; monthly observation dispersion. Evolution calibration comes from screen_study.json.",
+  "_comment": "1.9.8.3: six separate fixed Normal fits; monthly observation dispersion. Evolution calibration comes from screen_study.json.",
   "analysis": "independent",
   "shrinkage_scope": "fixed",
   "priors": {
@@ -37,7 +37,7 @@
   ],
   "monthly_aggregation": true,
   "annual_risk": true,
-  "output": "results/serra_1982_monthly",
+  "output": "results/serra_1983_monthly",
   "copula": null,
   "contrasts": null
 }

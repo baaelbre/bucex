@@ -80,7 +80,7 @@ def save_seasonal_prediction_report(fit,directory,*,channel=None,forecast=None,p
                 continue
             j=indices[-1];values=sigma[...,j]
             lo,mid,hi=np.quantile(values,[(1-level)/2,.5,(1+level)/2])
-            rows.append(dict(season=season,date=fit.time[j],lower=lo,median=mid,upper=hi))
+            rows.append(dict(season=season,date=fit.time[j],mean=float(np.mean(values)),lower=lo,median=mid,upper=hi))
             scale_targets[season+' observation scale / °C']=values
         scales=pd.DataFrame(rows);table(scales,'scale_by_season')
         targets={'end slope / °C per decade':40*fit.component_draws('slope',channel=channel,combine_chains=False)[...,-1],
@@ -94,8 +94,8 @@ def save_seasonal_prediction_report(fit,directory,*,channel=None,forecast=None,p
             save(plot_chain_traces(traces)[0],'parameter_traces')
             save(plot_chain_traces(targets)[0],'scale_and_slope_traces')
             figure,ax=plt.subplots(figsize=(7,3),layout='constrained')
-            ax.errorbar(scales.season,scales['median'],
-                yerr=[scales['median']-scales.lower,scales.upper-scales['median']],fmt='o-',capsize=3)
+            ax.errorbar(scales.season,scales['mean'],
+                yerr=[scales['mean']-scales.lower,scales.upper-scales['mean']],fmt='o-',capsize=3)
             ax.set(xlabel='season',ylabel='observation scale / °C')
             save(figure,'scale_by_season')
             save(plot_forecast_seasons(forecast,channel=channel,level=level,

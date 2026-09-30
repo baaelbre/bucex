@@ -22,9 +22,9 @@ while [[ $# -gt 0 ]]; do
 done
 case "$BUCEX_TIER" in screen|paper) ;; *) echo 'tier must be screen or paper' >&2; exit 2;; esac
 case "$BUCEX_BATCH" in posterior|reference|comparison|experiments|influence|validation|validation10|all|sweetspot|sweetspot_hpc|sweetspot_posterior|sweetspot_validation|sweetspot_long|sweetspot_fixed|monthly_reference|monthly_sensitivity|monthly_structural|monthly_observation|monthly_all) ;; *) echo 'unknown batch' >&2; exit 2;; esac
-export BUCEX_RESULTS_ROOT="${BUCEX_RESULTS_ROOT:-$PWD/results/serra_1982}"
-export BUCEX_PYTHON="${BUCEX_PYTHON:-$PWD/bucex_env_gallade_py311_1982/bin/python}"
-default_setup="$PWD/bucex_env_gallade_py311_1982/environment.sh"
+export BUCEX_RESULTS_ROOT="${BUCEX_RESULTS_ROOT:-$PWD/results/serra_1983}"
+export BUCEX_PYTHON="${BUCEX_PYTHON:-$PWD/bucex_env_gallade_py311_1983/bin/python}"
+default_setup="$PWD/bucex_env_gallade_py311_1983/environment.sh"
 if [[ -z "${BUCEX_ENV_SETUP:-}" && -f "$default_setup" ]]; then export BUCEX_ENV_SETUP="$default_setup"; fi
 export BUCEX_RESULTS_ROOT="$("${BUCEX_SUBMIT_PYTHON:-/usr/bin/python3}" job_scripts/paths.py "$BUCEX_RESULTS_ROOT")"
 export BUCEX_PYTHON="$("${BUCEX_SUBMIT_PYTHON:-/usr/bin/python3}" job_scripts/paths.py --executable "$BUCEX_PYTHON")"
@@ -34,8 +34,8 @@ extra=()
 [[ -z "${VSC_CLUSTER:-}" ]] || extra+=(--clusters="$VSC_CLUSTER")
 [[ -z "${VSC_PROJECT:-}" ]] || extra+=(--account="$VSC_PROJECT")
 [[ -z "${VSC_PARTITION:-}" ]] || extra+=(--partition="$VSC_PARTITION")
-command=(sbatch --parsable "${extra[@]}" --chdir="$PWD" --job-name=bx1982_collect
+command=(sbatch --parsable "${extra[@]}" --chdir="$PWD" --job-name=bx1983_collect
     --nodes=1 --ntasks=1 --cpus-per-task=1 --mem=12G --time=02:00:00 --export=ALL
-    --output="$BUCEX_RESULTS_ROOT/scheduler_logs/bx1982_collect_%j.log" job_scripts/collect.slurm)
+    --output="$BUCEX_RESULTS_ROOT/scheduler_logs/bx1983_collect_%j.log" job_scripts/collect.slurm)
 printf '%q ' "${command[@]}"; printf '\n'
 if [[ "$dry" == 0 ]]; then "${command[@]}"; fi

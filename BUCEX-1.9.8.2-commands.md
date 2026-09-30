@@ -1,4 +1,4 @@
-# BUCEX 1.9.8.2 — monthly reference and sensitivity screen
+# BUCEX 1.9.8.3 — monthly reference and sensitivity screen
 
 This release adds **six separate monthly analyses with fixed Normal innovation priors, no hyperpriors, and repeating calendar-month observation scales**. Process variances remain learned through the signed coefficients. Existing seasonal workflows remain available.
 
@@ -57,8 +57,8 @@ Put the release ZIP in your home directory, then:
 
 ```bash
 cd ~
-unzip bucex-1.9.8.2.zip
-cd -P ~/bucex-1.9.8.2
+unzip bucex-1.9.8.3.zip
+cd -P ~/bucex-1.9.8.3
 conda activate bastiaan
 export BUCEX_PYTHON="$(command -v python)"
 export BUCEX_RESULTS_ROOT="$PWD/results/monthly1982_biobot"
@@ -91,8 +91,8 @@ Put the ZIP in your home directory and extract into the compute-visible physical
 
 ```bash
 cd -P /kyukon/data/gent/vo/000/gvo00048/vsc42619/GitHub
-unzip "$HOME/bucex-1.9.8.2.zip"
-cd -P bucex-1.9.8.2
+unzip "$HOME/bucex-1.9.8.3.zip"
+cd -P bucex-1.9.8.3
 export BUCEX_RESULTS_ROOT="/kyukon/data/gent/vo/000/gvo00048/vsc42619/bucex1982_monthly_results"
 export BUCEX_SCHEDULER=slurm
 export VSC_CLUSTER=gallade
@@ -117,7 +117,7 @@ Expect a compute-node startup probe, array **1–90%32**, and automatic collecti
 If the old environment is unavailable, use this block **instead of** the reuse block:
 
 ```bash
-export BUCEX_VENV="$VSC_SCRATCH/bucex_env_gallade_py311_1982_$(date +%Y%m%d_%H%M%S)"
+export BUCEX_VENV="$VSC_SCRATCH/bucex_env_gallade_py311_1983_$(date +%Y%m%d_%H%M%S)"
 bash SETUP_HPC_ENV.sh
 export BUCEX_PYTHON="$BUCEX_VENV/bin/python"
 export BUCEX_ENV_SETUP="$BUCEX_VENV/environment.sh"
@@ -155,7 +155,7 @@ For manual collection from the Gallade login node (submits a compute job):
 bash COLLECT_HPC_RESULTS.sh screen monthly_structural
 ```
 
-To combine the two compact ZIPs on a machine with the working Python environment, from the unchanged 1.9.8.2 source:
+To combine the two compact ZIPs on a machine with the working Python environment, from the unchanged 1.9.8.3 source:
 
 ```bash
 python -m research.monthly.combine \

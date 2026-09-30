@@ -60,6 +60,7 @@ def compare_shared_shrinkage(fit, *, level=.95):
                        else ("coefficient_absolute_median" if scope == "independent" else "population_median")),
                 anchor=anchor, log_sd=spec.log_sd if spec.hyperprior=='lognormal' else np.nan,
                 hyperprior=spec.hyperprior,
+                mean=spec.scale_mean(component) if distribution=='prior' else float(np.mean(values)),
                 lower=interval[0], median=interval[1], upper=interval[2], credible_interval=level,
                 rhat=rhat(values) if distribution == "posterior" else np.nan,
                 ess_bulk=ess_bulk(values) if distribution == "posterior" else np.nan,
@@ -92,7 +93,7 @@ def compare_initial_slope_priors(fit, *, size=20000, seed=None, rate_multiplier=
             lo, mid, hi = np.quantile(values, [(1-level)/2, .5, (1+level)/2])
             rows.append(dict(channel=name, component="initial_slope", distribution=distribution,
                 scale="signed_rate", rate_multiplier=rate_multiplier, lower=lo, median=mid,
-                upper=hi, credible_interval=level,
+                upper=hi, mean=float(np.mean(values)), credible_interval=level,
                 rhat=rhat(posterior) if distribution == "posterior" else np.nan,
                 ess_bulk=ess_bulk(posterior) if distribution == "posterior" else np.nan,
                 ess_tail=ess_tail(posterior) if distribution == "posterior" else np.nan))

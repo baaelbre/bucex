@@ -1,8 +1,12 @@
-# BUCEX 1.9.8.2
+# BUCEX 1.9.8.3 final manuscript release
+
+Start with [START_HERE_1983.md](START_HERE_1983.md). Run `RUN_FINAL_BIOBOT.sh` or `RUN_FINAL_HPC.sh` for the prioritized reference and the complete mixed-budget suite.
+
+# BUCEX 1.9.8.3
 
 Monthly fixed-Normal reference and sensitivity screen with twelve calendar-month observation scales.
 
-See [the 1.9.8.2 commands](BUCEX-1.9.8.2-commands.md): 128 independent fits, with reference/structural and observation batches for a nonoverlapping two-host split.
+See [the 1.9.8.3 commands](BUCEX-1.9.8.3-commands.md): 128 independent fits, with reference/structural and observation batches for a nonoverlapping two-host split.
 
 ## Previous seasonal workflow
 

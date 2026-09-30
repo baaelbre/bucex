@@ -30,7 +30,7 @@ def save_shared_shrinkage_report(fit, directory, *, level=.95, figures=True,
         gain = rate_multiplier if c == "initial_slope" else row.response_gain
         factor = fit.priors.shrinkage.coefficient_sd(c, 1.0) * gain
         mask = effects.component.eq(c)
-        effects.loc[mask, ['lower','median','upper','anchor']] *= factor
+        effects.loc[mask, ['mean','lower','median','upper','anchor']] *= factor
         effects.loc[mask, 'scale'] = 'initial_rate_prior_SD' if c == 'initial_slope' else 'future_contribution_prior_SD'
     effects.assign(horizon_updates=horizon, rate_multiplier=rate_multiplier).to_csv(
         directory/f'{stem}_effects.csv',index=False)
@@ -51,8 +51,8 @@ def save_shared_shrinkage_report(fit, directory, *, level=.95, figures=True,
                 for i, name in enumerate(names):
                     for distribution, offset, color in [('prior',-.14,'.6'),('posterior',.14,'C0')]:
                         row = initial[(initial.channel==name)&(initial.distribution==distribution)].iloc[0]
-                        ax.errorbar(row['median'],i+offset,
-                            xerr=[[row['median']-row['lower']],[row['upper']-row['median']]],
+                        ax.errorbar(row['mean'],i+offset,
+                            xerr=[[row['mean']-row['lower']],[row['upper']-row['mean']]],
                             fmt='o',color=color,label=distribution if i==0 else None)
                 ax.axvline(0,color='.5',lw=.8)
                 ax.set(yticks=range(len(names)),yticklabels=names,
@@ -65,8 +65,8 @@ def save_shared_shrinkage_report(fit, directory, *, level=.95, figures=True,
                 figsize=(5*len(components), 3.2), layout="constrained")
             for ax, component in zip(axes[0], components):
                 for i, row in enumerate(comparison[comparison.component.eq(component)].to_dict("records")):
-                    ax.errorbar(row["median"], i,
-                        xerr=[[row["median"]-row["lower"]], [row["upper"]-row["median"]]], fmt="o")
+                    ax.errorbar(row["mean"], i,
+                        xerr=[[row["mean"]-row["lower"]], [row["upper"]-row["mean"]]], fmt="o")
                 ax.set(yticks=[0,1], yticklabels=["hyperprior", "posterior"],
                     xlabel=(f"{component} coefficient prior SD" if fit.priors.shrinkage.uses_normal_sd(component)
                             else f"{component} absolute coefficient prior median"))

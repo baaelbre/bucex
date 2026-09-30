@@ -142,7 +142,7 @@ def plot_forecast_months(forecast, *, channel=None, months=tuple(range(1, 13)),
     if threshold is None:
         from matplotlib.lines import Line2D
         from matplotlib.patches import Patch
-        handles = [Line2D([], [], color="C0", label="predictive median"),
+        handles = [Line2D([], [], color="C0", label="predictive sample mean"),
                    Patch(color="C0", alpha=.2, label=f"{level:.0%} pointwise predictive interval")]
         if history is not None or observed is not None:
             handles.append(Line2D([], [], ls="", marker="o", color="0.5", label="observed"))
@@ -174,10 +174,10 @@ def plot_scale_calendar(fit, *, channel=None, level=.95):
             continue
         j = selected[-1]
         low, median, high = np.quantile(sigma[:, j], [(1-level)/2, .5, (1+level)/2])
-        rows.append(dict(month=month, date=dates[j], lower=low, median=median, upper=high))
+        rows.append(dict(month=month, date=dates[j], mean=float(np.mean(sigma[:,j])), lower=low, median=median, upper=high))
     table = pd.DataFrame(rows)
     figure, axis = plt.subplots(figsize=(8, 3.5))
-    axis.errorbar(table.month, table['median'], yerr=[table['median']-table.lower, table.upper-table['median']],
+    axis.errorbar(table.month, table['mean'], yerr=[table['mean']-table.lower, table.upper-table['mean']],
                   fmt="o-", capsize=3)
     axis.set_xticks(range(1, 13), calendar.month_abbr[1:])
     family = fit.model.channel(channel).family if fit.is_multiseries_model else fit.family
