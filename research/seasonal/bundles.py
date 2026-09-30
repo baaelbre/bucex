@@ -11,12 +11,12 @@ import subprocess
 import sys
 import time
 import bucex as bx
-from research.seasonal.jobs import ROOT,PROJECT,tasks,task_config
+from research.seasonal.jobs import ROOT,PROJECT,tasks,all_tasks,task_config
 from research.seasonal.job_plan import plan,BATCHES,RESOURCES
 
 
 def members(group,tier):
-    selected=[t for t in tasks('all',tier=tier)+tasks('deferred',tier=tier) if t.group_id==group['id']]
+    selected=[t for t in all_tasks(tier) if t.group_id==group['id']]
     if [t.id for t in selected]!=group['task_ids']:raise ValueError('Runtime tasks differ from the submission plan: '+group['id'])
     for task in selected:
         c=task_config(task,tier)
@@ -100,7 +100,7 @@ def main():
     if a.list:
         for i,g in enumerate(groups,1):print(i,g['id'],g['parallel_fits'],g['chains'],g['cpus'])
         return 0
-    selected=(next((g for g in plan(a.tier,'all')+plan(a.tier,'deferred') if g['id']==a.bundle),None) if a.bundle else
+    selected=(next((g for g in plan(a.tier,'all')+plan(a.tier,'deferred')+plan(a.tier,'sweetspot') if g['id']==a.bundle),None) if a.bundle else
               groups[a.index-1] if a.index and 1<=a.index<=len(groups) else None)
     if selected is None:p.error('Supply a valid --index or --bundle')
     return run(selected,tier=a.tier,root=a.root,retry_failed=a.retry_failed)

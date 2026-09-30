@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.6.1 active HN-only experiment matrix. No heavy-tail hyperpriors or leave-one-out tasks.",
+  "_comment": "1.9.8 active HN-only experiment matrix. No heavy-tail hyperpriors or leave-one-out tasks.",
   "series": [
     "TXm",
     "TNm",
@@ -52,7 +52,7 @@
       "family": "structural",
       "sd_multipliers": {
         "level": 0.5,
-        "trend": 5.0
+        "trend": 0.5
       }
     },
     {
@@ -82,7 +82,7 @@
       "family": "structural",
       "sd_multipliers": {
         "level": 1.0,
-        "trend": 5.0
+        "trend": 0.5
       }
     },
     {
@@ -122,7 +122,7 @@
       "family": "structural",
       "sd_multipliers": {
         "level": 2.0,
-        "trend": 5.0
+        "trend": 0.5
       }
     },
     {
@@ -131,7 +131,7 @@
       "setting": "seasonal_5e2",
       "family": "structural",
       "sd_multipliers": {
-        "season": 5.0
+        "season": 0.5
       }
     },
     {
@@ -140,7 +140,7 @@
       "setting": "seasonal_1e1",
       "family": "structural",
       "sd_multipliers": {
-        "season": 10.0
+        "season": 1.0
       }
     },
     {
@@ -274,7 +274,7 @@
         "chains": 2,
         "chain_workers": 2,
         "warmup": 1000,
-        "draws": 1000
+        "draws": 2000
       },
       "diagnostic_thresholds": {
         "min_chains": 2,
@@ -424,7 +424,7 @@
       "family": "pooling",
       "sd_multipliers": {
         "level": 1.0,
-        "trend": 5.0
+        "trend": 0.5
       }
     }
   ],

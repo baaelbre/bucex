@@ -1,44 +1,21 @@
-# BUCEX 1.9.6.1
+# BUCEX 1.9.8
 
-This patch adds a focused joint level/slope calibration study. It preserves the
-1.9.6 half-normal hierarchy, MH correction, initial-state priors, observation model,
-conditional residual independence and both dynamic trend components. It does not
-claim to resolve statistical identification through a change of coordinates.
+This release prepares the broader half-normal calibration study. It changes the scientific settings and requires a fresh results root.
 
-The grid crosses five level scales (0.005–0.10) with five slope scales
-(0.0001–0.002), while the seasonal scale stays at 0.01. The current reference
-(0.01, 0.0002) is included. All 25 cells receive full-record fits and matched
-hindcasts at 1990, 2000, 2010, 2015 and 2020. The requested horizon is 30 years,
-truncated when observations end. Full-record forecasts also cover 30 years.
+## Scientific design
 
-The focused HPC launcher runs 75 fits; the BIOBOT launcher runs the other 75.
-Each screen fit uses two parallel chains with 1,000 warmup and 1,000 retained
-draws each. The earlier 100-fit `all` suite remains available separately.
+The reference is (A_alpha, A_beta, A_gamma) = (0.1, 0.002, 0.1). The 3×3 level/slope grid uses (0.05, 0.1, 0.2) × (0.001, 0.002, 0.004), with A_gamma=0.1. Central seasonal checks use 0.05 and 0.2. All eleven calibrations have matched private full-record fits, and the private reference has five matched validation origins. Private fits remain regularized by half-normal hierarchies with response-specific scales.
 
-New outputs retain paired parameter draws, pointwise 95% level/rate intervals,
-posterior allocation of new level/slope forecast variance, current-state forecast
-uncertainty including covariance, and local posterior-mean hyperprior sensitivity.
-Numerical checks include historical level/rate checkpoints, every final-30-year
-state, hyperprior scores and forecast allocation targets. A job that finishes can
-still be numerically flagged.
+Initial rates, initial seasonal contrasts, observation priors, residual independence and the exact half-normal GIG sampler remain as declared in the command guide. Variant-specific reproducible seeds give different random streams across calibrations. These are new fits; overlap in alpha/beta values with an older grid does not justify reusing its posterior.
 
-The automatic self-contained HTML compares all pairs and checks each adjacent
-2×2 rectangle, including diagonal pairs and all six responses. Missing quantities
-or numerical flags prevent a pass. It distinguishes whole-history from recent
-stability and shows shared-scale learning, paired CRPS, interval coverage/width
-and directional misses. A passing region is a descriptive candidate, not a prior
-optimum or proof of robustness. It also reads disjoint compact exports from both
-hosts without requiring posterior state archives.
+## Execution and reports
 
-HPC setup resolves physical directory paths before submission, preserves the
-venv interpreter symlink, rejects an unresolved `/user/data` alias, and unloads
-a conflicting Python module before loading the configured compute environment.
-The existing working Gallade environment can be reused. The longer paper reference
-requests 48 GiB to accommodate its retained states and diagnostic copies. The focused startup
-probe exercises both grid corners and the reference; 25-cell prior simulations
-run before the model array. Login planning uses Python 3.9-compatible standard
-library code; numerical fitting requires Python ≥3.10.
+Screen chains retain 2,000 draws after 1,000 warmup each. Gallade runs 111 fits (46 groups); BIOBOT runs 51 recent-origin fits. Focused private arrays now use the six-response bundle runner, whose task registry includes focused tasks. The default private array cap is four bundles, separate from sixteen pooled elements. All runs preserve manifest/provenance checks and saved archives.
 
-Verification is recorded in `RELEASE_VALIDATION.json`. Local smoke fits are
-software checks only and are not included as scientific results. No VSC or BIOBOT
-jobs were submitted while preparing this package.
+Reports retain all six private responses and never pass an incomplete bundle. Grid heatmaps are 3×3 within each response and exclude central seasonal checks. Seasonal and matched pooling comparisons have separate figures and tables. Prior figures resolve the current reference instead of assuming A_alpha=0.01. Manual and automatic collection logs use the results root.
+
+## Verification and limits
+
+See RELEASE_VALIDATION.json for the precise checks and local runtime. Configuration checks, short actual fits, predictive/report exports and selected regression tests validate execution. They do not establish posterior convergence or a stable calibration region. Production HPC/BIOBOT jobs were not submitted here and their running time is unmeasured.
+
+The source retains historical tests from releases with different fixed-prior and copula experiment plans. An exploratory run of the entire historical suite encountered obsolete version/plan expectations; it is not reported as an all-suite pass. The release gate selects current sampler, prior simulation, forecast, workflow and 1.9.8 design regressions explicitly. Historical result fixtures and archived settings are not new 1.9.8 results.

@@ -32,6 +32,9 @@ def worker(task_id,output):
     else:
         if fit.priors.shrinkage.scale_parameterization!='normal_sd':raise RuntimeError('Wrong SD convention.')
         if 'initial_slope' in fit.priors.shrinkage.anchors:raise RuntimeError('Initial rates are being pooled.')
+        if (fit.priors.shrinkage.hyperprior=='half_normal'
+                and fit.metadata.get('shrinkage_scale_update')!='gig'):
+            raise RuntimeError('Half-normal shrinkage did not use the 1.9.8 GIG update.')
     if not np.isfinite(fit.state_draws).all():raise RuntimeError('Nonfinite probe states.')
     if not all(np.isfinite(v).all() for v in fit.parameter_draws.values()):raise RuntimeError('Nonfinite parameters.')
     return 0
@@ -58,7 +61,8 @@ def main():
     if focused:
         from research.seasonal.sweetspot_plan import cells
         grid=cells(); names={'reference',grid[0]['name'],grid[-1]['name']}
-        selected=[t for t in tasks('sweetspot_posterior',tier='screen') if t.variant in names]
+        selected=[t for t in tasks('sweetspot_posterior',tier='screen') if t.variant in names or
+                  (t.variant=='independent_reference' and t.channel in ('TXm','TXx'))]
     for scope in ('shared','independent','fixed'):
         group=[t for t in selected if t.scope==scope]
         with ThreadPoolExecutor(max_workers=a.max_parallel) as pool:results.extend(pool.map(launch,group))

@@ -26,7 +26,11 @@ def config(name='reference'):
     elif name=='half_cauchy':
         v=dict(scope='shared',hyperprior='half_cauchy',df=1,sd_multipliers={k:norm.ppf(.975)/t.ppf(.975,1) for k in ('level','trend','season')})
     else:raise ValueError(name)
-    return configured_variant(c,v)
+    variant=configured_variant(c,v)
+    # The current reference enables HN-specific grid diagnostics. These legacy
+    # API compatibility checks exercise half-t/Cauchy fits outside that study.
+    variant['sweetspot_diagnostics']=False
+    return variant
 
 
 
@@ -42,7 +46,7 @@ def test_log_scale_target_matches_density_and_jacobian(family,nu):
         assert target(u)-target(0)==pytest.approx(exact(u)-exact(0),rel=1e-11,abs=1e-9)
 
 
-def test_half_normal_slice_samples_the_conditional_distribution():
+def test_half_normal_update_samples_the_conditional_distribution():
     a=.01;values=[.003,-.008,.014,-.001,.018,.006]
     spec=bx.SharedShrinkage.half_normal({'level':a})
     states=[SimpleNamespace(params_state={'s_level':x}) for x in values]
@@ -70,7 +74,7 @@ def test_hyperprior_calibration_and_pooling():
     prior=bx.draw_marginal_prior(reference,80000,seed=195)
     for name in ('TXm','TNm'):
         values=prior['channels'][name]['sd.level']
-        assert np.mean(values**2)==pytest.approx(.01**2,rel=.035)
+        assert np.mean(values**2)==pytest.approx(reference.shrinkage.anchors['level']**2,rel=.035)
         assert np.std(prior['channels'][name]['initial.slope'])==pytest.approx(.01,rel=.015)
     assert np.corrcoef(prior['channels']['TXm']['sd.level'],prior['channels']['TNm']['sd.level'])[0,1]>.35
 
@@ -118,7 +122,7 @@ def test_half_family_fit_archive_risk_report(tmp_path,variant):
     assert frame.credible_interval.eq(.95).all()
     if variant=='reference':
         row=frame.query("component=='level' and distribution=='prior'").iloc[0]
-        assert row['median']==pytest.approx(.01*norm.ppf(.75))
+        assert row['median']==pytest.approx(prior.shrinkage.anchors['level']*norm.ppf(.75))
     annual=pd.read_csv(tmp_path/'TXx_forecast_annual_return_levels.csv')
     assert annual.credible_interval.eq(.95).all() and annual.complete.all()
     assert set(annual.return_period)=={10,20,50,100}

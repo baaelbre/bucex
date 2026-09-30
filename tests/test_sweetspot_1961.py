@@ -17,22 +17,62 @@ from research.monthly.validate import validation_splits
 
 def test_disjoint_host_work_and_fixed_other_priors():
     h=tasks('sweetspot_hpc',tier='screen');b=tasks('sweetspot_validation',tier='screen')
-    assert len(h)==len(b)==75
+    assert len(h)==111 and len(b)==51
     assert not {t.id for t in h}&{t.id for t in b}
     assert {t.id for t in h+b}=={t.id for t in tasks('sweetspot',tier='screen')}
-    assert len(cells())==25
+    assert len(cells())==11
     priors=[]
     for task in tasks('sweetspot_posterior',tier='screen'):
         c=task_config(task,'screen');p=copy.deepcopy(c['priors'])
         scale=p.pop('innovation_sd')
-        assert scale['season']==.01
+        assert scale['season'] in (.05,.1,.2)
+        hierarchy=p.pop('shared_shrinkage',None) or p.pop('independent_shrinkage',None)
         assert c['model']['level']==c['model']['trend']=='dynamic'
         assert c['mcmc']['chains']==c['mcmc']['chain_workers']==2
         assert c['copula'] is None and c['sweetspot_diagnostics']
-        assert p['shared_shrinkage']['hyperprior']=='half_normal'
-        assert not p['shared_shrinkage']['pool_initial_slope']
+        assert hierarchy['hyperprior']=='half_normal'
+        assert not hierarchy['pool_initial_slope']
         priors.append(p)
     assert all(p==priors[0] for p in priors)
+
+
+def test_focused_array_group_members_and_resources():
+    from research.seasonal.job_plan import plan,BATCHES,RESOURCES
+    from research.seasonal.bundles import members
+    for tier in ('screen','paper'):
+        for batch in BATCHES:
+            if not batch.startswith('sweetspot'):continue
+            for resource in RESOURCES:
+                groups=plan(tier,batch,resource)
+                selected=tasks(batch,tier=tier,resource=resource)
+                assert [t.id for t in selected]==[id for g in groups for id in g['task_ids']]
+                for g in groups:
+                    assert [t.id for t in members(g,tier)]==g['task_ids']
+                    assert g['required_workers']==g['parallel_fits']*g['chain_workers']<=g['cpus']
+                    assert len(g['task_ids'])==(1 if g['scope']=='shared' else 6)
+
+
+def test_actual_hpc_shell_dispatches_focused_tasks_directly(tmp_path):
+    import os
+    from research.seasonal.job_plan import plan
+    target='sweetspot_forecast_ss_a5e2_b2e3_1990-11'
+    index=1+[g['id'] for g in plan('screen','sweetspot_hpc','shared')].index(target)
+    wrapper=tmp_path/'python_wrapper'
+    wrapper.write_text('#!'+sys.executable+'\n'+
+        'import os,sys\n'+
+        'if sys.argv[1:3]==["-u","-m"]:\n'+
+        '    assert sys.argv[3]=="research.seasonal.jobs", sys.argv\n'+
+        '    print("DIRECT_TASK_RUNNER_OK",flush=True)\n'+
+        'else: os.execv(sys.executable,[sys.executable,*sys.argv[1:]])\n')
+    wrapper.chmod(0o755)
+    root=tmp_path/'results'
+    env=dict(os.environ,BUCEX_PROJECT_ROOT=str(Path.cwd()),BUCEX_PYTHON=str(wrapper),
+        BUCEX_ENV_SETUP='',BUCEX_RESULTS_ROOT=str(root),BUCEX_TIER='screen',
+        BUCEX_BATCH='sweetspot_hpc',BUCEX_RESOURCE='shared',SLURM_ARRAY_TASK_ID=str(index))
+    r=subprocess.run(['bash','job_scripts/run_task.sh'],env=env,capture_output=True,text=True)
+    assert r.returncode==0,r.stdout+r.stderr
+    assert 'DIRECT_TASK_RUNNER_OK' in r.stdout
+    assert 'DIRECT_TASK_RUNNER_OK' in (root/'screen/logs'/f'{target}.log').read_text()
 
 
 def test_new_folds_are_matched_and_truncate_at_available_data():
@@ -56,7 +96,7 @@ def test_variance_partition_and_prior_rms():
     np.testing.assert_allclose(b,40*39*79/6*np.array([.0004,.0001]))
     np.testing.assert_allclose(f,b/(a+b))
     row=next(x for x in calibration_rows() if x['variant']=='reference')
-    assert np.isclose(row['total_trend_innovation_SD_30y_C']**2,120*.01**2+120*119*239/6*.0002**2)
+    assert np.isclose(row['total_trend_innovation_SD_30y_C']**2,120*.1**2+120*119*239/6*.002**2)
 
 
 def test_local_sensitivity_matches_weight_derivative():
@@ -99,7 +139,7 @@ def test_intervals_missing_outputs_and_numerical_flags_prevent_pass():
 
 
 def test_rectangle_checks_diagonals_and_all_responses():
-    chosen=[c for c in cells() if c['A_level'] in (.005,.01) and c['A_slope'] in (.0001,.0002)]
+    chosen=[c for c in cells() if c['calibration_kind']=='grid' and c['A_level'] in (.05,.1) and c['A_slope'] in (.001,.002)]
     entries={c['name']:entry(.04*i+.04*j) for c,(i,j) in zip(chosen,[(0,0),(0,1),(1,0),(1,1)])}
     rows=[]
     for a,b in combinations(entries,2):
@@ -136,11 +176,11 @@ def test_hpc_launcher_and_biobot_plan(tmp_path,monkeypatch):
     monkeypatch.setenv('VSC_ARRAY_LIMIT','16')
     r=subprocess.run(['bash','RUN_SWEETSPOT_HPC.sh','--dry-run'],capture_output=True,text=True)
     assert r.returncode==0,r.stderr
-    assert '--clusters=gallade' in r.stdout and '--array=1-75%16' in r.stdout
+    assert '--clusters=gallade' in r.stdout and '--array=1-33%16' in r.stdout
     assert '--cpus-per-task=2' in r.stdout and '--dependency=afterany:ARRAY_JOB_IDS' in r.stdout
     from research.seasonal.overnight import make_queue,budget
     q=make_queue(('screen',),'sweetspot_validation')
-    assert len(q)==75 and all(x.cpus==2 and x.memory_gb<=6 for x in q)
+    assert len(q)==51 and all(x.cpus==2 and x.memory_gb<=6 for x in q)
 
 
 def test_validation_pairs_match_dates_and_origins(tmp_path):

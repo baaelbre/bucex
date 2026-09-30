@@ -38,12 +38,13 @@ def write(fit, forecast, config, directory):
     """Retain joint traces, slope sensitivity and forecast allocation on physical scales."""
     directory=Path(directory);directory.mkdir(parents=True,exist_ok=True)
     if not fit.is_multiseries_model or fit.priors.shrinkage.hyperprior!='half_normal':
-        raise ValueError('This study requires pooled half-normal innovation scales.')
+        raise ValueError('This study requires shared or private half-normal innovation scales.')
     dates=pd.DatetimeIndex(fit.time)
     multiplier=10*config['model']['steps_per_year']
     if multiplier!=40:raise ValueError('This study is in seasonal units.')
     anchor=config['priors']['innovation_sd']
-    tau={c:fit.parameter('shrinkage.shared.'+c,combine_chains=False)
+    scope='independent' if isinstance(fit.priors.shrinkage,bx.IndependentShrinkage) else 'shared'
+    tau={c:fit.parameter('shrinkage.'+scope+'.'+c,combine_chains=False)
          for c in ('level','slope','seasonal')}
     anchor={c:anchor[k] for c,k in [('level','level'),('slope','trend'),('seasonal','season')]}
     traces={'tau_'+c:x for c,x in tau.items()}

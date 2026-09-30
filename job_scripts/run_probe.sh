@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 trap 'status=$?; printf "BUCEX probe failed: status=%s line=%s host=%s\n" "$status" "$LINENO" "${HOSTNAME:-unknown}" >&2; exit "$status"' ERR
-printf 'BUCEX 1.9.6.1 compute probe starting on %s\nPython requested: %s\n' "${HOSTNAME:-unknown}" "${BUCEX_PYTHON:-unset}"
+printf 'BUCEX 1.9.8 compute probe starting on %s\nPython requested: %s\n' "${HOSTNAME:-unknown}" "${BUCEX_PYTHON:-unset}"
 cd -P "${BUCEX_PROJECT_ROOT:?missing project root}"
 source bash_scripts/compute_environment.sh
 source bash_scripts/runtime.sh

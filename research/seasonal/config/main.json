@@ -1,5 +1,5 @@
 {
-  "_comment": "1.9.6.1: pooled half-normal; doubled slope reference; exchangeable initial seasonal cycle.",
+  "_comment": "1.9.8: pooled half-normal; doubled slope reference; exchangeable initial seasonal cycle.",
   "analysis": "joint",
   "data": {
     "series": [
@@ -46,9 +46,9 @@
       null
     ],
     "innovation_sd": {
-      "level": 0.01,
-      "trend": 0.0002,
-      "season": 0.01
+      "level": 0.1,
+      "trend": 0.002,
+      "season": 0.1
     },
     "shared_shrinkage": {
       "scale_parameterization": "normal_sd",
@@ -63,10 +63,10 @@
     "seasonal_initial_basis": "orthonormal"
   },
   "mcmc": {
-    "draws": 1000,
+    "draws": 2000,
     "warmup": 1000,
     "chains": 2,
-    "seed": 19601,
+    "seed": 19801,
     "progress": true,
     "progress_every": 100,
     "chain_workers": 2
@@ -79,8 +79,8 @@
       "mh_steps": 1
     }
   },
-  "seed": 19602,
-  "output": "results/serra_1961/reference",
+  "seed": 19802,
+  "output": "results/serra_198/reference",
   "forecast_horizon": 120,
   "forecast_draws": 50000,
   "credible_interval": 0.95,
@@ -166,9 +166,9 @@
   "calibration": {
     "convention": "half_normal_hyperprior_scale",
     "reference_sd": {
-      "level": 0.01,
-      "trend": 0.0002,
-      "season": 0.01,
+      "level": 0.1,
+      "trend": 0.002,
+      "season": 0.1,
       "initial_slope": 0.01
     },
     "initial_slope_variance": 0.0001,

@@ -5,9 +5,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from bucex.plotting.style import publication_style, save_figure
 
-FAMILIES = [('half_slope', 'HN slope 0.0001', '#7ba591'),
-            ('reference', 'HN slope 0.0002', '#24658a'),
-            ('double_slope', 'HN slope 0.0004', '#a44839'),
+FAMILIES = [('half_slope', 'HN slope 0.001', '#7ba591'),
+            ('reference', 'HN slope 0.002', '#24658a'),
+            ('double_slope', 'HN slope 0.004', '#a44839'),
             ('slope_1e3', 'HN slope 0.001', '#78618c')]
 
 
@@ -19,7 +19,8 @@ def build(directory):
     families=FAMILIES
     if focused:
         from research.seasonal.sweetspot_plan import cells
-        reference_level=[c for c in cells() if c['A_level']==.01]
+        grid=cells();reference=next(c for c in grid if c['name']=='reference')
+        reference_level=[c for c in grid if c['A_level']==reference['A_level'] and c['calibration_kind']=='grid']
         colors=plt.cm.viridis(np.linspace(.08,.9,len(reference_level)))
         families=[(c['name'],f"Aβ={c['A_slope']:g}",color) for c,color in zip(reference_level,colors)]
     with publication_style(overrides={'font.size': 10, 'axes.labelsize': 10,
@@ -46,11 +47,11 @@ def build(directory):
         save_figure(fig, output/'prior_components_30y', formats=('png', 'pdf'), close=True)
 
         cases = [('half_level','Level × 0.5'),('double_level','Level × 2'),
-                 ('half_slope','Slope 0.0001'),('reference','Slope 0.0002'),
-                 ('double_slope','Slope 0.0004'),('slope_1e3','Slope 0.001'),
+                 ('half_slope','Slope 0.001'),('reference','Slope 0.002'),
+                 ('double_slope','Slope 0.004'),('slope_1e3','Slope 0.001'),
                  ('seasonal_5e2','Season 0.05'),('seasonal_1e1','Season 0.10')]
         if focused:
-            cases=[(c['name'],f"Aα={c['A_level']:g}, Aβ={c['A_slope']:g}") for c in cells()]
+            cases=[(c['name'],f"Aα={c['A_level']:g}, Aβ={c['A_slope']:g}, Aγ={c['A_season']:g}") for c in cells()]
         cases = [(v, lab) for v, lab in cases if v in set(table.variant)]
         if cases:
             fig, axes = plt.subplots(1, 3, figsize=(11.5, max(5.2,.39*len(cases))), sharey=True, constrained_layout=True)

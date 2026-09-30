@@ -1,3 +1,29 @@
+# 1.9.8
+
+- Broader 3×3 half-normal level/slope grid, seasonal reference 0.1 and central 0.05/0.2 checks.
+- Matched private full-record fits for all 11 calibrations; private reference validation at five origins.
+- Screen budget 2 chains × (1,000 warmup + 2,000 retained); reproducible variant-specific seeds.
+- Correct focused private-bundle dispatch and collection of all six response reports.
+- Disjoint HPC/BIOBOT batches, separate private array cap, versioned results roots.
+- Separate 3×3 grid heatmaps, seasonal comparisons, pooling comparisons and scale diagnostics.
+- Preserve exact GIG half-normal updates and independent initial-rate priors.
+
+# 1.9.7
+
+- Replace the half-normal hierarchy's log-scale slice update with a direct GIG
+  Gibbs draw of the squared prior scale, using all active response coefficients.
+- Apply the same update to optional individual half-normal hierarchies and
+  hierarchically specified initial slopes. The reference initial slopes retain
+  their fixed normal priors.
+- Record `shrinkage_scale_update="gig"` and per-component GIG draw counts in fit
+  archives. Other hyperprior families retain their slice updates.
+- Preserve scientific settings, chain budgets, grids and HPC dispatch fixes;
+  use versioned `serra_197` output roots.
+- Validate conditional draws against numerical integration, tiny coefficients,
+  mixed Gaussian/GEV fits, archive/restart and parallel RNG reproducibility.
+
+---
+
 # 1.9.6.1
 
 The half-normal reference now has slope scale 0.0002. A 3×4 level/slope grid includes

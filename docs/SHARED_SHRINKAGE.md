@@ -1,5 +1,8 @@
 # Shared and independent shrinkage in 1.9.4
 
+This is the historical lognormal specification. The current half-normal
+reference and its GIG updates are described in [GIG_UPDATES_197.md](GIG_UPDATES_197.md).
+
 For each component c (level, slope or seasonal), the shared model uses
 
     log(tau_c / a_c) ~ Normal(0, w^2)

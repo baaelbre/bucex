@@ -1,19 +1,9 @@
-# Seasonal workflow — 1.9.6.1
+# Seasonal workflow — 1.9.8
 
-See [the launch guide](../../BUCEX-1.9.6.1-commands.md) for the focused joint
-level/slope study. `config/main.json` preserves the 1.9.6 statistical reference;
-`config/sweetspot.json` declares the new grid, origins and descriptive tolerances.
+See [the command guide](../../BUCEX-1.9.8-commands.md).
 
-- `sweetspot_hpc`: 25 full-record fits and 50 earlier-origin hindcasts.
-- `sweetspot_validation`: 75 recent-origin hindcasts for BIOBOT.
-- `sweetspot`: all 150 fits, when running the entire study on one host.
-- `sweetspot_posterior` and `sweetspot_long`: the two parts of the HPC batch.
+`config/sweetspot.json` declares the 3×3 level–slope grid and the central seasonal checks. `sweetspot_plan.py` creates 11 shared calibrations and 11 matched private variants. `job_plan.py` maps these to disjoint host batches. `jobs.py --verify` checks models, folds and priors; `probe.py` runs short sampler/report checks on the compute host.
 
-Use `jobs --verify` for configurations/folds and `overnight --dry-run` for the
-resource-bounded local queue. The focused launchers keep the legacy `all` suite
-separate. Do not run overlapping queues on the same results root.
+The focused `sweetspot` batch contains 162 fits. `sweetspot_hpc` contains 111, and `sweetspot_validation` contains 51. Private full-record fits cover the whole grid; private validation covers the reference at five origins.
 
-`finish` builds the HTML, figures and compact evidence ZIP. `sweetspot_report`
-combines disjoint host exports using `--other-root`. Scientific settings, source
-and data must match; output paths may differ. Completed fits retain numerical
-flags. Screen and paper outputs use separate tier directories.
+Reports are built by `sweetspot_report.py`; partial or numerically flagged fits cannot pass a stability gate. Archive compatibility APIs and the older general-purpose batches are retained.

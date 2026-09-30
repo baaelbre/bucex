@@ -318,6 +318,7 @@ def sample_marginal_posterior(y, compiled, priors, plan, *, mcmc, laplace, dates
                   "hierarchical_initial_slopes": bool(priors.shrinkage and "initial_slope" in priors.shrinkage.anchors),
                   "shared_shrinkage": asdict(priors.shrinkage) if shared is not None and shared.scope == "shared" else None,
                   "independent_shrinkage": asdict(priors.shrinkage) if shared is not None and shared.scope == "independent" else None,
+                  "shrinkage_scale_update": None if shared is None else shared.update_method,
                   "shared_shrinkage_members": {} if shared is None or shared.scope == "independent" else {c: [s.name for s in members] for c, members in shared.members.items()},
                   "innovation_marginal_prior": "normal scale mixture" if priors.shrinkage and priors.shrinkage.medians else "declared channel priors",
                   "joint_model": len(model.channels) > 1, "joint_likelihood": len(model.channels) > 1,

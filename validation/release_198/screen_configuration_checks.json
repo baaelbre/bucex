@@ -1,0 +1,30 @@
+{
+  "counts": {
+    "all": 100,
+    "block_validation": 6,
+    "comparison": 3,
+    "core": 13,
+    "deferred": 30,
+    "experiments": 31,
+    "influence": 0,
+    "monthly": 1,
+    "posterior": 31,
+    "pre2019": 6,
+    "reference": 1,
+    "sensitivity": 30,
+    "sweetspot": 162,
+    "sweetspot_hpc": 111,
+    "sweetspot_long": 34,
+    "sweetspot_posterior": 77,
+    "sweetspot_validation": 51,
+    "validation": 56,
+    "validation10": 0
+  },
+  "experiment_fits": 31,
+  "experiments": 26,
+  "matched_marginal_prior_pairs": 96,
+  "scope": "All specifications, folds, CPU plans and exact independent/shared marginal-prior matching; no MCMC.",
+  "status": "configuration_checks_passed",
+  "tier": "screen",
+  "version": "1.9.8"
+}

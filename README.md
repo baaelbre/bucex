@@ -1,31 +1,26 @@
-# BUCEX 1.9.6.1
+# BUCEX 1.9.8
 
 Bayesian structural time-series models for temperature averages and extremes.
-This patch adds a focused joint level–slope calibration study while preserving the statistical model from 1.9.6.
+This release tests a broader half-normal calibration region and matched pooled/private fits.
 
-Start with **[BUCEX-1.9.6.1-commands.md](BUCEX-1.9.6.1-commands.md)** for complete BIOBOT
-and VSC instructions, settings, job counts and output locations.
+Start with [BUCEX-1.9.8-commands.md](BUCEX-1.9.8-commands.md) for the settings, screen commands, CPU budgets, logs and results.
 
-- Reference innovation scales: `(0.01, 0.0002, 0.01)` for level, slope and season.
-- Separate initial slopes: `Normal(0, 0.01²)`; initial level SD 10 °C.
-- Initial seasonal orthonormal contrast SD 10 °C, with exchangeable seasonal effects.
-- New 25-cell joint grid: 75 fits on Gallade and 75 on BIOBOT.
-- Two parallel chains per screen fit, 1,000 warmup + 1,000 retained iterations each.
-- Focused 30-year hindcasts (truncated at the available data), risk and 30-year forecasts.
-- Neighbouring-cell stability checks, pointwise 95% intervals, paired-draw diagnostics and an automatic HTML review.
-- The previous 100-fit `all` suite remains available separately; do not combine it with the focused grid unless intended.
-- No copula, heavy-tailed hyperprior or leave-one-response-out jobs in the active plan.
-- Four chains and longer budgets for the separate paper tier.
+- Core 3×3 grid: A_alpha = 0.05, 0.1, 0.2; A_beta = 0.001, 0.002, 0.004; A_gamma = 0.1.
+- Reference (0.1, 0.002, 0.1); seasonal checks 0.05 and 0.2 at the central level/slope setting.
+- All 11 calibrations have shared and private full-record analyses with matched one-response priors. Private fits retain shrinkage but do not pool scales.
+- Two screen chains per fit, 1,000 warmup and 2,000 retained draws each.
+- Gallade: 111 fits in 46 groups. BIOBOT: 51 recent-origin validation fits. The batches are disjoint.
+- Initial rates remain independent, SD 0.01 per season. Initial level/seasonal contrast SDs remain 10 °C.
+- Identity copula; half-normal scale priors; exact GIG updates retained from 1.9.7.
+- Thirty-year forecasts, truncated held-out windows, 95% trajectory intervals and 90/95/99% validation coverage.
+- Automatic title-free figures, separate grid/seasonal/pooling comparisons and explicit numerical gates.
 
 ```bash
 python -m pip install -e '.[plot,test]'
 python -m research.seasonal.jobs --verify --tier screen
-python -m research.seasonal.jobs --list --tier screen --batch all
+python -m research.seasonal.jobs --list --tier screen --batch sweetspot
 ```
 
-Configuration checks compile all models and verify folds and matched marginal priors.
-They do not establish posterior convergence. Screen outputs preserve numerical flags.
+Verification compiles the models, checks folds/resources and exact marginal prior matching. It does not establish convergence. Short compute probes exercise both pooled and private Gaussian/GEV fits. See `RELEASE_VALIDATION.json` for release checks and [the GIG notes](docs/GIG_UPDATES_197.md) for the sampler derivation.
 
-The source includes the bundled daily record, the `bucex` API, research runners,
-Slurm/PBS launchers, prior simulations, tests and reusable figure/report builders.
-See `RELEASE_NOTES.md` for changes and `RELEASE_VALIDATION.json` for release checks.
+The legacy `all`, `deferred` and explicit experimental variants remain available for compatibility; they are not included by the two focused launchers. The preceding 1.9.7 calibration files are archived under `research/seasonal/config/history_197/`. Use a fresh results root with this source.

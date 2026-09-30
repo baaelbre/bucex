@@ -1,4 +1,4 @@
-"""BUCEX 1.9.6.1 pooled half-normal reference and parallel paper experiments."""
+"""BUCEX 1.9.8 pooled half-normal reference and parallel paper experiments."""
 from __future__ import annotations
 import argparse
 from copy import deepcopy
@@ -19,7 +19,7 @@ from research.monthly.run import run as fit_full
 from research.monthly.validate import validate
 from research.seasonal.job_plan import PROJECT, CONFIG, BATCHES, RESOURCES, BASELINES, plan, variant_entries
 
-ROOT = Path('results/serra_1961')
+ROOT = Path('results/serra_198')
 
 @dataclass(frozen=True)
 class Task:
@@ -97,12 +97,12 @@ def task_config(task,tier):
         c['mcmc'].update(budget['block_mcmc'])
         c['validation'].update(training_ends=[task.origin],horizon=task.horizon*(3 if task.frequency=='monthly' else 1))
     c['data']['series']=list(task.series)
-    seed_key=f'{task.channel}/{task.kind}/{task.origin}/{task.frequency}/{tier}'.encode()
+    seed_key=f'198/{task.variant}/{task.channel}/{task.kind}/{task.origin}/{task.frequency}/{tier}'.encode()
     seed=int.from_bytes(hashlib.sha256(seed_key).digest()[:4],'little')
     c['mcmc']['seed']=seed;c['seed']=(seed+1)%(2**32)
     c['credible_interval']=.95;c['variant']=deepcopy(entry)
-    from research.seasonal.sweetspot_plan import cells, specification
-    cell=next((v for v in cells() if v['name']==task.variant),None)
+    from research.seasonal.sweetspot_plan import study_variants, specification
+    cell=next((v for v in study_variants() if v['name']==task.variant),None)
     if cell is not None and task.frequency=='seasonal':
         c['sweetspot_diagnostics']=True
         c['sweetspot_cell']={key:cell[key] for key in ('A_level','A_slope','A_season')}
@@ -111,7 +111,7 @@ def task_config(task,tier):
     c['experiment']=dict(task_id=task.id,group_id=task.group_id,tier=tier,scope=task.scope,
         batch_kind=task.kind,channel=task.channel,series=list(task.series),
         design=task.design if task.kind=='forecast' else task.kind,
-        frequency=task.frequency,reference='1.9.6.1: pooled half-normal innovation scales; separately calibrated initial rates')
+        frequency=task.frequency,reference='1.9.8: pooled half-normal innovation scales; separately calibrated initial rates')
     if c.get('copula') is not None or c.get('contrasts') is not None:
         raise ValueError('This comparison has independent residuals and no historical contrasts.')
     hierarchy=c['priors'].get('shared_shrinkage') or c['priors'].get('independent_shrinkage')

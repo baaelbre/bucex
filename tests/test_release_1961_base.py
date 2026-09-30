@@ -22,17 +22,17 @@ def reference():
 
 def test_reference_and_complete_hn_only_grid():
     c=reference();p=c['priors']
-    assert p['innovation_sd']==dict(level=.01,trend=.0002,season=.01)
+    assert p['innovation_sd']==dict(level=.1,trend=.002,season=.1)
     assert p['initial_slope_sd']==.01 and p['baseline_sd']==10
     assert p['seasonal_initial_sd']==10 and p['seasonal_initial_basis']=='orthonormal'
-    assert c['mcmc']['warmup']==c['mcmc']['draws']==1000 and c['mcmc']['chains']==2
+    assert c['mcmc']['warmup']==1000 and c['mcmc']['draws']==2000 and c['mcmc']['chains']==2
     grid=set()
-    for t in tasks('posterior'):
+    for t in tasks('sweetspot_posterior'):
         cfg=task_config(t,'screen');prior=cfg['priors']
         h=prior.get('shared_shrinkage') or prior.get('independent_shrinkage')
         assert h['hyperprior']=='half_normal' and not h['pool_initial_slope']
-        if t.study=='structural':grid.add((prior['innovation_sd']['level'],prior['innovation_sd']['trend']))
-    assert {(a,b) for a in (.005,.01,.02) for b in (.0001,.0002,.0004,.001)}<=grid
+        if t.scope=='shared' and cfg['variant']['calibration_kind']=='grid':grid.add((prior['innovation_sd']['level'],prior['innovation_sd']['trend']))
+    assert {(a,b) for a in (.05,.1,.2) for b in (.001,.002,.004)}<=grid
     assert len(tasks('all'))==100
 
 

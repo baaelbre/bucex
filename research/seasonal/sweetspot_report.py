@@ -14,7 +14,7 @@ import numpy as np
 import pandas as pd
 import bucex as bx
 from research.seasonal.jobs import ROOT, tasks, task_config, fingerprint, result_directory
-from research.seasonal.sweetspot_plan import BATCHES, cells, specification, calibration_rows
+from research.seasonal.sweetspot_plan import BATCHES, cells, study_variants, specification, calibration_rows
 
 CHANNELS = ('TXm','TNm','TXx','TXn','TNx','TNn')
 
@@ -90,10 +90,10 @@ def compare_pair(left, right, *, tolerances=None):
     return rows
 
 
-def rectangles(pair_rows):
+def rectangles(pair_rows, scope="shared"):
     """Check all six pairs in each 2x2 rectangle, including both diagonals."""
     if pair_rows.empty:return pd.DataFrame()
-    spec=specification();mapping={(c['A_level'],c['A_slope']):c['name'] for c in cells()}
+    spec=specification();mapping={(c['A_level'],c['A_slope']):c['name'] for c in study_variants() if c['scope']==scope and c['calibration_kind']=='grid'}
     lookup={tuple(sorted((a,b))):g for (a,b),g in pair_rows.groupby(['left','right'])}
     rows=[]
     for a0,a1 in zip(spec['level_scales'][:-1],spec['level_scales'][1:]):
@@ -101,7 +101,7 @@ def rectangles(pair_rows):
             variants=[mapping[a,b] for a in (a0,a1) for b in (b0,b1)]
             groups=[lookup.get(tuple(sorted(p))) for p in combinations(variants,2)]
             complete=all(g is not None and set(g.channel)==set(CHANNELS) and len(g)==6 for g in groups)
-            row=dict(A_level_lower=a0,A_level_upper=a1,A_slope_lower=b0,A_slope_upper=b1,
+            row=dict(scope=scope,A_level_lower=a0,A_level_upper=a1,A_slope_lower=b0,A_slope_upper=b1,
                 cells=';'.join(variants),complete=complete)
             for window in ('history','recent'):
                 row[window+'_candidate']=bool(complete and all(g[window+'_stable'].all() for g in groups))
@@ -123,24 +123,47 @@ def _tables(directory):
 
 def scale_learning(posterior):
     from scipy.stats import halfnorm
-    rows=[];correlations=[];mapping={c['name']:c for c in cells()}
+    rows=[];correlations=[];mapping={c['name']:c for c in study_variants()}
     for name,e in posterior.items():
-        cell=mapping[name];draws=read(e['directory']/'sweetspot_draws.csv.gz')
-        for component,key in [('level','A_level'),('slope','A_slope'),('seasonal','A_season')]:
-            column='tau_'+component
-            if column not in draws:continue
-            lo,med,hi=draws[column].quantile([.025,.5,.975])
-            plo,pmed,phi=halfnorm.ppf([.025,.5,.975],scale=cell[key])
-            rows.append(dict(variant=name,A_level=cell['A_level'],A_slope=cell['A_slope'],component=component,
-                prior_lower=plo,prior_median=pmed,prior_upper=phi,posterior_lower=lo,posterior_median=med,
-                posterior_upper=hi,width_ratio=(hi-lo)/(phi-plo),numerically_passed=e['passed']))
-        corr=read(e['directory']/'sweetspot_correlations.csv')
-        if not corr.empty:correlations.append(corr.assign(variant=name,A_level=cell['A_level'],A_slope=cell['A_slope'],numerically_passed=e['passed']))
+        cell=mapping[name]
+        for channel,directory in e['directories']:
+            draws=read(directory/'sweetspot_draws.csv.gz')
+            metadata=dict(variant=name,scope=cell['scope'],scale_owner=channel,
+                A_level=cell['A_level'],A_slope=cell['A_slope'],A_season=cell['A_season'],
+                numerically_passed=e['passed'])
+            for component,key in [('level','A_level'),('slope','A_slope'),('seasonal','A_season')]:
+                column='tau_'+component
+                if column not in draws:continue
+                lo,med,hi=draws[column].quantile([.025,.5,.975])
+                plo,pmed,phi=halfnorm.ppf([.025,.5,.975],scale=cell[key])
+                rows.append(dict(**metadata,component=component,
+                    prior_lower=plo,prior_median=pmed,prior_upper=phi,posterior_lower=lo,
+                    posterior_median=med,posterior_upper=hi,width_ratio=(hi-lo)/(phi-plo)))
+            corr=read(directory/'sweetspot_correlations.csv')
+            if not corr.empty:correlations.append(corr.assign(**metadata))
     return pd.DataFrame(rows),pd.concat(correlations,ignore_index=True) if correlations else pd.DataFrame()
 
 
+def aggregate_posterior(parts):
+    """Keep all six private reports; an incomplete bundle cannot pass a gate."""
+    posterior={}
+    for name,items in parts.items():
+        owners=[owner for owner,e in items]
+        if len(owners)!=len(set(owners)):raise ValueError('Duplicate posterior response: '+name)
+        expected={'joint'} if items[0][1]['scope']=='shared' else set(CHANNELS)
+        entry={}
+        for key in ('paths','forecasts','allocation','local','risk'):
+            frames=[e[key] for owner,e in items if not e[key].empty]
+            entry[key]=pd.concat(frames,ignore_index=True) if frames else pd.DataFrame()
+        entry.update(passed=set(owners)==expected and all(e['passed'] for owner,e in items),
+            complete=set(owners)==expected,scope=items[0][1]['scope'],
+            directories=[(owner,e['directory']) for owner,e in items])
+        posterior[name]=entry
+    return posterior
+
+
 def load_evidence(roots,tier,batch):
-    records=[];posterior={};validation=[]
+    records=[];parts={};validation=[]
     for task in tasks(batch,tier=tier):
         identity=dict(bucex_version=bx.__version__,**fingerprint(task_config(task,tier)))
         found=[]
@@ -155,7 +178,7 @@ def load_evidence(roots,tier,batch):
             if any(record.get(k)!=v for k,v in identity.items()):status='provenance_mismatch'
             numerical=record.get('numerical_status','unknown')
         passed=numerical=='passed_numerical_checks' and record.get('final_check')!='failed'
-        item=dict(task_id=task.id,kind=task.kind,variant=task.variant,origin=task.origin,
+        item=dict(task_id=task.id,kind=task.kind,variant=task.variant,scope=task.scope,channel=task.channel,origin=task.origin,
             status=status,numerical_status=numerical,numerically_passed=passed,
             root=str(directory.parent.parent) if directory else '')
         if status=='completed':
@@ -166,12 +189,12 @@ def load_evidence(roots,tier,batch):
                 extra=bx.load_config(diagnostics).get('status') if diagnostics.exists() else 'missing'
                 passed=passed and extra=='passed_numerical_checks'
                 item['numerically_passed']=passed;item['sweetspot_numerical_status']=extra
-                entry.update(passed=passed,directory=report)
-                posterior[task.variant]=entry
+                entry.update(passed=passed,directory=report,scope=task.scope)
+                parts.setdefault(task.variant,[]).append((task.channel,entry))
             else:
                 validation.append(dict(task=task,report=report,passed=passed))
         records.append(item)
-    return pd.DataFrame(records),posterior,validation
+    return pd.DataFrame(records),aggregate_posterior(parts),validation
 
 
 def validation_tables(entries):
@@ -212,13 +235,14 @@ def validation_tables(entries):
     return summaries
 
 
-def figures(posterior,out):
+def figures(posterior,out,scope="shared"):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
-    spec=specification();grid=cells();result=[]
+    spec=specification();grid=[c for c in study_variants() if c['scope']==scope and c['calibration_kind']=='grid'];result=[]
     def save(fig,name,caption):
-        fig.savefig(out/name,bbox_inches='tight',dpi=180);plt.close(fig);result.append((out/name,caption))
+        name=scope+'_'+name
+        fig.savefig(out/name,bbox_inches='tight',dpi=180);plt.close(fig);result.append((out/name,scope.capitalize()+': '+caption))
     with bx.publication_style(style='manuscript',dpi=180):
         for target,unit in [('level','°C'),('rate','°C/decade')]:
             for a in spec['level_scales']:
@@ -274,6 +298,42 @@ def figures(posterior,out):
     return result
 
 
+def comparison_figures(posterior,out):
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    variants={c['name']:c for c in study_variants()};plots=[]
+    panels=[('pooling_reference',['reference','independent_reference'])]
+    for scope in ('shared','independent'):
+        panels.append(('seasonal_'+scope,[c['name'] for c in study_variants() if c['scope']==scope and
+            (c['calibration_kind']=='seasonal' or c['setting']=='reference')]))
+    with bx.publication_style(style='manuscript',dpi=180):
+        for label,names in panels:
+            names=[name for name in names if name in posterior]
+            if not names:continue
+            for target,unit in [('level','°C'),('rate','°C/decade')]:
+                fig,axes=plt.subplots(3,2,figsize=(10,8),sharex=True)
+                for ax,ch in zip(axes.flat,CHANNELS):
+                    for i,name in enumerate(names):
+                        e=posterior[name];f=e['paths']
+                        if f.empty:continue
+                        f=f[(f.channel==ch)&(f.target==target)].sort_values('time')
+                        if f.empty:continue
+                        legend=variants[name]['scope'] if label.startswith('pooling') else f"Aγ={variants[name]['A_season']:g}"
+                        color=plt.cm.viridis(.15+.7*i/max(1,len(names)-1));x=pd.to_datetime(f.time)
+                        ax.plot(x,f['median'],color=color,lw=1.3,ls='-' if e['passed'] else '--',label=legend)
+                        ax.fill_between(x,f.lower,f.upper,color=color,alpha=.09,linewidth=0)
+                    ax.set_ylabel(ch+' ('+unit+')');ax.axhline(0,lw=.5,color='.65')
+                for ax in axes[-1]:ax.set_xlabel('Year')
+                handles,labels=axes.flat[0].get_legend_handles_labels()
+                if handles:fig.legend(handles,labels,loc='lower center',ncol=3,frameon=False)
+                fig.tight_layout(rect=(0,.04,1,1));path=out/(label+'_'+target+'.png')
+                fig.savefig(path,dpi=180,bbox_inches='tight');plt.close(fig)
+                caption=('Matched pooled/private reference' if label.startswith('pooling') else 'Seasonal calibration at Aα=0.1, Aβ=0.002: '+label.split('_')[1])
+                plots.append((path,caption+'. Medians and pointwise 95% intervals; dashed curves carry numerical flags.'))
+    return plots
+
+
 def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None):
     out=Path(output) if output else Path(root)/tier/'collected'/batch
     out.mkdir(parents=True,exist_ok=True)
@@ -281,16 +341,24 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
     records.to_csv(out/'tasks.csv',index=False)
     pd.DataFrame(calibration_rows()).to_csv(out/'grid_calibration.csv',index=False)
     allpairs=[]
+    variant_map={c['name']:c for c in study_variants()}
     for left,right in combinations(sorted(posterior),2):
-        for row in compare_pair(posterior[left],posterior[right]):allpairs.append(dict(left=left,right=right,**row))
+        a,b=variant_map[left],variant_map[right]
+        if a['scope']!=b['scope'] and a['setting']!=b['setting']:continue
+        kind='pooling' if a['scope']!=b['scope'] else 'seasonal' if a['calibration_kind']=='seasonal' or b['calibration_kind']=='seasonal' else 'grid'
+        for row in compare_pair(posterior[left],posterior[right]):allpairs.append(dict(left=left,right=right,comparison=kind,**row))
     pairs=pd.DataFrame(allpairs);pairs.to_csv(out/'all_pairwise_stability.csv',index=False)
-    regions=rectangles(pairs);regions.to_csv(out/'stability_regions.csv',index=False)
+    regions=pd.concat([rectangles(pairs,scope) for scope in ('shared','independent')],ignore_index=True);regions.to_csv(out/'stability_regions.csv',index=False)
+    pooling=pairs[pairs.comparison=='pooling'] if not pairs.empty else pd.DataFrame()
+    seasonal=pairs[pairs.comparison=='seasonal'] if not pairs.empty else pd.DataFrame()
+    pooling.to_csv(out/'matched_pooling_comparisons.csv',index=False)
+    seasonal.to_csv(out/'seasonal_comparisons.csv',index=False)
     summaries=validation_tables(validation)
     for name,frame in summaries.items():frame.to_csv(out/(name+'.csv'),index=False)
     learning,correlations=scale_learning(posterior)
-    learning.to_csv(out/'shared_scale_learning.csv',index=False)
+    learning.to_csv(out/'scale_learning.csv',index=False)
     correlations.to_csv(out/'allocation_correlations.csv',index=False)
-    plots=figures(posterior,out)
+    plots=figures(posterior,out,'shared')+figures(posterior,out,'independent')+comparison_figures(posterior,out)
     status=dict(version=bx.__version__,tier=tier,batch=batch,expected=len(records),completed=int(records.status.eq('completed').sum()),
         numerically_passed=int((records.status.eq('completed')&records.numerically_passed).sum()),
         posterior_cells=len(posterior),validation_fits=len(validation),
@@ -302,7 +370,7 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
     def table(f):return '<p>No results available yet.</p>' if f.empty else f.to_html(index=False,border=0,float_format=lambda x:f'{x:.4g}')
     text=[f'<h1>BUCEX {escape(bx.__version__)} · joint level–slope calibration</h1>',
         f'<p>{status["completed"]}/{len(records)} fits completed; {status["numerically_passed"]} passed the declared numerical checks. '
-        f'{len(posterior)}/25 full-record cells available. Tier: <strong>{escape(tier)}</strong>.</p>',
+        f'{len(posterior)}/22 full-record calibration/scope combinations have at least one response available. Tier: <strong>{escape(tier)}</strong>.</p>',
         '<p>This study keeps both level and slope innovations. It asks whether a region of half-normal scale settings yields stable trajectories, uncertainty and forecasts. '
         'It does not select the smallest CRPS or prove that estimates are independent of priors. Hyperpriors remain proper and calibrated; widening them is an experiment, not an assumed remedy.</p>',
         '<h2>What would count as a stable region?</h2>',
@@ -325,7 +393,9 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
         encoded=base64.b64encode(path.read_bytes()).decode()
         text.append(f'<figure><img src="data:image/png;base64,{encoded}" alt="{escape(caption)}"><figcaption>{escape(caption)}</figcaption></figure>')
     if not plots:text.append('<p>Trajectory figures will appear as full-record fits complete.</p>')
-    text.extend(['<h2>Shared scales and allocation correlations</h2>',
+    text.extend(['<h2>Matched pooling comparisons</h2>', '<p>The full record uses all 11 calibrations in both scopes. Private fits retain half-normal shrinkage with separate scales for each response; they are not unregularized fits. One-response priors match exactly. Private validation covers the reference at all five origins. A partial private bundle cannot pass a stability check.</p>',table(pooling),
+        '<h2>Seasonal scale checks</h2>', '<p>The 3×3 level–slope grid fixes Aγ=0.1. Checks at Aγ=0.05 and 0.2 use Aα=0.1 and Aβ=0.002. This is 11 settings, not a 3×3×3 factorial. Grid heatmaps exclude the two seasonal checks; their comparisons are shown separately.</p>',table(seasonal),
+        '<h2>Shared and private scales and allocation correlations</h2>',
         '<p>The scale table contrasts analytic half-normal prior intervals with posterior intervals. '
         'A width ratio below one means the posterior 95% interval is narrower; this alone does not establish robustness or identify the level/slope decomposition. '
         'Compare posterior movement across cells and the trajectory/forecast checks. Correlations use paired draws; a small linear correlation does not rule out nonlinear dependence.</p>',
@@ -342,12 +412,12 @@ def build(root=ROOT,*,tier='screen',batch='sweetspot',other_roots=(),output=None
     for name in ('paired_crps','crps','coverage'):
         text.extend([f'<h3>{escape(name.replace("_"," "))}</h3>',table(summaries.get(name,pd.DataFrame()))])
     text.extend(['<h2>Completion and numerical checks</h2>',table(records),
-        '<p>Screen: two chains, 1,000 warmup and 1,000 retained draws per chain. These are screening budgets, not a promise of adequate effective sample sizes. '
+        '<p>Screen: two chains, 1,000 warmup and 2,000 retained draws per chain. These are screening budgets, not a promise of adequate effective sample sizes. '
         'Rerun promising regions with the paper budget and assess slope-specific diagnostics before drawing conclusions. '
         'The full-record initial seasonal contrast SD stays at the 1.9.6 value of 10; initial-rate SD stays 0.01 per season. '
-        'The seasonal shrinkage hyperprior scale stays 0.01. Residual independence is unchanged.</p>'])
+        'The seasonal shrinkage hyperprior scale is 0.1 in the grid, with 0.05 and 0.2 checks at its centre. Initial rates remain separate. Residual independence is unchanged.</p>'])
     html='<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+\
-        '<title>BUCEX 1.9.6.1 calibration review</title><style>body{font:16px/1.6 system-ui,sans-serif;color:#253441;max-width:1180px;margin:40px auto;padding:0 24px}h1,h2{color:#24658a}table{display:block;overflow:auto;border-collapse:collapse;font-size:12px;margin:20px 0;max-height:620px}td,th{padding:6px 9px;border-bottom:1px solid #dce3e7;text-align:left;white-space:nowrap}th{background:#edf3f6;position:sticky;top:0}img{width:100%;height:auto}figure{margin:30px 0}figcaption{font-size:14px;color:#53616a}p{max-width:1000px}</style><body>'+''.join(text)+'</body></html>'
+        '<title>BUCEX 1.9.8 calibration review</title><style>body{font:16px/1.6 system-ui,sans-serif;color:#253441;max-width:1180px;margin:40px auto;padding:0 24px}h1,h2{color:#24658a}table{display:block;overflow:auto;border-collapse:collapse;font-size:12px;margin:20px 0;max-height:620px}td,th{padding:6px 9px;border-bottom:1px solid #dce3e7;text-align:left;white-space:nowrap}th{background:#edf3f6;position:sticky;top:0}img{width:100%;height:auto}figure{margin:30px 0}figcaption{font-size:14px;color:#53616a}p{max-width:1000px}</style><body>'+''.join(text)+'</body></html>'
     (out/'sweetspot_review.html').write_text(html)
     print(json.dumps(status,indent=2),flush=True)
     return out

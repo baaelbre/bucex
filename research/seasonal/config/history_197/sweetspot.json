@@ -1,0 +1,43 @@
+{
+  "_comment": "Focused level/slope calibration study. Fixed grid; no automatic prior optimization. All other 1.9.6 scientific settings stay fixed.",
+  "level_scales": [
+    0.005,
+    0.01,
+    0.02,
+    0.05,
+    0.1
+  ],
+  "slope_scales": [
+    0.0001,
+    0.0002,
+    0.0005,
+    0.001,
+    0.002
+  ],
+  "recent_origins": [
+    "2010-11",
+    "2015-11",
+    "2020-11"
+  ],
+  "long_origins": [
+    "1990-11",
+    "2000-11"
+  ],
+  "validation_horizon": 120,
+  "recent_years": 30,
+  "prior_draws_screen": 1000,
+  "prior_draws_paper": 5000,
+  "tolerances": {
+    "level_median_C": 0.1,
+    "level_interval_C": 0.2,
+    "rate_median_C_per_decade": 0.05,
+    "rate_interval_C_per_decade": 0.1,
+    "forecast_level_median_C": 0.2,
+    "forecast_level_interval_C": 0.4,
+    "forecast_observation_median_C": 0.2,
+    "forecast_observation_interval_C": 0.5,
+    "forecast_risk_probability": 0.02,
+    "slope_variance_fraction": 0.1
+  },
+  "interpretation": "Tolerances are declared descriptive screening criteria, not significance tests or proof of prior independence. Require all six responses, complete neighboring cells and numerical checks. Screen candidates require longer confirmation. Predictive validation is assessed separately; no single CRPS winner is selected."
+}

@@ -1,14 +1,8 @@
-# Start here — BUCEX 1.9.5.1
+# Start here — BUCEX 1.9.8
 
-Read [BUCEX-1.9.5.1-commands.md](BUCEX-1.9.5.1-commands.md).
+Read [the screen command guide](BUCEX-1.9.8-commands.md).
 
-For BIOBOT, activate your working Python environment, select a fresh results
-root and launch `bash RUN_OVERNIGHT_BIOBOT.sh --tier both --batch all`. Use
-`--dry-run` first. The launcher checks all configurations and exercises the
-three hyperprior families before starting the resource-bounded queue.
+- Gallade: `bash RUN_SWEETSPOT_HPC.sh --dry-run`, then the same command without `--dry-run`.
+- BIOBOT: `bash RUN_SWEETSPOT_BIOBOT.sh --dry-run`, then the same command without `--dry-run` inside a persistent terminal session.
 
-The reference pools half-normal innovation-prior SDs across six summaries.
-Initial slopes keep separate fixed normal priors. There are 106 active fits
-per tier; optional unpooled comparisons are in `deferred`. See the guide for
-all priors, budgets, monitoring, automatic collection, exports and resumption.
-The full paper suite may take longer than one night.
+Set the Python environment and fresh results root first, as shown in the guide. The host batches are disjoint. The shared/private comparison keeps marginal priors matched; private fits still have shrinkage.

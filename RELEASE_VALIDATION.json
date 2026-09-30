@@ -1,45 +1,170 @@
 {
-  "version": "1.9.6.1",
-  "date": "2026-09-29T15:36:20.131264+00:00",
-  "basis": "Latest 1.9.6 source package; statistical model and reference priors retained.",
+  "version": "1.9.8",
+  "date": "2026-09-30T00:09:45.042618+00:00",
+  "status": "targeted_release_checks_passed",
+  "basis": "BUCEX 1.9.7 with exact GIG half-normal scale updates retained",
   "reference": {
-    "hyperprior": "half_normal",
-    "A_level": 0.01,
-    "A_slope": 0.0002,
-    "A_season": 0.01,
+    "A_level": 0.1,
+    "A_slope": 0.002,
+    "A_season": 0.1,
     "initial_rate_sd": 0.01,
     "initial_level_sd": 10,
     "initial_seasonal_contrast_sd": 10
   },
-  "focused_study": {
-    "cells": 25,
-    "full_record_fits": 25,
-    "held_out_fits": 125,
-    "hpc_fits": 75,
-    "biobot_fits": 75,
+  "design": {
+    "grid": "3x3",
+    "shared_calibrations": 11,
+    "private_calibrations": 11,
+    "full_record_fits": 77,
+    "hpc_fits": 111,
+    "biobot_fits": 51,
+    "total_fits": 162,
     "screen_chains": 2,
-    "warmup_per_chain": 1000,
-    "retained_per_chain": 1000
+    "screen_warmup": 1000,
+    "screen_draws": 2000
+  },
+  "runtime": {
+    "python": "3.12.14",
+    "numpy": "2.3.5",
+    "scipy": "1.17.0"
   },
   "checks": {
-    "selected_regressions": 29,
-    "failed": 0,
-    "python_311_syntax_files": 171,
-    "shell_syntax_files": 28,
-    "configurations": "All screen and paper models, folds and matched marginal priors verified.",
-    "startup": "Reference, narrowest and widest grid corners: two chains with 3 warmup and 8 retained draws; all passed operational checks.",
-    "validation": "2020-origin refit on 515 training blocks, 23 held-out seasons; two chains with 3 warmup and 8 retained draws; new diagnostics exported.",
-    "prior_simulations": "All 25 grid cells; 16 replications each and prior figures rendered (test budget only).",
-    "diagnostics": "Full-record stored tiny-fit archive processed for analytic variance allocation, local sensitivity, paired traces and numerical flags.",
-    "collection": "Two disjoint fixture roots merged into self-contained HTML; plots, tables and compact export checked; unconverged fixtures correctly flagged.",
-    "mathematical": "Local sensitivity identity checked by finite-difference weighting; variance partition checked analytically.",
-    "decision_logic": "Missing metrics, numerical flags and diagonal drift prevent stability passes; paired validation aligns origins/dates/horizons."
+    "selected_regressions": {
+      "tests": 86,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "startup": {
+      "host": "43928616fcb7",
+      "max_parallel": 2,
+      "note": "Startup smoke only; short chains do not establish convergence.",
+      "python": "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/bin/python",
+      "results": [
+        {
+          "exit_code": 0,
+          "scope": "shared",
+          "task_id": "posterior_ss_a5e2_b1e3"
+        },
+        {
+          "exit_code": 0,
+          "scope": "shared",
+          "task_id": "posterior_reference"
+        },
+        {
+          "exit_code": 0,
+          "scope": "shared",
+          "task_id": "posterior_ss_gamma_2e1"
+        },
+        {
+          "exit_code": 0,
+          "scope": "independent",
+          "task_id": "posterior_independent_reference_TXm"
+        },
+        {
+          "exit_code": 0,
+          "scope": "independent",
+          "task_id": "posterior_independent_reference_TXx"
+        }
+      ],
+      "status": "passed",
+      "version": "1.9.8"
+    },
+    "workflows": {
+      "validation": [
+        "shared",
+        "private_TXx",
+        "private_TXm"
+      ],
+      "prior_calibrations": 11,
+      "prior_draws": 40,
+      "figures": 18,
+      "python310_files": 171,
+      "shell_files": 29
+    },
+    "syntax": {
+      "python310_files": 171,
+      "shell_files": 29
+    },
+    "screen": {
+      "counts": {
+        "all": 100,
+        "block_validation": 6,
+        "comparison": 3,
+        "core": 13,
+        "deferred": 30,
+        "experiments": 31,
+        "influence": 0,
+        "monthly": 1,
+        "posterior": 31,
+        "pre2019": 6,
+        "reference": 1,
+        "sensitivity": 30,
+        "sweetspot": 162,
+        "sweetspot_hpc": 111,
+        "sweetspot_long": 34,
+        "sweetspot_posterior": 77,
+        "sweetspot_validation": 51,
+        "validation": 56,
+        "validation10": 0
+      },
+      "experiment_fits": 31,
+      "experiments": 26,
+      "matched_marginal_prior_pairs": 96,
+      "scope": "All specifications, folds, CPU plans and exact independent/shared marginal-prior matching; no MCMC.",
+      "status": "configuration_checks_passed",
+      "tier": "screen",
+      "version": "1.9.8"
+    },
+    "paper": {
+      "counts": {
+        "all": 100,
+        "block_validation": 6,
+        "comparison": 3,
+        "core": 13,
+        "deferred": 30,
+        "experiments": 31,
+        "influence": 0,
+        "monthly": 1,
+        "posterior": 31,
+        "pre2019": 6,
+        "reference": 1,
+        "sensitivity": 30,
+        "sweetspot": 162,
+        "sweetspot_hpc": 111,
+        "sweetspot_long": 34,
+        "sweetspot_posterior": 77,
+        "sweetspot_validation": 51,
+        "validation": 56,
+        "validation10": 0
+      },
+      "experiment_fits": 31,
+      "experiments": 26,
+      "matched_marginal_prior_pairs": 96,
+      "scope": "All specifications, folds, CPU plans and exact independent/shared marginal-prior matching; no MCMC.",
+      "status": "configuration_checks_passed",
+      "tier": "paper",
+      "version": "1.9.8"
+    },
+    "biobot": "Actual launcher dry-run with local 8-CPU reservation selected 51 tasks; production guide uses 48 CPUs on BIOBOT.",
+    "hpc": "Shared and private shell dispatch tests, all bundle-member mappings, separate array throttles and dependency commands.",
+    "wheel": {
+      "built": true,
+      "filename": "bucex-1.9.8-py3-none-any.whl",
+      "sha256": "244e24acea8a009a17fede8308b1c52e6c70b9194efe090542c43df0d498cd96"
+    }
+  },
+  "provenance": {
+    "config_sha256": "0d5f9ba30f6593205f548f63975f3c0f4142f814bf5f75bb1b31709cda64dc28",
+    "source_sha256": "65d106077e95ebe5fbf5fa2a5d69874c6b17532eb23681f7ae28d9da3cd4c9c7",
+    "daily_sha256": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
   },
   "limitations": [
-    "No remote Gallade or BIOBOT jobs submitted.",
-    "Local numerical runtime was Python 3.12; Python 3.11 syntax was checked across source files.",
-    "Smoke chains do not establish convergence or scientific prior robustness.",
-    "Actual posterior grid results are not bundled.",
-    "Forecast origins used to select calibration are not an untouched final test set."
+    "No production HPC/BIOBOT jobs submitted; no measured production runtime.",
+    "Smoke fits and prior simulation checks validate execution, not posterior convergence or scientific conclusions.",
+    "Python 3.12 runtime; Python 3.10-compatible source syntax checked.",
+    "The full historical test suite is not an all-pass release gate: older version/fixed-prior/experiment-plan expectations remain. Current release gate is explicitly selected and recorded.",
+    "Private fits retain half-normal shrinkage; this study compares pooling, not an unregularized model.",
+    "Seasonal sensitivities vary A_gamma only at the central A_alpha/A_beta setting."
   ]
 }

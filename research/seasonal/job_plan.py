@@ -1,7 +1,7 @@
 """Standard-library-only plan for pooled fits and optional later comparisons."""
 import json
 from pathlib import Path
-from research.seasonal.sweetspot_plan import BATCHES as SWEETSPOT_BATCHES, cells, specification
+from research.seasonal.sweetspot_plan import BATCHES as SWEETSPOT_BATCHES, cells, private_cells, study_variants, specification
 PROJECT=Path(__file__).resolve().parents[2]
 CONFIG=PROJECT/'research/seasonal/config'
 BATCHES=('reference','comparison','posterior','experiments','sensitivity','influence','pre2019','validation','validation10','block_validation','monthly','core','all','deferred') + SWEETSPOT_BATCHES
@@ -13,7 +13,11 @@ def read(name):
 
 def variant_entries():
     spec = read('experiments')
-    return spec['variants'] + spec.get('deferred_variants', []) + [c for c in cells() if c['name'] != 'reference']
+    legacy=spec['variants'] + spec.get('deferred_variants', [])
+    if len({v['name'] for v in legacy}) != len(legacy): raise ValueError('Duplicate legacy variants.')
+    entries={v['name']:v for v in legacy}
+    entries.update({v['name']:v for v in study_variants()})
+    return list(entries.values())
 
 def plan(tier='screen',batch='experiments',resource='all'):
     if tier not in ('screen','paper') or batch not in BATCHES or resource not in ('all',*RESOURCES):
@@ -51,14 +55,15 @@ def plan(tier='screen',batch='experiments',resource='all'):
     deferred=[group('posterior',v['name']) for v in spec.get('deferred_variants',[])]
     refs=[g for g in posterior if g['variant']=='reference']
     calibration=specification()
-    sweet_posterior=[group('posterior',c['name']) for c in cells()]
+    sweet_posterior=[group('posterior',c['name']) for c in study_variants()]
     def sweet_forecasts(origins):
         result=[]
-        for cell in cells():
+        selected_cells=cells()+[c for c in private_cells() if c['setting'] in calibration['private_validation']]
+        for cell in selected_cells:
             for origin in origins:
                 g=group('forecast',cell['name'],origin)
                 # A distinct ID prevents collision with the legacy 35-year folds.
-                g['id']='sweetspot_'+g['id'];g['task_ids']=[g['id']]
+                g['id']='sweetspot_'+g['id'];g['task_ids']=['sweetspot_'+id for id in g['task_ids']]
                 g['design']='sweetspot_30y';g['horizon']=calibration['validation_horizon']
                 result.append(g)
         return result

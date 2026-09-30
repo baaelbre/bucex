@@ -26,10 +26,10 @@ def test_horizon_variances_match_state_space_calculation():
     dates = pd.date_range('2000-03-01', periods=120, freq='3MS')
     r = simulate_paths(config, draws=24000, seed=1951, dates=dates)
     gains = bx.innovation_response_gains(120, period=4)
-    for component, scale in [('level', .01), ('slope', .0002), ('seasonal', .01)]:
+    for component, scale in [('level', .1), ('slope', .002), ('seasonal', .1)]:
         assert np.std(r[component][:, -1, 0]) == pytest.approx(gains[component]*scale, rel=.09)
     assert np.std(r['initial_slope'][:, -1, 0]) == pytest.approx(1.2, rel=.025)
-    assert np.std(r['rate'][:, -1, 0]) == pytest.approx(40*np.sqrt(.01**2+120*.0002**2), rel=.025)
+    assert np.std(r['rate'][:, -1, 0]) == pytest.approx(40*np.sqrt(.01**2+120*.002**2), rel=.025)
 
 
 def test_initial_cycle_matches_fitted_fs_lag_basis(monkeypatch):
@@ -89,13 +89,13 @@ def test_tail_summaries_do_not_discard_infinities():
 
 def test_prior_runner_reproducibility_and_outputs(tmp_path, monkeypatch):
     monkeypatch.setattr(bx, 'load_uccle_multiseries', lambda **kw: pytest.fail('Prior suite read data'))
-    out = run_suite(tmp_path, suite='reference,seasonal_1e1', draws=40, figures=False)
+    out = run_suite(tmp_path, suite='reference,ss_gamma_2e1', draws=40, figures=False)
     before = (out/'reference/target_summary.csv').read_bytes()
-    run_suite(tmp_path, suite='reference,seasonal_1e1', draws=40, figures=False)
+    run_suite(tmp_path, suite='reference,ss_gamma_2e1', draws=40, figures=False)
     assert (out/'reference/target_summary.csv').read_bytes() == before
     assert not bx.load_config(out/'manifest.json')['observations_read']
-    wide = pd.read_csv(out/'seasonal_1e1/analytic/thirty_year_effects.csv')
+    wide = pd.read_csv(out/'ss_gamma_2e1/analytic/thirty_year_effects.csv')
     ref = pd.read_csv(out/'reference/analytic/thirty_year_effects.csv')
-    assert wide.loc[wide.component == 'seasonal', 'sd'].iloc[0] == pytest.approx(10*ref.loc[ref.component == 'seasonal', 'sd'].iloc[0])
+    assert wide.loc[wide.component == 'seasonal', 'sd'].iloc[0] == pytest.approx(2*ref.loc[ref.component == 'seasonal', 'sd'].iloc[0])
     with pytest.raises(ValueError, match='differs'):
         run_suite(tmp_path, suite='reference', draws=41, figures=False)

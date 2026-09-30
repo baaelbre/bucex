@@ -117,7 +117,7 @@ def run(*,tiers=('screen','paper'),batch='all',root=ROOT,cpus=32,memory_gb=150.,
         if dry_run:
             if prior_simulations:
                 print('Before fitting: joint prior simulations, '+
-                    ('25-cell sweetspot suite; 1000 screen / 5000 paper replications.' if batch.startswith('sweetspot')
+                    ('11-calibration shared prior suite; 1000 screen / 5000 paper replications.' if batch.startswith('sweetspot')
                      else 'core suite; 2000 screen / 10000 paper replications.'))
             for w in queue:print(w.tier,w.task.id,f'{w.cpus} workers / {w.memory_gb:g} GiB')
             return 0

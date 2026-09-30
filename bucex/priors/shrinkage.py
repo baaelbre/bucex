@@ -23,6 +23,10 @@ class SharedShrinkage:
     component. ``half_t`` and ``half_cauchy`` provide sensitivity alternatives.
     Initial slopes keep their separately declared normal priors.
 
+    Half-normal scales are sampled by direct GIG Gibbs updates of tau_c**2.
+    This update is selected automatically; other hyperprior families use slice
+    sampling. The prior specification and saved parameter names are unchanged.
+
     The legacy constructor below retains its normal--lognormal meaning.
     ``medians`` are anchors for that *hyperprior*: log(m_c) is normal with
     mean log(anchor_c) and standard deviation ``log_sd``. Conditional on m_c,

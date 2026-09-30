@@ -2,14 +2,17 @@ include LICENSE
 include CITATION.cff
 include README.md
 include START_HERE.md
-include FINAL_RUN.md
-include BUCEX-1.9.1-commands.md
+include BUCEX-1.9.8-commands.md
+include RELEASE_VALIDATION.json
+include RUN*.sh
+include SETUP_HPC_ENV.sh
+include COLLECT_HPC_RESULTS.sh
 include RUN_SCREEN_EXPERIMENTS.sh
 include RUN_PAPER_EXPERIMENTS.sh
 include RUN_SCREEN_VALIDATION.sh
 include RUN_PAPER_VALIDATION.sh
 recursive-include bash_scripts *.sh
-recursive-include job_scripts *.pbs *.slurm *.sh
+recursive-include job_scripts *.pbs *.slurm *.sh *.py
 include CHANGELOG.md
 include RELEASE_NOTES.md
 recursive-include docs *.md *.py
