@@ -1,0 +1,338 @@
+{
+  "generated_utc": "2026-09-30T19:44:11.473086+00:00",
+  "settings": {
+    "results_root": "results/bucex1983_final",
+    "tier": "paper",
+    "validation_root": "results/bucex1984_validation",
+    "validation_tier": "screen",
+    "daily": "data/Uccle_31_08_26.csv",
+    "output": "manuscript/figures",
+    "formats": [
+      "pdf",
+      "png"
+    ],
+    "dpi": 220,
+    "figures": [
+      "all"
+    ],
+    "loess_span": 0.18,
+    "prior_draws": 50000,
+    "prior_seed": 19830,
+    "historical_origins": [
+      "1956-11",
+      "1976-11",
+      "1996-11"
+    ],
+    "recent_origins": [
+      "2015-11",
+      "2020-11"
+    ],
+    "grid_variants": [
+      "reference",
+      "half_level",
+      "double_level",
+      "half_slope",
+      "double_slope",
+      "half_level_half_slope",
+      "half_level_double_slope",
+      "double_level_half_slope",
+      "double_level_double_slope"
+    ]
+  },
+  "point_summary": "mean",
+  "interval": 0.95,
+  "sensitivity_envelope": "range across posterior means, not a credible interval",
+  "sources_sha256": {
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\config.json": "2f9ba9d39b6c12c904f7b819be79b8a9fdb7191705557abec3bbe32b2632fb4e",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXm_level.csv": "62cc15111e48ab02ddcfb4338aff591eabb2399136455cdc8be6cb1cf457f23f",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_level.csv": "a0b4c783ecbbe9b3ece74d13b8884c376650c1148a5ea3522b4f79d5ebc82f4d",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXn_level.csv": "e4b403da8b7b7dc88a91edb933edf63ad3a648046fec80f65494b65899faccf3",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNm_level.csv": "ac267729e3740e5bbb3fc66c6217cf51d6429b7202df85958197a04fbddc0e22",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNx_level.csv": "fd6ee9b045001f934c1da3e494b5a44f92aab67cd0642324fb7ebfd11a11591a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNn_level.csv": "9552036f758bbe97344cadacec375fa1ce0867c817302ee2cb2564df94178fed",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXm_slope_C_per_decade.csv": "75e5566264a1ad0378e3d9cdf5b2d35f2eba4e45b96507878756cba8e2e6a44f",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_slope_C_per_decade.csv": "95052eef807318e42eb293b7287f75a1f5d55cd538b08d03e3a7227f4040c9bb",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXn_slope_C_per_decade.csv": "d07138847db7af9e678c74345788ea831786fa095acceb84cfc984713000eaf8",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNm_slope_C_per_decade.csv": "0ff47d357be674dba26ca939ba0e9000c8e0332a7aa29c9284cf2ce91f116e2c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNx_slope_C_per_decade.csv": "1b18ef17b386f3376efaa12d5c27abf373415034e5a5a2d7fb871bfb1080fb0b",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNn_slope_C_per_decade.csv": "35210c64f65b124516e17da450761da59926620a99be227b46b49d6d5737a2fb",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXm_smoothed_pit.csv": "ecb99abf888e3d03a53b0237d3e99a0ef73565782360f18fcb364699effa2024",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_smoothed_pit.csv": "9472ecf3464eb3ef00cd3977620b124a9b23e3a053734c03984cd9ef2482b1a2",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXn_smoothed_pit.csv": "24d466f45e9c2ad8b8f26fbce31730ce3588cb1519619bed1437f8b839906327",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNm_smoothed_pit.csv": "dc27a5007d51c8be67025d13da69cb75d1246629343ff4f4aec693e300383019",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNx_smoothed_pit.csv": "c2710fbd2f4a57f924cd937536a8ff9f183ed5a5d61b011dc52e78e690060553",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNn_smoothed_pit.csv": "e757c12319823ed930fb3dd0fed64348aac11de33c0c2a4d439f0f05add39070",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\risk_period_summaries.csv": "46acc5ea408aeb7dee24488f8eea50197904c4a9f6dcff7a286e91deed4adb14",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_risk.csv": "0ca9a0f9b62223ca4779adf5a6952281e9307a1816290d557424184c447c0557",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNx_risk.csv": "13e2c16ea28f9752de0995508e932a44dba1bf71cf3847400cfb0895254013c9",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXn_risk.csv": "6baa11371dd57e2fb9bca663adeeac632a43e6c33f21238551c5721281171f58",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNn_risk.csv": "24b72ae422714d04937c285577fd45725f63e31a8420d9ceb5d68def42624969",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_pre2019_reference_2019-05\\report\\pre2019_observed_predictions.csv": "b33d2a0481001b0a3ccc94f7e64cec3c9dfe4bf0524ffe476be52a9716b3eea1",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_pre2019_reference_2019-05\\report\\pre2019_TXx_risk_curve.csv": "dd9939455079730e3b93783f552f13a64b8263d66d6cf9d122a1329f0e109a7b",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXm_seasonal_change.csv": "7ef95e94e64ae8cac8f4bb966c111d8d27c3de51aea02eda14ff5ed983a2daa1",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_seasonal_change.csv": "0ba9384c96d3f7f94bc30be9efcb94bf4345b4208836dacc622c816dc4888cca",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXn_seasonal_change.csv": "4f200b12da1643965e505543604b62d0859d7fd69931f90c547886fbdcd81330",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNm_seasonal_change.csv": "b62e42bf471fab42cd2eb44145df970003108f14aefe10222128c5b22d79de6f",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNx_seasonal_change.csv": "b2e11881f71a709b66a6cc871ddd7940ebe1677b8518b20570d4df3545d66548",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNn_seasonal_change.csv": "cb2f639bc94bfe96d01fffdbb1bc3d9265000d53c0a57ecd42f22e3fea6728dd",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\shared_shrinkage_traces.csv.gz": "2daf7a035468f2cb8e445de8c1266e9039568e2cd014edb89435ec0b8027dd48",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXm_prior_posterior.csv": "a44b0940db8d091886ffa74fea78ef7bb0e450b2cae1b930a62ee578f5c74cd9",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_prior_posterior.csv": "a1959965ed39c205e5bb3f69ed270df1f4cc08283cba671bc4133da6c4beab0c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXn_prior_posterior.csv": "185869c5ddede80135a6d3fe22164637443b690e51dcab6950909da429bad6be",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNm_prior_posterior.csv": "907bd42899d3bf41630f5fac98b4200deff5cb1bdc517aca03914cb181b6fc51",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNx_prior_posterior.csv": "c3151900e1f4337fe50a5a5ad77040934a69c585070e1341dcce20d7b3167062",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TNn_prior_posterior.csv": "e1c828474ef9b80586b662f03f671f723951a77a77acc9c1944fed9e77f1b5fc",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TXm_level.csv": "0fdb593bd85368d4bafac7ed57d27b5f97a39afb26d1b3a1af4984e7308b7cb3",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TXm_level.csv": "d49f4792e7d6bdb71aa41d90610c80e9b3eae5986c878f81a136b40019654d5e",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TXm_level.csv": "98484d19c7d81f22d554b3bcfba348c58b87b69e5397d0bbe1a9a069153e5e7b",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TXm_level.csv": "0f5feb94067bd68bd1de7c5bf1c642d7b6634a308d5fe5dad5761f92217f4f5e",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TXm_level.csv": "36317618e3dcbaa19c883b5a61b16bdc380620092a6298a0d52693e9b32ee8da",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TXm_level.csv": "d33968297b84a1ef1e8d77a8af27406afc89fbdf75660a8da90cdc4b9f971687",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TXm_level.csv": "fee7117e05cb6e2fb9ee5f73f93be34ca7a62ab13d6d62af996df835d0e08867",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TXm_level.csv": "7fb32896e0e7daa8aabd6b59504bac616e581d7c3671ed9b4ef895d1f823bf64",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TXx_level.csv": "b6a7734dcc7433769aa6076d77dbfcff06b2ade3a05da7f9987f00a0c83d492c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TXx_level.csv": "c9fd4ce34aaee436653e30528bd88ab55d0a542d528171c083a2bab6d858d42a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TXx_level.csv": "7dd6a7abb0e6210d13753278d2c10f7eefd51ee385507a87efdd550ea4061d07",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TXx_level.csv": "533d93613c2709505ac290507fce815ff9d9936809b2edb553f61f69e5d5bf31",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TXx_level.csv": "a2ee81494bd80b2f5c0ff9797e016bfcac1db981f3b127a12c6ad64e4f21ff2c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TXx_level.csv": "afdb9cc5eceb0753f92639095e5b6f15b0310ab66e35e7c9a3a6b41746b7e590",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TXx_level.csv": "5baa389c8de63a881d0765731b7aaf4e82cebf9265767751c76caca6f9ef2d17",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TXx_level.csv": "9d08a617203903d30feb8b4a9e11afb0e848c46b0e5e21203ba9cd343652afa2",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TXn_level.csv": "01a9866f188f1a1f7b2c4c4cfad950fc910adfcff6250e3f4fd02f4e9ae346f6",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TXn_level.csv": "0c7333e0a110d9d5e8a9eb9353f24126b9f6604b9f60fd89d29ba3a3f2bc4255",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TXn_level.csv": "23e4c6aa0549dd6a3b37b0d6e9439a26498f31c2974eec9ae122f8e5ee058f2b",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TXn_level.csv": "2d52b5d2ab2afa511208435fd3440eabddd16e64ade832c35b964c1b154b0cf3",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TXn_level.csv": "86977e6879b002eed5b65471ab94b169c1a724e689880749248deb196f385fab",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TXn_level.csv": "1222fe44a2509d6fe55053f3a16b080b047957c7a9bdfbcbac64f661c81c503a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TXn_level.csv": "10cfaace9cbac0204d555fa6f115fd22bde84af7c1f8ec4eab36ed1e9b0697fd",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TXn_level.csv": "fd16bc3019f4c5908e33aaf1f7d03d78173c49e8fe36ab43c248e46b6aa8ff3b",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TNm_level.csv": "1205abc32531c5271679f67beb90cc24cf25e51781880714c9cbf2c160db15bd",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TNm_level.csv": "8f4706521ff4efa96907e2e5db11142c70c1eef0969afcfab4380c57312a39da",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TNm_level.csv": "6a1b89ffe51096106309117edf595603155c7d8fef597ee6ff9e51a8cf6a7b47",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TNm_level.csv": "6ecb9862dca570c3ef3de5231be37e939a22d9aaf28bdd5a23ac53380ee23d83",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TNm_level.csv": "aad961660e8d0beccbdeeb28ced1e2dab0b535879937f9daf50dbf00bab52705",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TNm_level.csv": "4baf9c8290e1e331c720c21deee2a38b3e1880a22611f92e3b5263b4ad2dfa79",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TNm_level.csv": "f45a588a5242387b8bfbbde94002f0f5297806c78d666be465dd62d4b3296bb2",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TNm_level.csv": "a5be7983cc04ed661378b94b17fa813746a324bcb4f14f708c1c99357fa7547f",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TNx_level.csv": "0ead9be2ca7c219ed472dd8a21f8845746e08664b50fa19282f1f84177d6f8df",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TNx_level.csv": "6436353e000f587f061baf3f5959322749508ec64e39e20bd9c89b90150407d6",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TNx_level.csv": "998a38fbfc489f804e7db8571eafbbadde073a5c537a172e1866782fae06046c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TNx_level.csv": "e32629e1c50fe43be627ab876855b4c61800d902ae62cddabb07bf172ac0c2bf",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TNx_level.csv": "169cdf9383c5cd8d93e1b8993601d40d6173ff940f05e72d9cc9e872c2342b33",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TNx_level.csv": "23b60e4a0777455b421831bc63931c4e0d99c8f3444cff90be2874a5a8239e74",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TNx_level.csv": "7bea53b3e7080b3612a57b39e01c5873e8fb7a86d4e510700acde81208b401c4",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TNx_level.csv": "ca0268bb4e1d9b13453d07402c93011820a823de33667131feddd5a691ac0b48",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TNn_level.csv": "bc9b0050b7c23bb3943bb4ae01126acb106f59c49e784a84f8992d86bc9a04fd",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TNn_level.csv": "b29dd84667367e2d5b13cd2a8c9a1bb0f0cfc975278b875814673016cacd6994",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TNn_level.csv": "a91f05775df63b359075da7e14c4111b7c25db99ec65ade06162748577a44675",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TNn_level.csv": "4c409dd271e779dc3163fd20e006ba20ac40d306a0c250498146258451159756",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TNn_level.csv": "35d62e6e9131f5cab516fe50b0f9e26c3ccb267f268342c204a222c98ef65ebb",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TNn_level.csv": "5420a9b434ce9f23364a87b45c47a6aec842c889d70ce0dd0650d7513403607a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TNn_level.csv": "909f77c400d922c0bfa0451351d22857b69418e5f71aab438efce1bfb83334a8",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TNn_level.csv": "8e62fbd97b2ae7b3a8359dc9b79c326568bc9641ca1003e5e96ec4545f85c536",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TXm_slope_C_per_decade.csv": "3f449d2fb1d0cba1c920970ecddce8152f29ca21a026c8bcfc3816adcc30045a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TXm_slope_C_per_decade.csv": "ae7b6a4092648e0a015cfce8a611cbce9c9c45c80f2fb12bca219bcbf849f3dd",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TXm_slope_C_per_decade.csv": "db700807eedec0ae310ec38b8038062856d795089f8edf9c6b304d0c39e62940",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TXm_slope_C_per_decade.csv": "350a0aff3b5722802e2a3e4832791a5074fc16ae8e727489b65578408f81fa38",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TXm_slope_C_per_decade.csv": "532e9db15146b121202544689a33c9098102c1863ab8600ab817f667b87a4123",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TXm_slope_C_per_decade.csv": "22b67d9d9063b48127fe8ed97d6287dbff6031dae0d76ce561b620e57e0ec1c3",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TXm_slope_C_per_decade.csv": "97a57cbb26d2c99fdd1675806669d40f939a9c85dc5854992f19e391eacdffb3",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TXm_slope_C_per_decade.csv": "50650a54496544e453b2c07b6e11b0e67e48d01a242027c7e04e661ac12305ca",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TXx_slope_C_per_decade.csv": "02861a407442cbad67bc0430832c5bc4947a01a89e251b00192c476cb4d09a69",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TXx_slope_C_per_decade.csv": "7fd08b47c6dce2716e35dbbd411cde9ffc8f4f8d58ff331a191d93e1570cfe94",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TXx_slope_C_per_decade.csv": "8f4dac6c336cf14ffab3a6f4f82cb49530e3e03b1c6f8eaaed9a5870a99f0bb6",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TXx_slope_C_per_decade.csv": "a8323089b6481758cae21144af0fe1f2e31ac5a6078c15949d5bb831c26d1061",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TXx_slope_C_per_decade.csv": "be5e98e86b95d668c6574b1597e3d0c5e29a6c425f4b8eb0ba46d12b39d55749",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TXx_slope_C_per_decade.csv": "560d7d4caacfe547da0d9b9baa5357ac3e14453a35929ade06c815c2b94bc9ca",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TXx_slope_C_per_decade.csv": "a2322f072b27586e441e26ed1dd8b67b8ccbe1c77dc0855ead12813cd757a4e4",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TXx_slope_C_per_decade.csv": "1abffd6a51226c0f79e51a492fe4ff6f772acc7a7124a4208d67eb0afb9e9a74",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TXn_slope_C_per_decade.csv": "11f55ffec3733dbe1f1dfa071cab3402fa4407c29d776388f2d6bb3cfd89b529",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TXn_slope_C_per_decade.csv": "f4b72f3e4e6e22e6422cd860e9e5c4db6787d24cc13950cb98a322335a166c8a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TXn_slope_C_per_decade.csv": "a75c62bb5bc6c52679d7bcd0f2030486b9f047ffc9c95c5bdaa187367bbe8f83",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TXn_slope_C_per_decade.csv": "ae3071499c48f3d68536324a06a193489abc4f3c9a7a424e59e421c9298c4cf6",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TXn_slope_C_per_decade.csv": "1f95272b8f66e3ae7445ce736b57a01f678919b9f685d6cc22dfda7c4d7cfa83",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TXn_slope_C_per_decade.csv": "ac3428d7c957bce0aa5a7eb5c24637dc282ebe4b2e65c9292766176c8b8ccf29",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TXn_slope_C_per_decade.csv": "66b6e616a2b36075f3ae368c9278b80cef960cae407a185067bb4db16c36d04d",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TXn_slope_C_per_decade.csv": "90445c53a009978eaec04e0aed9801e1f14cdee9aadde3f39380f4c8ac2f954d",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TNm_slope_C_per_decade.csv": "f93c9646fb7d79beda907a9149c522c64a56cc7920b42e9c416fbcaac1660dc5",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TNm_slope_C_per_decade.csv": "bad955d94e5d0b3918eb44699641d11f1fae42046db8fec8d9b0be89eecdbb55",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TNm_slope_C_per_decade.csv": "b6af6f30677826926d46320053ddf7642feabaaceda49e86f3c260682737645a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TNm_slope_C_per_decade.csv": "060ee6a697f33c8bcd14522cf5972b55f15291f548e4b2ae7ebe522f6f908d6d",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TNm_slope_C_per_decade.csv": "ee20625a3e893811ac45f2677bb8e87e63d1a2d29c9277dee66829f033512f56",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TNm_slope_C_per_decade.csv": "6045b69da7b514a38caa000ca8e634b77a32a7be24a33493ee2ce8017f88b19a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TNm_slope_C_per_decade.csv": "bc49935ba1ce151c61831661b694ae2a1ca75f76506fc7e8a20d75fba788926e",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TNm_slope_C_per_decade.csv": "7a998888975832ba7c388b861a48868f83bc57377563bf8d478d3454a11297ff",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TNx_slope_C_per_decade.csv": "9b70812aaccb7580fd7acbab9f0517159558bcb0e361bfdfb701c812dbf2b2b1",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TNx_slope_C_per_decade.csv": "c769f2c0d623666ea5e766867155a3227b1c2fd2bce3ad45eff7ceefb75c6a4c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TNx_slope_C_per_decade.csv": "af84ba7a6a5c46b3e6be180d73477ebb1d5140373debeb05725334a1c722de1f",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TNx_slope_C_per_decade.csv": "8bfb2de77182e5f39af17b7ea6251f88b654b484036f27216f9c7845043aeac7",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TNx_slope_C_per_decade.csv": "6ae8d13de783384f36e5851ebb24b1cf85cb73ee8102fb0566fc857ee029434c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TNx_slope_C_per_decade.csv": "cc3cd866bfd36206d7d362ebc8aab4dc864dfdfa305a68987cc456cbf151b236",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TNx_slope_C_per_decade.csv": "a9deacf0ab391450e12b38e3c29b86663c9fe7ed024a641b3c0017285c9dc303",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TNx_slope_C_per_decade.csv": "b45b13aa105a95204c894f09a8495264adf1f6c12fa3421102d4298fb24a27f4",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level\\report\\TNn_slope_C_per_decade.csv": "a7e20627543d21b3dc93e82cb1140d5b131357a1088f010279150bf0d2ee066c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level\\report\\TNn_slope_C_per_decade.csv": "ca481e953c52f8482c458d9c16b035f4c3d175bc5be429181a9d249ee88d9e52",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_slope\\report\\TNn_slope_C_per_decade.csv": "0e9d72702ad9fbe06ff3ffb9748001f3e633a6cefed5875f02c1141b196d2187",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_slope\\report\\TNn_slope_C_per_decade.csv": "2c831c803167c19d2f5f95303a9150aa9d8ef6acdadd8974936ee691a04abc02",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_half_slope\\report\\TNn_slope_C_per_decade.csv": "c4dae451d4de971e6b87ae60f41cf7071f123bba8a51b35258da38eaf94cb83a",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_half_level_double_slope\\report\\TNn_slope_C_per_decade.csv": "7873839663a0f21616e9caea6d8db75e62bc4c23557e7607d2cd334725841664",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_half_slope\\report\\TNn_slope_C_per_decade.csv": "fe10639a3763e2f2160c994def444918173c769e3a71fae538e40fed0e7fc711",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_level_double_slope\\report\\TNn_slope_C_per_decade.csv": "4701e9381787f165a67ea957be565189e64e21dd85eb0231f43863e3b63aa084",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\shared_shrinkage.csv": "c6b3ec45fdaf73e2c44d8497a1d2c0a29dfc2f030d9573205e7f53e0cdb2b079",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\config.json": "713b7745faf25f6b49f8247ed8ab044032189f11fd92dba1cb530803959612d5",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\TXm_prior_posterior.csv": "7b0007aef8fcd9dada0c998e21fc47d4ca98e44a1dbd629767d3ed8dfdccf295",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\TXx_prior_posterior.csv": "d422fe8e5cd266a9d20ba2631fb3a60a5af35b6d24f4e96f64afd7ae988caf64",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\TXn_prior_posterior.csv": "e2741127a5e800f90b318c597b8875b57eea5a667aa783d3fe7f294ec5425255",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\TNm_prior_posterior.csv": "6be36d876f4d73b11df630d4415e369a3f4a68e84dc2d266362c06b9a0fe4a4b",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\TNx_prior_posterior.csv": "fd51c7311ad730c9741a6144095c9c10166dd145ac8f968b530274e947f897cb",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_seasonal_5e2\\report\\TNn_prior_posterior.csv": "b78512d4a3ea8fd42bf92e58536badfac4bfd7db463a49f8b6563a305ca557df",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\shared_shrinkage.csv": "83f0d374d7c041ccb21e494401b784810035d64c0a4a5dbfb6e9178e1ae99cf7",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\shared_shrinkage.csv": "576cb145b359546f38b93af1b0a4955a8a6f284e5d8f8f0a47fcebcd8e5d0a7d",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\config.json": "bc0c7e164dfa73758da2f21b40e32da624b0e50c4b4be3d778e6cb3fa67e6641",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\TXm_prior_posterior.csv": "6bf7f62e3e0a143c56bc1242f8ebb4ff69caa68fdf3a8af47a4391ca59128521",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\TXx_prior_posterior.csv": "316bee94ce6e4cb2f79f872ffac3b1becbed8a515b234cea89665301e4eec5da",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\TXn_prior_posterior.csv": "f92ad01175cdbe418580261e616807f88881353dcd52a15bf51f68a4936382ee",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\TNm_prior_posterior.csv": "a85a1fcc383a7c626d46f5e545e4c82889c9097557fdadcb33b48d860ebeed7c",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\TNx_prior_posterior.csv": "9f76e15a166db4c0bdabe35195840c801393fa9e52d9f14fb1697fcccb96a8af",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_double_seasonal\\report\\TNn_prior_posterior.csv": "d1cba6d639ffbd1988e6b297fdbef5817510b0eefb810b4cd1229470cbd66a7e",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1984_validation\\screen\\validation_report_horizon_reference\\validation_cases.csv": "85c616c79cec7a57f7e3fbfae2cdd481f88877fb1aefcf21b13ef681198312fa",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_forecast_reference_2015-11\\report\\joint\\predictions.csv": "a502e4a3987e7e0dbdbca80c81ae25dc60c04f7585a6b613540a6cee6aebb990",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_forecast_reference_2015-11\\report\\joint\\held_out_pit.csv": "25601b78bbf2a654bf96268d070bafe51b88fca3e3de4ebdabdb53a8e017bfc3",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_forecast_reference_2020-11\\report\\joint\\predictions.csv": "d0ba1d544c9d4755ed4c70c0012abb2c9ca4f714398f96a18f62ddb7ab3ac015",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_forecast_reference_2020-11\\report\\joint\\held_out_pit.csv": "b4906a1000ae219ff86e5440345f4641ac4652cc910a05fe398cb10509fe504d",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXm_forecast_uncertainty.csv": "745ebf13eb5359a6e88ee91093614ef8b0c0a6f55fa8c7e6761f06d35baa10d2",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_forecast_uncertainty.csv": "08e426dd902946f90493436f70cc23f5e0007637ebd5ebd16411f420144375e8",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_forecast_risk.csv": "ce43d73098ea0efafd76abff0769992f5019ccdf635c1dde793abe128334e2f1",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\results\\bucex1983_final\\paper\\final_posterior_reference\\report\\TXx_forecast_risk_39p7.csv": "adc40964f8697a304ca34f5465aac4c631489073a0d4699e7585b56af4a533f5",
+    "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\data\\Uccle_31_08_26.csv": "a08cefa73732dc3ed7e40b3bdf79c22090b16931b6ae71c502de642d842f6e38"
+  },
+  "figures": [
+    {
+      "name": "levels",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\levels.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\levels.png"
+      ]
+    },
+    {
+      "name": "rates",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\rates.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\rates.png"
+      ]
+    },
+    {
+      "name": "normal_score_qq",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\normal_score_qq.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\normal_score_qq.png"
+      ]
+    },
+    {
+      "name": "historical_risks",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\historical_risks.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\historical_risks.png"
+      ]
+    },
+    {
+      "name": "summer_2019",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\summer_2019.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\summer_2019.png"
+      ]
+    },
+    {
+      "name": "seasonal_evolution",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\seasonal_evolution.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\seasonal_evolution.png"
+      ]
+    },
+    {
+      "name": "structural_evolution",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\structural_evolution.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\structural_evolution.png"
+      ]
+    },
+    {
+      "name": "sensitivity_levels",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\sensitivity_levels.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\sensitivity_levels.png"
+      ]
+    },
+    {
+      "name": "sensitivity_rates",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\sensitivity_rates.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\sensitivity_rates.png"
+      ]
+    },
+    {
+      "name": "seasonal_sensitivity",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\seasonal_sensitivity.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\seasonal_sensitivity.png"
+      ]
+    },
+    {
+      "name": "validation_historical_pit",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_historical_pit.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_historical_pit.png"
+      ]
+    },
+    {
+      "name": "validation_recent_pit",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_recent_pit.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_recent_pit.png"
+      ]
+    },
+    {
+      "name": "validation_recent_paths",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_recent_paths.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_recent_paths.png"
+      ]
+    },
+    {
+      "name": "forecast_30y",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\forecast_30y.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\forecast_30y.png"
+      ]
+    },
+    {
+      "name": "data_exploration",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\data_exploration.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\data_exploration.png"
+      ]
+    },
+    {
+      "name": "prior_calibration",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\prior_calibration.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\prior_calibration.png"
+      ]
+    },
+    {
+      "name": "validation_decades",
+      "files": [
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_decades.pdf",
+        "C:\\Users\\Bastiaan\\OneDrive - UGent\\Documenten\\GitHub\\bucex\\manuscript\\figures\\validation_decades.png"
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "group": "tight",
+      "reason": "Set tight_root to the EARLIER tight-calibration reports"
+    }
+  ],
+  "notes": [],
+  "errors": []
+}

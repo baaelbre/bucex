@@ -1,0 +1,17 @@
+{
+  "extends": "main.json",
+  "name": "monthly",
+  "description": "Monthly aggregation with innovation calibration matched over 30 years.",
+  "data": {
+    "frequency": "monthly"
+  },
+  "model": {
+    "period": 12,
+    "steps_per_year": 12
+  },
+  "priors": {
+    "level_sd": 0.05773502691896258,
+    "slope_sd": 0.0003832923311016883,
+    "initial_slope_sd": 0.0033333333333333335
+  }
+}

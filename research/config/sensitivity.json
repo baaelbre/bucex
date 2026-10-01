@@ -1,0 +1,216 @@
+{
+  "base": "main.json",
+  "variants": [
+    {
+      "name": "level_0.05_slope_0.001",
+      "override": {
+        "priors": {
+          "level_sd": 0.05,
+          "slope_sd": 0.001
+        }
+      }
+    },
+    {
+      "name": "level_0.05_slope_0.002",
+      "override": {
+        "priors": {
+          "level_sd": 0.05,
+          "slope_sd": 0.002
+        }
+      }
+    },
+    {
+      "name": "level_0.05_slope_0.004",
+      "override": {
+        "priors": {
+          "level_sd": 0.05,
+          "slope_sd": 0.004
+        }
+      }
+    },
+    {
+      "name": "level_0.1_slope_0.001",
+      "override": {
+        "priors": {
+          "level_sd": 0.1,
+          "slope_sd": 0.001
+        }
+      }
+    },
+    {
+      "name": "level_0.1_slope_0.002",
+      "override": {
+        "priors": {
+          "level_sd": 0.1,
+          "slope_sd": 0.002
+        }
+      }
+    },
+    {
+      "name": "level_0.1_slope_0.004",
+      "override": {
+        "priors": {
+          "level_sd": 0.1,
+          "slope_sd": 0.004
+        }
+      }
+    },
+    {
+      "name": "level_0.2_slope_0.001",
+      "override": {
+        "priors": {
+          "level_sd": 0.2,
+          "slope_sd": 0.001
+        }
+      }
+    },
+    {
+      "name": "level_0.2_slope_0.002",
+      "override": {
+        "priors": {
+          "level_sd": 0.2,
+          "slope_sd": 0.002
+        }
+      }
+    },
+    {
+      "name": "level_0.2_slope_0.004",
+      "override": {
+        "priors": {
+          "level_sd": 0.2,
+          "slope_sd": 0.004
+        }
+      }
+    },
+    {
+      "name": "seasonal_0.05",
+      "override": {
+        "priors": {
+          "seasonal_sd": 0.05
+        }
+      }
+    },
+    {
+      "name": "seasonal_0.2",
+      "override": {
+        "priors": {
+          "seasonal_sd": 0.2
+        }
+      }
+    },
+    {
+      "name": "initial_slope_0.005",
+      "override": {
+        "priors": {
+          "initial_slope_sd": 0.005
+        }
+      }
+    },
+    {
+      "name": "initial_slope_0.02",
+      "override": {
+        "priors": {
+          "initial_slope_sd": 0.02
+        }
+      }
+    },
+    {
+      "name": "shape_0.15",
+      "override": {
+        "priors": {
+          "xi_sd": 0.15
+        }
+      }
+    },
+    {
+      "name": "shape_0.6",
+      "override": {
+        "priors": {
+          "xi_sd": 0.6
+        }
+      }
+    },
+    {
+      "name": "initial_level_5",
+      "override": {
+        "priors": {
+          "initial_level_sd": 5
+        }
+      }
+    },
+    {
+      "name": "initial_level_20",
+      "override": {
+        "priors": {
+          "initial_level_sd": 20
+        }
+      }
+    },
+    {
+      "name": "initial_seasonal_5",
+      "override": {
+        "priors": {
+          "initial_seasonal_sd": 5
+        }
+      }
+    },
+    {
+      "name": "initial_seasonal_20",
+      "override": {
+        "priors": {
+          "initial_seasonal_sd": 20
+        }
+      }
+    },
+    {
+      "name": "variance_scale_0.5",
+      "override": {
+        "priors": {
+          "variance_scale": 0.5
+        }
+      }
+    },
+    {
+      "name": "variance_scale_8",
+      "override": {
+        "priors": {
+          "variance_scale": 8
+        }
+      }
+    },
+    {
+      "name": "scale_contrast_0.15",
+      "override": {
+        "model": {
+          "scale_prior_sd": 0.15
+        }
+      }
+    },
+    {
+      "name": "scale_contrast_0.6",
+      "override": {
+        "model": {
+          "scale_prior_sd": 0.6
+        }
+      }
+    },
+    {
+      "name": "static_seasonal",
+      "override": {
+        "model": {
+          "seasonal": "static"
+        }
+      }
+    },
+    {
+      "name": "tight_innovations",
+      "override": {
+        "priors": {
+          "level_sd": 0.01,
+          "slope_sd": 0.0001,
+          "seasonal_sd": 0.01
+        }
+      }
+    }
+  ]
+}

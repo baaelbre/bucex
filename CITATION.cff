@@ -1,9 +1,8 @@
 cff-version: 1.2.0
-message: "Please cite BUCEX and the associated paper when using this software. The revised manuscript is not yet published."
-title: "BUCEX: Bayesian unobserved-component models for means and extremes"
+message: "If you use this software, cite bucex and the accompanying paper when its publication details are available."
+title: "bucex: Bayesian structural time series for environmental means and extremes"
+version: 1.0.0
 type: software
-version: 1.9.8.4
-date-released: 2026-09-30
 authors:
   - family-names: "Van Velthoven"
     given-names: "Bastiaan A."

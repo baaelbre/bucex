@@ -1,0 +1,138 @@
+{
+  "name": "main",
+  "description": "Seasonal Gaussian/GEV channels with shared half-normal innovation scales.",
+  "data": {
+    "source": "research/data/Uccle_31_08_26.csv",
+    "frequency": "seasonal",
+    "series": [
+      "TXm",
+      "TNm",
+      "TXx",
+      "TXn",
+      "TNx",
+      "TNn"
+    ]
+  },
+  "model": {
+    "period": 4,
+    "steps_per_year": 4,
+    "level": "dynamic",
+    "slope": "dynamic",
+    "seasonal": "dynamic",
+    "seasonal_scale": true,
+    "scale_prior_sd": 0.3
+  },
+  "priors": {
+    "initial_level_sd": 10.0,
+    "initial_slope_sd": 0.01,
+    "initial_seasonal_sd": 10.0,
+    "level_sd": 0.1,
+    "slope_sd": 0.002,
+    "seasonal_sd": 0.1,
+    "variance_shape": 2.0,
+    "variance_scale": 2.0,
+    "xi_sd": 0.3
+  },
+  "pooling": "shared",
+  "profiles": {
+    "smoke": {
+      "draws": 4,
+      "warmup": 2,
+      "chains": 2,
+      "workers": 1,
+      "predictive_draws": 80,
+      "prior_draws": 100,
+      "check_draws": 30,
+      "max_blocks": 36
+    },
+    "screen": {
+      "draws": 1000,
+      "warmup": 1000,
+      "chains": 2,
+      "workers": 2,
+      "predictive_draws": 3000,
+      "prior_draws": 5000,
+      "check_draws": 1000,
+      "max_blocks": null
+    },
+    "paper": {
+      "draws": 4000,
+      "warmup": 2000,
+      "chains": 4,
+      "workers": 4,
+      "predictive_draws": 50000,
+      "prior_draws": 10000,
+      "check_draws": 2000,
+      "max_blocks": null
+    }
+  },
+  "laplace": {
+    "max_iterations": 30,
+    "tolerance": 1e-05,
+    "mh_steps": 1,
+    "curvature_floor": 1e-06,
+    "maximum_variance": 100000000.0
+  },
+  "forecast_years": 30,
+  "return_years": [
+    10,
+    20,
+    50,
+    100
+  ],
+  "risk_thresholds": {
+    "TXm": {
+      "threshold": 25,
+      "tail": "upper",
+      "month": 8
+    },
+    "TNm": {
+      "threshold": 18,
+      "tail": "upper",
+      "month": 8
+    },
+    "TXx": {
+      "threshold": 35,
+      "tail": "upper",
+      "month": 8
+    },
+    "TXn": {
+      "threshold": 0,
+      "tail": "lower",
+      "month": 2
+    },
+    "TNx": {
+      "threshold": 25,
+      "tail": "upper",
+      "month": 8
+    },
+    "TNn": {
+      "threshold": -10,
+      "tail": "lower",
+      "month": 2
+    }
+  },
+  "validation": {
+    "origins": [
+      "1956-11-30",
+      "1976-11-30",
+      "1996-11-30"
+    ],
+    "recent_origins": [
+      "2015-11-30",
+      "2020-11-30"
+    ],
+    "years": 30,
+    "intervals": [
+      0.9,
+      0.95,
+      0.99
+    ]
+  },
+  "plot": {
+    "format": "png",
+    "dpi": 180,
+    "interval": 0.95
+  },
+  "seed": 10001
+}

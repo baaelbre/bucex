@@ -1,4 +1,0 @@
-{
-  "extends": "copula_full.json",
-  "analysis": "joint"
-}

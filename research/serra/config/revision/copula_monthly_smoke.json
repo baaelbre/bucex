@@ -1,4 +1,0 @@
-{
-  "extends": "monthly_scale_smoke.json",
-  "analysis": "copula"
-}

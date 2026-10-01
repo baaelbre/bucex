@@ -1,5 +1,0 @@
-{
-  "extends": "../base.json",
-  "forecast_horizon": 120,
-  "forecast_draws": 4000
-}

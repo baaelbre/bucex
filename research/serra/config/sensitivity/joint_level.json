@@ -1,4 +1,0 @@
-{
-  "extends": "level.json",
-  "analysis": "copula"
-}

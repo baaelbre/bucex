@@ -1,0 +1,6 @@
+{
+  "extends": "main.json",
+  "name": "private",
+  "description": "Six separate fits with fixed Normal innovation prior SDs; no hyperpriors.",
+  "pooling": "private"
+}

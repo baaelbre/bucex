@@ -1,33 +1,22 @@
-# Python and test caches
 __pycache__/
 *.py[cod]
+*.egg-info/
+.venv/
+venv/
+bucex_env*/
 .pytest_cache/
 .coverage
 htmlcov/
-
-# Virtual environments
-.venv/
-venv/
-bucex_env/
-
-# Packaging artifacts
 build/
 dist/
-*.egg-info/
-
-# Generated analyses and scheduler output
 results/
 logs/
-validation_reports/
-*.bucex
-!tests/fixtures/*.bucex
-*.pdf
 *.log
-*.o[0-9]*
-*.e[0-9]*
-
-# Editors and operating systems
-.vscode/
-.idea/
+*.bucex
+*.npz
+local/
+job_scripts/
+HPC*.md
+*.slurm
+*.pbs
 .DS_Store
-Thumbs.db

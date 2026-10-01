@@ -1,9 +1,0 @@
-{
-  "extends": "monthly_scale.json",
-  "data": {
-    "series": [
-      "TXx"
-    ]
-  },
-  "forecast_horizon": 240
-}

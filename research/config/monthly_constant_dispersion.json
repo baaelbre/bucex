@@ -1,0 +1,9 @@
+{
+  "extends": "monthly.json",
+  "name": "monthly_constant_dispersion",
+  "description": "Monthly blocks, constant dispersion and private Normal priors: structural comparison with the original manuscript, not an exact reproduction of its older priors or sampler.",
+  "pooling": "private",
+  "model": {
+    "seasonal_scale": false
+  }
+}

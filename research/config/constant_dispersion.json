@@ -1,0 +1,8 @@
+{
+  "extends": "main.json",
+  "name": "constant_dispersion",
+  "description": "Seasonal blocks with one observation scale per response.",
+  "model": {
+    "seasonal_scale": false
+  }
+}

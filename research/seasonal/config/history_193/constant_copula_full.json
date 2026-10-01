@@ -1,4 +1,0 @@
-{
-  "extends": "final.json",
-  "_comment": "Compatibility name: 1.9.1 uses conditional independence (R=I). No correlation matrix is estimated."
-}

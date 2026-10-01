@@ -1,9 +1,0 @@
-{
-  "date": "2026-09-28T20:58:37.755453+00:00",
-  "fix": "Replace same-quote reuse in the bundle status f-string; compile all production Python modules with the selected compute interpreter before starting probe fits.",
-  "legacy_grammar_files": 207,
-  "original_failure_reproduced": true,
-  "fixed_legacy_grammar_status": "passed",
-  "python_311_execution_tested_locally": false,
-  "note": "The local runtime is Python 3.12. The legacy lib2to3 tokenizer/grammar catches the reported quote-reuse failure; ast feature_version on 3.12 does not. Actual Python 3.11 execution is verified by the Gallade probe."
-}

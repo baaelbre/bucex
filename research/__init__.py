@@ -1,1 +1,1 @@
-"""Readable research workflows built on the public bucex API."""
+"""Reproducible paper workflows, deliberately outside the installed package."""
