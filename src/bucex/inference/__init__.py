@@ -2,3 +2,5 @@
 from .config import MCMC, Laplace
 
 __all__ = ["MCMC", "Laplace"]
+
+from .plan import InferencePlan, plan

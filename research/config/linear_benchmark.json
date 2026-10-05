@@ -1,0 +1,15 @@
+{
+  "extends": "main.json",
+  "name": "linear_benchmark",
+  "description": "Optional post-1970 constant linear trend benchmark through SON 2015; current priors and sampler.",
+  "data": {
+    "start": "1970-01-01",
+    "end": "2015-11-30"
+  },
+  "model": {
+    "level": "static",
+    "slope": "static",
+    "seasonal": "static"
+  },
+  "pooling": "private"
+}

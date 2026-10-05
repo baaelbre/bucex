@@ -108,7 +108,11 @@ def summary(fit, *, interval=.95, include_paths=False):
     values = {f'{name}.{key}': v for name, c in fit.channels.items() for key, v in c.parameters.items()}
     values.update({f'tau.{k}': v for k, v in fit.shared_scales.items()})
     for name, c in fit.channels.items():
-        for component in ('level', 'slope', 'seasonal'):
+        seen = []
+        for component, row in c.compiled.outputs.items():
+            if any(np.array_equal(row, previous) for previous in seen):
+                continue
+            seen.append(row)
             array = c.path(component)
             times = range(array.shape[-1]) if include_paths else [array.shape[-1]-1]
             for t in times:

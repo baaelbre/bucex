@@ -69,7 +69,7 @@ class APITests(unittest.TestCase):
 
     def test_reject_bad_data_and_unsupported_priors(self):
         with self.assertRaises(ValueError): bx.fit([1,np.nan,3],model=self.model,mcmc=self.config)
-        with self.assertRaises(ValueError): bx.Model(bx.Gaussian(),[bx.LocalLevel(),bx.LocalLinearTrend()])
+        with self.assertRaises(ValueError): bx.compile_model(bx.Model(bx.Gaussian(),[bx.LocalLevel(),bx.LocalLinearTrend()]), 5)
         with self.assertRaises(ValueError): bx.Priors(level=bx.Normal(1,1))
         with self.assertRaises(ValueError): bx.Priors(variance=bx.Fixed(0))
         with self.assertRaises(TypeError): bx.Pooling(level=bx.Normal())

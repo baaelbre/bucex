@@ -60,10 +60,9 @@ python -m research.combine \
 ```
 
 Submit the four commands independently or in a scheduler array. No module
-loads or environment paths are embedded in the package. The optional
-`local/chain.slurm` template expects an absolute `BUCEX_PYTHON` and an optional
-`BUCEX_ENV_SETUP` script. `local/` and all job files are gitignored. The template
-uses the site's configured scheduler defaults rather than guessing a partition.
+loads or environment paths are embedded in the package. A local
+`local/chain.slurm` template can use an absolute `BUCEX_PYTHON` and an optional
+`BUCEX_ENV_SETUP` script. `local/` and all job files are gitignored. Prefer the site's configured scheduler defaults rather than guessing a partition.
 
 Combination rejects different data, priors/calendars, draw counts, sampler
 settings or duplicated random streams. Warmup draws are never concatenated.
@@ -77,7 +76,7 @@ python -m research.sensitivity --list
 python -m research.sensitivity --profile screen --variant 0 --workers 2
 ```
 
-There are 25 variants indexed **0 through 24**. A scheduler array can supply
+There are 23 pooled variants indexed **0 through 22**. A scheduler array can supply
 one index per task. Each screen task uses two CPUs for its two chains. After
 completion:
 

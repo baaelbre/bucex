@@ -10,7 +10,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import bucex as bx
-from bucex.plotting import COLORS
+from bucex.plots import COLORS
 from .configuration import load_config
 from .data import phase_labels
 
@@ -81,7 +81,8 @@ def exploratory(fit, config, folder):
 
 
 def subset_prediction(pred, mask):
-    return replace(pred, index=pred.index[mask], **{key: {name: v[:, mask] for name, v in getattr(pred, key).items()}
+    return replace(pred, index=pred.index[mask],
+        components={name: {key: v[:, mask] for key, v in paths.items()} for name, paths in pred.components.items()}, **{key: {name: v[:, mask] for name, v in getattr(pred, key).items()}
         for key in ('y', 'location', 'level', 'slope', 'seasonal', 'sigma', 'xi')})
 
 
@@ -98,6 +99,8 @@ def generate(fit, config, output, settings):
         for name, ax in zip(names, axes):
             bx.plot(fit, channel=name, type=kind, ax=ax, interval=interval,
                     phase_labels=phase_labels(fit[name].index, config['data']['frequency']))
+            if kind in {'level','slope','cycle'}:
+                ax.set_ylabel({'level':'Level (°C)','slope':'Rate (°C per decade)','cycle':'Seasonal component (°C)'}[kind])
         if kind == 'cycle':
             axes[0].legend(fontsize=8)
         savefig(fig, folder, kind, config)
@@ -107,6 +110,7 @@ def generate(fit, config, output, settings):
         for phase, label in enumerate(labels):
             bx.plot(fit, channel=name, type='seasonal', phase=phase, ax=ax, interval=interval,
                     color=plt.get_cmap('viridis')(phase/max(1, len(labels)-1)*.8), label=label)
+        ax.set_ylabel('Seasonal component (°C)')
     axes[0].legend(ncol=4, fontsize=8)
     savefig(fig, folder, 'seasonal_evolution', config)
     for parameter in ('variance.level', 'variance.slope', 'variance.seasonal', 'initial_slope', 'sigma', 'xi'):
@@ -154,14 +158,8 @@ def generate(fit, config, output, settings):
         savefig(fig, folder, f'return_levels_{years}_year', config)
     fig, axes = panels(names)
     for name, ax in zip(names, axes):
-        c = fit[name]
-        values = np.stack([c.parameters.get(f'sigma[{i}]', c.parameters['sigma'])
-                           for i in range(c.model.period)], axis=-1)
-        summary = bx.summarize(values, interval)
-        positions = np.arange(c.model.period)
-        ax.vlines(positions, summary['lower'], summary['upper'], color=COLORS.get(name[:2]))
-        ax.plot(positions, summary['mean'], 'o', color=COLORS.get(name[:2]))
-        ax.set_xticks(positions, labels, rotation=45 if len(labels)>4 else 0)
+        bx.plot(fit, channel=name, type='observation_scale', ax=ax,
+                interval=interval, phase_labels=labels)
         ax.set_ylabel('Observation scale (°C)')
     savefig(fig, folder, 'observation_scales', config)
     pd.DataFrame(risks).to_csv(output/'risk_probabilities.csv', index=False)
@@ -170,6 +168,7 @@ def generate(fit, config, output, settings):
     fig, axes = panels(names)
     for name, ax in zip(names, axes):
         bx.plot(pred, channel=name, type='forecast', history=fit[name], ax=ax, interval=interval)
+        ax.set_ylabel('Temperature (°C)')
     axes[0].legend(fontsize=8)
     savefig(fig, folder, 'forecasts_30_year', config)
     # Clear seasonal forecasts: each panel follows one tail-relevant season.
@@ -181,6 +180,7 @@ def generate(fit, config, output, settings):
         ids = c.index.month == month
         history = SimpleNamespace(index=c.index[ids], y=c.y[ids])
         bx.plot(chosen, channel=name, type='forecast', history=history, ax=ax, interval=interval)
+        ax.set_ylabel('Temperature (°C)')
     axes[0].legend(fontsize=8)
     savefig(fig, folder, 'forecasts_relevant_seasons', config)
     # Exports used for tables and figure-independent verification.

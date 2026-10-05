@@ -6,9 +6,8 @@ from scipy.integrate import quad
 from scipy.optimize import brentq
 from scipy.stats import norm
 import bucex as bx
-from bucex.inference._model import layout_for
-from bucex.inference._laplace import ncp_laplace_mh, build_ncp_laplace_approximation
-from bucex.inference._state import build_ncp_system, ffbs_gaussian_1d_tvR, gaussian_smoother_mean_1d_tvR
+from bucex.inference.paths import laplace_mh
+from bucex.inference.smoothers import sample_gaussian as ffbs_gaussian_1d_tvR, smooth_gaussian as gaussian_smoother_mean_1d_tvR
 from bucex.inference._shared import _half_normal_gig_log_multiplier
 
 
@@ -64,16 +63,35 @@ class InferenceTests(unittest.TestCase):
 
     def test_laplace_correction_constant_for_gaussian_likelihood(self):
         model=bx.Model(bx.Gaussian(),[bx.LocalLinearTrend(),bx.DummySeasonal(4)])
-        layout=layout_for(model)
-        params=dict(alpha0=0.,beta0=0.,gamma0_season=np.zeros(3),s_level=.1,s_trend=.01,s_season=.05)
+        compiled=bx.compile_model(model, 20)
+        theta=np.zeros(len(compiled.priors))
+        for g in compiled.groups:
+            theta[g.coefficient]={'level':.1, 'slope':.01, 'seasonal':.05}[g.name]
         y=np.random.default_rng(3).normal(size=20)
-        current=np.zeros((21,layout.ncp_state_dim))
-        result=ncp_laplace_mh(y,SimpleNamespace(obs=model.observation),params,{'sigma':.4},layout,current,rng=np.random.default_rng(8),mh_steps=6)
-        self.assertTrue(result.accepted.all())
-        np.testing.assert_allclose(result.log_acceptance_ratio,0,atol=1e-10)
-        G,Q=build_ncp_system(layout)
-        residual=result.z_path[1:]-result.z_path[:-1]@G.T
+        current=np.zeros((21,compiled.ncp_dim))
+        F,Q=compiled.ncp_transition,compiled.ncp_covariance
+        path, metric=laplace_mh(y,model.observation,{'sigma':np.full(20,.4)},F,Q,
+            compiled.path_design(theta),compiled.offset(theta),current,bx.Laplace(mh_steps=6),np.random.default_rng(8))
+        self.assertEqual(metric['path_acceptance'],1.)
+        residual=path[1:]-path[:-1]@F.T
         np.testing.assert_array_equal(residual[:,np.diag(Q)==0],0)
+
+    def test_gev_path_mh_matches_independent_quadrature(self):
+        obs=bx.GEV(); y=np.array([2.]); q=.5
+        params={'sigma':np.ones(1),'xi':-.2}
+        def density(x):
+            return np.exp(obs.logpdf(y[0],x,params).item()+norm.logpdf(x,scale=np.sqrt(q)))
+        mass=quad(density,-3,8,epsabs=1e-12)[0]
+        expected=quad(lambda x:x*density(x),-3,8,epsabs=1e-12)[0]/mass
+        expected2=quad(lambda x:x*x*density(x),-3,8,epsabs=1e-12)[0]/mass
+        rng=np.random.default_rng(887); current=np.zeros((2,1)); values=[]
+        for i in range(1600):
+            current,metrics=laplace_mh(y,obs,params,np.eye(1),np.array([[q]]),
+                np.ones((1,1)),np.zeros(1),current,bx.Laplace(),rng)
+            if i>=100: values.append(current[-1,0])
+        values=np.asarray(values)
+        self.assertLess(abs(values.mean()-expected),.065)
+        self.assertLess(abs(values.var()-(expected2-expected**2)),.055)
 
     def test_gev_derivatives_and_reflection(self):
         y=np.array([-.2,.5,1.4]);eta=np.array([.1,.2,.3]);sigma=np.array([.8,1.1,1.3]);h=1e-4
@@ -125,6 +143,20 @@ class InferenceTests(unittest.TestCase):
         pred=f.predict(4,draws=8)
         np.testing.assert_allclose(pred.level['y'],np.broadcast_to(4+.2*np.arange(13,17),(8,4)))
         np.testing.assert_array_equal(pred.seasonal['y'],0)
+
+    def test_forecast_innovation_variance_matches_local_trend_formula(self):
+        priors=bx.Priors(initial_level=bx.Fixed(0),initial_slope=bx.Fixed(.01),
+            level=bx.Fixed(.1),slope=bx.Fixed(.02),variance=bx.Fixed(1))
+        model=bx.Model(bx.Gaussian(),[bx.LocalLinearTrend()],priors)
+        fit=bx.fit(np.linspace(0,1,10),model=model,
+            mcmc=bx.MCMC(draws=1,warmup=0,chains=1,progress=False,seed=84))
+        prediction=fit.predict(12,draws=12000,seed=98)
+        last=fit.channel().states[0,0,-1]
+        expected_mean=last[0]+12*last[1]
+        expected_variance=12*.1**2+sum(i*i for i in range(12))*.02**2
+        values=prediction.level['y'][:,-1]
+        self.assertLess(abs(values.mean()-expected_mean),.025)
+        self.assertLess(abs(values.var()/expected_variance-1),.04)
 
     def test_prior_physical_horizon_formula(self):
         p=bx.Priors(initial_level=bx.Fixed(0),initial_slope=bx.Fixed(0), level=bx.Fixed(.1),slope=bx.Fixed(.02), variance=bx.Fixed(1))

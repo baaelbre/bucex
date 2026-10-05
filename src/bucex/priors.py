@@ -94,8 +94,18 @@ class Pooling:
     slope: HalfNormal | None = None
     seasonal: HalfNormal | None = None
 
+    groups: dict = field(default_factory=dict)
+
+    @property
+    def scales(self):
+        return {**{c: getattr(self, c) for c in ("level", "slope", "seasonal") if getattr(self, c) is not None}, **self.groups}
+
     def __post_init__(self):
-        if not any(getattr(self, c) is not None for c in ("level", "slope", "seasonal")):
+        if set(self.groups) & {"level", "slope", "seasonal"}:
+            raise ValueError("Use the named level, slope and seasonal fields for these groups.")
+        if any(not isinstance(k, str) or not k or not isinstance(v, HalfNormal) for k, v in self.groups.items()):
+            raise TypeError("groups maps innovation names to HalfNormal priors.")
+        if not self.scales:
             raise ValueError("Specify at least one pooled innovation scale, or use pooling=None.")
         for name in ("level", "slope", "seasonal"):
             if getattr(self, name) is not None and not isinstance(getattr(self, name), HalfNormal):

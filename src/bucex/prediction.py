@@ -1,8 +1,9 @@
 """Posterior replications and forecasts with full state and parameter uncertainty."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 import pandas as pd
-from .inference._model import physical_system, layout_for
+from .models import compile_model
+from .fitting import prepare_exog
 from .results import summarize
 
 
@@ -21,6 +22,14 @@ class Predictive:
     kind: str
     steps_per_year: float
 
+    components: dict = field(default_factory=dict, kw_only=True)
+
+    def path(self, component="location", *, channel=None):
+        channel = self.channel_name(channel)
+        if component in {"y", "location", "level", "slope", "seasonal", "sigma"}:
+            return getattr(self, component)[channel]
+        return self.components[channel][component]
+
     def channel_name(self, name=None):
         if name is None:
             if len(self.models) != 1:
@@ -32,9 +41,7 @@ class Predictive:
 
     def summary(self, channel=None, *, component='y', interval=.95):
         channel = self.channel_name(channel)
-        if component not in {'y', 'location', 'level', 'slope', 'seasonal', 'sigma'}:
-            raise ValueError('Unknown predictive component.')
-        return summarize(getattr(self, component)[channel], interval=interval, axis=0)
+        return summarize(self.path(component, channel=channel), interval=interval, axis=0)
 
     def risk(self, threshold, *, channel=None, tail='upper'):
         channel = self.channel_name(channel)
@@ -90,7 +97,7 @@ def _future_index(index, horizon, dates):
     return np.arange(len(index), len(index)+horizon)
 
 
-def predict(fit, horizon, *, draws=2000, seed=2000, dates=None):
+def predict(fit, horizon, *, draws=2000, seed=2000, dates=None, exog=None):
     """Forecast horizon observation steps, retaining one posterior draw per path."""
     if type(horizon) is not int or horizon < 1:
         raise ValueError('horizon must be a positive integer number of observation steps.')
@@ -98,22 +105,21 @@ def predict(fit, horizon, *, draws=2000, seed=2000, dates=None):
     first = next(iter(fit.channels.values()))
     result = Predictive({k: c.model for k, c in fit.channels.items()}, _future_index(first.index, horizon, dates),
         {}, {}, {}, {}, {}, {}, {}, ids, 'forecast', first.steps_per_year)
+    exog = prepare_exog(fit.model, horizon, exog, result.index)
     for name, c in fit.channels.items():
-        transition, layout = physical_system(c.model)
+        compiled = compile_model(c.model, horizon, exog[name])
         state = _take(c.states[:, :, -1], ids).copy()
-        sd = np.zeros((draws, layout.centered_state_dim))
-        positions = {'level': 0, 'slope': layout.idx_beta,
-                     'seasonal': layout.season_slice.start if layout.season_dim else None}
-        for component in c.model.active:
-            sd[:, positions[component]] = np.sqrt(_take(c.parameters['variance.'+component], ids))
-        paths = np.empty((draws, horizon, layout.centered_state_dim))
+        paths = np.empty((draws, horizon, compiled.state_dim))
+        amplitudes = {g.name: np.sqrt(_take(c.parameters['variance.'+g.name], ids)) for g in compiled.groups}
         for t in range(horizon):
-            state = state @ transition.T + sd*rng.normal(size=state.shape)
+            state = state @ compiled.transition.T
+            for g in compiled.groups:
+                state += amplitudes[g.name][:, None] * (rng.normal(size=(draws, g.loading.shape[1])) @ g.loading.T)
             paths[:, t] = state
-        result.level[name] = paths[:, :, 0]
-        result.slope[name] = paths[:, :, 1] if layout.has_beta else np.zeros((draws, horizon))
-        result.seasonal[name] = paths[:, :, layout.season_slice.start] if layout.season_dim else np.zeros((draws, horizon))
-        result.location[name] = result.level[name]+result.seasonal[name]
+        outputs = compiled.paths(paths)
+        result.components[name] = outputs
+        for key in ('level', 'slope', 'seasonal', 'location'):
+            getattr(result, key)[name] = outputs.get(key, np.zeros((draws, horizon)))
         if c.model.observation.scale:
             phase = (len(c.y)+np.arange(horizon)) % c.model.period
             sigmas = np.stack([_take(c.parameters[f'sigma[{i}]'], ids) for i in range(c.model.period)], axis=1)
@@ -132,6 +138,7 @@ def replicate(fit, *, draws=2000, seed=2001):
     result = Predictive({k: c.model for k, c in fit.channels.items()}, first.index,
         {}, {}, {}, {}, {}, {}, {}, ids, 'replication', first.steps_per_year)
     for name, c in fit.channels.items():
+        result.components[name] = {key: _take(c.path(key), ids) for key in c.component_names}
         for key in ('location', 'level', 'slope', 'seasonal'):
             getattr(result, key)[name] = _take(c.path(key), ids)
         result.sigma[name] = _take(c.sigma(), ids)

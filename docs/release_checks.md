@@ -1,35 +1,43 @@
-# Release checks
+# Release verification
 
-The 1.0.0 implementation was checked in the release workspace on Python 3.12.
-The source also passes Python 3.10 syntax parsing. CI is configured for Python
-3.10, 3.11 and 3.12; those remote CI jobs have not been run as part of this
-local preparation.
+Verification is performed locally on Python 3.12. Source parsing also checks
+Python 3.10 syntax. CI is configured for Python 3.10, 3.11 and 3.12; remote
+CI execution and a particular HPC installation are separate from these local
+checks.
 
-The local suite contains **22 passing tests**, including:
+The release suite includes **30 tests**, covering:
 
-- Gaussian static-level posterior versus the analytic distribution.
-- Gaussian smoothing means/covariances versus dense conditioning.
-- GEV location posterior versus independent likelihood quadrature.
-- GEV derivatives, original-scale lower-tail reflection and exact support.
-- Known-scale GEV initialization near a finite endpoint.
-- Laplace–MH correction identically zero for a Gaussian likelihood.
-- Exact deterministic state recursions in singular FFBS.
-- Half-normal shared-scale draws versus direct density integration, including
-  very small coefficients without a variance floor.
-- Orthonormal seasonal prior covariance and physical-horizon innovation variance.
-- Fixed/static components, different channel structures, saved-object round trips.
-- Identical draws for serial, parallel and separately submitted chains;
-  incompatible or duplicate chains rejected by the combiner.
-- All five analysis specifications, complete block counts, calendar forecasts,
-  monthly calibration, diagnostics, native plots and the JSON sensitivity plan.
+- Gaussian static-level and multivariate regression posteriors against analytic
+  distributions, including posterior covariance.
+- Constant and time-varying-design smoothing against dense Gaussian conditioning.
+- GEV coefficient and Laplace–MH path targets against independent quadrature.
+- GEV derivatives, reflected-minimum probabilities, finite endpoints and support.
+- Gaussian-likelihood MH acceptance and exact deterministic lag transitions.
+- GIG shared-scale conditionals against direct density integration, including
+  tiny amplitudes without an innovation-variance floor.
+- Initial seasonal covariance and analytical prior/forecast innovation variance.
+- Fixed/static components, regression, TVP, a fixed-period cycle, and an external
+  component using the public contract.
+- Future-covariate alignment, named outputs, native plots and JSON/NPZ round trips.
+- Identical serial/parallel/separately submitted chain streams, with incompatible
+  fits and duplicated streams rejected.
+- All five paper model configurations, block counts, calendars, monthly prior
+  calibration, diagnostics and the JSON sensitivity grid.
 
-Additional execution checks cover the complete smoke workflow and figure
-regeneration, validation tables and plots, joint prior simulations, the
-509-block MAM-2019 refit, sensitivity comparisons, and all three demo scripts.
-Generated figures were inspected for layout and the absence of titles. The
-pre-2019 smoke run used the real training record but only a few iterations.
+Execution checks additionally exercise the five analysis pipelines and their
+figure generation, historical/recent validation output, a sensitivity
+comparison, the actual 509-block pre-2019 training record, the post-1970 linear
+benchmark, and regression/custom-component examples. The paper prior-
+calibration export uses 50,000 replications. Representative figures are
+inspected for readability and absence of titles.
 
-These checks establish implementation behavior, not convergence of the paper
-posterior or successful execution on a particular HPC installation. The final
-paper fit, full sensitivity grid and validation fits must be rerun with the
-publication settings and assessed before replacing scientific results.
+A wheel and source distribution are built with the declared setuptools backend.
+The wheel is installed into a separate environment and the numerical suite is
+run against that installation. Package contents are checked to keep research
+data and scripts out of the wheel and include them in the source release.
+
+These are numerical and execution checks, **not convergence results for the
+paper**. Short smoke fits have too few draws for scientific inference. The
+production main fit, full sensitivity grid and held-out validation runs must
+be rerun and assessed before replacing manuscript numbers. Existing research
+1.9.x and pre-publication schema-1 results are not relabelled as new fits.

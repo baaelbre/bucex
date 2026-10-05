@@ -12,6 +12,16 @@ from .data import ROOT, load_summaries
 ANALYSES = ('main', 'monthly', 'private', 'constant_dispersion', 'monthly_constant_dispersion')
 
 
+def export_fit(fit, output, settings, *, include_paths=False):
+    """Shared export path for direct fits and combined independent chains."""
+    fit.summary(include_paths=include_paths).to_csv(output/'posterior_summary.csv')
+    from bucex.diagnostics import posterior_checks, residual_association
+    posterior_checks(fit, draws=settings['check_draws']).to_csv(output/'posterior_checks.csv', index=False)
+    residual_association(fit).to_csv(output/'residual_association.csv')
+    metrics = {name: {k: float(v.mean()) for k, v in c.metrics.items()} for name, c in fit.channels.items()}
+    (output/'sampler.json').write_text(json.dumps(metrics, indent=2)+'\n')
+
+
 def run(config, *, profile='screen', output=None, workers=None, chain_id=None,
         figures=True, channel=None, end=None):
     settings = dict(config['profiles'][profile])
@@ -26,6 +36,9 @@ def run(config, *, profile='screen', output=None, workers=None, chain_id=None,
         config['data']['series'] = [channel]
     data = load_summaries(config['data']['source'], frequency=config['data']['frequency'])
     data = data[config['data']['series']]
+    if config['data'].get('start'):
+        data = data.loc[config['data']['start']:]
+    end = config['data'].get('end') if end is None else end
     if end is not None:
         data = data.loc[:end]
     if settings.get('max_blocks'):
@@ -58,12 +71,7 @@ def run(config, *, profile='screen', output=None, workers=None, chain_id=None,
         fit = bx.fit(data, model=build_model(config), steps_per_year=config['model']['steps_per_year'],
                      mcmc=mcmc, laplace=laplace)
         fit.save(archive)
-    fit.summary(include_paths=profile == 'paper').to_csv(output/'posterior_summary.csv')
-    from bucex.diagnostics import posterior_checks, residual_association
-    posterior_checks(fit, draws=settings['check_draws']).to_csv(output/'posterior_checks.csv', index=False)
-    residual_association(fit).to_csv(output/'residual_association.csv')
-    metrics = {name: {k: float(v.mean()) for k, v in c.metrics.items()} for name, c in fit.channels.items()}
-    (output/'sampler.json').write_text(json.dumps(metrics, indent=2)+'\n')
+    export_fit(fit, output, settings, include_paths=profile == 'paper')
     if figures:
         from .figures import generate
         generate(fit, config, output, settings)

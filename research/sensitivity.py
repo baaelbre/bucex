@@ -37,31 +37,51 @@ def table(configs):
 def compare(root, configs):
     from .figures import style, panels, savefig
     import matplotlib.pyplot as plt
-    style()
-    root = Path(root)
-    fits = {c['name']: bx.load(root/c['name']/'fit.bucex') for c in configs if (root/c['name']/'fit.bucex').exists()}
+    style();root=Path(root)
+    fits={c['name']:bx.load(root/c['name']/'fit.bucex') for c in configs if (root/c['name']/'fit.bucex').exists()}
     if not fits:
         raise ValueError('No completed sensitivity fits found.')
-    first = next(iter(fits.values()))
-    names, rows = list(first.channels), []
-    for kind in ('level', 'slope', 'seasonal'):
-        fig, axes = panels(names)
-        for name, ax in zip(names, axes):
-            curves = []
-            for i, (variant, f) in enumerate(fits.items()):
-                if not np.array_equal(f[name].index, first[name].index):
-                    raise ValueError('Sensitivity fits must use the same observations and calendar.')
-                color = plt.get_cmap('viridis')(i/max(1, len(fits)-1))
-                # Native plot includes each setting's uncertainty; light bands
-                # distinguish it from a claim of identical full posteriors.
-                bx.plot(f, channel=name, type=kind, ax=ax, color=color, label=variant)
-                curves.append(f[name].path(kind).mean(axis=(0,1)))
-            rows.append(dict(channel=name, component=kind, fits=len(fits),
-                max_mean_path_spread=float(np.ptp(np.stack(curves), axis=0).max())))
-        fig.legend(*axes[0].get_legend_handles_labels(), loc='outside lower center', ncol=3, fontsize=6)
-        savefig(fig, root/'figures', 'sensitivity_'+kind, configs[0])
-    pd.DataFrame(rows).to_csv(root/'path_comparison.csv', index=False)
-    table(configs).assign(completed=lambda x: x['name'].isin(fits)).to_csv(root/'sensitivity_settings.csv', index=False)
+    first=next(iter(fits.values()));names=list(first.channels);rows=[]
+    reference=next((k for k in fits if k.endswith('level_0.1_slope_0.002')),None)
+    prefixes={'level_slope':'level_','seasonal':'seasonal_','initial_rate':'initial_slope_',
+        'initial_state':'initial_state_','shape':'shape_','dispersion':'variance_scale_',
+        'scale_contrasts':'scale_contrast_','static_seasonal':'static_seasonal','tight':'tight_innovations'}
+    groups={key:[k for k in fits if k.removeprefix('private_').startswith(prefix)] for key,prefix in prefixes.items()}
+    for group,selected in groups.items():
+        if not selected:
+            continue
+        if reference and reference not in selected:
+            selected=[reference]+selected
+        for kind in ('level','slope','seasonal','risk'):
+            fig,axes=panels(names)
+            for name,ax in zip(names,axes):
+                curves=[]
+                for i,variant in enumerate(selected):
+                    f=fits[variant]
+                    if not np.array_equal(f[name].index,first[name].index) or not np.array_equal(f[name].y,first[name].y):
+                        raise ValueError('Sensitivity fits must use identical observations and calendars.')
+                    color=plt.get_cmap('viridis')(i/max(1,len(selected)-1))
+                    kw={}
+                    if kind=='risk':
+                        spec=configs[0]['risk_thresholds'][name]
+                        phase=int(np.flatnonzero(f[name].index[:f[name].model.period].month==spec['month'])[0])
+                        kw=dict(threshold=spec['threshold'],tail=spec['tail'],phase=phase)
+                        path=f[name].risk(spec['threshold'],tail=spec['tail'])[...,phase::f[name].model.period]
+                    else:
+                        path=f[name].path(kind)
+                        if kind=='slope':
+                            path=path*10*f[name].steps_per_year
+                    bx.plot(f,channel=name,type=kind,ax=ax,color=color,label=variant,**kw)
+                    curves.append(path.mean(axis=(0,1)))
+                rows.append(dict(group=group,channel=name,component=kind,fits=len(selected),
+                    units='probability' if kind=='risk' else 'C/decade' if kind=='slope' else 'C',
+                    max_mean_path_spread=float(np.ptp(np.stack(curves),axis=0).max())))
+            fig.legend(*axes[0].get_legend_handles_labels(),loc='outside lower center',ncol=3,fontsize=6)
+            savefig(fig,root/'figures',group+'_'+kind,configs[0])
+    pd.DataFrame(rows).to_csv(root/'path_comparison.csv',index=False)
+    table(configs).assign(completed=lambda x:x['name'].isin(fits)).to_csv(root/'sensitivity_settings.csv',index=False)
+    (root/'completion.json').write_text(json.dumps(dict(expected=len(configs),completed=len(fits),
+        missing=[c['name'] for c in configs if c['name'] not in fits]),indent=2)+'\n')
 
 
 def main():

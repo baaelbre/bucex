@@ -8,8 +8,8 @@
       "TXm",
       "TNm",
       "TXx",
-      "TXn",
       "TNx",
+      "TXn",
       "TNn"
     ]
   },
@@ -61,7 +61,7 @@
       "chains": 4,
       "workers": 4,
       "predictive_draws": 50000,
-      "prior_draws": 10000,
+      "prior_draws": 50000,
       "check_draws": 2000,
       "max_blocks": null
     }

@@ -13,15 +13,15 @@ from scipy.linalg import solve_triangular
 from scipy.optimize import minimize
 
 
-def _support_safe_center(design, y, params, prior_root, mean, predictor):
+def _support_safe_center(design, y, params, prior_root, mean, predictor, sign=1):
     """Deterministically shift an intercept into the GEV location support."""
     xi = float(params['xi'])
     if xi == 0:
         return mean, False
     sigma = np.broadcast_to(np.asarray(params['sigma'], float), np.shape(y))
-    boundary = np.asarray(y) + sigma / xi
+    boundary = np.asarray(y) + sign * sigma / xi
     # A strictly interior location, not a likelihood/support modification.
-    shift = (max(0., float(np.max(boundary + .05*sigma - predictor))) if xi < 0
+    shift = (max(0., float(np.max(boundary + .05*sigma - predictor))) if xi * sign < 0
              else min(0., float(np.min(boundary - .05*sigma - predictor))))
     if shift == 0:
         return mean, False
@@ -48,7 +48,7 @@ def coefficient_reference(design, y, conditional, params, prior_mean, prior_root
     A = np.asarray(design) @ prior_root
     offset = np.asarray(design) @ prior_mean
     center, repaired = _support_safe_center(
-        np.asarray(design), y, params, prior_root, mean, offset + A @ mean)
+        np.asarray(design), y, params, prior_root, mean, offset + A @ mean, getattr(conditional, 'sign', 1))
     metric = dict(coefficient_reference_converged=0.,
                   coefficient_reference_iterations=0.,
                   coefficient_reference_fallback=0.,

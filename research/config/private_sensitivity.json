@@ -1,0 +1,86 @@
+{
+  "base": "private.json",
+  "variants": [
+    {
+      "name": "private_level_0.05_slope_0.001",
+      "override": {
+        "priors": {
+          "level_sd": 0.05,
+          "slope_sd": 0.001
+        }
+      }
+    },
+    {
+      "name": "private_level_0.05_slope_0.002",
+      "override": {
+        "priors": {
+          "level_sd": 0.05,
+          "slope_sd": 0.002
+        }
+      }
+    },
+    {
+      "name": "private_level_0.05_slope_0.004",
+      "override": {
+        "priors": {
+          "level_sd": 0.05,
+          "slope_sd": 0.004
+        }
+      }
+    },
+    {
+      "name": "private_level_0.1_slope_0.001",
+      "override": {
+        "priors": {
+          "level_sd": 0.1,
+          "slope_sd": 0.001
+        }
+      }
+    },
+    {
+      "name": "private_level_0.1_slope_0.002",
+      "override": {
+        "priors": {
+          "level_sd": 0.1,
+          "slope_sd": 0.002
+        }
+      }
+    },
+    {
+      "name": "private_level_0.1_slope_0.004",
+      "override": {
+        "priors": {
+          "level_sd": 0.1,
+          "slope_sd": 0.004
+        }
+      }
+    },
+    {
+      "name": "private_level_0.2_slope_0.001",
+      "override": {
+        "priors": {
+          "level_sd": 0.2,
+          "slope_sd": 0.001
+        }
+      }
+    },
+    {
+      "name": "private_level_0.2_slope_0.002",
+      "override": {
+        "priors": {
+          "level_sd": 0.2,
+          "slope_sd": 0.002
+        }
+      }
+    },
+    {
+      "name": "private_level_0.2_slope_0.004",
+      "override": {
+        "priors": {
+          "level_sd": 0.2,
+          "slope_sd": 0.004
+        }
+      }
+    }
+  ]
+}

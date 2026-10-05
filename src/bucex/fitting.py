@@ -55,17 +55,47 @@ def _data(y, model, dates):
     return model, data, index
 
 
-def target_fingerprint(model, data, index, steps_per_year):
+def prepare_exog(model, steps, exog, index=None):
+    from .models import compile_model
+    from .components.base import features
+    result = {}
+    from .inference.plan import plan
+    for channel in model.channels:
+        plan(channel.model)
+        names = tuple(dict.fromkeys(f for c in channel.model.components for f in getattr(c, 'features', ())))
+        supplied = exog.get(channel.name) if isinstance(exog, dict) else exog
+        if isinstance(supplied, pd.DataFrame) and isinstance(supplied.index, pd.DatetimeIndex):
+            if index is not None and not supplied.index.equals(index):
+                raise ValueError(f'{channel.name}: covariate dates must match observation/forecast dates.')
+        if names:
+            values = features(supplied, names, steps)
+            result[channel.name] = pd.DataFrame(values, columns=names, index=index).copy()
+        else:
+            if supplied is not None:
+                raise ValueError(f'{channel.name}: exog supplied but no component declares features.')
+            result[channel.name] = None
+        # Fail before starting processes for unsupported parameters/components.
+        compile_model(channel.model, steps, result[channel.name])
+    return result
+
+
+def target_fingerprint(model, data, index, steps_per_year, exog=None):
     from .serialization import encode
     h = hashlib.sha256(json.dumps(encode(model), sort_keys=True, allow_nan=False).encode())
     h.update(str(float(steps_per_year)).encode())
     h.update(np.asarray(index).astype(str).tobytes())
     for name, value in data.items():
         h.update(name.encode()); h.update(np.ascontiguousarray(value, dtype='<f8').tobytes())
+    if exog is not None:
+        for name, value in exog.items():
+            if value is not None:
+                h.update(name.encode())
+                h.update(json.dumps(list(value.columns)).encode())
+                h.update(np.ascontiguousarray(value.to_numpy(), dtype='<f8').tobytes())
     return h.hexdigest()
 
 
-def fit(y, *, model, priors=None, dates=None, steps_per_year=None, mcmc=None, laplace=None):
+def fit(y, *, model, priors=None, dates=None, exog=None, steps_per_year=None, mcmc=None, laplace=None):
     """Fit one or several series. GEV path proposals always receive MH correction.
 
     Use a main guard in scripts when workers > 1. No thread or cluster globals
@@ -76,6 +106,7 @@ def fit(y, *, model, priors=None, dates=None, steps_per_year=None, mcmc=None, la
             raise ValueError('Set each channel Model.priors for a multiseries model.')
         model = replace(model, priors=priors)
     model, data, index = _data(y, model, dates)
+    exog = prepare_exog(model, len(index), exog, index)
     mcmc = MCMC() if mcmc is None else mcmc
     laplace = Laplace() if laplace is None else laplace
     if not isinstance(mcmc, MCMC) or not isinstance(laplace, Laplace):
@@ -85,7 +116,7 @@ def fit(y, *, model, priors=None, dates=None, steps_per_year=None, mcmc=None, la
     steps_per_year = model.channels[0].model.period if steps_per_year is None else steps_per_year
     if not np.isfinite(steps_per_year) or steps_per_year <= 0:
         raise ValueError('steps_per_year must be positive and finite.')
-    jobs = [(model, data, mcmc, laplace, i) for i in mcmc.chain_ids]
+    jobs = [(model, data, exog, mcmc, laplace, i) for i in mcmc.chain_ids]
     start = time.perf_counter()
     if mcmc.workers > 1 and mcmc.chains > 1:
         with ProcessPoolExecutor(max_workers=min(mcmc.workers, mcmc.chains),
@@ -100,13 +131,13 @@ def fit(y, *, model, priors=None, dates=None, steps_per_year=None, mcmc=None, la
         channels[c.name] = ChannelResult(c.name, c.model, np.array(data[c.name], copy=True), index,
             np.stack([g['states'] for g in groups]),
             {k: np.stack([g['parameters'][k] for g in groups]) for k in groups[0]['parameters']},
-            {k: np.stack([g['metrics'][k] for g in groups]) for k in groups[0]['metrics']}, float(steps_per_year))
+            {k: np.stack([g['metrics'][k] for g in groups]) for k in groups[0]['metrics']}, float(steps_per_year), exog[c.name])
     shared = {k: np.stack([row[1][k] for row in output]) for k in output[0][1]}
     meta = dict(version='1.0.0', mcmc=asdict(mcmc), laplace=asdict(laplace),
         chain_ids=list(mcmc.chain_ids), chain_seconds=[r[2] for r in output],
         elapsed_seconds=time.perf_counter()-start, python=platform.python_version(),
         platform=platform.platform(), processor=platform.processor(), exact_target=True,
-        target_fingerprint=target_fingerprint(model, data, index, steps_per_year))
+        target_fingerprint=target_fingerprint(model, data, index, steps_per_year, exog))
     return FitResult(model, channels, shared, meta)
 
 
@@ -134,7 +165,7 @@ def combine_fits(*fits):
         channels[name] = ChannelResult(name, c.model, c.y.copy(), c.index,
             np.concatenate([f[name].states for f in fits]),
             {k: np.concatenate([f[name].parameters[k] for f in fits]) for k in c.parameters},
-            {k: np.concatenate([f[name].metrics[k] for f in fits]) for k in c.metrics}, c.steps_per_year)
+            {k: np.concatenate([f[name].metrics[k] for f in fits]) for k in c.metrics}, c.steps_per_year, c.exog)
     metadata = dict(first.metadata)
     metadata.update(chain_ids=ids, random_streams=[list(i) for i in identities],
         chain_seconds=[s for f in fits for s in f.metadata['chain_seconds']],

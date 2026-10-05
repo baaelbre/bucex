@@ -44,7 +44,7 @@ class ResearchTests(unittest.TestCase):
 
     def test_sensitivity_plan_and_config_failures(self):
         variants=plan()
-        self.assertEqual(len(variants),25)
+        self.assertEqual(len(variants),23)
         self.assertEqual(sum(c['name'].startswith('level_') for c in variants),9)
         for c in variants: build_model(c)
         with tempfile.TemporaryDirectory() as d:

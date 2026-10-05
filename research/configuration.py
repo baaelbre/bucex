@@ -34,7 +34,7 @@ def _keys(value, allowed, label):
 def validate(c):
     _keys(c, ('name', 'description', 'data', 'model', 'priors', 'pooling', 'profiles', 'laplace',
               'forecast_years', 'risk_thresholds', 'return_years', 'validation', 'plot', 'seed'), 'top-level')
-    _keys(c['data'], ('source', 'frequency', 'series'), 'data')
+    _keys(c['data'], ('source', 'frequency', 'series', 'start', 'end'), 'data')
     _keys(c['model'], ('period', 'level', 'slope', 'seasonal', 'seasonal_scale', 'scale_prior_sd', 'steps_per_year'), 'model')
     _keys(c['priors'], ('initial_level_sd', 'initial_slope_sd', 'initial_seasonal_sd', 'level_sd', 'slope_sd', 'seasonal_sd', 'variance_shape', 'variance_scale', 'xi_sd'), 'priors')
     _keys(c['profiles'], ('smoke', 'screen', 'paper'), 'profiles')

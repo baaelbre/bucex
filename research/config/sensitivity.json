@@ -131,38 +131,6 @@
       }
     },
     {
-      "name": "initial_level_5",
-      "override": {
-        "priors": {
-          "initial_level_sd": 5
-        }
-      }
-    },
-    {
-      "name": "initial_level_20",
-      "override": {
-        "priors": {
-          "initial_level_sd": 20
-        }
-      }
-    },
-    {
-      "name": "initial_seasonal_5",
-      "override": {
-        "priors": {
-          "initial_seasonal_sd": 5
-        }
-      }
-    },
-    {
-      "name": "initial_seasonal_20",
-      "override": {
-        "priors": {
-          "initial_seasonal_sd": 20
-        }
-      }
-    },
-    {
       "name": "variance_scale_0.5",
       "override": {
         "priors": {
@@ -209,6 +177,24 @@
           "level_sd": 0.01,
           "slope_sd": 0.0001,
           "seasonal_sd": 0.01
+        }
+      }
+    },
+    {
+      "name": "initial_state_5",
+      "override": {
+        "priors": {
+          "initial_level_sd": 5,
+          "initial_seasonal_sd": 5
+        }
+      }
+    },
+    {
+      "name": "initial_state_20",
+      "override": {
+        "priors": {
+          "initial_level_sd": 20,
+          "initial_seasonal_sd": 20
         }
       }
     }

@@ -23,7 +23,11 @@ def main():
     record['mcmc'] = result.metadata['mcmc']
     record['sources'] = [str(p.resolve()) for p in args.runs]
     (args.output/'run.json').write_text(json.dumps(record, indent=2)+'\n')
-    result.summary(include_paths=record['profile'] == 'paper').to_csv(args.output/'posterior_summary.csv')
+    from .run import export_fit
+    import pandas as pd
+    first = next(iter(result.channels.values()))
+    pd.DataFrame({name:c.y for name,c in result.channels.items()}, index=first.index).to_csv(args.output/'observations.csv')
+    export_fit(result,args.output,record['settings'],include_paths=record['profile'] == 'paper')
     if not args.no_figures:
         from .figures import generate
         generate(result, record['config'], args.output, record['settings'])

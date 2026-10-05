@@ -35,11 +35,24 @@ def main():
         rows.append(dict(threshold=threshold, **{k: float(v) for k,v in s.items()}))
     pd.DataFrame(rows).to_csv(root/'summer_2019_risk.csv', index=False)
     style()
-    fig, axes = panels(list(fit.channels))
-    for name, ax in zip(fit.channels, axes):
-        bx.plot(pred, channel=name, ax=ax, type='forecast', observed=heldout[name].to_numpy())
-    axes[0].legend(fontsize=8)
-    savefig(fig, root/'figures', 'forecast_2019', c)
+    import matplotlib.pyplot as plt
+    names = list(fit.channels)
+    fig, (left, right) = plt.subplots(1, 2, figsize=(10, 3.6), constrained_layout=True)
+    for i, name in enumerate(names):
+        summary = pred.summary(name)
+        mean, lo, hi = [float(summary[key][0]) for key in ('mean','lower','upper')]
+        color = '#24658a' if name.startswith('TX') else '#a44839'
+        left.vlines(i, lo, hi, color=color)
+        left.plot(i, mean, 'o', color=color)
+        left.plot(i, heldout[name].iloc[0], 'D', color='black', ms=4)
+    left.set_xticks(np.arange(len(names)), names)
+    left.set_ylabel('Summer temperature (°C)')
+    bx.plot(pred, channel='TXx', type='risk_curve', time=0, thresholds=np.linspace(30,43,180), ax=right)
+    for row in rows:
+        right.plot(row['threshold'], row['mean'], 'o', color='#24658a')
+    right.set(xlabel='Summer TXx threshold (°C)', yscale='log')
+    right.set_ylim(bottom=1e-7, top=1)
+    savefig(fig, root/'figures', 'summer_2019', c)
 
 
 if __name__ == '__main__':
